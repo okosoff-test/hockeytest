@@ -44,13 +44,13 @@ let players = [];
 let waitlist = [];
 const ADMIN_PASSWORD = "964888";
 
-// Game details - SUNDAY HOCKEY
-let gameLocation = "WFCU Greenshield";
-let gameTime = "Sunday 8:30 PM";
+// Game details - FRIDAY HOCKEY
+let gameLocation = "Capri Recreation Complex";
+let gameTime = "Friday 9:30 PM";
 let gameDate = "";
 
 // Player signup password protection - FIXED DEFAULT CODE
-let playerSignupCode = '7666';
+let playerSignupCode = '9855';
 let requirePlayerCode = true;
 let manualOverride = false;
 let manualOverrideState = null;
@@ -106,10 +106,10 @@ const AUTO_ADD_PLAYERS = [
         paymentMethod: "N/A"
     },
     {
-        firstName: "Mat",
-        lastName: "Carriere",
-        phone: "(226) 350-0217",
-        rating: 7,
+        firstName: "Hao",
+        lastName: "Chau",
+        phone: "(519) 995-9884",
+        rating: 8,
         isGoalie: true,
         isFree: false,
         paymentMethod: "N/A"
@@ -150,18 +150,18 @@ function getWeekNumber(date) {
     };
 }
 
-// SUNDAY HOCKEY SCHEDULE: Locked Sunday 5pm - Wednesday 5pm
+// FRIDAY HOCKEY SCHEDULE: Locked Friday 5pm - Monday 6pm
 function shouldBeLocked() {
     const etTime = getCurrentETTime();
     const day = etTime.getDay();
     const hour = etTime.getHours();
     
-    // Sunday 5pm (17:00) onwards until Wednesday 5pm (17:00)
-    if (day === 0 && hour >= 17) return true;  // Sunday 5pm+
-    if (day === 1) return true;  // Monday all day
-    if (day === 2) return true;  // Tuesday all day
-    if (day === 3 && hour < 17) return true;  // Wednesday until 5pm
-    if (rosterReleased && day === 0 && hour >= 17) return true;
+    // Friday 5pm (17:00) onwards until Monday 6pm (18:00)
+    if (day === 5 && hour >= 17) return true;  // Friday 5pm+
+    if (day === 6) return true;  // Saturday all day
+    if (day === 0) return true;  // Sunday all day
+    if (day === 1 && hour < 18) return true;  // Monday until 6pm
+    if (rosterReleased && day === 5 && hour >= 17) return true;
     
     return false;
 }
@@ -172,7 +172,7 @@ function checkAutoLock() {
     const hour = etTime.getHours();
     
     if (rosterReleased) {
-        if ((day === 0 && hour >= 17) || day === 1 || day === 2 || (day === 3 && hour < 17)) {
+        if ((day === 5 && hour >= 17) || day === 6 || day === 0 || (day === 1 && hour < 18)) {
             if (manualOverride && manualOverrideState === 'open') {
                 if (requirePlayerCode) {
                     requirePlayerCode = false;
@@ -255,14 +255,14 @@ function checkAutoLock() {
     };
 }
 
-// Auto-release roster on Sunday at 5pm
+// Auto-release roster on Friday at 5pm
 async function autoReleaseRoster() {
     const etTime = getCurrentETTime();
     const day = etTime.getDay();
     const hour = etTime.getHours();
     const minute = etTime.getMinutes();
     
-    if (day === 0 && hour === 17 && minute === 0 && !rosterReleased && players.length > 0) {
+    if (day === 5 && hour === 17 && minute === 0 && !rosterReleased && players.length > 0) {
         try {
             const { week, year } = getWeekNumber(etTime);
             const teams = generateFairTeams();
@@ -357,16 +357,15 @@ async function addAutoPlayers() {
     return addedCount;
 }
 
-// Weekly reset - Sunday at 11:58PM
+// Weekly reset - Saturday at 12am (midnight)
 function checkWeeklyReset() {
     const etTime = getCurrentETTime();
     const { week: currentWeek, year: currentYear } = getWeekNumber(etTime);
     const day = etTime.getDay();
     const hour = etTime.getHours();
-    const minute = etTime.getMinutes();
     
-    // Reset on Sunday at 11:58PM
-    if (day === 0 && hour === 23 && minute === 58 && (lastResetWeek !== currentWeek || currentWeekData.year !== currentYear)) {
+    // Reset on Saturday at 12am (midnight)
+    if (day === 6 && hour === 0 && (lastResetWeek !== currentWeek || currentWeekData.year !== currentYear)) {
         if (rosterReleased && currentWeekData.weekNumber && 
             (currentWeekData.whiteTeam.length > 0 || currentWeekData.darkTeam.length > 0)) {
             saveWeekHistory(
@@ -382,7 +381,7 @@ function checkWeeklyReset() {
         waitlist = [];
         rosterReleased = false;
         lastResetWeek = currentWeek;
-        gameDate = calculateNextSunday();
+        gameDate = calculateNextFriday();
         
         currentWeekData = {
             weekNumber: currentWeek,
@@ -396,9 +395,9 @@ function checkWeeklyReset() {
         manualOverrideState = null;
         requirePlayerCode = true;
         
-        // Code stays as 7666 - no auto-generation
+        // Code stays as 9855 - no auto-generation
         
-        // Auto-add the predefined players after reset on Sunday 11:58pm
+        // Auto-add the predefined players after reset on Saturday 12am
         setTimeout(() => {
             addAutoPlayers().then(() => {
                 saveData();
@@ -491,7 +490,7 @@ async function loadDataFromDB() {
         if (settings.gameLocation) gameLocation = settings.gameLocation;
         if (settings.gameTime) gameTime = settings.gameTime;
         if (settings.gameDate) gameDate = settings.gameDate;
-        else gameDate = calculateNextSunday(); // FIX: Ensure gameDate is never empty
+        else gameDate = calculateNextFriday(); // FIX: Ensure gameDate is never empty
         if (settings.playerSignupCode) playerSignupCode = settings.playerSignupCode;
         if (settings.requirePlayerCode !== undefined) requirePlayerCode = settings.requirePlayerCode;
         if (settings.manualOverride !== undefined) manualOverride = settings.manualOverride;
@@ -516,6 +515,10 @@ async function loadDataFromDB() {
             rulesAgreed: p.rules_agreed
         }));
         
+        // FIX: Recalculate playerSpots based on actual player count
+        const nonGoalieCount = players.filter(p => !p.isGoalie).length;
+        playerSpots = Math.max(0, 20 - nonGoalieCount);
+                
         const waitlistRes = await pool.query('SELECT * FROM waitlist ORDER BY joined_at');
         waitlist = waitlistRes.rows.map(p => ({
             id: p.id,
@@ -576,10 +579,10 @@ function loadDataFromFile() {
             playerSpots = data.playerSpots ?? 20;
             players = data.players ?? [];
             waitlist = data.waitlist ?? [];
-            gameLocation = data.gameLocation ?? "WFCU Greenshield";
-            gameTime = data.gameTime ?? "Sunday 8:30 PM";
-            gameDate = data.gameDate ?? calculateNextSunday();
-            playerSignupCode = data.playerSignupCode ?? '7666';
+            gameLocation = data.gameLocation ?? "Capri Recreation Complex";
+            gameTime = data.gameTime ?? "Friday 9:30 PM";
+            gameDate = data.gameDate ?? calculateNextFriday();
+            playerSignupCode = data.playerSignupCode ?? '9855';
             requirePlayerCode = data.requirePlayerCode ?? true;
             manualOverride = data.manualOverride ?? false;
             manualOverrideState = data.manualOverrideState ?? null;
@@ -593,28 +596,28 @@ function loadDataFromFile() {
                 darkTeam: []
             };
         } else {
-            gameDate = calculateNextSunday();
+            gameDate = calculateNextFriday();
         }
     } catch (err) {
         console.error('Error loading data:', err);
-        gameDate = calculateNextSunday();
+        gameDate = calculateNextFriday();
     }
 }
 
-// FIX: Use ET timezone for calculateNextSunday
-function calculateNextSunday() {
+// FIX: Use ET timezone for calculateNextFriday
+function calculateNextFriday() {
     const now = new Date();
     // Convert to ET
     const etNow = new Date(now.toLocaleString("en-US", {timeZone: "America/New_York"}));
     const dayOfWeek = etNow.getDay();
-    // Sunday is day 0
-    let daysUntilSunday = (0 - dayOfWeek + 7) % 7;
-    if (daysUntilSunday === 0 && etNow.getHours() >= 20) {
-        daysUntilSunday = 7; // If it's already past Sunday 8pm ET, go to next Sunday
+    // Friday is day 5
+    let daysUntilFriday = (5 - dayOfWeek + 7) % 7;
+    if (daysUntilFriday === 0 && etNow.getHours() >= 21) {
+        daysUntilFriday = 7; // If it's already past Friday 9pm ET, go to next Friday
     }
-    const nextSunday = new Date(etNow);
-    nextSunday.setDate(etNow.getDate() + daysUntilSunday);
-    return nextSunday.toISOString().split('T')[0];
+    const nextFriday = new Date(etNow);
+    nextFriday.setDate(etNow.getDate() + daysUntilFriday);
+    return nextFriday.toISOString().split('T')[0];
 }
 
 function formatGameDate(dateString) {
@@ -738,6 +741,21 @@ function generateFairTeams() {
 
 async function saveWeekHistory(year, weekNumber, whiteTeam, darkTeam) {
     try {
+        // Add payment info to team data before saving
+        const whiteTeamWithPayment = whiteTeam.map(p => ({
+            ...p,
+            paid: p.paid,
+            paidAmount: p.paidAmount,
+            paymentMethod: p.paymentMethod
+        }));
+        
+        const darkTeamWithPayment = darkTeam.map(p => ({
+            ...p,
+            paid: p.paid,
+            paidAmount: p.paidAmount,
+            paymentMethod: p.paymentMethod
+        }));
+        
         const whiteAvg = (whiteTeam.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0) / whiteTeam.length).toFixed(1);
         const darkAvg = (darkTeam.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0) / darkTeam.length).toFixed(1);
         
@@ -751,8 +769,8 @@ async function saveWeekHistory(year, weekNumber, whiteTeam, darkTeam) {
                 gameLocation,
                 gameTime,
                 gameDate,
-                JSON.stringify(whiteTeam),
-                JSON.stringify(darkTeam),
+                JSON.stringify(whiteTeamWithPayment),
+                JSON.stringify(darkTeamWithPayment),
                 whiteAvg,
                 darkAvg
             ]
@@ -839,7 +857,7 @@ app.get('/api/debug-time', (req, res) => {
         etDay: etTime.getDay(),
         etHour: etTime.getHours(),
         shouldBeLocked: shouldLock,
-        "schedule": "Locked: Sun 5pm - Wed 5pm, Reset: Sun 11:58pm",
+        "schedule": "Locked: Fri 5pm - Mon 6pm, Reset: Sat 12am",
         requirePlayerCode: requirePlayerCode,
         manualOverride: manualOverride,
         rosterReleased: rosterReleased
@@ -881,7 +899,7 @@ app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// --- PUBLIC API ---
+// --- PUBLIC API - SANITIZED (NO payment, NO rating, NO phone) ---
 app.get('/api/status', (req, res) => {
     const lockStatus = checkAutoLock();
     const etTime = getCurrentETTime();
@@ -889,6 +907,17 @@ app.get('/api/status', (req, res) => {
     
     const playerCount = getPlayerCount();
     const goalieCount = getGoalieCount();
+    
+    // STRIP all sensitive data from public players list
+    // Players see: id, name, goalie status, cancel permission ONLY
+    const publicPlayers = players.map(p => ({
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        isGoalie: p.isGoalie,
+        canCancel: !p.isGoalie && !(p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly')
+        // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
+    }));
     
     res.json({
         playerSpotsRemaining: playerSpots > 0 ? playerSpots : 0,
@@ -911,22 +940,17 @@ app.get('/api/status', (req, res) => {
         currentWeek: week,
         currentYear: year,
         rules: GAME_RULES,
-        players: players.map(p => ({
-            id: p.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-            isGoalie: p.isGoalie,
-            rating: p.rating,
-            canCancel: !p.isGoalie && !(p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly')
-        }))
+        players: publicPlayers  // Sanitized - no ratings, no payment info
     });
 });
 
 app.get('/api/waitlist', (req, res) => {
+    // Sanitized waitlist - no ratings, no phone numbers
     const waitlistNames = waitlist.map((p, index) => ({
         position: index + 1,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie
+        // EXCLUDED: rating, phone, paymentMethod
     }));
     
     res.json({
@@ -944,7 +968,7 @@ app.get('/api/roster', (req, res) => {
         return res.json({
             released: false,
             message: "Roster has not been released yet",
-            releaseTime: "Teams released every Sunday at 5:00 PM ET"
+            releaseTime: "Teams released every Friday at 5:00 PM ET"
         });
     }
     
@@ -956,11 +980,20 @@ app.get('/api/roster', (req, res) => {
         return nameA.localeCompare(nameB);
     };
     
-    const whiteTeam = players.filter(p => p.team === 'White').sort(sortPlayers);
-    const darkTeam = players.filter(p => p.team === 'Dark').sort(sortPlayers);
+    // STRIP all sensitive data from public roster
+    // Players see: name, goalie status ONLY
+    const sanitizePlayer = (p) => ({
+        firstName: p.firstName,
+        lastName: p.lastName,
+        isGoalie: p.isGoalie
+        // EXCLUDED: id, rating, paid, paidAmount, paymentMethod, phone, team
+    });
     
-    const whiteRating = whiteTeam.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
-    const darkRating = darkTeam.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const whiteTeam = players.filter(p => p.team === 'White').sort(sortPlayers).map(sanitizePlayer);
+    const darkTeam = players.filter(p => p.team === 'Dark').sort(sortPlayers).map(sanitizePlayer);
+    
+    const whiteRating = players.filter(p => p.team === 'White').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const darkRating = players.filter(p => p.team === 'Dark').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
     
     res.json({
         released: true,
@@ -977,7 +1010,7 @@ app.get('/api/roster', (req, res) => {
     });
 });
 
-// History API
+// History API - Public (no payment data shown)
 app.get('/api/history', async (req, res) => {
     const history = await getHistoryList();
     res.json({ history });
@@ -988,7 +1021,21 @@ app.get('/api/history/:year/:week', async (req, res) => {
     const weekData = await getWeekHistory(parseInt(year), parseInt(week));
     
     if (weekData) {
-        res.json(weekData);
+        // Sanitize historical data too
+        const sanitizeHistoricalPlayer = (p) => ({
+            firstName: p.firstName,
+            lastName: p.lastName,
+            isGoalie: p.isGoalie
+            // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
+        });
+        
+        const sanitizedData = {
+            ...weekData,
+            whiteTeam: weekData.whiteTeam.map(sanitizeHistoricalPlayer),
+            darkTeam: weekData.darkTeam.map(sanitizeHistoricalPlayer)
+        };
+        
+        res.json(sanitizedData);
     } else {
         res.status(404).json({ error: "Week not found" });
     }
@@ -1267,7 +1314,7 @@ app.post('/api/cancel-registration', async (req, res) => {
     });
 });
 
-// --- ADMIN API ---
+// --- ADMIN API - FULL ACCESS TO ALL DATA ---
 app.post('/api/admin/check-session', (req, res) => {
     const { sessionToken } = req.body;
     if (adminSessions[sessionToken]) {
@@ -1288,16 +1335,18 @@ app.post('/api/admin/login', (req, res) => {
     }
 });
 
-app.post('/api/admin/players', (req, res) => {
-    const { password, sessionToken } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
-        return res.status(401).send("Unauthorized");
+// ADMIN ONLY: Get full player data with payment AND rating info
+app.post('/api/admin/players-full', (req, res) => {
+    const { sessionToken } = req.body;
+    
+    if (!sessionToken || !adminSessions[sessionToken]) {
+        return res.status(401).json({ error: "Unauthorized" });
     }
     
     const playerCount = getPlayerCount();
     const goalieCount = getGoalieCount();
     
-    // Calculate total paid amount
+    // Calculate totals
     const totalPaid = players.reduce((sum, p) => {
         if (p.paidAmount && !isNaN(parseFloat(p.paidAmount))) {
             return sum + parseFloat(p.paidAmount);
@@ -1305,6 +1354,10 @@ app.post('/api/admin/players', (req, res) => {
         return sum;
     }, 0);
     
+    const paidCount = players.filter(p => p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    
+    // Return FULL data including payment info AND ratings (admin only)
     res.json({ 
         playerSpots, 
         playerCount,
@@ -1312,8 +1365,10 @@ app.post('/api/admin/players', (req, res) => {
         maxGoalies: MAX_GOALIES,
         totalPlayers: players.length,
         totalPaid: totalPaid.toFixed(2),
-        players, 
-        waitlist, 
+        paidCount: paidCount,
+        unpaidCount: unpaidCount,
+        players: players,  // Full data with payment AND rating
+        waitlist: waitlist, // Full waitlist data
         location: gameLocation, 
         time: gameTime,
         date: gameDate,
@@ -1322,6 +1377,13 @@ app.post('/api/admin/players', (req, res) => {
         playerSignupCode, 
         requirePlayerCode 
     });
+});
+
+// DEPRECATED: Old endpoint - redirect to new secure one
+app.post('/api/admin/players', (req, res) => {
+    // Forward to new secure endpoint
+    req.url = '/api/admin/players-full';
+    app._router.handle(req, res);
 });
 
 app.post('/api/admin/settings', (req, res) => {
@@ -1776,7 +1838,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: "Roster released successfully. Signup is now LOCKED until Wednesday 5pm.",
+            message: "Roster released successfully. Signup is now LOCKED until Monday 6pm.",
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam,
             whiteRating: teams.whiteRating.toFixed(1),
@@ -1813,7 +1875,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     waitlist = [];
     rosterReleased = false;
     lastResetWeek = week;
-    gameDate = calculateNextSunday();
+    gameDate = calculateNextFriday();
     
     currentWeekData = {
         weekNumber: week,
@@ -1827,7 +1889,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     manualOverrideState = null;
     requirePlayerCode = true;
     
-    // Code stays as 7666 - no auto-generation
+    // Code stays as 9855 - no auto-generation
     
     try {
         await pool.query('DELETE FROM players');
@@ -1842,6 +1904,114 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     }
     
     res.json({ success: true, message: "Manual reset completed", code: playerSignupCode });
+});
+
+// ADMIN ONLY: Export payment data to CSV
+app.get('/api/admin/export-payments', async (req, res) => {
+    const { sessionToken } = req.query;
+    
+    // STRICT: Only session token, no password fallback
+    if (!sessionToken || !adminSessions[sessionToken]) {
+        return res.status(401).json({ error: "Unauthorized - Admin access only" });
+    }
+    
+    try {
+        const headers = ['Team', 'First Name', 'Last Name', 'Phone', 'Rating', 'Payment Method', 'Paid Amount', 'Payment Status', 'Goalie', 'Registered At'];
+        
+        let csvRows = [headers.join(',')];
+        
+        // Add White Team
+        const whiteTeam = players.filter(p => p.team === 'White' || (!p.team && !rosterReleased));
+        whiteTeam.forEach(p => {
+            const row = [
+                'White',
+                `"${p.firstName}"`,
+                `"${p.lastName}"`,
+                `"${p.phone}"`,
+                p.rating,
+                `"${p.paymentMethod || 'N/A'}"`,
+                p.paidAmount || 0,
+                p.paid ? 'PAID' : 'UNPAID',
+                p.isGoalie ? 'YES' : 'NO',
+                `"${new Date(p.registeredAt).toLocaleString()}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        // Add Dark Team
+        const darkTeam = players.filter(p => p.team === 'Dark');
+        darkTeam.forEach(p => {
+            const row = [
+                'Dark',
+                `"${p.firstName}"`,
+                `"${p.lastName}"`,
+                `"${p.phone}"`,
+                p.rating,
+                `"${p.paymentMethod || 'N/A'}"`,
+                p.paidAmount || 0,
+                p.paid ? 'PAID' : 'UNPAID',
+                p.isGoalie ? 'YES' : 'NO',
+                `"${new Date(p.registeredAt).toLocaleString()}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        // Add unassigned players (if roster not released)
+        const unassigned = players.filter(p => !p.team && rosterReleased);
+        unassigned.forEach(p => {
+            const row = [
+                'Unassigned',
+                `"${p.firstName}"`,
+                `"${p.lastName}"`,
+                `"${p.phone}"`,
+                p.rating,
+                `"${p.paymentMethod || 'N/A'}"`,
+                p.paidAmount || 0,
+                p.paid ? 'PAID' : 'UNPAID',
+                p.isGoalie ? 'YES' : 'NO',
+                `"${new Date(p.registeredAt).toLocaleString()}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        // Add waitlist
+        waitlist.forEach((p, index) => {
+            const row = [
+                `Waitlist #${index + 1}`,
+                `"${p.firstName}"`,
+                `"${p.lastName}"`,
+                `"${p.phone}"`,
+                p.rating,
+                `"${p.paymentMethod || 'N/A'}"`,
+                'N/A',
+                'N/A',
+                p.isGoalie ? 'YES' : 'NO',
+                `"${new Date(p.joinedAt).toLocaleString()}"`
+            ];
+            csvRows.push(row.join(','));
+        });
+        
+        // Add summary row
+        const totalCollected = players.reduce((sum, p) => sum + (parseFloat(p.paidAmount) || 0), 0);
+        const paidCount = players.filter(p => p.paid && !p.isGoalie).length;
+        const unpaidCount = players.filter(p => !p.paid && !p.isGoalie).length;
+        
+        csvRows.push(''); // Empty row
+        csvRows.push(['SUMMARY', '', '', '', '', '', '', '', '', ''].join(','));
+        csvRows.push(['Total Collected', `"$${totalCollected.toFixed(2)}"`, '', '', '', '', '', '', '', ''].join(','));
+        csvRows.push(['Paid Players', paidCount, '', '', '', '', '', '', '', ''].join(','));
+        csvRows.push(['Unpaid Players', unpaidCount, '', '', '', '', '', '', '', ''].join(','));
+        
+        const csvContent = csvRows.join('\n');
+        
+        res.setHeader('Content-Type', 'text/csv');
+        res.setHeader('Content-Disposition', `attachment; filename="hockey-payments-${gameDate || 'current'}.csv"`);
+        res.send(csvContent);
+        
+    } catch (err) {
+        console.error('Export error:', err);
+        res.status(500).json({ error: "Export failed" });
+    }
 });
 
 // 404 handler - MUST be last
@@ -1861,7 +2031,7 @@ initDatabase().then(() => {
     });
     
     app.listen(PORT, () => {
-        console.log(`Phan's Sunday Hockey server running on port ${PORT}`);
+        console.log(`Phan's Friday Hockey server running on port ${PORT}`);
         console.log(`Location: ${gameLocation}`);
         console.log(`Time: ${gameTime}`);
         console.log(`Date: ${gameDate}`);
