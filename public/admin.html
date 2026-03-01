@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Phan's Sunday Hockey</title>
+    <title>Admin - Phan's Friday Hockey</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -382,6 +382,69 @@
             color: var(--accent);
         }
 
+        /* Payment Summary Box */
+        .payment-summary-box {
+            background: linear-gradient(135deg, #1a3a1a, #2d4d2d);
+            border: 2px solid #4CAF50;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .payment-summary-box h3 {
+            margin: 0 0 15px 0;
+            color: #4CAF50;
+            font-size: 1.1rem;
+        }
+
+        .payment-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 15px;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        .payment-stat {
+            background: rgba(0,0,0,0.2);
+            padding: 15px;
+            border-radius: 8px;
+        }
+
+        .payment-stat-value {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #4CAF50;
+        }
+
+        .payment-stat-value.unpaid {
+            color: #ff4444;
+        }
+
+        .payment-stat-label {
+            font-size: 0.85rem;
+            color: #888;
+            margin-top: 5px;
+        }
+
+        .export-btn {
+            background: #4a90e2;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        .export-btn:hover {
+            background: #5aa0f2;
+        }
+
+        .security-notice {
+            color: #888;
+            font-size: 0.8rem;
+            text-align: center;
+            margin-top: 10px;
+            font-style: italic;
+        }
+
         /* Pre-defined Goalies Section */
         .goalies-section {
             background: linear-gradient(135deg, #1a3a3a, #2d4d4d);
@@ -676,6 +739,7 @@
             .preview-teams { grid-template-columns: 1fr; }
             .goalie-list { grid-template-columns: 1fr; }
             .paid-input { width: 60px; }
+            .payment-stats { grid-template-columns: 1fr; }
         }
     </style>
 </head>
@@ -683,7 +747,7 @@
 
     <div class="container" id="loginBox">
         <h1>Admin Portal</h1>
-        <p style="text-align:center; color:#888;">Phan's Sunday Hockey</p>
+        <p style="text-align:center; color:#888;">Phan's Friday Hockey</p>
         <input type="password" id="adminPass" placeholder="Enter Admin Password">
         <button onclick="login()" style="width:100%;">Access Dashboard</button>
         <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
@@ -756,12 +820,12 @@
                 </div>
             </div>
             <div class="schedule-info">
-    <strong>📅 Auto Schedule (SUNDAY HOCKEY):</strong><br>
-    🔒 <strong>LOCKED:</strong> Sunday 5:00 PM → Wednesday 5:00 PM ET<br>
-    ✅ <strong>OPEN:</strong> Wednesday 5:00 PM → Sunday 5:00 PM ET<br><br>
-    <strong>🔄 Weekly Reset:</strong> Every Sunday 11:58 PM ET<br>
-    <strong>🔑 Default Code:</strong> 7666 (use "Generate New" button to create random code when needed)
-</div>
+                <strong>📅 Auto Schedule (FRIDAY HOCKEY):</strong><br>
+                🔒 <strong>LOCKED:</strong> Friday 5:00 PM → Monday 6:00 PM ET<br>
+                ✅ <strong>OPEN:</strong> Monday 6:00 PM → Friday 5:00 PM ET<br><br>
+                <strong>🔄 Weekly Reset:</strong> Every Saturday 12:00 AM ET<br>
+                <strong>🔑 Default Code:</strong> 9855 (use "Generate New" button to create random code when needed)
+            </div>
             <div class="manual-override-warning" id="overrideWarning" style="display:none;">
                 <strong>⚠️ Manual Override Active</strong>
                 <div id="overrideDetails"></div>
@@ -798,6 +862,31 @@
                     <ul class="preview-list" id="darkTeamPreview"></ul>
                 </div>
             </div>
+        </div>
+
+        <!-- Payment Summary - ADMIN ONLY -->
+        <div class="payment-summary-box">
+            <h3>💰 Payment Summary (Admin Only)</h3>
+            <div class="payment-stats">
+                <div class="payment-stat">
+                    <div class="payment-stat-value" id="totalCollected">$0.00</div>
+                    <div class="payment-stat-label">Total Collected</div>
+                </div>
+                <div class="payment-stat">
+                    <div class="payment-stat-value" id="paidCountDisplay">0</div>
+                    <div class="payment-stat-label">Paid Players</div>
+                </div>
+                <div class="payment-stat">
+                    <div class="payment-stat-value unpaid" id="unpaidCountDisplay">0</div>
+                    <div class="payment-stat-label">Unpaid Players</div>
+                </div>
+            </div>
+            <button class="export-btn" onclick="exportToExcel()">
+                📥 Download Full Payment Report (CSV)
+            </button>
+            <p class="security-notice">
+                ⚠️ Payment and rating data is hidden from public view. Only admins can see this information.
+            </p>
         </div>
 
         <div class="control-box">
@@ -978,7 +1067,6 @@
                     showDashboard();
                     loadData();
                     loadSettings();
-                    // Load history list after login
                     setTimeout(loadHistoryList, 500);
                 } else {
                     localStorage.removeItem(SESSION_KEY);
@@ -1016,7 +1104,6 @@
                     showDashboard();
                     loadData();
                     loadSettings();
-                    // Load history list after login
                     setTimeout(loadHistoryList, 500);
                 } else {
                     document.getElementById('errorMsg').style.display = 'block';
@@ -1063,7 +1150,6 @@
                 return;
             }
 
-            // Check current goalie count
             if (currentGoalies + selectedGoalies.length > maxGoalies) {
                 alert(`Only ${maxGoalies - currentGoalies} goalie spot(s) remaining. Please uncheck some goalies.`);
                 return;
@@ -1101,16 +1187,13 @@
                 }
             }
 
-            // Uncheck all boxes after adding
             PREDEFINED_GOALIES.forEach(goalie => {
                 const checkbox = document.getElementById(goalie.id);
                 if (checkbox) checkbox.checked = false;
             });
 
-            // Reload data to show updated list
             loadData();
 
-            // Show result message
             if (addedCount > 0) {
                 alert(`✅ Successfully added ${addedCount} goalie(s)!\n${errors.length > 0 ? '\nErrors:\n' + errors.join('\n') : ''}`);
             } else {
@@ -1155,7 +1238,6 @@
                     toggleBtn.className = "control-btn toggle-btn open-state";
                 }
 
-                // FIXED: Enhanced manual override warning with lock window status
                 const overrideWarning = document.getElementById('overrideWarning');
                 const restoreBtn = document.getElementById('restoreBtn');
                 const overrideDetails = document.getElementById('overrideDetails');
@@ -1164,12 +1246,11 @@
                     overrideWarning.style.display = 'block';
                     restoreBtn.style.display = 'inline-block';
                     
-                    // Show additional warning if we're in locked window but override is active
                     if (data.isLockedWindow) {
                         overrideWarning.classList.add('active-lock');
                         overrideDetails.innerHTML = `
                             <div style="margin-top:8px; font-size:0.8rem; color:#ff4444;">
-                                <strong>⚠️ CRITICAL:</strong> Signup should be LOCKED right now (Sunday 5pm - Wednesday 5pm ET)!<br>
+                                <strong>⚠️ CRITICAL:</strong> Signup should be LOCKED right now (Fri 5pm - Mon 6pm ET)!<br>
                                 Auto-schedule is disabled. Players can signup without code!
                             </div>
                         `;
@@ -1189,7 +1270,6 @@
                     rosterStatus.className = "roster-released";
                     document.getElementById('releaseRosterBtn').disabled = true;
                     document.getElementById('releaseRosterBtn').innerText = "Roster Already Released";
-                    // Load and show the released roster preview
                     loadReleasedRosterPreview();
                 } else {
                     rosterStatus.innerText = "PENDING";
@@ -1216,7 +1296,6 @@
                 document.getElementById('whiteAvgPreview').innerText = `(Avg: ${data.whiteRating || '--'})`;
                 document.getElementById('darkAvgPreview').innerText = `(Avg: ${data.darkRating || '--'})`;
                 
-                // White Team
                 const whiteList = document.getElementById('whiteTeamPreview');
                 whiteList.innerHTML = '';
                 if (data.whiteTeam && Array.isArray(data.whiteTeam)) {
@@ -1225,13 +1304,12 @@
                         const goalieTag = player.isGoalie ? ' (G)' : '';
                         li.innerHTML = `
                             <span>${player.firstName} ${player.lastName}${goalieTag}</span>
-                            <span>${player.rating}/10</span>
+                            <span>Rating Hidden</span>
                         `;
                         whiteList.appendChild(li);
                     });
                 }
                 
-                // Dark Team
                 const darkList = document.getElementById('darkTeamPreview');
                 darkList.innerHTML = '';
                 if (data.darkTeam && Array.isArray(data.darkTeam)) {
@@ -1240,7 +1318,7 @@
                         const goalieTag = player.isGoalie ? ' (G)' : '';
                         li.innerHTML = `
                             <span>${player.firstName} ${player.lastName}${goalieTag}</span>
-                            <span>${player.rating}/10</span>
+                            <span>Rating Hidden</span>
                         `;
                         darkList.appendChild(li);
                     });
@@ -1338,7 +1416,7 @@
         }
 
         async function restoreSchedule() {
-            if (!confirm("Restore auto-schedule? This will allow the system to automatically lock/unlock based on the schedule (Sunday 5pm - Wednesday 5pm ET).")) return;
+            if (!confirm("Restore auto-schedule? This will allow the system to automatically lock/unlock based on the schedule (Fri 5pm - Mon 6pm ET).")) return;
             try {
                 const res = await fetch(`${API_URL}/api/admin/reset-schedule`, {
                     method: 'POST',
@@ -1347,7 +1425,7 @@
                 });
                 if (res.ok) {
                     loadSettings();
-                    alert("Auto-schedule restored! Signup will now automatically lock during Sunday 5pm - Wednesday 5pm ET.");
+                    alert("Auto-schedule restored! Signup will now automatically lock during Fri 5pm - Mon 6pm ET.");
                 } else if (res.status === 401) {
                     logout();
                 }
@@ -1358,9 +1436,7 @@
 
         async function releaseRoster() {
             console.log("Release roster clicked");
-            console.log("Session token:", sessionToken ? "Present" : "Missing");
             
-            // Get fresh data first to ensure we have current player count
             await loadData();
             
             if (playersCount === 0) {
@@ -1374,7 +1450,6 @@
             btn.disabled = true;
             btn.innerText = "Releasing...";
             
-            // Hide any previous messages
             document.getElementById('releaseSuccess').classList.remove('active');
             document.getElementById('releaseError').classList.remove('active');
             
@@ -1386,8 +1461,6 @@
                     body: JSON.stringify({ sessionToken: sessionToken })
                 });
                 
-                console.log("Response status:", res.status);
-                
                 let data;
                 try {
                     data = await res.json();
@@ -1398,24 +1471,18 @@
                     throw new Error("Invalid JSON response from server");
                 }
                 
-                console.log("Response data:", data);
-                
                 if (res.ok && data.success) {
-                    // Show success message
                     const successMsg = document.getElementById('releaseSuccess');
                     successMsg.classList.add('active');
                     setTimeout(() => successMsg.classList.remove('active'), 5000);
                     
-                    // Update UI
                     document.getElementById('rosterStatusDisplay').innerText = "RELEASED";
                     document.getElementById('rosterStatusDisplay').className = "roster-released";
                     btn.innerText = "Roster Already Released";
                     
-                    // Show the roster preview immediately
                     await loadReleasedRosterPreview();
                     
-                    // FIXED: Proper template literal syntax
-                    alert(`✅ Roster Released Successfully!\n\nWhite Team: ${data.whiteTeam.length} players (Avg: ${data.whiteRating})\nDark Team: ${data.darkTeam.length} players (Avg: ${data.darkRating})\n\nSignup is now LOCKED until Wednesday 5:00 PM ET. Players can see the teams on the signup page!`);
+                    alert(`✅ Roster Released Successfully!\n\nWhite Team: ${data.whiteTeam.length} players (Avg: ${data.whiteRating})\nDark Team: ${data.darkTeam.length} players (Avg: ${data.darkRating})\n\nSignup is now LOCKED until Monday 6pm. Players can see the teams on the signup page!`);
                 } else {
                     console.error("Server returned error:", data);
                     document.getElementById('releaseError').classList.add('active');
@@ -1455,23 +1522,35 @@
             }
         }
 
+        // SECURE: Load full data with payment and rating info (admin only)
         async function loadData() {
             try {
-                const res = await fetch(`${API_URL}/api/admin/players`, {
+                const res = await fetch(`${API_URL}/api/admin/players-full`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ sessionToken: sessionToken })
                 });
+                
                 if (!res.ok) {
-                    if (res.status === 401) logout();
+                    if (res.status === 401) {
+                        logout();
+                        return;
+                    }
+                    console.error("Failed to load data:", res.status);
                     return;
                 }
+                
                 const data = await res.json();
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
                 currentGoalies = data.goalieCount;
                 currentTotalPaid = parseFloat(data.totalPaid) || 0;
+                
+                // Update payment summary
+                document.getElementById('totalCollected').innerText = '$' + currentTotalPaid.toFixed(2);
+                document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
+                document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
                 
                 // Update counts
                 document.getElementById('currentPlayerSpotsDisplay').innerText = data.playerSpots;
@@ -1480,21 +1559,22 @@
                 
                 const goalieDisplay = document.getElementById('currentGoalieCount');
                 goalieDisplay.innerText = `${data.goalieCount}/${maxGoalies}`;
-                goalieDisplay.className = 'count-value ' + (data.goalieCount >= maxGoalies ? 'goalie-full' : '');
+                goalieDisplay.style.color = data.goalieCount >= maxGoalies ? '#ff4444' : '#4CAF50';
                 
                 document.getElementById('playerCount').innerText = data.playerCount;
                 document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
                 document.getElementById('waitlistCount').innerText = data.waitlist.length;
                 
-                // Update total paid display
                 document.getElementById('totalPaidDisplay').innerText = `($${currentTotalPaid.toFixed(2)})`;
                 
                 if (data.playerSignupCode) {
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
                 
+                // Render players table with payment controls (ADMIN ONLY)
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
+                
                 if (data.players.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
@@ -1502,15 +1582,12 @@
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         
-                        // Determine paid amount display
                         let paidInput = '';
                         if (p.isGoalie) {
                             paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
                         } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            // Phan Ly is free
                             paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
                         } else {
-                            // Regular player - show quick payment buttons and custom input
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
@@ -1556,6 +1633,7 @@
                     });
                 }
 
+                // Render waitlist with full data (ADMIN ONLY)
                 const waitlistBody = document.getElementById('waitlistList');
                 waitlistBody.innerHTML = '';
                 if (data.waitlist.length === 0) {
@@ -1589,7 +1667,6 @@
             }
         }
 
-        // ENHANCED: Remove player function with better feedback - WORKS ON ANY PLAYER AT ANY TIME
         async function removePlayer(id) {
             if (!confirm("Remove this player?")) return;
             try {
@@ -1601,7 +1678,6 @@
                 if (res.ok) {
                     const data = await res.json();
                     loadData();
-                    // Show success notification
                     const removedName = data.removedPlayer ? 
                         `${data.removedPlayer.firstName} ${data.removedPlayer.lastName}` : 
                         'Player';
@@ -1618,33 +1694,25 @@
             }
         }
 
-        // Helper function to show notifications
         function showNotification(message, type) {
-            // Remove any existing notifications
             const existing = document.querySelector('.remove-notification');
             if (existing) existing.remove();
             
-            // Create new notification
             const notif = document.createElement('div');
             notif.className = `remove-notification ${type}`;
             notif.innerText = message;
             document.body.appendChild(notif);
             
-            // Auto-remove after 3 seconds
             setTimeout(() => {
                 if (notif.parentNode) notif.remove();
             }, 3000);
         }
 
-        // NEW: Update paid amount function
-        // Quick pay $15
         async function quickPay15(playerId) {
             await updatePaidAmount(playerId, 15);
-            // Refresh the row to update button states
             loadData();
         }
 
-        // Mark player as unpaid (clear payment)
         async function markUnpaid(playerId) {
             if (!confirm('Mark this player as unpaid?')) return;
             await updatePaidAmount(playerId, null);
@@ -1670,13 +1738,12 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    // Update the total display
                     document.getElementById('totalPaidDisplay').innerText = `($${data.totalPaid})`;
                     console.log(`Updated paid amount for player ${playerId}: $${amount}, Total: $${data.totalPaid}`);
                 } else {
                     const err = await res.json();
                     alert("Error: " + (err.error || "Failed to update payment"));
-                    loadData(); // Reload to reset value
+                    loadData();
                 }
             } catch (err) {
                 console.error("Update paid amount error:", err);
@@ -1755,7 +1822,7 @@
             const ratingNum = parseInt(newRating);
             if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 10) {
                 alert("Rating must be between 1 and 10");
-                loadData(); // Reload to reset the value
+                loadData();
                 return;
             }
 
@@ -1769,13 +1836,12 @@
                 if (res.ok) {
                     const data = await res.json();
                     console.log(`Updated ${data.player.firstName} ${data.player.lastName} rating to ${data.player.rating}`);
-                    // Don't reload data to avoid losing focus
                 } else if (res.status === 401) {
                     logout();
                 } else {
                     const err = await res.json();
                     alert("Error: " + (err.error || "Failed to update rating"));
-                    loadData(); // Reload to reset
+                    loadData();
                 }
             } catch (err) {
                 console.error("Update rating error:", err);
@@ -1851,7 +1917,10 @@
             }
         }
 
-        // --- HISTORY MANAGEMENT FUNCTIONS ---
+        // Export to CSV function
+        function exportToExcel() {
+            window.open(`${API_URL}/api/admin/export-payments?sessionToken=${sessionToken}`, '_blank');
+        }
         
         async function loadHistoryList() {
             const select = document.getElementById('historySelect');
@@ -1913,7 +1982,6 @@
                     const data = await res.json();
                     resultDiv.className = 'delete-result success';
                     resultDiv.innerHTML = `✅ ${data.message}`;
-                    // Refresh the list
                     loadHistoryList();
                 } else if (res.status === 401) {
                     logout();
