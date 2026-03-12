@@ -49,6 +49,30 @@
             display: block;
         }
 
+        .maintenance-bulletin-content {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .maintenance-bulletin-image {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid rgba(255,255,255,0.35);
+            display: none;
+            background: rgba(255,255,255,0.12);
+        }
+
+        .maintenance-bulletin-text {
+            max-width: 760px;
+            line-height: 1.35;
+            white-space: pre-wrap;
+        }
+
         @keyframes flash {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -738,7 +762,10 @@
 
     <!-- MAINTENANCE BULLETIN -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
-        Portal is down for maintenance, check back later
+        <div class="maintenance-bulletin-content">
+            <img id="maintenanceBulletinImage" class="maintenance-bulletin-image" alt="Maintenance image">
+            <div class="maintenance-bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later</div>
+        </div>
     </div>
 
     <div class="container" id="playerView">
@@ -950,6 +977,9 @@
         let rosterReleased = false;
         let currentPlayers = [];
         let maintenanceMode = false;
+        let maintenanceMessageEnabled = false;
+        let maintenanceMessageText = '';
+        let maintenanceMessageImage = '';
 
         let playerToCancel = null;
 
@@ -1224,7 +1254,17 @@
                 
                 // Handle maintenance mode
                 maintenanceMode = data.maintenanceMode;
+                maintenanceMessageEnabled = !!data.maintenanceMessageEnabled;
+                maintenanceMessageText = data.maintenanceMessageText || '';
+                maintenanceMessageImage = data.maintenanceMessageImage || '';
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
+                const maintenanceBulletinText = document.getElementById('maintenanceBulletinText');
+                const maintenanceBulletinImage = document.getElementById('maintenanceBulletinImage');
+                maintenanceBulletinText.innerText = (maintenanceMode && maintenanceMessageEnabled && maintenanceMessageText.trim())
+                    ? maintenanceMessageText.trim()
+                    : 'Portal is down for maintenance, check back later';
+                maintenanceBulletinImage.style.display = (maintenanceMode && maintenanceMessageEnabled && maintenanceMessageImage) ? 'block' : 'none';
+                maintenanceBulletinImage.src = (maintenanceMode && maintenanceMessageEnabled) ? (maintenanceMessageImage || '') : '';
                 if (maintenanceMode) {
                     maintenanceBulletin.classList.add('active');
                 } else {

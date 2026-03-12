@@ -259,6 +259,91 @@
             background: var(--danger);
         }
 
+        .maintenance-custom-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 18px;
+        }
+
+        .maintenance-field {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid #444;
+            border-radius: 10px;
+            padding: 15px;
+        }
+
+        .maintenance-field label {
+            display: block;
+            color: #ddd;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .maintenance-field select,
+        .maintenance-field textarea,
+        .maintenance-field input[type="file"] {
+            width: 100%;
+            background: #3a3a3a;
+            color: white;
+            border: 1px solid #555;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        .maintenance-field textarea {
+            min-height: 115px;
+            resize: vertical;
+        }
+
+        .maintenance-subnote {
+            color: #9a9a9a;
+            font-size: 0.82rem;
+            margin-top: 6px;
+            line-height: 1.4;
+        }
+
+        .maintenance-preview-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            min-height: 72px;
+            margin-top: 10px;
+            padding: 12px;
+            background: #262626;
+            border: 1px dashed #666;
+            border-radius: 10px;
+        }
+
+        .maintenance-preview-image {
+            width: 48px;
+            height: 48px;
+            object-fit: cover;
+            border-radius: 8px;
+            border: 1px solid #555;
+            display: none;
+            flex: 0 0 auto;
+        }
+
+        .maintenance-preview-text {
+            color: #fff;
+            font-weight: 600;
+            line-height: 1.35;
+        }
+
+        .maintenance-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 15px;
+        }
+
+        @media (max-width: 700px) {
+            .maintenance-custom-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
         .toggle-btn.open-state {
             background: var(--success);
         }
@@ -1270,8 +1355,50 @@
                 <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
             </div>
             <p style="color:#888; font-size:0.85rem; margin-top:10px;">
-                When enabled, a flashing alert will appear on all pages warning users that the portal is down for maintenance.
+                When enabled, a flashing alert will appear on the signup page. You can also show a custom message and a small uploaded image to players.
             </p>
+
+            <div class="maintenance-custom-grid">
+                <div class="maintenance-field">
+                    <label for="maintenanceMessagePreset">Pull-down preset</label>
+                    <select id="maintenanceMessagePreset" onchange="applyMaintenancePreset()">
+                        <option value="custom">Custom Message</option>
+                        <option value="general">General Maintenance</option>
+                        <option value="weather">Weather Delay</option>
+                        <option value="rink">Rink Issue</option>
+                        <option value="schedule">Schedule Update</option>
+                    </select>
+                    <div class="maintenance-subnote">Selecting a preset fills the personalized message box so you can edit it however you want.</div>
+                </div>
+
+                <div class="maintenance-field">
+                    <label for="maintenanceMessageEnabled">Show custom message on signup page</label>
+                    <select id="maintenanceMessageEnabled" onchange="refreshMaintenancePreview()">
+                        <option value="true">Yes - show message and image</option>
+                        <option value="false">No - use default maintenance message</option>
+                    </select>
+                    <div class="maintenance-subnote">The image is automatically resized to about 0.5 x 0.5 inch display size (48 x 48 px).</div>
+                </div>
+
+                <div class="maintenance-field">
+                    <label for="maintenanceMessageText">Personalized message</label>
+                    <textarea id="maintenanceMessageText" placeholder="Type the message players should see on the signup page..." oninput="refreshMaintenancePreview()"></textarea>
+                    <div class="maintenance-subnote">Tip: short messages look best, but you can still write a few lines.</div>
+                </div>
+
+                <div class="maintenance-field">
+                    <label for="maintenanceImageUpload">Upload picture</label>
+                    <input type="file" id="maintenanceImageUpload" accept="image/*" onchange="handleMaintenanceImageUpload(event)">
+                    <div class="maintenance-actions">
+                        <button type="button" class="control-btn" onclick="clearMaintenanceImage()">Remove Picture</button>
+                        <button type="button" class="control-btn" onclick="saveMaintenanceMessage()">Save Message + Picture</button>
+                    </div>
+                    <div class="maintenance-preview-box">
+                        <img id="maintenanceImagePreview" class="maintenance-preview-image" alt="Maintenance preview">
+                        <div class="maintenance-preview-text" id="maintenancePreviewText">Portal is down for maintenance, check back later.</div>
+                    </div>
+                </div>
+            </div>
         </div>
 
 
@@ -2134,6 +2261,89 @@
             if (e.key === 'Enter') login();
         });
 
+        function applyMaintenancePreset(forceOverwrite = false) {
+            const preset = document.getElementById('maintenanceMessagePreset')?.value || 'custom';
+            const textarea = document.getElementById('maintenanceMessageText');
+            if (!textarea) return;
+            const presetText = MAINTENANCE_PRESETS[preset] || '';
+            if (preset !== 'custom' && (forceOverwrite || !textarea.value.trim() || Object.values(MAINTENANCE_PRESETS).includes(textarea.value.trim()))) {
+                textarea.value = presetText;
+            }
+            refreshMaintenancePreview();
+        }
+
+        function refreshMaintenancePreview() {
+            const enabled = (document.getElementById('maintenanceMessageEnabled')?.value || 'false') === 'true';
+            const text = (document.getElementById('maintenanceMessageText')?.value || '').trim();
+            const previewText = document.getElementById('maintenancePreviewText');
+            const previewImage = document.getElementById('maintenanceImagePreview');
+            if (previewText) {
+                previewText.innerText = enabled
+                    ? (text || 'Portal is temporarily down for maintenance. Please check back shortly.')
+                    : 'Portal is down for maintenance, check back later.';
+            }
+            if (previewImage) {
+                previewImage.style.display = maintenanceImageData ? 'block' : 'none';
+                previewImage.src = maintenanceImageData || '';
+            }
+        }
+
+        function handleMaintenanceImageUpload(event) {
+            const file = event.target?.files?.[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = () => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 48;
+                    canvas.height = 48;
+                    const ctx = canvas.getContext('2d');
+                    ctx.clearRect(0, 0, 48, 48);
+                    const scale = Math.min(48 / img.width, 48 / img.height);
+                    const drawW = Math.max(1, Math.round(img.width * scale));
+                    const drawH = Math.max(1, Math.round(img.height * scale));
+                    const dx = Math.round((48 - drawW) / 2);
+                    const dy = Math.round((48 - drawH) / 2);
+                    ctx.drawImage(img, dx, dy, drawW, drawH);
+                    maintenanceImageData = canvas.toDataURL('image/png');
+                    refreshMaintenancePreview();
+                };
+                img.src = reader.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearMaintenanceImage() {
+            maintenanceImageData = '';
+            const input = document.getElementById('maintenanceImageUpload');
+            if (input) input.value = '';
+            refreshMaintenancePreview();
+        }
+
+        async function saveMaintenanceMessage() {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionToken,
+                        maintenanceMode: document.getElementById('maintenanceCheckbox').checked,
+                        maintenanceMessageEnabled: (document.getElementById('maintenanceMessageEnabled').value || 'false') === 'true',
+                        maintenanceMessagePreset: document.getElementById('maintenanceMessagePreset').value || 'custom',
+                        maintenanceMessageText: document.getElementById('maintenanceMessageText').value || '',
+                        maintenanceMessageImage: maintenanceImageData || ''
+                    })
+                });
+                if (!res.ok) throw new Error('Failed to save');
+                await loadAppSettings();
+                alert('✅ Maintenance message saved');
+            } catch (err) {
+                console.error('Error saving maintenance message:', err);
+                alert('Failed to save maintenance message');
+            }
+        }
+
         // Load app settings (maintenance mode, title, etc.)
         async function loadAppSettings() {
             try {
@@ -2153,6 +2363,11 @@
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 
                 maintenanceCheckbox.checked = data.maintenanceMode;
+                document.getElementById('maintenanceMessageEnabled').value = String(!!data.maintenanceMessageEnabled);
+                document.getElementById('maintenanceMessagePreset').value = data.maintenanceMessagePreset || 'custom';
+                document.getElementById('maintenanceMessageText').value = data.maintenanceMessageText || '';
+                maintenanceImageData = data.maintenanceMessageImage || '';
+                refreshMaintenancePreview();
                 if (data.maintenanceMode) {
                     maintenanceStatus.innerText = 'MAINTENANCE MODE ACTIVE';
                     maintenanceStatus.className = 'maintenance-status active';
@@ -2205,7 +2420,11 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         sessionToken: sessionToken,
-                        maintenanceMode: newState
+                        maintenanceMode: newState,
+                        maintenanceMessageEnabled: (document.getElementById('maintenanceMessageEnabled').value || 'false') === 'true',
+                        maintenanceMessagePreset: document.getElementById('maintenanceMessagePreset').value || 'custom',
+                        maintenanceMessageText: document.getElementById('maintenanceMessageText').value || '',
+                        maintenanceMessageImage: maintenanceImageData || ''
                     })
                 });
                 

@@ -277,6 +277,12 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 
+// Custom maintenance message shown on signup page
+let maintenanceMessageEnabled = false;
+let maintenanceMessagePreset = 'custom';
+let maintenanceMessageText = '';
+let maintenanceMessageImage = '';
+
 // ============================================
 // END NEW CONFIGURATION SECTION
 // ============================================
@@ -865,6 +871,10 @@ async function loadDataFromDB() {
                 announcementImages = [];
             }
         }
+        if (appSettings.maintenanceMessageEnabled !== undefined) maintenanceMessageEnabled = appSettings.maintenanceMessageEnabled === 'true';
+        if (appSettings.maintenanceMessagePreset !== undefined) maintenanceMessagePreset = appSettings.maintenanceMessagePreset || 'custom';
+        if (appSettings.maintenanceMessageText !== undefined) maintenanceMessageText = appSettings.maintenanceMessageText || '';
+        if (appSettings.maintenanceMessageImage !== undefined) maintenanceMessageImage = appSettings.maintenanceMessageImage || '';
         
     } catch (err) {
         console.error('Error loading from DB:', err);
@@ -906,12 +916,21 @@ async function saveData() {
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
+        await saveSetting('maintenanceMode', maintenanceMode);
+        await saveSetting('customTitle', customTitle);
+        await saveSetting('announcementEnabled', announcementEnabled);
+        await saveSetting('announcementText', announcementText);
+        await saveSetting('announcementImages', announcementImages);
+        await saveSetting('maintenanceMessageEnabled', maintenanceMessageEnabled);
+        await saveSetting('maintenanceMessagePreset', maintenanceMessagePreset);
+        await saveSetting('maintenanceMessageText', maintenanceMessageText);
+        await saveSetting('maintenanceMessageImage', maintenanceMessageImage);
     } catch (err) {
         console.error('Error saving data:', err);
     }
 }
 
-const DATA_FILE = './data.json';
+const DATA_FILE_LEGACY = './data.json';
 
 function generateRandomCode() {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -919,8 +938,8 @@ function generateRandomCode() {
 
 function loadDataFromFile() {
     try {
-        if (fs.existsSync(DATA_FILE)) {
-            const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        if (fs.existsSync(DATA_FILE_LEGACY)) {
+            const data = JSON.parse(fs.readFileSync(DATA_FILE_LEGACY, 'utf8'));
             playerSpots = data.playerSpots ?? 20;
             players = data.players ?? [];
             waitlist = data.waitlist ?? [];
@@ -955,6 +974,10 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            maintenanceMessageEnabled = data.maintenanceMessageEnabled ?? false;
+            maintenanceMessagePreset = data.maintenanceMessagePreset ?? 'custom';
+            maintenanceMessageText = data.maintenanceMessageText ?? '';
+            maintenanceMessageImage = data.maintenanceMessageImage ?? '';
             refreshDynamicSignupCode();
         } else {
             gameDate = calculateNextGameDate();
@@ -1391,6 +1414,10 @@ app.get('/api/status', (req, res) => {
         announcementEnabled: announcementEnabled,
         announcementText: announcementText,
         announcementImages: announcementImages,
+        maintenanceMessageEnabled: maintenanceMessageEnabled,
+        maintenanceMessagePreset: maintenanceMessagePreset,
+        maintenanceMessageText: maintenanceMessageText,
+        maintenanceMessageImage: maintenanceMessageImage,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -1872,15 +1899,29 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
-        backupGoalies: BACKUP_GOALIES
+        backupGoalies: BACKUP_GOALIES,
+        maintenanceMessageEnabled,
+        maintenanceMessagePreset,
+        maintenanceMessageText,
+        maintenanceMessageImage
     });
 });
+
+async function persistAppSetting(key, value) {
+    if (!pool) return;
+    await pool.query(
+        'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+        [key, value]
+    );
+}
 
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle, 
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
+            selectedDayTime, selectedArena, gameDate: newGameDate,
+            maintenanceMessageEnabled: newMaintenanceMessageEnabled, maintenanceMessagePreset: newMaintenanceMessagePreset,
+            maintenanceMessageText: newMaintenanceMessageText, maintenanceMessageImage: newMaintenanceMessageImage } = req.body;
     
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -1895,44 +1936,28 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             ? newAnnouncementImages.map(v => String(v || '').trim()).filter(Boolean).slice(0, 6)
             : [];
     }
+    if (newMaintenanceMessageEnabled !== undefined) maintenanceMessageEnabled = !!newMaintenanceMessageEnabled;
+    if (newMaintenanceMessagePreset !== undefined) maintenanceMessagePreset = String(newMaintenanceMessagePreset || 'custom').trim() || 'custom';
+    if (newMaintenanceMessageText !== undefined) maintenanceMessageText = String(newMaintenanceMessageText || '').trim().slice(0, 500);
+    if (newMaintenanceMessageImage !== undefined) maintenanceMessageImage = String(newMaintenanceMessageImage || '').trim();
     if (selectedDayTime) gameTime = selectedDayTime;
     if (selectedArena) gameLocation = selectedArena;
     if (newGameDate) gameDate = newGameDate;
-    if (newGameDate) gameDate = newGameDate;
     
     try {
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['maintenanceMode', maintenanceMode.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['customTitle', customTitle]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementEnabled', announcementEnabled.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementText', announcementText]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementImages', JSON.stringify(announcementImages)]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedDayTime', gameTime]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedArena', gameLocation]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['gameDate', gameDate]
-        );
+        await persistAppSetting('maintenanceMode', maintenanceMode.toString());
+        await persistAppSetting('customTitle', customTitle);
+        await persistAppSetting('announcementEnabled', announcementEnabled.toString());
+        await persistAppSetting('announcementText', announcementText);
+        await persistAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await persistAppSetting('selectedDayTime', gameTime);
+        await persistAppSetting('selectedArena', gameLocation);
+        await persistAppSetting('gameDate', gameDate);
+        await persistAppSetting('maintenanceMessageEnabled', maintenanceMessageEnabled.toString());
+        await persistAppSetting('maintenanceMessagePreset', maintenanceMessagePreset);
+        await persistAppSetting('maintenanceMessageText', maintenanceMessageText);
+        await persistAppSetting('maintenanceMessageImage', maintenanceMessageImage);
+        await saveData();
         
         res.json({
             success: true,
@@ -1941,6 +1966,10 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled,
             announcementText,
             announcementImages,
+            maintenanceMessageEnabled,
+            maintenanceMessagePreset,
+            maintenanceMessageText,
+            maintenanceMessageImage,
             gameTime,
             gameLocation,
             gameDate
@@ -2749,6 +2778,674 @@ app.get('/api/admin/export-payments', async (req, res) => {
     }
 });
 
+
+
+// --- MISSING CORE HELPERS / PUBLIC ROUTES / APP SETTINGS ---
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+function getPlayerCount() {
+    return players.filter(p => !p.isGoalie).length;
+}
+
+function getGoalieCount() {
+    return players.filter(p => !!p.isGoalie).length;
+}
+
+function isGoalieSpotsAvailable() {
+    return getGoalieCount() < MAX_GOALIES;
+}
+
+function capitalizeFullName(value) {
+    return String(value || '')
+        .trim()
+        .toLowerCase()
+        .replace(/\s+/g, ' ')
+        .split(' ')
+        .map(part => part ? part.charAt(0).toUpperCase() + part.slice(1) : '')
+        .join(' ');
+}
+
+function digitsOnly(value) {
+    return String(value || '').replace(/\D/g, '');
+}
+
+function validatePhoneNumber(value) {
+    return /^\d{10}$/.test(digitsOnly(value));
+}
+
+function formatPhoneNumber(value) {
+    const d = digitsOnly(value);
+    if (d.length !== 10) return String(value || '');
+    return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+}
+
+function formatGameDate(value) {
+    if (!value) return '';
+    const dt = new Date(`${value}T12:00:00`);
+    if (Number.isNaN(dt.getTime())) return value;
+    return dt.toLocaleDateString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+        timeZone: 'America/New_York'
+    });
+}
+
+function formatETDateTimeFromLocalString(value) {
+    if (!value) return '';
+    const parts = parseDatetimeLocalToETDate(value);
+    if (!parts) return '';
+    const dt = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0);
+    return dt.toLocaleString('en-US', {
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true
+    });
+}
+
+function computePlayerSpots() {
+    const skaters = getPlayerCount();
+    playerSpots = Math.max(0, 20 - skaters);
+    return playerSpots;
+}
+
+function publicPlayerShape(p) {
+    return {
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        phone: p.phone,
+        rating: p.rating,
+        isGoalie: !!p.isGoalie,
+        team: p.team || null,
+        protected: !!p.protected,
+        paymentMethod: p.paymentMethod,
+        paid: !!p.paid,
+        paidAmount: p.paidAmount,
+        registeredAt: p.registeredAt
+    };
+}
+
+function waitlistPublicShape(p, index) {
+    return {
+        id: p.id,
+        firstName: p.firstName,
+        lastName: p.lastName,
+        phone: p.phone,
+        rating: p.rating,
+        isGoalie: !!p.isGoalie,
+        position: index + 1,
+        joinedAt: p.joinedAt
+    };
+}
+
+function getOpenLine() {
+    if (rosterReleased && rosterReleaseAt) {
+        return `📋 Teams were released ${formatETDateTimeFromLocalString(rosterReleaseAt)}`;
+    }
+    if (signupLockEndAt) {
+        return `✅ Signup opens to all players at ${formatETDateTimeFromLocalString(signupLockEndAt)}`;
+    }
+    return '✅ Signup opens to all players at the scheduled unlock time';
+}
+
+function getNoCodeLine() {
+    return 'No code required after signup opens to all players.';
+}
+
+function getRosterReleaseLine() {
+    if (rosterReleaseAt) {
+        return `Teams are released ${formatETDateTimeFromLocalString(rosterReleaseAt)}`;
+    }
+    return 'Teams are released at the scheduled time';
+}
+
+function getLockWindowShort() {
+    if (signupLockStartAt && signupLockEndAt) {
+        return `${formatETDateTimeFromLocalString(signupLockStartAt)} → ${formatETDateTimeFromLocalString(signupLockEndAt)}`;
+    }
+    return 'scheduled window';
+}
+
+function buildPersistedState() {
+    return {
+        playerSpots: computePlayerSpots(),
+        players,
+        waitlist,
+        maintenanceMode,
+        customTitle,
+        announcementEnabled,
+        announcementText,
+        announcementImages,
+        gameLocation,
+        gameTime,
+        gameDate,
+        playerSignupCode,
+        requirePlayerCode,
+        manualOverride,
+        manualOverrideState,
+        signupLockSchedule,
+        rosterReleaseSchedule,
+        resetWeekSchedule,
+        signupLockStartAt,
+        signupLockEndAt,
+        rosterReleaseAt,
+        resetWeekAt,
+        lastExactResetRunAt,
+        lastExactRosterReleaseRunAt,
+        rosterReleased,
+        currentWeekData,
+        lastResetWeek
+    };
+}
+
+async function saveData() {
+    computePlayerSpots();
+    const state = buildPersistedState();
+    try {
+        fs.writeFileSync(DATA_FILE, JSON.stringify(state, null, 2));
+    } catch (err) {
+        console.error('Error writing data file:', err.message);
+    }
+    if (pool) {
+        try {
+            await pool.query(
+                `INSERT INTO settings (key, value) VALUES ('app_state', $1)
+                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value`,
+                [state]
+            );
+        } catch (err) {
+            console.error('Error saving app state to DB:', err.message);
+        }
+    }
+}
+
+function applyLoadedState(state) {
+    if (!state || typeof state !== 'object') return;
+    players = Array.isArray(state.players) ? state.players : players;
+    waitlist = Array.isArray(state.waitlist) ? state.waitlist : waitlist;
+    maintenanceMode = !!state.maintenanceMode;
+    customTitle = state.customTitle || customTitle;
+    announcementEnabled = !!state.announcementEnabled;
+    announcementText = normalizeAnnouncementText(state.announcementText || '');
+    announcementImages = normalizeAnnouncementImages(state.announcementImages || []);
+    gameLocation = state.gameLocation || gameLocation;
+    gameTime = state.gameTime || gameTime;
+    gameDate = state.gameDate || gameDate || calculateNextGameDate();
+    playerSignupCode = state.playerSignupCode || getDynamicSignupCode();
+    requirePlayerCode = typeof state.requirePlayerCode === 'boolean' ? state.requirePlayerCode : requirePlayerCode;
+    manualOverride = !!state.manualOverride;
+    manualOverrideState = state.manualOverrideState || null;
+    signupLockSchedule = state.signupLockSchedule || signupLockSchedule;
+    rosterReleaseSchedule = state.rosterReleaseSchedule || rosterReleaseSchedule;
+    resetWeekSchedule = state.resetWeekSchedule || resetWeekSchedule;
+    signupLockStartAt = state.signupLockStartAt || '';
+    signupLockEndAt = state.signupLockEndAt || '';
+    rosterReleaseAt = state.rosterReleaseAt || '';
+    resetWeekAt = state.resetWeekAt || '';
+    lastExactResetRunAt = state.lastExactResetRunAt || '';
+    lastExactRosterReleaseRunAt = state.lastExactRosterReleaseRunAt || '';
+    rosterReleased = !!state.rosterReleased;
+    currentWeekData = state.currentWeekData || currentWeekData;
+    lastResetWeek = state.lastResetWeek || lastResetWeek;
+    computePlayerSpots();
+}
+
+function loadDataFromFile() {
+    try {
+        if (!fs.existsSync(DATA_FILE)) {
+            gameDate = gameDate || calculateNextGameDate();
+            computePlayerSpots();
+            return;
+        }
+        const state = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
+        applyLoadedState(state);
+    } catch (err) {
+        console.error('Error loading data file:', err.message);
+        computePlayerSpots();
+    }
+}
+
+async function loadDataFromDB() {
+    if (!pool) {
+        loadDataFromFile();
+        return;
+    }
+    try {
+        const res = await pool.query(`SELECT value FROM settings WHERE key = 'app_state' LIMIT 1`);
+        if (res.rows[0]?.value) {
+            applyLoadedState(res.rows[0].value);
+        } else {
+            loadDataFromFile();
+        }
+    } catch (err) {
+        console.error('Error loading app state from DB:', err.message);
+        loadDataFromFile();
+    }
+}
+
+async function saveWeekHistory(year, weekNumber, whiteTeam, darkTeam) {
+    if (!pool) return;
+    try {
+        await pool.query(
+            `INSERT INTO history (week_number, year, release_date, game_location, game_time, game_date, white_team, dark_team, white_avg, dark_avg)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+            [
+                weekNumber,
+                year,
+                new Date(),
+                gameLocation,
+                gameTime,
+                gameDate || null,
+                JSON.stringify(whiteTeam || []),
+                JSON.stringify(darkTeam || []),
+                averageRating(whiteTeam),
+                averageRating(darkTeam)
+            ]
+        );
+    } catch (err) {
+        console.error('Error saving history:', err.message);
+    }
+}
+
+function averageRating(team) {
+    const skaters = (team || []).filter(Boolean);
+    if (!skaters.length) return 0;
+    return +(skaters.reduce((sum, p) => sum + (parseInt(p.rating, 10) || 0), 0) / skaters.length).toFixed(1);
+}
+
+function generateFairTeams() {
+    const source = [...players].map(p => ({ ...p }));
+    const goalies = source.filter(p => p.isGoalie).sort((a,b)=> (b.rating||0)-(a.rating||0));
+    const skaters = source.filter(p => !p.isGoalie).sort((a,b)=> (b.rating||0)-(a.rating||0));
+    const whiteTeam = [];
+    const darkTeam = [];
+
+    if (goalies[0]) whiteTeam.push(goalies[0]);
+    if (goalies[1]) darkTeam.push(goalies[1]);
+    for (const g of goalies.slice(2)) {
+        (whiteTeam.length <= darkTeam.length ? whiteTeam : darkTeam).push(g);
+    }
+
+    let whiteTotal = whiteTeam.reduce((s,p)=>s+(+p.rating||0),0);
+    let darkTotal = darkTeam.reduce((s,p)=>s+(+p.rating||0),0);
+
+    for (const skater of skaters) {
+        if (whiteTeam.length < darkTeam.length) {
+            whiteTeam.push(skater); whiteTotal += +skater.rating || 0;
+        } else if (darkTeam.length < whiteTeam.length) {
+            darkTeam.push(skater); darkTotal += +skater.rating || 0;
+        } else if (whiteTotal <= darkTotal) {
+            whiteTeam.push(skater); whiteTotal += +skater.rating || 0;
+        } else {
+            darkTeam.push(skater); darkTotal += +skater.rating || 0;
+        }
+    }
+
+    for (const p of players) {
+        p.team = whiteTeam.some(x => x.id === p.id) ? 'White' : darkTeam.some(x => x.id === p.id) ? 'Dark' : null;
+    }
+
+    return {
+        whiteTeam,
+        darkTeam,
+        whiteRating: averageRating(whiteTeam),
+        darkRating: averageRating(darkTeam)
+    };
+}
+
+function requireAdminSession(req, res, next) {
+    const sessionToken = req.body?.sessionToken || req.query?.sessionToken;
+    if (!sessionToken || !adminSessions[sessionToken]) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+    next();
+}
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/rules', (req, res) => res.sendFile(path.join(__dirname, 'rules.html')));
+app.get('/waitlist', (req, res) => res.sendFile(path.join(__dirname, 'waitlist.html')));
+app.get('/history-page', (req, res) => res.sendFile(path.join(__dirname, 'history.html')));
+app.get('/history-view', (req, res) => res.sendFile(path.join(__dirname, 'history.html')));
+app.get('/history.html', (req, res) => res.sendFile(path.join(__dirname, 'history.html')));
+app.get('/history', (req, res) => {
+    if ((req.headers.accept || '').includes('text/html')) {
+        return res.sendFile(path.join(__dirname, 'history.html'));
+    }
+    return res.json({ history: [] });
+});
+app.get('/roster', (req, res) => {
+    if ((req.headers.accept || '').includes('text/html')) {
+        return res.sendFile(path.join(__dirname, 'roster.html'));
+    }
+    const whiteTeam = players.filter(p => p.team === 'White');
+    const darkTeam = players.filter(p => p.team === 'Dark');
+    return res.json({
+        released: rosterReleased,
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        formattedDate: formatGameDate(gameDate),
+        whiteTeam,
+        darkTeam,
+        whiteRating: averageRating(whiteTeam),
+        darkRating: averageRating(darkTeam)
+    });
+});
+
+app.post('/api/admin/login', (req, res) => {
+    if (req.body?.password !== ADMIN_PASSWORD) {
+        return res.status(401).json({ success: false, error: 'Invalid password' });
+    }
+    const sessionToken = `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+    adminSessions[sessionToken] = { createdAt: Date.now() };
+    res.json({ success: true, sessionToken });
+});
+
+app.post('/api/admin/check-session', (req, res) => {
+    const sessionToken = req.body?.sessionToken;
+    res.json({ loggedIn: !!(sessionToken && adminSessions[sessionToken]) });
+});
+
+app.post('/api/admin/app-settings', requireAdminSession, (req, res) => {
+    res.json({
+        maintenanceMode,
+        customTitle,
+        selectedDayTime: gameTime,
+        selectedArena: gameLocation,
+        announcementEnabled,
+        announcementText,
+        announcementImages,
+        backupGoalies: BACKUP_GOALIES,
+        gameDate
+    });
+});
+
+app.post('/api/admin/update-app-settings', requireAdminSession, async (req, res) => {
+    const body = req.body || {};
+    if (typeof body.maintenanceMode === 'boolean') maintenanceMode = body.maintenanceMode;
+    if (typeof body.customTitle === 'string' && body.customTitle.trim()) customTitle = body.customTitle.trim().slice(0, 120);
+    if (typeof body.selectedArena === 'string' && body.selectedArena.trim()) gameLocation = body.selectedArena.trim();
+    if (typeof body.selectedDayTime === 'string' && body.selectedDayTime.trim()) {
+        gameTime = body.selectedDayTime.trim();
+        refreshDynamicSignupCode();
+        if (!body.customTitle) customTitle = `Phan's ${getGameDayName()} Hockey`;
+    }
+    if (typeof body.gameDate === 'string' && body.gameDate.trim()) gameDate = body.gameDate.trim();
+    if (typeof body.announcementEnabled === 'boolean') announcementEnabled = body.announcementEnabled;
+    if (body.announcementText !== undefined) announcementText = normalizeAnnouncementText(body.announcementText);
+    if (body.announcementImages !== undefined) announcementImages = normalizeAnnouncementImages(body.announcementImages);
+    await saveData();
+    res.json({ success: true });
+});
+
+app.get('/api/status', (req, res) => {
+    const lockStatus = checkAutoLock();
+    computePlayerSpots();
+    res.json({
+        maintenanceMode,
+        customTitle,
+        announcementEnabled,
+        announcementText,
+        announcementImages,
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        formattedDate: formatGameDate(gameDate),
+        playerSpotsRemaining: playerSpots,
+        isFull: playerSpots <= 0,
+        rosterReleased,
+        rosterReleaseTime: currentWeekData?.rosterReleaseTime || currentWeekData?.releaseDate || null,
+        requireCode: lockStatus.requirePlayerCode,
+        signupLocked: lockStatus.requirePlayerCode,
+        isLockedWindow: lockStatus.isLockedWindow,
+        openLine: getOpenLine(),
+        noCodeLine: getNoCodeLine(),
+        rosterReleaseLine: getRosterReleaseLine(),
+        gameDayName: getGameDayName(),
+        lockWindowShort: getLockWindowShort(),
+        players: players.map(publicPlayerShape)
+    });
+});
+
+app.get('/api/roster', (req, res) => {
+    const whiteTeam = players.filter(p => p.team === 'White');
+    const darkTeam = players.filter(p => p.team === 'Dark');
+    res.json({
+        released: rosterReleased,
+        weekNumber: currentWeekData?.weekNumber || null,
+        year: currentWeekData?.year || null,
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        formattedDate: formatGameDate(gameDate),
+        whiteTeam,
+        darkTeam,
+        whiteRating: averageRating(whiteTeam),
+        darkRating: averageRating(darkTeam),
+        rosterReleaseTime: currentWeekData?.rosterReleaseTime || null
+    });
+});
+
+app.post('/api/verify-code', (req, res) => {
+    const code = String(req.body?.code || '');
+    checkAutoLock();
+    if (!requirePlayerCode) return res.json({ success: true, open: true });
+    if (code === String(playerSignupCode || '')) return res.json({ success: true });
+    return res.status(401).json({ error: 'Invalid code' });
+});
+
+app.post('/api/register-init', (req, res) => {
+    const body = req.body || {};
+    checkAutoLock();
+    if (maintenanceMode) return res.status(423).json({ error: 'Portal is currently down for maintenance.' });
+    const firstName = capitalizeFullName(body.firstName);
+    const lastName = capitalizeFullName(body.lastName);
+    const phone = formatPhoneNumber(body.phone);
+    const phoneDigits = digitsOnly(phone);
+    const rating = Math.max(1, Math.min(10, parseInt(body.rating, 10) || 5));
+    const isGoalie = !!body.isGoalie;
+    const paymentMethod = body.paymentMethod || 'Cash';
+
+    if (!firstName || !lastName || !validatePhoneNumber(phone)) return res.status(400).json({ error: 'Valid first name, last name, and 10-digit phone are required.' });
+    if (requirePlayerCode && String(body.signupCode || '') !== String(playerSignupCode || '')) return res.status(401).json({ error: 'Invalid signup code.' });
+
+    const dupName = [...players, ...waitlist].find(p => `${p.firstName} ${p.lastName}`.toLowerCase() === `${firstName} ${lastName}`.toLowerCase());
+    const dupPhone = [...players, ...waitlist].find(p => digitsOnly(p.phone) === phoneDigits);
+    if (dupName) return res.status(400).json({ error: 'That player name is already registered.' });
+    if (dupPhone) return res.status(400).json({ error: 'That phone number is already registered.' });
+
+    const tempData = { firstName, lastName, phone, paymentMethod, rating, isGoalie };
+    if (!isGoalie && playerSpots <= 0) {
+        waitlist.push({ id: Date.now(), ...tempData, joinedAt: new Date().toISOString() });
+        saveData();
+        return res.json({ success: true, inWaitlist: true, waitlistPosition: waitlist.length });
+    }
+    return res.json({ success: true, proceedToRules: true, tempData });
+});
+
+app.post('/api/register-final', async (req, res) => {
+    const tempData = req.body?.tempData || {};
+    const firstName = capitalizeFullName(tempData.firstName);
+    const lastName = capitalizeFullName(tempData.lastName);
+    const phone = formatPhoneNumber(tempData.phone);
+    const rating = Math.max(1, Math.min(10, parseInt(tempData.rating, 10) || 5));
+    const isGoalie = !!tempData.isGoalie;
+
+    if (!firstName || !lastName || !validatePhoneNumber(phone)) return res.status(400).json({ error: 'Invalid registration data.' });
+    const phoneDigits = digitsOnly(phone);
+    const dup = [...players, ...waitlist].find(p => digitsOnly(p.phone) === phoneDigits || `${p.firstName} ${p.lastName}`.toLowerCase() === `${firstName} ${lastName}`.toLowerCase());
+    if (dup) return res.status(400).json({ error: 'That player is already registered.' });
+    if (isGoalie && !isGoalieSpotsAvailable()) return res.status(400).json({ error: 'Goalie spots are full.' });
+    if (!isGoalie && playerSpots <= 0) {
+        waitlist.push({ id: Date.now(), firstName, lastName, phone, paymentMethod: tempData.paymentMethod || 'Cash', rating, isGoalie, joinedAt: new Date().toISOString() });
+        await saveData();
+        return res.json({ success: true, inWaitlist: true, waitlistPosition: waitlist.length, isGoalie: false });
+    }
+    const newPlayer = {
+        id: Date.now(),
+        firstName,
+        lastName,
+        phone,
+        paymentMethod: tempData.paymentMethod || 'Cash',
+        paid: isGoalie ? true : false,
+        paidAmount: isGoalie ? 0 : null,
+        rating,
+        isGoalie,
+        team: null,
+        protected: false,
+        registeredAt: new Date().toISOString(),
+        rulesAgreed: !!req.body?.rulesAgreed
+    };
+    players.push(newPlayer);
+    computePlayerSpots();
+    if (pool) {
+        try {
+            await pool.query(
+                `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, registered_at, rules_agreed)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone, newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating, newPlayer.isGoalie, null, newPlayer.registeredAt, newPlayer.rulesAgreed]
+            );
+        } catch (err) {
+            console.error('DB insert player error:', err.message);
+        }
+    }
+    await saveData();
+    res.json({ success: true, isGoalie });
+});
+
+app.post('/api/cancel-registration', async (req, res) => {
+    const body = req.body || {};
+    const firstName = capitalizeFullName(body.firstName);
+    const lastName = capitalizeFullName(body.lastName);
+    const phoneDigits = digitsOnly(body.phone);
+    let promotedPlayer = null;
+
+    let idx = players.findIndex(p => digitsOnly(p.phone) === phoneDigits && p.firstName.toLowerCase() === firstName.toLowerCase() && p.lastName.toLowerCase() === lastName.toLowerCase());
+    if (idx >= 0) {
+        const removed = players.splice(idx, 1)[0];
+        if (pool) {
+            try { await pool.query('DELETE FROM players WHERE id = $1', [removed.id]); } catch (err) { console.error(err.message); }
+        }
+        if (!removed.isGoalie && waitlist.length) {
+            const moved = waitlist.shift();
+            promotedPlayer = {
+                id: Date.now(),
+                firstName: moved.firstName,
+                lastName: moved.lastName,
+                phone: moved.phone,
+                paymentMethod: moved.paymentMethod || 'Cash',
+                paid: false,
+                paidAmount: null,
+                rating: moved.rating,
+                isGoalie: !!moved.isGoalie,
+                team: null,
+                protected: false,
+                registeredAt: new Date().toISOString(),
+                rulesAgreed: true
+            };
+            players.push(promotedPlayer);
+            if (pool) {
+                try {
+                    await pool.query('DELETE FROM waitlist WHERE id = $1', [moved.id]);
+                    await pool.query(
+                        `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, registered_at, rules_agreed)
+                         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+                        [promotedPlayer.id, promotedPlayer.firstName, promotedPlayer.lastName, promotedPlayer.phone, promotedPlayer.paymentMethod, promotedPlayer.paid, promotedPlayer.paidAmount, promotedPlayer.rating, promotedPlayer.isGoalie, null, promotedPlayer.registeredAt, true]
+                    );
+                } catch (err) { console.error(err.message); }
+            }
+        }
+        computePlayerSpots();
+        await saveData();
+        return res.json({ success: true, promotedPlayer });
+    }
+
+    idx = waitlist.findIndex(p => digitsOnly(p.phone) === phoneDigits && p.firstName.toLowerCase() === firstName.toLowerCase() && p.lastName.toLowerCase() === lastName.toLowerCase());
+    if (idx >= 0) {
+        const removed = waitlist.splice(idx, 1)[0];
+        if (pool) {
+            try { await pool.query('DELETE FROM waitlist WHERE id = $1', [removed.id]); } catch (err) { console.error(err.message); }
+        }
+        await saveData();
+        return res.json({ success: true });
+    }
+
+    res.status(404).json({ error: 'Player not found.' });
+});
+
+app.get('/api/waitlist', (req, res) => {
+    res.json({
+        totalWaitlist: waitlist.length,
+        waitlist: waitlist.map(waitlistPublicShape),
+        rosterReleased,
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        formattedDate: formatGameDate(gameDate)
+    });
+});
+
+app.get('/api/history', async (req, res) => {
+    if ((req.headers.accept || '').includes('text/html')) {
+        return res.sendFile(path.join(__dirname, 'history.html'));
+    }
+    try {
+        if (!pool) {
+            return res.json({ history: [] });
+        }
+        const rows = await pool.query('SELECT week_number, year, release_date FROM history ORDER BY year DESC, week_number DESC');
+        return res.json({
+            history: rows.rows.map(r => ({ weekNumber: r.week_number, year: r.year, created: r.release_date }))
+        });
+    } catch (err) {
+        console.error('History list error:', err.message);
+        return res.json({ history: [] });
+    }
+});
+
+app.get('/api/history/:year/:week', async (req, res) => {
+    try {
+        if (!pool) return res.status(404).json({ error: 'History not available in file mode.' });
+        const rows = await pool.query(
+            'SELECT * FROM history WHERE year = $1 AND week_number = $2 ORDER BY id DESC LIMIT 1',
+            [parseInt(req.params.year, 10), parseInt(req.params.week, 10)]
+        );
+        const row = rows.rows[0];
+        if (!row) return res.status(404).json({ error: 'Week not found' });
+        res.json({
+            weekNumber: row.week_number,
+            year: row.year,
+            releaseDate: row.release_date,
+            gameLocation: row.game_location,
+            gameTime: row.game_time,
+            gameDate: row.game_date,
+            whiteTeam: row.white_team || [],
+            darkTeam: row.dark_team || [],
+            whiteAvg: row.white_avg,
+            darkAvg: row.dark_avg
+        });
+    } catch (err) {
+        console.error('History detail error:', err.message);
+        res.status(500).json({ error: 'Failed to load history' });
+    }
+});
+
+app.delete('/api/admin/history/:year/:week', requireAdminSession, async (req, res) => {
+    try {
+        if (!pool) return res.status(400).json({ error: 'History deletion not available in file mode.' });
+        await pool.query('DELETE FROM history WHERE year = $1 AND week_number = $2', [parseInt(req.params.year, 10), parseInt(req.params.week, 10)]);
+        res.json({ success: true, message: `Deleted Week ${req.params.week}, ${req.params.year} from history` });
+    } catch (err) {
+        console.error('Delete history error:', err.message);
+        res.status(500).json({ error: 'Failed to delete history' });
+    }
+});
 // 404 handler - MUST be last
 app.use((req, res) => {
     res.status(404).json({ error: "Cannot GET " + req.path });
