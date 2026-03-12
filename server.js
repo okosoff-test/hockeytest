@@ -82,7 +82,6 @@ function getGameDayName() {
     return parseGameTimeString(gameTime).dayName;
 }
 
-
 const FRIDAY_SIGNUP_CODE = '9855';
 const SUNDAY_SIGNUP_CODE = '7666';
 const DEFAULT_SIGNUP_CODE = FRIDAY_SIGNUP_CODE;
@@ -150,7 +149,6 @@ let resetWeekSchedule = {
     enabled: false,
     at: null
 };
-
 
 // Store admin sessions
 let adminSessions = {};
@@ -273,9 +271,6 @@ const DAY_TIME_OPTIONS = [
 // --- APP SETTINGS ---
 let maintenanceMode = false;
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
-let announcementEnabled = false;
-let announcementText = '';
-let announcementImages = [];
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -322,7 +317,6 @@ function clampInt(n, fallback) {
     return Number.isFinite(x) ? x : fallback;
 }
 
-
 function parseDatetimeLocalToDowTime(dtLocalStr) {
     // Treat admin-entered datetime-local as ET wall-clock exactly as entered.
     if (!dtLocalStr || typeof dtLocalStr !== 'string' || !dtLocalStr.includes('T')) return null;
@@ -363,23 +357,6 @@ function nowETMinuteKey(etDate) {
         etDate.getHours() * 100 +
         etDate.getMinutes()
     );
-}
-
-function scheduleInputsLookValid() {
-    if (!signupLockSchedule || !signupLockSchedule.enabled) return true;
-    const startAt = parseDatetimeLocalToETDate(signupLockStartAt);
-    const endAt = parseDatetimeLocalToETDate(signupLockEndAt);
-    if (!startAt || !endAt) return false;
-    return etPartsToMinuteKey(endAt) > etPartsToMinuteKey(startAt);
-}
-
-function clearScheduleManualOverrideIfNeeded() {
-    // When schedules are updated from admin, stale manual lock/unlock states should not block automation.
-    if (!manualOverride) return false;
-    if (!signupLockSchedule.enabled && !rosterReleaseSchedule.enabled && !resetWeekSchedule.enabled) return false;
-    manualOverride = false;
-    manualOverrideState = null;
-    return true;
 }
 
 function shouldBeLocked() {
@@ -467,7 +444,6 @@ function checkAutoLock() {
         rosterReleased
     };
 }
-
 
 // Auto-release roster at the exact admin-scheduled ET datetime
 async function autoReleaseRoster() {
@@ -588,9 +564,6 @@ async function addAutoPlayers() {
     return addedCount;
 }
 
-
-
-
 function checkMaintenanceModeSchedule() {
     const etTime = getCurrentETTime();
     const day = etTime.getDay();
@@ -611,7 +584,6 @@ function checkMaintenanceModeSchedule() {
 
     return false;
 }
-
 
 // Weekly reset - exact admin-scheduled ET datetime only
 async function checkWeeklyReset() {
@@ -686,7 +658,6 @@ async function checkWeeklyReset() {
     await saveData();
     return true;
 }
-
 
 const CHECK_INTERVAL = process.env.NODE_ENV === 'production' ? 15000 : 5000;
 let schedulerRunning = false;
@@ -872,16 +843,6 @@ async function loadDataFromDB() {
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
-        if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
-        if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
-        if (appSettings.announcementImages !== undefined) {
-            try {
-                announcementImages = JSON.parse(appSettings.announcementImages || '[]');
-                if (!Array.isArray(announcementImages)) announcementImages = [];
-            } catch {
-                announcementImages = [];
-            }
-        }
         
     } catch (err) {
         console.error('Error loading from DB:', err);
@@ -969,9 +930,6 @@ function loadDataFromFile() {
             // Load new settings
             maintenanceMode = data.maintenanceMode ?? false;
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
-            announcementEnabled = data.announcementEnabled ?? false;
-            announcementText = data.announcementText ?? '';
-            announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             refreshDynamicSignupCode();
         } else {
             gameDate = calculateNextGameDate();
@@ -1297,8 +1255,6 @@ app.get('/', (req, res) => {
     return sendPublic(res, 'index.html');
 });
 
-
-
 function formatETDateTimeLong(etParts) {
     if (!etParts) return '';
 
@@ -1319,8 +1275,7 @@ function formatETDateTimeLong(etParts) {
 
 function etPartsToIso(etParts) {
     if (!etParts) return null;
-    // Return wall-clock text only through labels; avoid emitting a misleading fixed offset.
-    return null;
+    return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00-05:00`;
 }
 
 function getSignupOpenMessageData() {
@@ -1406,9 +1361,6 @@ app.get('/api/status', (req, res) => {
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
         customTitle: customTitle,
-        announcementEnabled: announcementEnabled,
-        announcementText: announcementText,
-        announcementImages: announcementImages,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -1878,13 +1830,10 @@ app.post('/api/admin/app-settings', (req, res) => {
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    
+
     res.json({
         maintenanceMode,
         customTitle,
-        announcementEnabled,
-        announcementText,
-        announcementImages,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -1896,69 +1845,46 @@ app.post('/api/admin/app-settings', (req, res) => {
 
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
-    const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle, 
-            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
-    
+    const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle, selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
+
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    
+
     if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
     if (newTitle) customTitle = newTitle;
-    if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
-    if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
-    if (newAnnouncementImages !== undefined) {
-        announcementImages = Array.isArray(newAnnouncementImages)
-            ? newAnnouncementImages.map(v => String(v || '').trim()).filter(Boolean).slice(0, 6)
-            : [];
-    }
     if (selectedDayTime) gameTime = selectedDayTime;
     if (selectedArena) gameLocation = selectedArena;
     if (newGameDate) gameDate = newGameDate;
-    if (newGameDate) gameDate = newGameDate;
-    
+
     try {
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['maintenanceMode', maintenanceMode.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['customTitle', customTitle]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementEnabled', announcementEnabled.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementText', announcementText]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementImages', JSON.stringify(announcementImages)]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedDayTime', gameTime]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedArena', gameLocation]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['gameDate', gameDate]
-        );
-        
+        if (pool) {
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['maintenanceMode', maintenanceMode.toString()]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['customTitle', customTitle]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['selectedDayTime', gameTime]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['selectedArena', gameLocation]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['gameDate', gameDate]
+            );
+        }
+
         res.json({
             success: true,
             maintenanceMode,
             customTitle,
-            announcementEnabled,
-            announcementText,
-            announcementImages,
             gameTime,
             gameLocation,
             gameDate
@@ -2156,7 +2082,6 @@ app.post('/api/admin/update-code', (req, res) => {
     });
 });
 
-
 app.post('/api/admin/update-schedules', (req, res) => {
         const body = req.body || {};
     const { password, sessionToken, signupLockEnabled, signupLockStart, signupLockEnd, rosterReleaseEnabled, rosterReleaseAt: rosterReleaseAtInput, resetWeekEnabled, resetWeekAt: resetWeekAtInput } = body;
@@ -2184,11 +2109,6 @@ app.post('/api/admin/update-schedules', (req, res) => {
     rosterReleaseSchedule.at = rosterReleaseAt ? parseDatetimeLocalToDowTime(rosterReleaseAt) : null;
     resetWeekSchedule.at = resetWeekAt ? parseDatetimeLocalToDowTime(resetWeekAt) : null;
 
-    if (!scheduleInputsLookValid()) {
-        return res.status(400).json({ success: false, error: 'Signup lock end must be after signup lock start.' });
-    }
-
-    clearScheduleManualOverrideIfNeeded();
     saveData();
     const lockStatus = checkAutoLock();
 
@@ -2778,11 +2698,13 @@ app.use((req, res) => {
 });
 
 // Initialize and start
-initDatabase().then(async () => {
-    await runSchedulerTick();
+initDatabase().then(() => {
+    checkAutoLock();
+    checkWeeklyReset();
     
     cron.schedule('* * * * *', async () => {
-        await runSchedulerTick();
+        await autoReleaseRoster();
+        await checkWeeklyReset();
     }, {
         timezone: 'America/New_York'
     });
@@ -2795,14 +2717,16 @@ initDatabase().then(async () => {
         console.log(`Current signup code: ${getDynamicSignupCode()}`);
         console.log(`Current players registered: ${players.length}`);
     });
-}).catch(async err => {
+}).catch(err => {
     console.error('Failed to initialize database, starting with file fallback:', err);
     loadDataFromFile();
     
-    await runSchedulerTick();
+    checkAutoLock();
+    checkWeeklyReset();
     
     cron.schedule('* * * * *', async () => {
-        await runSchedulerTick();
+        await autoReleaseRoster();
+        await checkWeeklyReset();
     }, {
         timezone: 'America/New_York'
     });

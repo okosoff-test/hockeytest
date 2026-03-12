@@ -729,40 +729,6 @@
             font-size: 1.1rem;
         }
 
-        .announcement-control {
-            background: linear-gradient(135deg, #3a1f12, #4d2d1d);
-            border: 2px solid #ff6b00;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-
-        .announcement-control h3 {
-            margin: 0 0 15px 0;
-            color: #ff6b00;
-            font-size: 1.1rem;
-        }
-
-        .announcement-control textarea {
-            width: 100%;
-            min-height: 110px;
-            padding: 12px;
-            margin: 8px 0;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 5px;
-            font-size: 1rem;
-            resize: vertical;
-        }
-
-        .announcement-help {
-            color: #aaa;
-            font-size: 0.85rem;
-            margin-top: 6px;
-            line-height: 1.5;
-        }
-
         .maintenance-toggle {
             display: flex;
             align-items: center;
@@ -1307,20 +1273,6 @@
             </p>
         </div>
 
-        <div class="announcement-control">
-            <h3>📢 Signup Page Announcement</h3>
-            <div class="checkbox-container">
-                <input type="checkbox" id="announcementEnabled">
-                <label for="announcementEnabled">Show flashing announcement on signup page</label>
-            </div>
-            <label for="announcementText">Announcement message</label>
-            <textarea id="announcementText" placeholder="Type the message players should see on the signup page..."></textarea>
-            <label for="announcementImages">Picture links (one per line)</label>
-            <textarea id="announcementImages" placeholder="https://example.com/pic1.jpg&#10;https://example.com/pic2.jpg"></textarea>
-            <div class="announcement-help">This shows on the signup page whether signup is locked or open. Use direct image links, one per line. Max 6 pictures.</div>
-            <button onclick="saveAnnouncement()" style="background:#ff6b00; width:100%;">Save Announcement</button>
-        </div>
-
         <!-- TITLE EDITOR -->
         <div class="title-editor-section">
             <h3>🏷️ Title Editor</h3>
@@ -1746,17 +1698,22 @@
 
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
             if (!dtLocalValue) return "";
-            const parsed = parseDatetimeLocalValue(dtLocalValue);
-            if (!parsed) return "";
-            const { year, month, day, hour, minute } = parsed;
-            const base = new Date(Date.UTC(year, month - 1, day));
-            const weekday = new Intl.DateTimeFormat("en-US", {
-                timeZone: "UTC",
-                weekday: "long"
-            }).format(base);
-            const hour12 = ((hour + 11) % 12) + 1;
-            const dayPeriod = hour >= 12 ? "PM" : "AM";
-            return `${weekday} ${hour12}:${pad2(minute)} ${dayPeriod}`;
+            const d = new Date(dtLocalValue);
+            // Format using ET regardless of client locale.
+            const parts = new Intl.DateTimeFormat("en-US", {
+                timeZone: "America/New_York",
+                weekday: "long",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true
+            }).formatToParts(d);
+            const get = (t) => (parts.find(p => p.type === t)?.value || "");
+            const weekday = get("weekday");
+            const hour = get("hour");
+            const minute = get("minute");
+            const dayPeriod = get("dayPeriod");
+            if (!weekday || !hour || !minute || !dayPeriod) return "";
+            return `${weekday} ${hour}:${minute} ${dayPeriod}`;
         }
 
         
@@ -2218,10 +2175,6 @@
                     document.getElementById('dynamicTitlePreview').innerText = data.customTitle;
                 }
 
-                document.getElementById('announcementEnabled').checked = !!data.announcementEnabled;
-                document.getElementById('announcementText').value = data.announcementText || '';
-                document.getElementById('announcementImages').value = Array.isArray(data.announcementImages)
-                    ? data.announcementImages.join('\n')
                     : '';
                 
                 // Update arena selector
@@ -2266,39 +2219,6 @@
             } catch (err) {
                 console.error("Error toggling maintenance:", err);
                 checkbox.checked = !newState;
-            }
-        }
-
-        async function saveAnnouncement() {
-            const enabled = document.getElementById('announcementEnabled').checked;
-            const text = document.getElementById('announcementText').value.trim();
-            const images = document.getElementById('announcementImages').value
-                .split(/\r?\n/)
-                .map(v => v.trim())
-                .filter(Boolean)
-                .slice(0, 6);
-
-            try {
-                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionToken: sessionToken,
-                        announcementEnabled: enabled,
-                        announcementText: text,
-                        announcementImages: images
-                    })
-                });
-
-                if (res.ok) {
-                    alert('✅ Announcement saved');
-                    loadAppSettings();
-                } else {
-                    alert('Failed to save announcement');
-                }
-            } catch (err) {
-                console.error('Error saving announcement:', err);
-                alert('Error saving announcement');
             }
         }
 
