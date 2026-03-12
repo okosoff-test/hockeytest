@@ -729,6 +729,7 @@
             font-size: 1.1rem;
         }
 
+
         .maintenance-toggle {
             display: flex;
             align-items: center;
@@ -1272,6 +1273,7 @@
                 When enabled, a flashing alert will appear on all pages warning users that the portal is down for maintenance.
             </p>
         </div>
+
 
         <!-- TITLE EDITOR -->
         <div class="title-editor-section">
@@ -2174,8 +2176,6 @@
                     document.getElementById('titlePreview').innerText = data.customTitle;
                     document.getElementById('dynamicTitlePreview').innerText = data.customTitle;
                 }
-
-                    : '';
                 
                 // Update arena selector
                 if (data.selectedArena) {
