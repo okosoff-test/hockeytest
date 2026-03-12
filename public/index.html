@@ -49,30 +49,6 @@
             display: block;
         }
 
-        .maintenance-bulletin-content {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .maintenance-bulletin-image {
-            width: 48px;
-            height: 48px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 1px solid rgba(255,255,255,0.35);
-            display: none;
-            background: rgba(255,255,255,0.12);
-        }
-
-        .maintenance-bulletin-text {
-            max-width: 760px;
-            line-height: 1.35;
-            white-space: pre-wrap;
-        }
-
         @keyframes flash {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.7; }
@@ -755,16 +731,62 @@
             }
         }
 
+
+        .maintenance-bulletin.announcement-only {
+            border-color: #ff9800;
+            box-shadow: 0 0 25px rgba(255, 152, 0, 0.45);
+        }
+
+        .maintenance-bulletin-inner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .maintenance-bulletin-image {
+            width: 96px;
+            height: 96px;
+            object-fit: cover;
+            border-radius: 12px;
+            border: 2px solid rgba(255,255,255,0.45);
+            background: rgba(0,0,0,0.2);
+            display: none;
+        }
+
+        .maintenance-bulletin-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+            max-width: 620px;
+        }
+
+        .maintenance-bulletin-heading {
+            font-size: 1rem;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .maintenance-bulletin-text {
+            font-size: 1.05rem;
+            line-height: 1.35;
+        }
+
 </style>
 <base target="_blank">
 </head>
 <body>
 
-    <!-- MAINTENANCE BULLETIN -->
+    <!-- MAINTENANCE / ANNOUNCEMENT BULLETIN -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
-        <div class="maintenance-bulletin-content">
-            <img id="maintenanceBulletinImage" class="maintenance-bulletin-image" alt="Maintenance image">
-            <div class="maintenance-bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later</div>
+        <div class="maintenance-bulletin-inner">
+            <img id="maintenanceBulletinImage" class="maintenance-bulletin-image" alt="Announcement">
+            <div class="maintenance-bulletin-copy">
+                <div class="maintenance-bulletin-heading" id="maintenanceBulletinHeading">Maintenance Notice</div>
+                <div class="maintenance-bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later.</div>
+            </div>
         </div>
     </div>
 
@@ -977,9 +999,6 @@
         let rosterReleased = false;
         let currentPlayers = [];
         let maintenanceMode = false;
-        let maintenanceMessageEnabled = false;
-        let maintenanceMessageText = '';
-        let maintenanceMessageImage = '';
 
         let playerToCancel = null;
 
@@ -1254,17 +1273,7 @@
                 
                 // Handle maintenance mode
                 maintenanceMode = data.maintenanceMode;
-                maintenanceMessageEnabled = !!data.maintenanceMessageEnabled;
-                maintenanceMessageText = data.maintenanceMessageText || '';
-                maintenanceMessageImage = data.maintenanceMessageImage || '';
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
-                const maintenanceBulletinText = document.getElementById('maintenanceBulletinText');
-                const maintenanceBulletinImage = document.getElementById('maintenanceBulletinImage');
-                maintenanceBulletinText.innerText = (maintenanceMode && maintenanceMessageEnabled && maintenanceMessageText.trim())
-                    ? maintenanceMessageText.trim()
-                    : 'Portal is down for maintenance, check back later';
-                maintenanceBulletinImage.style.display = (maintenanceMode && maintenanceMessageEnabled && maintenanceMessageImage) ? 'block' : 'none';
-                maintenanceBulletinImage.src = (maintenanceMode && maintenanceMessageEnabled) ? (maintenanceMessageImage || '') : '';
                 if (maintenanceMode) {
                     maintenanceBulletin.classList.add('active');
                 } else {
