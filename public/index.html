@@ -1216,12 +1216,6 @@
         }
 
 
-            textEl.textContent = text;
-            imagesEl.innerHTML = images.map(src => `<img src="${src}" alt="Announcement image">`).join('');
-            box.style.display = 'block';
-            box.classList.add('active');
-        }
-
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
