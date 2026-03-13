@@ -1860,58 +1860,25 @@
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
             if (!dtLocalValue || !dtLocalValue.includes('T')) return "";
 
-            const parsed = parseDatetimeLocalValue(dtLocalValue);
-            if (!parsed) return "";
+            // IMPORTANT:
+            // Treat datetime-local values as ET wall-clock values exactly as entered.
+            // Do not convert from the browser's local timezone.
+            const [datePart, timePart] = dtLocalValue.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour24, minute] = timePart.split(':').map(Number);
 
-            const base = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
+            if ([year, month, day, hour24, minute].some(v => !Number.isFinite(v))) return "";
+
+            const base = new Date(Date.UTC(year, month - 1, day));
             const weekday = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'UTC',
                 weekday: 'long'
             }).format(base);
 
-            return `${weekday} ${formatTime12(parsed.hour, parsed.minute)}`;
-        }
+            const hour12 = ((hour24 + 11) % 12) + 1;
+            const dayPeriod = hour24 >= 12 ? 'PM' : 'AM';
 
-        function getEnhancedDateTimeParts(targetId) {
-            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
-            if (!wrapper) return null;
-
-            const dateVal = wrapper.querySelector('.date-input')?.value || '';
-            const timeText = String(wrapper.querySelector('.time-trigger')?.textContent || '').trim();
-            if (!dateVal) return null;
-
-            const dateMatch = dateVal.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-            const timeMatch = timeText.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-            if (!dateMatch || !timeMatch) return null;
-
-            let hour24 = parseInt(timeMatch[1], 10) % 12;
-            const minute = parseInt(timeMatch[2], 10);
-            if (timeMatch[3].toUpperCase() === 'PM') hour24 += 12;
-
-            return {
-                year: parseInt(dateMatch[1], 10),
-                month: parseInt(dateMatch[2], 10),
-                day: parseInt(dateMatch[3], 10),
-                hour: hour24,
-                minute
-            };
-        }
-
-        function getEnhancedDateTimeValue(targetId) {
-            const parts = getEnhancedDateTimeParts(targetId);
-            if (!parts) return '';
-            return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}T${pad2(parts.hour)}:${pad2(parts.minute)}`;
-        }
-
-        function formatEnhancedDayTime(targetId) {
-            const parts = getEnhancedDateTimeParts(targetId);
-            if (!parts) return '';
-            const base = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
-            const weekday = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'UTC',
-                weekday: 'long'
-            }).format(base);
-            return `${weekday} ${formatTime12(parts.hour, parts.minute)}`;
+            return `${weekday} ${hour12}:${pad2(minute)} ${dayPeriod}`;
         }
 
         
@@ -1959,7 +1926,7 @@
             if (parsed) {
                 dateInput.value = `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}`;
                 timeBtn.textContent = formatTime12(parsed.hour, parsed.minute);
-                const dayTime = formatEnhancedDayTime(targetId);
+                const dayTime = formatDayTimeFromDatetimeLocal(input.value);
                 summary.textContent = dayTime ? `ET: ${dayTime}` : '';
             } else {
                 dateInput.value = '';
@@ -2363,8 +2330,12 @@
                 if (data.selectedDayTime) {
                     const parsed = parseSelectedDayTime(data.selectedDayTime);
                     if (parsed) {
-                        const next = nextOccurrenceDate(parsed.dow, parsed.hour, parsed.minute);
-                        document.getElementById('titleDayTime').value = toDatetimeLocalValue(next);
+                        if (data.gameDate && /^\d{4}-\d{2}-\d{2}$/.test(data.gameDate)) {
+                            document.getElementById('titleDayTime').value = `${data.gameDate}T${pad2(parsed.hour)}:${pad2(parsed.minute)}`;
+                        } else {
+                            const next = nextOccurrenceDate(parsed.dow, parsed.hour, parsed.minute);
+                            document.getElementById('titleDayTime').value = toDatetimeLocalValue(next);
+                        }
                         syncEnhancedControl('titleDayTime');
                     }
                 }
@@ -2446,7 +2417,8 @@
 
         // Update title preview based on selection
         function updateTitlePreview() {
-            const dayTime = formatEnhancedDayTime('titleDayTime');
+            const dtVal = document.getElementById('titleDayTime')?.value || '';
+            const dayTime = formatDayTimeFromDatetimeLocal(dtVal);
             const day = (dayTime.split(' ')[0] || "Friday");
             const newTitle = `Phan's ${day} Hockey`;
             document.getElementById('dynamicTitlePreview').innerText = newTitle;
@@ -2454,17 +2426,15 @@
 
         // Update title and time
         async function updateTitle() {
-            const dtVal = getEnhancedDateTimeValue('titleDayTime');
-            const dayTime = formatEnhancedDayTime('titleDayTime');
-            if (!dayTime || !dtVal) {
+            const dtVal = document.getElementById('titleDayTime')?.value || '';
+            const dayTime = formatDayTimeFromDatetimeLocal(dtVal);
+            if (!dayTime) {
                 alert('Please select a day and time first.');
                 return;
             }
-            const hiddenInput = document.getElementById('titleDayTime');
-            if (hiddenInput) hiddenInput.value = dtVal;
             const day = dayTime.split(' ')[0];
             const newTitle = `Phan's ${day} Hockey`;
-            const selectedGameDate = dtVal.split('T')[0];
+            const selectedGameDate = dtVal ? dtVal.split('T')[0] : '';
             
             try {
                 const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
