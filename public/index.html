@@ -735,10 +735,10 @@
         .announcement-bulletin {
             display: none;
             width: 100%;
-            max-width: 1100px;
+            max-width: 900px;
             background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
             color: #2f2410;
-            padding: 16px;
+            padding: 14px 16px;
             border-radius: 12px;
             margin-bottom: 22px;
             border: 1px solid #e2be57;
@@ -747,29 +747,22 @@
 
         .announcement-bulletin.active {
             display: flex;
-            align-items: flex-start;
-            gap: 16px;
+            align-items: center;
+            gap: 14px;
         }
 
         .announcement-thumb {
-            width: 220px;
-            max-width: 42vw;
-            height: auto;
+            width: 96px;
+            height: 96px;
             object-fit: contain;
             border-radius: 10px;
             background: rgba(255,255,255,0.55);
             flex: 0 0 auto;
             display: none;
-            cursor: zoom-in;
-            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
 
         .announcement-thumb.visible {
             display: block;
-        }
-
-        .announcement-thumb:hover {
-            transform: scale(1.01);
         }
 
         .announcement-copy strong {
@@ -786,41 +779,6 @@
             line-height: 1.4;
         }
 
-        .announcement-modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            z-index: 9999;
-            background: rgba(0,0,0,0.92);
-            align-items: center;
-            justify-content: center;
-            padding: 24px;
-        }
-
-        .announcement-modal.active {
-            display: flex;
-        }
-
-        .announcement-modal img {
-            max-width: 96vw;
-            max-height: 92vh;
-            width: auto;
-            height: auto;
-            border-radius: 12px;
-            box-shadow: 0 18px 50px rgba(0,0,0,0.45);
-        }
-
-        .announcement-modal-close {
-            position: absolute;
-            top: 18px;
-            right: 24px;
-            font-size: 42px;
-            line-height: 1;
-            color: white;
-            cursor: pointer;
-            user-select: none;
-        }
-
     </style>
 <base target="_blank">
 </head>
@@ -832,16 +790,17 @@
     </div>
 
     <div class="announcement-bulletin" id="announcementBulletin">
-        <img id="announcementThumb" class="announcement-thumb" alt="Announcement" onclick="openAnnouncementImage()">
+        <img id="announcementThumb" class="announcement-thumb" alt="Announcement">
         <div class="announcement-copy">
-            <strong>Attention:</strong>
+            <strong>Attention <span class="announcement-hint">(click on pic to enlarge)</span>:</strong>
             <span id="announcementText">&nbsp;</span>
         </div>
     </div>
 
-    <div class="announcement-modal" id="announcementModal" onclick="closeAnnouncementImage(event)">
-        <span class="announcement-modal-close" onclick="closeAnnouncementImage(event)">&times;</span>
-        <img id="announcementModalImage" alt="Announcement full size">
+
+    <div class="announcement-lightbox" id="announcementLightbox" aria-hidden="true">
+        <button type="button" class="announcement-lightbox-close" id="announcementLightboxClose" aria-label="Close image">&times;</button>
+        <img id="announcementLightboxImage" alt="Announcement full size">
     </div>
 
     <div class="container" id="playerView">
@@ -1322,11 +1281,46 @@
 
 
 
+        function bindAnnouncementLightbox() {
+            const thumbEl = document.getElementById('announcementThumb');
+            const lightbox = document.getElementById('announcementLightbox');
+            const lightboxImg = document.getElementById('announcementLightboxImage');
+            const closeBtn = document.getElementById('announcementLightboxClose');
+            if (!thumbEl || !lightbox || !lightboxImg || !closeBtn || thumbEl.dataset.bound === '1') return;
+
+            const closeLightbox = () => {
+                lightbox.classList.remove('active');
+                lightbox.setAttribute('aria-hidden', 'true');
+                document.body.style.overflow = '';
+            };
+
+            thumbEl.addEventListener('click', () => {
+                if (!thumbEl.src) return;
+                lightboxImg.src = thumbEl.src;
+                lightbox.classList.add('active');
+                lightbox.setAttribute('aria-hidden', 'false');
+                document.body.style.overflow = 'hidden';
+            });
+
+            closeBtn.addEventListener('click', closeLightbox);
+            lightbox.addEventListener('click', (event) => {
+                if (event.target === lightbox) closeLightbox();
+            });
+            document.addEventListener('keydown', (event) => {
+                if (event.key === 'Escape' && lightbox.classList.contains('active')) {
+                    closeLightbox();
+                }
+            });
+
+            thumbEl.dataset.bound = '1';
+        }
+
         function renderAnnouncement(data) {
             const bulletin = document.getElementById('announcementBulletin');
             const textEl = document.getElementById('announcementText');
             const thumbEl = document.getElementById('announcementThumb');
             if (!bulletin || !textEl || !thumbEl) return;
+            bindAnnouncementLightbox();
 
             const enabled = !!data.announcementEnabled;
             const text = (data.announcementText || '').trim();
@@ -1342,7 +1336,7 @@
                 return;
             }
 
-            textEl.textContent = text || 'Attention';
+            textEl.textContent = text || '';
             if (image) {
                 thumbEl.src = image;
                 thumbEl.classList.add('visible');
@@ -1352,28 +1346,6 @@
             }
             bulletin.classList.add('active');
         }
-
-
-        function openAnnouncementImage() {
-            const thumbEl = document.getElementById('announcementThumb');
-            const modal = document.getElementById('announcementModal');
-            const modalImg = document.getElementById('announcementModalImage');
-            if (!thumbEl || !modal || !modalImg || !thumbEl.src) return;
-            modalImg.src = thumbEl.src;
-            modal.classList.add('active');
-        }
-
-        function closeAnnouncementImage(event) {
-            if (event) event.stopPropagation();
-            const modal = document.getElementById('announcementModal');
-            const modalImg = document.getElementById('announcementModalImage');
-            if (modal) modal.classList.remove('active');
-            if (modalImg) modalImg.src = '';
-        }
-
-        document.addEventListener('keydown', (event) => {
-            if (event.key === 'Escape') closeAnnouncementImage();
-        });
 
         async function checkStatus() {
             try {
