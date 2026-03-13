@@ -187,7 +187,7 @@ const GAME_RULES = [
 // ============================================
 
 // --- AUTO-ADD PLAYERS CONFIG ---
-const AUTO_ADD_PLAYERS = [
+const AUTO_ADD_CORE_PLAYERS = [
     {
         firstName: "Phan",
         lastName: "Ly",
@@ -197,26 +197,57 @@ const AUTO_ADD_PLAYERS = [
         isFree: true,
         paymentMethod: "FREE",
         protected: true  // Cannot be cancelled from signup page
-    },
-    {
-        firstName: "Craig",
-        lastName: "Scolack",  // FIXED: Scolak -> Scolack
-        phone: "(519) 982-6311",
-        rating: 9,
-        isGoalie: true,
-        isFree: false,
-        paymentMethod: "N/A"
-    },
-    {
-        firstName: "Hao",
-        lastName: "Chau",
-        phone: "(519) 995-9884",
-        rating: 8,
-        isGoalie: true,
-        isFree: false,
-        paymentMethod: "N/A"
     }
 ];
+
+const AUTO_ADD_GOALIES_BY_DAY = {
+    friday: [
+        {
+            firstName: "Craig",
+            lastName: "Scolack",
+            phone: "(519) 982-6311",
+            rating: 9,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        },
+        {
+            firstName: "Hao",
+            lastName: "Chau",
+            phone: "(519) 995-9884",
+            rating: 8,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        }
+    ],
+    sunday: [
+        {
+            firstName: "Craig",
+            lastName: "Scolack",
+            phone: "(519) 982-6311",
+            rating: 9,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        },
+        {
+            firstName: "Mat",
+            lastName: "Carriere",
+            phone: "(226) 350-0217",
+            rating: 7,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        }
+    ]
+};
+
+function getAutoAddPlayersForCurrentGameDay() {
+    const dayKey = String(getGameDayName() || '').trim().toLowerCase();
+    const goalies = AUTO_ADD_GOALIES_BY_DAY[dayKey] || AUTO_ADD_GOALIES_BY_DAY.friday;
+    return [...AUTO_ADD_CORE_PLAYERS, ...goalies];
+}
 
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
@@ -481,10 +512,6 @@ async function autoReleaseRoster() {
         manualOverride = true;
         manualOverrideState = 'locked';
 
-        // Auto-enable payment reminder when roster is released
-        announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
-
         currentWeekData = {
             weekNumber: week,
             year: year,
@@ -502,15 +529,6 @@ async function autoReleaseRoster() {
 
         if (pool) {
             await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-
-            await pool.query(
-                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-                ['announcementEnabled', announcementEnabled.toString()]
-            );
-            await pool.query(
-                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-                ['announcementText', announcementText]
-            );
         }
         await saveData();
         return true;
@@ -525,7 +543,7 @@ async function addAutoPlayers() {
     console.log('Adding auto-players for new week...');
     let addedCount = 0;
     
-    for (const autoPlayer of AUTO_ADD_PLAYERS) {
+    for (const autoPlayer of getAutoAddPlayersForCurrentGameDay()) {
         // Check if player already exists
         const normalizedName = (autoPlayer.firstName + ' ' + autoPlayer.lastName).toLowerCase().trim();
         const normalizedPhone = autoPlayer.phone.replace(/\D/g, '');
@@ -2566,10 +2584,6 @@ app.post('/api/admin/release-roster', async (req, res) => {
         requirePlayerCode = true;
         manualOverride = true;  // Keep locked after manual release
         manualOverrideState = 'locked';  // Force locked state
-
-        // Auto-enable payment reminder when roster is released
-        announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
         
         currentWeekData = {
             weekNumber: week,
@@ -2585,16 +2599,6 @@ app.post('/api/admin/release-roster', async (req, res) => {
         }
         
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementEnabled', announcementEnabled.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementText', announcementText]
-        );
-
         await saveData();
         
         res.json({ 
