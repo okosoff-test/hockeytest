@@ -1828,20 +1828,29 @@
         }
 
         function nextOccurrenceDate(dow, hour, minute) {
-            const etNow = getETNowDate();
-            const currentDow = etNow.getDay();
-            let daysAhead = (dow - currentDow + 7) % 7;
 
-            // If today but time passed, jump a week
-            const past = (daysAhead === 0) && (
-                etNow.getHours() > hour || (etNow.getHours() === hour && etNow.getMinutes() >= minute)
-            );
-            if (past) daysAhead = 7;
+            // Build date in UTC so browser timezone never shifts it
+            const now = new Date();
 
-            const next = new Date(etNow);
-            next.setDate(etNow.getDate() + daysAhead);
-            next.setHours(hour, minute, 0, 0);
-            return next;
+            const todayUTC = new Date(Date.UTC(
+                now.getUTCFullYear(),
+                now.getUTCMonth(),
+                now.getUTCDate()
+            ));
+
+            const currentDow = todayUTC.getUTCDay();
+            let diff = dow - currentDow;
+            if (diff < 0) diff += 7;
+
+            const result = new Date(Date.UTC(
+                todayUTC.getUTCFullYear(),
+                todayUTC.getUTCMonth(),
+                todayUTC.getUTCDate() + diff,
+                hour,
+                minute
+            ));
+
+            return result;
         }
 
         function toDatetimeLocalValue(d) {
@@ -2330,12 +2339,8 @@
                 if (data.selectedDayTime) {
                     const parsed = parseSelectedDayTime(data.selectedDayTime);
                     if (parsed) {
-                        if (data.gameDate && /^\d{4}-\d{2}-\d{2}$/.test(data.gameDate)) {
-                            document.getElementById('titleDayTime').value = `${data.gameDate}T${pad2(parsed.hour)}:${pad2(parsed.minute)}`;
-                        } else {
-                            const next = nextOccurrenceDate(parsed.dow, parsed.hour, parsed.minute);
-                            document.getElementById('titleDayTime').value = toDatetimeLocalValue(next);
-                        }
+                        const next = nextOccurrenceDate(parsed.dow, parsed.hour, parsed.minute);
+                        document.getElementById('titleDayTime').value = toDatetimeLocalValue(next);
                         syncEnhancedControl('titleDayTime');
                     }
                 }
