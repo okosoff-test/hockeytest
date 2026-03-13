@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Game Rules - Phan's Sunday Hockey</title>
+    <title id="pageTitle">Game Rules - Phan's Hockey</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -220,7 +220,7 @@
 <body>
 
     <div class="container">
-        <h1>Phan's Sunday Hockey</h1>
+        <h1 id="rulesHeading">Phan's Hockey</h1>
         <h2>⚠️ MANDATORY RULES AGREEMENT</h2>
         
         <div class="warning-box">
@@ -280,7 +280,7 @@
                 <label for="agreeRules">
                     I have read, understood, and agree to follow all rules. 
                     I understand that <span class="ban-warning">breaking any rule will result in a permanent ban</span> 
-                    from Phan's Sunday Hockey.
+                    from <span id="rulesLeagueName">Phan's Hockey</span>.
                 </label>
             </div>
         </div>
@@ -300,6 +300,18 @@
         let rosterReleaseLine = "Teams are released at the scheduled time";
         let gameDayName = "game day";
 
+        function applyGameDayBranding(dayName) {
+            const safeDayName = String(dayName || 'Sunday').trim();
+            const leagueName = `Phan's ${safeDayName} Hockey`;
+            document.title = `Game Rules - ${leagueName}`;
+
+            const headingEl = document.getElementById('rulesHeading');
+            if (headingEl) headingEl.textContent = leagueName;
+
+            const leagueNameEl = document.getElementById('rulesLeagueName');
+            if (leagueNameEl) leagueNameEl.textContent = leagueName;
+        }
+
         (async function loadScheduleInfo() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -308,6 +320,8 @@
                 if (status && status.gameDayName) gameDayName = status.gameDayName;
             } catch (e) {
                 console.warn('Could not load schedule info', e);
+            } finally {
+                applyGameDayBranding(gameDayName);
             }
         })();
 // Check for temp registration data

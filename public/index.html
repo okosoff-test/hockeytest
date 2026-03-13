@@ -33,7 +33,7 @@
             background-size: 200% 100%;
             color: white;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-bottom: 25px;
             text-align: center;
             font-weight: bold;
@@ -736,15 +736,13 @@
             display: none;
             width: 100%;
             max-width: 900px;
-            background: linear-gradient(90deg, #15385f, #2b61a7, #15385f);
-            background-size: 200% 100%;
-            color: white;
-            padding: 16px 18px;
-            border-radius: 10px;
-            margin-bottom: 25px;
-            border: 2px solid #66a8ff;
-            box-shadow: 0 0 22px rgba(74, 144, 226, 0.35);
-            animation: flash 1.8s infinite;
+            background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
+            color: #2f2410;
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            border: 1px solid #e2be57;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
         }
 
         .announcement-bulletin.active {
@@ -758,7 +756,7 @@
             height: 96px;
             object-fit: contain;
             border-radius: 10px;
-            background: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.55);
             flex: 0 0 auto;
             display: none;
         }
@@ -769,14 +767,16 @@
 
         .announcement-copy strong {
             display: block;
-            font-size: 1.15rem;
-            margin-bottom: 4px;
-            letter-spacing: 0.4px;
+            font-size: 1.05rem;
+            margin-bottom: 2px;
+            letter-spacing: 0.2px;
+            color: #5a4306;
         }
 
         .announcement-copy span {
-            color: #eef5ff;
+            color: #2f2410;
             font-size: 1rem;
+            line-height: 1.4;
         }
 
     </style>
@@ -792,7 +792,7 @@
     <div class="announcement-bulletin" id="announcementBulletin">
         <img id="announcementThumb" class="announcement-thumb" alt="Announcement">
         <div class="announcement-copy">
-            <strong>📢 League Announcement</strong>
+            <strong>Attention:</strong>
             <span id="announcementText">&nbsp;</span>
         </div>
     </div>
@@ -1295,7 +1295,7 @@
                 return;
             }
 
-            textEl.textContent = text || 'League announcement';
+            textEl.textContent = text || 'Attention';
             if (image) {
                 thumbEl.src = image;
                 thumbEl.classList.add('visible');
