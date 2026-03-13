@@ -1665,31 +1665,10 @@
         <!-- Pre-defined Goalies Section - AUTO ADD -->
         <div class="goalies-section">
             <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                These goalies are automatically added on weekly/manual reset. Check to add manually now.
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;" id="autoGoalieHelperText">
+                Loading regular goalies for the selected game day...
             </p>
-            <div class="goalie-list" id="predefinedGoalies">
-                <div class="goalie-item">
-                    <div class="goalie-checkbox-wrapper">
-                        <input type="checkbox" id="goalieCraig" value="Craig Scolack">
-                        <label for="goalieCraig">Craig Scolack</label>
-                    </div>
-                    <div class="goalie-rating">
-                        <label>Rating:</label>
-                        <input type="number" id="ratingCraig" min="1" max="10" value="9">
-                    </div>
-                </div>
-                <div class="goalie-item">
-                    <div class="goalie-checkbox-wrapper">
-                        <input type="checkbox" id="goalieHao" value="Hao Chau">
-                        <label for="goalieHao">Hao Chau</label>
-                    </div>
-                    <div class="goalie-rating">
-                        <label>Rating:</label>
-                        <input type="number" id="ratingHao" min="1" max="10" value="8">
-                    </div>
-                </div>
-            </div>
+            <div class="goalie-list" id="predefinedGoalies"></div>
             <button class="add-goalies-btn" onclick="addSelectedGoalies()">➕ Add Selected Goalies Now</button>
         </div>
 
@@ -2244,11 +2223,52 @@
         let currentTotalPaid = 0;
         let backupGoaliesData = [];
 
-        // Pre-defined goalie data
-        const PREDEFINED_GOALIES = [
-            { id: 'goalieCraig', name: 'Craig Scolack', phone: '(519) 982-6311', defaultRating: 9 },
-            { id: 'goalieHao', name: 'Hao Chau', phone: '(519) 995-9884', defaultRating: 8 }
-        ];
+        // Pre-defined goalie data (dynamic by selected game day)
+        let PREDEFINED_GOALIES = [];
+
+        function slugifyGoalieName(name) {
+            return String(name || '').replace(/[^a-z0-9]+/gi, '').trim();
+        }
+
+        function renderPredefinedGoalies(goalies = [], dayName = '') {
+            const container = document.getElementById('predefinedGoalies');
+            const helper = document.getElementById('autoGoalieHelperText');
+            if (!container) return;
+
+            const safeDay = String(dayName || '').trim() || 'selected day';
+            PREDEFINED_GOALIES = Array.isArray(goalies)
+                ? goalies.map(goalie => ({
+                    ...goalie,
+                    id: 'goalie' + slugifyGoalieName(goalie.firstName + goalie.lastName),
+                    name: `${goalie.firstName} ${goalie.lastName}`,
+                    defaultRating: parseInt(goalie.rating) || 7
+                }))
+                : [];
+
+            if (helper) {
+                if (PREDEFINED_GOALIES.length) {
+                    helper.textContent = `${safeDay} regular goalies auto-added on weekly/manual reset. Check to add manually now.`;
+                } else {
+                    helper.textContent = `No regular goalies configured for ${safeDay}.`;
+                }
+            }
+
+            container.innerHTML = PREDEFINED_GOALIES.map(goalie => {
+                const ratingId = 'rating' + goalie.id.replace('goalie', '');
+                return `
+                    <div class="goalie-item">
+                        <div class="goalie-checkbox-wrapper">
+                            <input type="checkbox" id="${goalie.id}" value="${goalie.name}">
+                            <label for="${goalie.id}">${goalie.name}</label>
+                        </div>
+                        <div class="goalie-rating">
+                            <label>Rating:</label>
+                            <input type="number" id="${ratingId}" min="1" max="10" value="${goalie.defaultRating}">
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
 
         async function checkSession() {
             if (!sessionToken) {
@@ -2383,6 +2403,8 @@
                 if (data.backupGoalies) {
                     backupGoaliesData = data.backupGoalies;
                 }
+
+                renderPredefinedGoalies(data.autoAddGoalies || [], data.gameDayName || 'Selected');
                 
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');

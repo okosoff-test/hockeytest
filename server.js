@@ -82,6 +82,10 @@ function getGameDayName() {
     return parseGameTimeString(gameTime).dayName;
 }
 
+function getAutoAddGoaliesForDay(dayName = getGameDayName()) {
+    return getDynamicAutoAddPlayers(dayName).filter(player => player.isGoalie);
+}
+
 
 const FRIDAY_SIGNUP_CODE = '9855';
 const SUNDAY_SIGNUP_CODE = '7666';
@@ -187,7 +191,7 @@ const GAME_RULES = [
 // ============================================
 
 // --- AUTO-ADD PLAYERS CONFIG ---
-const AUTO_ADD_PLAYERS = [
+const AUTO_ADD_CORE_PLAYERS = [
     {
         firstName: "Phan",
         lastName: "Ly",
@@ -197,26 +201,60 @@ const AUTO_ADD_PLAYERS = [
         isFree: true,
         paymentMethod: "FREE",
         protected: true  // Cannot be cancelled from signup page
-    },
-    {
-        firstName: "Craig",
-        lastName: "Scolack",  // FIXED: Scolak -> Scolack
-        phone: "(519) 982-6311",
-        rating: 9,
-        isGoalie: true,
-        isFree: false,
-        paymentMethod: "N/A"
-    },
-    {
-        firstName: "Hao",
-        lastName: "Chau",
-        phone: "(519) 995-9884",
-        rating: 8,
-        isGoalie: true,
-        isFree: false,
-        paymentMethod: "N/A"
     }
 ];
+
+const REGULAR_GOALIES = {
+    friday: [
+        {
+            firstName: "Craig",
+            lastName: "Scolack",
+            phone: "(519) 982-6311",
+            rating: 9,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        },
+        {
+            firstName: "Hao",
+            lastName: "Chau",
+            phone: "(519) 995-9884",
+            rating: 8,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        }
+    ],
+    sunday: [
+        {
+            firstName: "Craig",
+            lastName: "Scolack",
+            phone: "(519) 982-6311",
+            rating: 9,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        },
+        {
+            firstName: "Mat",
+            lastName: "Carriere",
+            phone: "(226) 350-0217",
+            rating: 7,
+            isGoalie: true,
+            isFree: false,
+            paymentMethod: "N/A"
+        }
+    ]
+};
+
+function getDynamicAutoAddPlayers(dayName = getGameDayName()) {
+    const normalizedDay = String(dayName || '').trim().toLowerCase();
+    const regularGoalies = REGULAR_GOALIES[normalizedDay] || REGULAR_GOALIES.friday;
+    return [
+        ...AUTO_ADD_CORE_PLAYERS.map(player => ({ ...player })),
+        ...regularGoalies.map(player => ({ ...player }))
+    ];
+}
 
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
@@ -525,7 +563,9 @@ async function addAutoPlayers() {
     console.log('Adding auto-players for new week...');
     let addedCount = 0;
     
-    for (const autoPlayer of AUTO_ADD_PLAYERS) {
+    const autoPlayers = getDynamicAutoAddPlayers();
+
+    for (const autoPlayer of autoPlayers) {
         // Check if player already exists
         const normalizedName = (autoPlayer.firstName + ' ' + autoPlayer.lastName).toLowerCase().trim();
         const normalizedPhone = autoPlayer.phone.replace(/\D/g, '');
@@ -658,6 +698,7 @@ async function checkWeeklyReset() {
     manualOverrideState = null;
     requirePlayerCode = true;
     maintenanceMode = false;
+    announcementEnabled = false;
     refreshDynamicSignupCode();
     resetWeekAt = '';
     signupLockStartAt = '';
@@ -679,6 +720,7 @@ async function checkWeeklyReset() {
     }
 
     await addAutoPlayers();
+    await syncAnnouncementSettings();
     await saveData();
     return true;
 }
@@ -895,6 +937,25 @@ async function saveSetting(key, value) {
     } catch (err) {
         console.error('Error saving setting:', err);
     }
+}
+
+async function saveAppSettingValue(key, value) {
+    if (!pool) return;
+    try {
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            [key, String(value ?? '')]
+        );
+    } catch (err) {
+        console.error('Error saving app setting:', err);
+    }
+}
+
+async function syncAnnouncementSettings() {
+    if (!pool) return;
+    await saveAppSettingValue('announcementEnabled', announcementEnabled.toString());
+    await saveAppSettingValue('announcementText', announcementText);
+    await saveAppSettingValue('announcementImages', JSON.stringify(Array.isArray(announcementImages) ? announcementImages : []));
 }
 
 async function saveData() {
@@ -1885,7 +1946,9 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
-        backupGoalies: BACKUP_GOALIES
+        backupGoalies: BACKUP_GOALIES,
+        autoAddGoalies: getAutoAddGoaliesForDay(),
+        gameDayName: getGameDayName()
     });
 });
 
@@ -2649,6 +2712,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     manualOverride = false;
     manualOverrideState = null;
     requirePlayerCode = true;
+    announcementEnabled = false;
     lastExactResetRunAt = '';
     
     // Code stays as 9855 - no auto-generation
@@ -2659,6 +2723,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         
         // Auto-add predefined players after reset
         await addAutoPlayers();
+        await syncAnnouncementSettings();
         
         await saveData();
     } catch (err) {
