@@ -272,14 +272,9 @@ const DAY_TIME_OPTIONS = [
 
 // --- APP SETTINGS ---
 let maintenanceMode = false;
-let maintenanceText = 'Portal is down for maintenance, check back later.';
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
-
-// Default announcement configuration
-let announcementEnabled = true;
-
-let announcementText = 'E-transfer required immediately after roster release.';
-
+let announcementEnabled = false;
+let announcementText = '';
 let announcementImages = [];
 
 // ============================================
@@ -486,6 +481,10 @@ async function autoReleaseRoster() {
         manualOverride = true;
         manualOverrideState = 'locked';
 
+        // Auto-enable payment reminder when roster is released
+        announcementEnabled = true;
+        announcementText = 'E-transfer required immediately after roster release.';
+
         currentWeekData = {
             weekNumber: week,
             year: year,
@@ -503,6 +502,15 @@ async function autoReleaseRoster() {
 
         if (pool) {
             await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
+
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['announcementEnabled', announcementEnabled.toString()]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['announcementText', announcementText]
+            );
         }
         await saveData();
         return true;
@@ -857,12 +865,10 @@ async function loadDataFromDB() {
         });
         
         if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
-        if (appSettings.maintenanceText !== undefined) maintenanceText = appSettings.maintenanceText || 'Portal is down for maintenance, check back later.';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
-        if (appSettings.announcementShowOnSignup !== undefined) announcementShowOnSignup = appSettings.announcementShowOnSignup === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.announcementImages !== undefined) {
             try {
@@ -958,10 +964,8 @@ function loadDataFromFile() {
             };
             // Load new settings
             maintenanceMode = data.maintenanceMode ?? false;
-            maintenanceText = data.maintenanceText ?? 'Portal is down for maintenance, check back later.';
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
-            announcementShowOnSignup = data.announcementShowOnSignup ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             refreshDynamicSignupCode();
@@ -1396,10 +1400,8 @@ app.get('/api/status', (req, res) => {
         players: publicPlayers,  // Sanitized - no ratings, no payment info
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
-        maintenanceText: maintenanceText,
         customTitle: customTitle,
-        announcementEnabled: announcementEnabled && announcementShowOnSignup,
-        announcementShowOnSignup: announcementShowOnSignup,
+        announcementEnabled: announcementEnabled,
         announcementText: announcementText,
         announcementImages: announcementImages,
         arenaOptions: ARENA_OPTIONS,
@@ -1874,10 +1876,8 @@ app.post('/api/admin/app-settings', (req, res) => {
     
     res.json({
         maintenanceMode,
-        maintenanceText,
         customTitle,
         announcementEnabled,
-        announcementShowOnSignup,
         announcementText,
         announcementImages,
         selectedDayTime: gameTime,
@@ -1891,21 +1891,17 @@ app.post('/api/admin/app-settings', (req, res) => {
 
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
-    const { sessionToken, maintenanceMode: newMaintenance, maintenanceText: newMaintenanceText, customTitle: newTitle, 
-            announcementEnabled: newAnnouncementEnabled, announcementShowOnSignup: newAnnouncementShowOnSignup, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
+    const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle, 
+            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
-
+    
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-
+    
     if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
-    if (newMaintenanceText !== undefined) {
-        maintenanceText = String(newMaintenanceText || '').trim() || 'Portal is down for maintenance, check back later.';
-    }
     if (newTitle) customTitle = newTitle;
     if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
-    if (newAnnouncementShowOnSignup !== undefined) announcementShowOnSignup = !!newAnnouncementShowOnSignup;
     if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
     if (newAnnouncementImages !== undefined) {
         announcementImages = Array.isArray(newAnnouncementImages)
@@ -1915,42 +1911,47 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
     if (selectedDayTime) gameTime = selectedDayTime;
     if (selectedArena) gameLocation = selectedArena;
     if (newGameDate) gameDate = newGameDate;
-
+    if (newGameDate) gameDate = newGameDate;
+    
     try {
-        if (pool) {
-            const upsertSql = 'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2';
-            await pool.query(upsertSql, ['maintenanceMode', maintenanceMode.toString()]);
-            await pool.query(upsertSql, ['maintenanceText', maintenanceText]);
-            await pool.query(upsertSql, ['customTitle', customTitle]);
-            await pool.query(upsertSql, ['announcementEnabled', announcementEnabled.toString()]);
-            await pool.query(upsertSql, ['announcementShowOnSignup', announcementShowOnSignup.toString()]);
-            await pool.query(upsertSql, ['announcementText', announcementText]);
-            await pool.query(upsertSql, ['announcementImages', JSON.stringify(announcementImages)]);
-            await pool.query(upsertSql, ['selectedDayTime', gameTime]);
-            await pool.query(upsertSql, ['selectedArena', gameLocation]);
-            await pool.query(upsertSql, ['gameDate', gameDate]);
-        } else {
-            const fileData = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : {};
-            fileData.maintenanceMode = maintenanceMode;
-            fileData.maintenanceText = maintenanceText;
-            fileData.customTitle = customTitle;
-            fileData.announcementEnabled = announcementEnabled;
-            fileData.announcementShowOnSignup = announcementShowOnSignup;
-            fileData.announcementText = announcementText;
-            fileData.announcementImages = announcementImages;
-            fileData.gameTime = gameTime;
-            fileData.gameLocation = gameLocation;
-            fileData.gameDate = gameDate;
-            fs.writeFileSync(DATA_FILE, JSON.stringify(fileData, null, 2), 'utf8');
-        }
-
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['maintenanceMode', maintenanceMode.toString()]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['customTitle', customTitle]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementEnabled', announcementEnabled.toString()]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementText', announcementText]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementImages', JSON.stringify(announcementImages)]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['selectedDayTime', gameTime]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['selectedArena', gameLocation]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['gameDate', gameDate]
+        );
+        
         res.json({
             success: true,
             maintenanceMode,
-            maintenanceText,
             customTitle,
             announcementEnabled,
-            announcementShowOnSignup,
             announcementText,
             announcementImages,
             gameTime,
@@ -2565,6 +2566,10 @@ app.post('/api/admin/release-roster', async (req, res) => {
         requirePlayerCode = true;
         manualOverride = true;  // Keep locked after manual release
         manualOverrideState = 'locked';  // Force locked state
+
+        // Auto-enable payment reminder when roster is released
+        announcementEnabled = true;
+        announcementText = 'E-transfer required immediately after roster release.';
         
         currentWeekData = {
             weekNumber: week,
@@ -2580,6 +2585,16 @@ app.post('/api/admin/release-roster', async (req, res) => {
         }
         
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
+
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementEnabled', announcementEnabled.toString()]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementText', announcementText]
+        );
+
         await saveData();
         
         res.json({ 
