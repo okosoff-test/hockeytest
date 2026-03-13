@@ -1320,8 +1320,8 @@
         }
 
         .preview-thumb {
-            width: 96px;
-            height: 96px;
+            width: min(100%, 360px);
+            max-height: 220px;
             object-fit: contain;
             border-radius: 10px;
             background: rgba(0,0,0,0.3);
@@ -1417,7 +1417,7 @@
                 <div class="message-box">
                     <label for="announcementImageUpload">Upload Announcement Picture</label>
                     <input type="file" id="announcementImageUpload" accept="image/*">
-                    <small>Image auto-resizes and compresses to about 1&quot; × 1&quot; (96 × 96 px).</small>
+                    <small>Image keeps a larger HD size for a bigger, clearer banner on the signup page.</small>
                 </div>
 
                 <div class="message-box">
@@ -1665,10 +1665,31 @@
         <!-- Pre-defined Goalies Section - AUTO ADD -->
         <div class="goalies-section">
             <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;" id="autoGoalieHelperText">
-                Loading regular goalies for the selected game day...
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
+                These goalies are automatically added on weekly/manual reset. Check to add manually now.
             </p>
-            <div class="goalie-list" id="predefinedGoalies"></div>
+            <div class="goalie-list" id="predefinedGoalies">
+                <div class="goalie-item">
+                    <div class="goalie-checkbox-wrapper">
+                        <input type="checkbox" id="goalieCraig" value="Craig Scolack">
+                        <label for="goalieCraig">Craig Scolack</label>
+                    </div>
+                    <div class="goalie-rating">
+                        <label>Rating:</label>
+                        <input type="number" id="ratingCraig" min="1" max="10" value="9">
+                    </div>
+                </div>
+                <div class="goalie-item">
+                    <div class="goalie-checkbox-wrapper">
+                        <input type="checkbox" id="goalieHao" value="Hao Chau">
+                        <label for="goalieHao">Hao Chau</label>
+                    </div>
+                    <div class="goalie-rating">
+                        <label>Rating:</label>
+                        <input type="number" id="ratingHao" min="1" max="10" value="8">
+                    </div>
+                </div>
+            </div>
             <button class="add-goalies-btn" onclick="addSelectedGoalies()">➕ Add Selected Goalies Now</button>
         </div>
 
@@ -2223,52 +2244,11 @@
         let currentTotalPaid = 0;
         let backupGoaliesData = [];
 
-        // Pre-defined goalie data (dynamic by selected game day)
-        let PREDEFINED_GOALIES = [];
-
-        function slugifyGoalieName(name) {
-            return String(name || '').replace(/[^a-z0-9]+/gi, '').trim();
-        }
-
-        function renderPredefinedGoalies(goalies = [], dayName = '') {
-            const container = document.getElementById('predefinedGoalies');
-            const helper = document.getElementById('autoGoalieHelperText');
-            if (!container) return;
-
-            const safeDay = String(dayName || '').trim() || 'selected day';
-            PREDEFINED_GOALIES = Array.isArray(goalies)
-                ? goalies.map(goalie => ({
-                    ...goalie,
-                    id: 'goalie' + slugifyGoalieName(goalie.firstName + goalie.lastName),
-                    name: `${goalie.firstName} ${goalie.lastName}`,
-                    defaultRating: parseInt(goalie.rating) || 7
-                }))
-                : [];
-
-            if (helper) {
-                if (PREDEFINED_GOALIES.length) {
-                    helper.textContent = `${safeDay} regular goalies auto-added on weekly/manual reset. Check to add manually now.`;
-                } else {
-                    helper.textContent = `No regular goalies configured for ${safeDay}.`;
-                }
-            }
-
-            container.innerHTML = PREDEFINED_GOALIES.map(goalie => {
-                const ratingId = 'rating' + goalie.id.replace('goalie', '');
-                return `
-                    <div class="goalie-item">
-                        <div class="goalie-checkbox-wrapper">
-                            <input type="checkbox" id="${goalie.id}" value="${goalie.name}">
-                            <label for="${goalie.id}">${goalie.name}</label>
-                        </div>
-                        <div class="goalie-rating">
-                            <label>Rating:</label>
-                            <input type="number" id="${ratingId}" min="1" max="10" value="${goalie.defaultRating}">
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
+        // Pre-defined goalie data
+        const PREDEFINED_GOALIES = [
+            { id: 'goalieCraig', name: 'Craig Scolack', phone: '(519) 982-6311', defaultRating: 9 },
+            { id: 'goalieHao', name: 'Hao Chau', phone: '(519) 995-9884', defaultRating: 8 }
+        ];
 
         async function checkSession() {
             if (!sessionToken) {
@@ -2403,8 +2383,6 @@
                 if (data.backupGoalies) {
                     backupGoaliesData = data.backupGoalies;
                 }
-
-                renderPredefinedGoalies(data.autoAddGoalies || [], data.gameDayName || 'Selected');
                 
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
@@ -3553,23 +3531,21 @@ Date updated to: ${selectedGameDate}`);
                 resultDiv.innerHTML = '❌ Network error';
             }
         }
-        async function resizeImageToSquareDataUrl(file, size = 96, quality = 0.82) {
+        async function resizeImageToBannerDataUrl(file, maxWidth = 1800, quality = 0.92) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
                 reader.onload = (event) => {
                     const img = new Image();
                     img.onload = () => {
+                        const scale = Math.min(1, maxWidth / img.width);
+                        const drawW = Math.round(img.width * scale);
+                        const drawH = Math.round(img.height * scale);
                         const canvas = document.createElement('canvas');
                         const ctx = canvas.getContext('2d');
-                        canvas.width = size;
-                        canvas.height = size;
-                        ctx.clearRect(0, 0, size, size);
-                        const ratio = Math.min(size / img.width, size / img.height);
-                        const drawW = Math.round(img.width * ratio);
-                        const drawH = Math.round(img.height * ratio);
-                        const offsetX = Math.round((size - drawW) / 2);
-                        const offsetY = Math.round((size - drawH) / 2);
-                        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                        canvas.width = drawW;
+                        canvas.height = drawH;
+                        ctx.clearRect(0, 0, drawW, drawH);
+                        ctx.drawImage(img, 0, 0, drawW, drawH);
                         resolve(canvas.toDataURL('image/jpeg', quality));
                     };
                     img.onerror = () => reject(new Error('Invalid image file'));
@@ -3584,7 +3560,7 @@ Date updated to: ${selectedGameDate}`);
             const file = event.target.files && event.target.files[0];
             if (!file) return;
             try {
-                const dataUrl = await resizeImageToSquareDataUrl(file, 96, 0.82);
+                const dataUrl = await resizeImageToBannerDataUrl(file, 1800, 0.92);
                 window.announcementImageData = dataUrl;
                 const preview = document.getElementById('announcementImagePreview');
                 if (preview) {

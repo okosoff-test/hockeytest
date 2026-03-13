@@ -735,30 +735,28 @@
         .announcement-bulletin {
             display: none;
             width: 100%;
-            max-width: 900px;
+            max-width: 1200px;
             background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
             color: #2f2410;
-            padding: 14px 16px;
-            border-radius: 12px;
-            margin-bottom: 22px;
+            padding: 16px;
+            border-radius: 14px;
+            margin: 0 auto 22px;
             border: 1px solid #e2be57;
             box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
         }
 
         .announcement-bulletin.active {
-            display: flex;
-            align-items: center;
-            gap: 14px;
+            display: block;
         }
 
         .announcement-thumb {
-            width: 96px;
-            height: 96px;
+            width: 100%;
+            max-height: 520px;
             object-fit: contain;
-            border-radius: 10px;
+            border-radius: 12px;
             background: rgba(255,255,255,0.55);
-            flex: 0 0 auto;
             display: none;
+            margin-bottom: 14px;
         }
 
         .announcement-thumb.visible {
@@ -767,16 +765,16 @@
 
         .announcement-copy strong {
             display: block;
-            font-size: 1.05rem;
-            margin-bottom: 2px;
+            font-size: 1.15rem;
+            margin-bottom: 6px;
             letter-spacing: 0.2px;
             color: #5a4306;
         }
 
         .announcement-copy span {
             color: #2f2410;
-            font-size: 1rem;
-            line-height: 1.4;
+            font-size: 1.05rem;
+            line-height: 1.5;
         }
 
     </style>
