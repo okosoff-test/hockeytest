@@ -272,10 +272,12 @@ const DAY_TIME_OPTIONS = [
 
 // --- APP SETTINGS ---
 let maintenanceMode = false;
+let maintenanceMessage = 'Portal is down for maintenance, check back later';
+let maintenanceImage = '';
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
-let announcementImages = [];
+let announcementImage = '';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -851,20 +853,15 @@ async function loadDataFromDB() {
             appSettings[row.key] = row.value;
         });
         
-        if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
+        if (appSettings.maintenanceMode !== undefined) maintenanceMode = appSettings.maintenanceMode === 'true';
+        if (appSettings.maintenanceMessage !== undefined) maintenanceMessage = appSettings.maintenanceMessage || maintenanceMessage;
+        if (appSettings.maintenanceImage !== undefined) maintenanceImage = appSettings.maintenanceImage || '';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
-        if (appSettings.announcementImages !== undefined) {
-            try {
-                announcementImages = JSON.parse(appSettings.announcementImages || '[]');
-                if (!Array.isArray(announcementImages)) announcementImages = [];
-            } catch {
-                announcementImages = [];
-            }
-        }
+        if (appSettings.announcementImage !== undefined) announcementImage = appSettings.announcementImage || '';
         
     } catch (err) {
         console.error('Error loading from DB:', err);
@@ -906,17 +903,8 @@ async function saveData() {
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
-        saveDataToFile();
-    } catch (err) {
-        console.error('Error saving data:', err);
-    }
-}
 
-const DATA_FILE = './data.json';
-
-function saveDataToFile() {
-    try {
-        const data = {
+        const filePayload = {
             playerSpots,
             players,
             waitlist,
@@ -929,6 +917,7 @@ function saveDataToFile() {
             manualOverrideState,
             lastResetWeek,
             rosterReleased,
+            currentWeekData,
             signupLockStartAt,
             signupLockEndAt,
             rosterReleaseAt,
@@ -938,18 +927,21 @@ function saveDataToFile() {
             signupLockSchedule,
             rosterReleaseSchedule,
             resetWeekSchedule,
-            currentWeekData,
             maintenanceMode,
+            maintenanceMessage,
+            maintenanceImage,
             customTitle,
             announcementEnabled,
             announcementText,
-            announcementImages
+            announcementImage
         };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), 'utf8');
+        fs.writeFileSync(DATA_FILE, JSON.stringify(filePayload, null, 2));
     } catch (err) {
-        console.error('Error writing data file:', err);
+        console.error('Error saving data:', err);
     }
 }
+
+const DATA_FILE = './data.json';
 
 function generateRandomCode() {
     return Math.floor(1000 + Math.random() * 9000).toString();
@@ -989,10 +981,12 @@ function loadDataFromFile() {
             };
             // Load new settings
             maintenanceMode = data.maintenanceMode ?? false;
+            maintenanceMessage = data.maintenanceMessage ?? maintenanceMessage;
+            maintenanceImage = data.maintenanceImage ?? '';
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
-            announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            announcementImage = data.announcementImage ?? '';
             refreshDynamicSignupCode();
         } else {
             gameDate = calculateNextGameDate();
@@ -1425,10 +1419,12 @@ app.get('/api/status', (req, res) => {
         players: publicPlayers,  // Sanitized - no ratings, no payment info
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
+        maintenanceMessage: maintenanceMessage,
+        maintenanceImage: maintenanceImage,
         customTitle: customTitle,
         announcementEnabled: announcementEnabled,
         announcementText: announcementText,
-        announcementImages: announcementImages,
+        announcementImage: announcementImage,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -1901,10 +1897,12 @@ app.post('/api/admin/app-settings', (req, res) => {
     
     res.json({
         maintenanceMode,
+        maintenanceMessage,
+        maintenanceImage,
         customTitle,
         announcementEnabled,
         announcementText,
-        announcementImages,
+        announcementImage,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -1916,69 +1914,67 @@ app.post('/api/admin/app-settings', (req, res) => {
 
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
-    const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle, 
-            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
-    
+    const {
+        sessionToken,
+        maintenanceMode: newMaintenance,
+        maintenanceMessage: newMaintenanceMessage,
+        maintenanceImage: newMaintenanceImage,
+        customTitle: newTitle,
+        announcementEnabled: newAnnouncementEnabled,
+        announcementText: newAnnouncementText,
+        announcementImage: newAnnouncementImage,
+        selectedDayTime,
+        selectedArena,
+        gameDate: newGameDate
+    } = req.body;
+
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
     }
-    
+
     if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
+    if (newMaintenanceMessage !== undefined) maintenanceMessage = String(newMaintenanceMessage || '').trim() || 'Portal is down for maintenance, check back later';
+    if (newMaintenanceImage !== undefined) maintenanceImage = String(newMaintenanceImage || '').trim();
     if (newTitle) customTitle = newTitle;
     if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
     if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
-    if (newAnnouncementImages !== undefined) {
-        announcementImages = Array.isArray(newAnnouncementImages)
-            ? newAnnouncementImages.map(v => String(v || '').trim()).filter(Boolean).slice(0, 6)
-            : [];
-    }
+    if (newAnnouncementImage !== undefined) announcementImage = String(newAnnouncementImage || '').trim();
     if (selectedDayTime) gameTime = selectedDayTime;
     if (selectedArena) gameLocation = selectedArena;
     if (newGameDate) gameDate = newGameDate;
-    if (newGameDate) gameDate = newGameDate;
-    
+
     try {
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['maintenanceMode', maintenanceMode.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['customTitle', customTitle]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementEnabled', announcementEnabled.toString()]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementText', announcementText]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['announcementImages', JSON.stringify(announcementImages)]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedDayTime', gameTime]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['selectedArena', gameLocation]
-        );
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['gameDate', gameDate]
-        );
-        
+        if (pool) {
+            const appSettingsToSave = [
+                ['maintenanceMode', maintenanceMode.toString()],
+                ['maintenanceMessage', maintenanceMessage],
+                ['maintenanceImage', maintenanceImage],
+                ['customTitle', customTitle],
+                ['announcementEnabled', announcementEnabled.toString()],
+                ['announcementText', announcementText],
+                ['announcementImage', announcementImage],
+                ['selectedDayTime', gameTime],
+                ['selectedArena', gameLocation],
+                ['gameDate', gameDate]
+            ];
+            for (const [key, value] of appSettingsToSave) {
+                await pool.query(
+                    'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                    [key, value]
+                );
+            }
+        }
+        await saveData();
+
         res.json({
             success: true,
             maintenanceMode,
+            maintenanceMessage,
+            maintenanceImage,
             customTitle,
             announcementEnabled,
             announcementText,
-            announcementImages,
+            announcementImage,
             gameTime,
             gameLocation,
             gameDate

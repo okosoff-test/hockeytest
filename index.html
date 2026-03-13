@@ -731,6 +731,64 @@
             }
         }
 
+
+        .announcement-bulletin {
+            display: none;
+            background: linear-gradient(90deg, #1b6b33, #2f8f46, #1b6b33);
+            background-size: 200% 100%;
+            color: white;
+            padding: 18px 20px;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 1.15rem;
+            animation: flash 1.4s infinite;
+            border: 2px solid #4CAF50;
+            box-shadow: 0 0 24px rgba(76, 175, 80, 0.35);
+            width: 100%;
+            max-width: 900px;
+        }
+
+        .announcement-bulletin.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 14px;
+            flex-wrap: wrap;
+        }
+
+        .bulletin-image {
+            width: 96px;
+            height: 96px;
+            object-fit: cover;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.35);
+            background: rgba(0,0,0,0.15);
+            display: none;
+        }
+
+        .bulletin-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            text-align: left;
+            max-width: 720px;
+        }
+
+        .bulletin-heading {
+            font-size: 1.3rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .bulletin-text {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #fff;
+            white-space: pre-wrap;
+        }
+
 </style>
 <base target="_blank">
 </head>
@@ -738,7 +796,20 @@
 
     <!-- MAINTENANCE BULLETIN -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
-        Portal is down for maintenance, check back later
+        <img id="maintenanceBulletinImage" class="bulletin-image" alt="Maintenance">
+        <div class="bulletin-copy">
+            <div class="bulletin-heading">Maintenance Notice</div>
+            <div class="bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later</div>
+        </div>
+    </div>
+
+    <!-- LEAGUE ANNOUNCEMENT -->
+    <div class="announcement-bulletin" id="announcementBulletin">
+        <img id="announcementBulletinImage" class="bulletin-image" alt="Announcement">
+        <div class="bulletin-copy">
+            <div class="bulletin-heading">League Announcement</div>
+            <div class="bulletin-text" id="announcementBulletinText"></div>
+        </div>
     </div>
 
     <div class="container" id="playerView">
@@ -950,6 +1021,7 @@
         let rosterReleased = false;
         let currentPlayers = [];
         let maintenanceMode = false;
+        let announcementEnabled = false;
 
         let playerToCancel = null;
 
@@ -1217,41 +1289,63 @@
         }
 
 
+
+        function updateBulletinImage(elementId, dataUrl) {
+            const img = document.getElementById(elementId);
+            if (!img) return;
+            if (dataUrl) {
+                img.src = dataUrl;
+                img.style.display = 'block';
+            } else {
+                img.removeAttribute('src');
+                img.style.display = 'none';
+            }
+        }
+
+        function renderMaintenanceBulletin(message, image) {
+            const bulletin = document.getElementById('maintenanceBulletin');
+            const text = document.getElementById('maintenanceBulletinText');
+            if (text) text.innerText = message || 'Portal is down for maintenance, check back later';
+            updateBulletinImage('maintenanceBulletinImage', image || '');
+            bulletin.classList.add('active');
+        }
+
+        function hideMaintenanceBulletin() {
+            const bulletin = document.getElementById('maintenanceBulletin');
+            bulletin.classList.remove('active');
+            updateBulletinImage('maintenanceBulletinImage', '');
+        }
+
+        function renderAnnouncementBulletin(enabled, message, image) {
+            const bulletin = document.getElementById('announcementBulletin');
+            const text = document.getElementById('announcementBulletinText');
+            const hasContent = !!(message || image);
+            if (enabled && hasContent) {
+                if (text) text.innerText = message || '';
+                updateBulletinImage('announcementBulletinImage', image || '');
+                bulletin.classList.add('active');
+            } else {
+                bulletin.classList.remove('active');
+                if (text) text.innerText = '';
+                updateBulletinImage('announcementBulletinImage', '');
+            }
+        }
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
                 const data = await res.json();
                 
-                // Handle maintenance mode / announcement bulletin
-                maintenanceMode = !!data.maintenanceMode;
-                const announcementEnabled = !!data.announcementEnabled;
-                const announcementText = (data.announcementText || '').trim();
-                const announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+                // Handle maintenance mode
+                maintenanceMode = data.maintenanceMode;
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
-                const maintenanceBulletinHeading = document.getElementById('maintenanceBulletinHeading');
-                const maintenanceBulletinText = document.getElementById('maintenanceBulletinText');
-                const maintenanceBulletinImage = document.getElementById('maintenanceBulletinImage');
-                const bulletinShouldShow = maintenanceMode || (announcementEnabled && (announcementText || announcementImages.length));
-
-                maintenanceBulletin.classList.toggle('active', bulletinShouldShow);
-                maintenanceBulletin.classList.toggle('announcement-only', !maintenanceMode && bulletinShouldShow);
-
                 if (maintenanceMode) {
-                    maintenanceBulletinHeading.innerText = 'Maintenance Notice';
-                    maintenanceBulletinText.innerText = announcementText || 'Portal is currently down for maintenance. Please check back later.';
+                    maintenanceBulletin.classList.add('active');
                 } else {
-                    maintenanceBulletinHeading.innerText = 'League Announcement';
-                    maintenanceBulletinText.innerText = announcementText || 'Please review the latest league announcement below.';
+                    maintenanceBulletin.classList.remove('active');
                 }
-
-                if (announcementImages.length && announcementImages[0]) {
-                    maintenanceBulletinImage.src = announcementImages[0];
-                    maintenanceBulletinImage.style.display = 'block';
-                } else {
-                    maintenanceBulletinImage.removeAttribute('src');
-                    maintenanceBulletinImage.style.display = 'none';
-                }
-
+                
+                
                 // Update dynamic title
                 if (data.customTitle) {
                     document.getElementById('pageTitle').innerText = data.customTitle;
