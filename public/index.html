@@ -792,15 +792,9 @@
     <div class="announcement-bulletin" id="announcementBulletin">
         <img id="announcementThumb" class="announcement-thumb" alt="Announcement">
         <div class="announcement-copy">
-            <strong>Attention <span class="announcement-hint">(click on pic to enlarge)</span>:</strong>
+            <strong>Attention <span style="font-size:0.8rem; font-weight:600;">(click on pic to enlarge)</span>:</strong>
             <span id="announcementText">&nbsp;</span>
         </div>
-    </div>
-
-
-    <div class="announcement-lightbox" id="announcementLightbox" aria-hidden="true">
-        <button type="button" class="announcement-lightbox-close" id="announcementLightboxClose" aria-label="Close image">&times;</button>
-        <img id="announcementLightboxImage" alt="Announcement full size">
     </div>
 
     <div class="container" id="playerView">
@@ -1281,46 +1275,11 @@
 
 
 
-        function bindAnnouncementLightbox() {
-            const thumbEl = document.getElementById('announcementThumb');
-            const lightbox = document.getElementById('announcementLightbox');
-            const lightboxImg = document.getElementById('announcementLightboxImage');
-            const closeBtn = document.getElementById('announcementLightboxClose');
-            if (!thumbEl || !lightbox || !lightboxImg || !closeBtn || thumbEl.dataset.bound === '1') return;
-
-            const closeLightbox = () => {
-                lightbox.classList.remove('active');
-                lightbox.setAttribute('aria-hidden', 'true');
-                document.body.style.overflow = '';
-            };
-
-            thumbEl.addEventListener('click', () => {
-                if (!thumbEl.src) return;
-                lightboxImg.src = thumbEl.src;
-                lightbox.classList.add('active');
-                lightbox.setAttribute('aria-hidden', 'false');
-                document.body.style.overflow = 'hidden';
-            });
-
-            closeBtn.addEventListener('click', closeLightbox);
-            lightbox.addEventListener('click', (event) => {
-                if (event.target === lightbox) closeLightbox();
-            });
-            document.addEventListener('keydown', (event) => {
-                if (event.key === 'Escape' && lightbox.classList.contains('active')) {
-                    closeLightbox();
-                }
-            });
-
-            thumbEl.dataset.bound = '1';
-        }
-
         function renderAnnouncement(data) {
             const bulletin = document.getElementById('announcementBulletin');
             const textEl = document.getElementById('announcementText');
             const thumbEl = document.getElementById('announcementThumb');
             if (!bulletin || !textEl || !thumbEl) return;
-            bindAnnouncementLightbox();
 
             const enabled = !!data.announcementEnabled;
             const text = (data.announcementText || '').trim();
@@ -1336,7 +1295,7 @@
                 return;
             }
 
-            textEl.textContent = text || '';
+            textEl.textContent = text || 'Attention';
             if (image) {
                 thumbEl.src = image;
                 thumbEl.classList.add('visible');
