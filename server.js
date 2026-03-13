@@ -133,6 +133,13 @@ let rosterReleaseAt = '';
 let resetWeekAt = '';
 let lastExactResetRunAt = '';
 let lastExactRosterReleaseRunAt = '';
+let lastScheduleSnapshot = {
+    signupLockStartAt: '',
+    signupLockEndAt: '',
+    rosterReleaseAt: '',
+    resetWeekAt: '',
+    rolledAt: ''
+};
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -373,6 +380,19 @@ function parseDatetimeLocalToETDate(dtLocalStr) {
     const [hh, mm] = tPart.split(':').map(v => clampInt(v, NaN));
     if (![y, m, d, hh, mm].every(Number.isFinite)) return null;
     return { year: y, month: m, day: d, hour: hh, minute: mm };
+}
+
+function addDaysToDatetimeLocal(dtLocalStr, days) {
+    const parts = parseDatetimeLocalToETDate(dtLocalStr);
+    if (!parts) return '';
+    const d = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
+    d.setDate(d.getDate() + days);
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mi = String(d.getMinutes()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
 function etPartsToMinuteKey(parts) {
@@ -677,14 +697,24 @@ async function checkWeeklyReset() {
     requirePlayerCode = true;
     maintenanceMode = false;
     refreshDynamicSignupCode();
-    resetWeekAt = '';
-    signupLockStartAt = '';
-    signupLockEndAt = '';
-    rosterReleaseAt = '';
-    signupLockSchedule.start = null;
-    signupLockSchedule.end = null;
-    rosterReleaseSchedule.at = null;
-    resetWeekSchedule.at = null;
+
+    lastScheduleSnapshot = {
+        signupLockStartAt,
+        signupLockEndAt,
+        rosterReleaseAt,
+        resetWeekAt,
+        rolledAt: new Date().toISOString()
+    };
+
+    signupLockStartAt = addDaysToDatetimeLocal(signupLockStartAt, 7);
+    signupLockEndAt = addDaysToDatetimeLocal(signupLockEndAt, 7);
+    rosterReleaseAt = addDaysToDatetimeLocal(rosterReleaseAt, 7);
+    resetWeekAt = addDaysToDatetimeLocal(resetWeekAt, 7);
+
+    signupLockSchedule.start = signupLockStartAt ? parseDatetimeLocalToDowTime(signupLockStartAt) : null;
+    signupLockSchedule.end = signupLockEndAt ? parseDatetimeLocalToDowTime(signupLockEndAt) : null;
+    rosterReleaseSchedule.at = rosterReleaseAt ? parseDatetimeLocalToDowTime(rosterReleaseAt) : null;
+    resetWeekSchedule.at = resetWeekAt ? parseDatetimeLocalToDowTime(resetWeekAt) : null;
     lastExactRosterReleaseRunAt = '';
 
     if (pool) {
@@ -836,6 +866,7 @@ async function loadDataFromDB() {
         if (settings.resetWeekAt !== undefined) resetWeekAt = settings.resetWeekAt || '';
         if (settings.lastExactResetRunAt !== undefined) lastExactResetRunAt = settings.lastExactResetRunAt || '';
         if (settings.lastExactRosterReleaseRunAt !== undefined) lastExactRosterReleaseRunAt = settings.lastExactRosterReleaseRunAt || '';
+        if (settings.lastScheduleSnapshot) lastScheduleSnapshot = settings.lastScheduleSnapshot;
         if (settings.signupLockSchedule) signupLockSchedule = settings.signupLockSchedule;
         if (settings.rosterReleaseSchedule) rosterReleaseSchedule = settings.rosterReleaseSchedule;
         if (settings.resetWeekSchedule) resetWeekSchedule = settings.resetWeekSchedule;
@@ -934,6 +965,7 @@ async function saveData() {
         await saveSetting('resetWeekAt', resetWeekAt);
         await saveSetting('lastExactResetRunAt', lastExactResetRunAt);
         await saveSetting('lastExactRosterReleaseRunAt', lastExactRosterReleaseRunAt);
+        await saveSetting('lastScheduleSnapshot', lastScheduleSnapshot);
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
@@ -970,6 +1002,7 @@ function loadDataFromFile() {
             resetWeekAt = data.resetWeekAt ?? '';
             lastExactResetRunAt = data.lastExactResetRunAt ?? '';
             lastExactRosterReleaseRunAt = data.lastExactRosterReleaseRunAt ?? '';
+            lastScheduleSnapshot = data.lastScheduleSnapshot ?? lastScheduleSnapshot;
             signupLockSchedule = data.signupLockSchedule ?? signupLockSchedule;
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
@@ -1430,7 +1463,8 @@ app.get('/api/status', (req, res) => {
         lockNoticeLine: signupMessageData.lockNoticeLine,
         openLine: signupMessageData.openLine,
         noCodeLine: signupMessageData.noCodeLine,
-        rosterReleaseLine: signupMessageData.rosterReleaseLine
+        rosterReleaseLine: signupMessageData.rosterReleaseLine,
+        lastScheduleSnapshot
     });
 });
 
@@ -2117,7 +2151,8 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockStartAt,
         signupLockEndAt,
         rosterReleaseAt,
-        resetWeekAt
+        resetWeekAt,
+        lastScheduleSnapshot
     });
 });
 
@@ -2210,7 +2245,8 @@ app.post('/api/admin/update-schedules', (req, res) => {
         rosterReleaseAt,
         resetWeekAt,
         requireCode: requirePlayerCode,
-        isLockedWindow: lockStatus.isLockedWindow
+        isLockedWindow: lockStatus.isLockedWindow,
+        lastScheduleSnapshot
     });
 });
 

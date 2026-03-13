@@ -1858,40 +1858,22 @@
         }
 
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
+            if (!dtLocalValue || !dtLocalValue.includes('T')) return "";
 
-    if (!dtLocalValue || !dtLocalValue.includes('T')) return "";
+            const [datePart, timePart] = dtLocalValue.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour24, minute] = timePart.split(':').map(Number);
 
-    const [datePart, timePart] = dtLocalValue.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hour24, minute] = timePart.split(':').map(Number);
+            const weekdayNames = [
+                "Sunday", "Monday", "Tuesday", "Wednesday",
+                "Thursday", "Friday", "Saturday"
+            ];
 
-    const weekdayNames = [
-        "Sunday","Monday","Tuesday","Wednesday",
-        "Thursday","Friday","Saturday"
-    ];
+            const weekday = weekdayNames[new Date(year, month - 1, day).getDay()];
+            const period = hour24 >= 12 ? "PM" : "AM";
+            const hour12 = (hour24 % 12) || 12;
 
-    const weekday = weekdayNames[new Date(year, month - 1, day).getDay()];
-
-    const period = hour24 >= 12 ? "PM" : "AM";
-    const hour12 = (hour24 % 12) || 12;
-
-    return `${weekday} ${hour12}:${String(minute).padStart(2,'0')} ${period}`;
-}
-            // Format using ET regardless of client locale.
-            const parts = new Intl.DateTimeFormat("en-US", {
-                timeZone: "America/New_York",
-                weekday: "long",
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true
-            }).formatToParts(d);
-            const get = (t) => (parts.find(p => p.type === t)?.value || "");
-            const weekday = get("weekday");
-            const hour = get("hour");
-            const minute = get("minute");
-            const dayPeriod = get("dayPeriod");
-            if (!weekday || !hour || !minute || !dayPeriod) return "";
-            return `${weekday} ${hour}:${minute} ${dayPeriod}`;
+            return `${weekday} ${hour12}:${String(minute).padStart(2,'0')} ${period}`;
         }
 
         
@@ -2176,11 +2158,24 @@
                 ? formatDayTimeFromDatetimeLocal(sData.resetWeekAt)
                 : "OFF";
 
+            const prev = sData.lastScheduleSnapshot || {};
+            const prevLines = [];
+            if (prev.signupLockStartAt && prev.signupLockEndAt) {
+                prevLines.push(`<strong>Previous Lock Window:</strong> ${formatDayTimeFromDatetimeLocal(prev.signupLockStartAt)} → ${formatDayTimeFromDatetimeLocal(prev.signupLockEndAt)}`);
+            }
+            if (prev.rosterReleaseAt) {
+                prevLines.push(`<strong>Previous Roster Release:</strong> ${formatDayTimeFromDatetimeLocal(prev.rosterReleaseAt)}`);
+            }
+            if (prev.resetWeekAt) {
+                prevLines.push(`<strong>Previous Weekly Reset:</strong> ${formatDayTimeFromDatetimeLocal(prev.resetWeekAt)}`);
+            }
+
             return `
                 <strong>🔒 Signup Lock Window:</strong> ${lockLine}<br>
                 <strong>📋 Auto Roster Release:</strong> ${rrLine}<br>
                 <strong>♻️ Weekly Reset:</strong> ${resetLine}<br>
-                <span style="color:#aaa;">Times use the exact ET date and time selected in the scheduler.</span>
+                <span style="color:#aaa;">Times use the exact ET date and time selected in the scheduler. After weekly reset, schedules auto-roll forward by 7 days.</span>
+                ${prevLines.length ? `<br><br><span style="color:#9fd0ff;">${prevLines.join('<br>')}</span>` : ''}
             `;
         }
 
