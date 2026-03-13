@@ -1393,36 +1393,23 @@
                 <div class="announcement-status inactive" id="announcementStatus">ANNOUNCEMENT OFF</div>
             </div>
             <p style="color:#9fc7ff; font-size:0.9rem; margin-top:10px;">
-                Use this for player notices like lost & found, roster reminders, weather notes, or general league messages.
-                Players can still sign up while this is showing.
+                Use this for any player-facing message. It shows on the signup page and does not block signup.
             </p>
 
-            <div class="message-grid">
-                <div class="message-box">
-                    <label for="announcementPreset">Preset Message</label>
-                    <select id="announcementPreset">
-                        <option value="">Custom Message</option>
-                        <option value="📢 General League Notice">General League Notice</option>
-                        <option value="🏒 Roster releases tonight.">Roster releases tonight.</option>
-                        <option value="🌧️ Weather update will be posted here.">Weather update will be posted here.</option>
-                        <option value="🔎 Lost and found item after hockey.">Lost and found item after hockey.</option>
-                    </select>
-                    <small>Select a preset or leave as Custom Message.</small>
-                </div>
-
+            <div class="message-grid single-column">
                 <div class="message-box">
                     <label for="announcementShowOnSignup">Display on Signup Page</label>
                     <select id="announcementShowOnSignup">
                         <option value="yes">Yes - show message</option>
                         <option value="no">No - hide message</option>
                     </select>
-                    <small>Set to "Yes" for players to see the banner on the signup page.</small>
+                    <small>Set to &quot;Yes&quot; to show the banner to players on the signup page.</small>
                 </div>
             </div>
 
             <div class="message-box">
-                <label for="announcementText">Announcement Message</label>
-                <textarea id="announcementText" rows="4" placeholder="Type your custom player announcement here..."></textarea>
+                <label for="announcementText">Custom Announcement</label>
+                <textarea id="announcementText" rows="4" placeholder="Type any custom announcement here..."></textarea>
                 <small>This banner is separate from maintenance mode and will not shut down signup.</small>
             </div>
 
@@ -2362,7 +2349,6 @@
                 
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
-                const announcementPreset = document.getElementById('announcementPreset');
                 const announcementText = document.getElementById('announcementText');
                 const announcementShowOnSignup = document.getElementById('announcementShowOnSignup');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
@@ -2376,10 +2362,6 @@
                 }
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
-                }
-                if (announcementPreset) {
-                    const presetValues = Array.from(announcementPreset.options).map(o => o.value);
-                    announcementPreset.value = presetValues.includes(data.announcementText || '') ? (data.announcementText || '') : '';
                 }
                 if (announcementShowOnSignup) {
                     announcementShowOnSignup.value = data.announcementShowOnSignup ? 'yes' : 'no';
@@ -3495,17 +3477,6 @@
                 resultDiv.innerHTML = '❌ Network error';
             }
         }
-
-
-        function applyAnnouncementPreset() {
-            const preset = document.getElementById('announcementPreset');
-            const text = document.getElementById('announcementText');
-            if (!preset || !text) return;
-            if (preset.value) {
-                text.value = preset.value;
-            }
-        }
-
         async function resizeImageToSquareDataUrl(file, size = 96, quality = 0.82) {
             return new Promise((resolve, reject) => {
                 const reader = new FileReader();
@@ -3611,8 +3582,6 @@
                     if (showSelect.value === 'no') checkbox.checked = false;
                 });
             }
-            const preset = document.getElementById('announcementPreset');
-            if (preset) preset.addEventListener('change', applyAnnouncementPreset);
             const upload = document.getElementById('announcementImageUpload');
             if (upload) upload.addEventListener('change', handleAnnouncementImageUpload);
         });
