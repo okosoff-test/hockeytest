@@ -1860,25 +1860,58 @@
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
             if (!dtLocalValue || !dtLocalValue.includes('T')) return "";
 
-            // IMPORTANT:
-            // Treat datetime-local values as ET wall-clock values exactly as entered.
-            // Do not convert from the browser's local timezone.
-            const [datePart, timePart] = dtLocalValue.split('T');
-            const [year, month, day] = datePart.split('-').map(Number);
-            const [hour24, minute] = timePart.split(':').map(Number);
+            const parsed = parseDatetimeLocalValue(dtLocalValue);
+            if (!parsed) return "";
 
-            if ([year, month, day, hour24, minute].some(v => !Number.isFinite(v))) return "";
-
-            const base = new Date(Date.UTC(year, month - 1, day));
+            const base = new Date(Date.UTC(parsed.year, parsed.month - 1, parsed.day));
             const weekday = new Intl.DateTimeFormat('en-US', {
                 timeZone: 'UTC',
                 weekday: 'long'
             }).format(base);
 
-            const hour12 = ((hour24 + 11) % 12) + 1;
-            const dayPeriod = hour24 >= 12 ? 'PM' : 'AM';
+            return `${weekday} ${formatTime12(parsed.hour, parsed.minute)}`;
+        }
 
-            return `${weekday} ${hour12}:${pad2(minute)} ${dayPeriod}`;
+        function getEnhancedDateTimeParts(targetId) {
+            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
+            if (!wrapper) return null;
+
+            const dateVal = wrapper.querySelector('.date-input')?.value || '';
+            const timeText = String(wrapper.querySelector('.time-trigger')?.textContent || '').trim();
+            if (!dateVal) return null;
+
+            const dateMatch = dateVal.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            const timeMatch = timeText.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (!dateMatch || !timeMatch) return null;
+
+            let hour24 = parseInt(timeMatch[1], 10) % 12;
+            const minute = parseInt(timeMatch[2], 10);
+            if (timeMatch[3].toUpperCase() === 'PM') hour24 += 12;
+
+            return {
+                year: parseInt(dateMatch[1], 10),
+                month: parseInt(dateMatch[2], 10),
+                day: parseInt(dateMatch[3], 10),
+                hour: hour24,
+                minute
+            };
+        }
+
+        function getEnhancedDateTimeValue(targetId) {
+            const parts = getEnhancedDateTimeParts(targetId);
+            if (!parts) return '';
+            return `${parts.year}-${pad2(parts.month)}-${pad2(parts.day)}T${pad2(parts.hour)}:${pad2(parts.minute)}`;
+        }
+
+        function formatEnhancedDayTime(targetId) {
+            const parts = getEnhancedDateTimeParts(targetId);
+            if (!parts) return '';
+            const base = new Date(Date.UTC(parts.year, parts.month - 1, parts.day));
+            const weekday = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'UTC',
+                weekday: 'long'
+            }).format(base);
+            return `${weekday} ${formatTime12(parts.hour, parts.minute)}`;
         }
 
         
@@ -1915,25 +1948,6 @@
             return `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
         }
 
-        function getEnhancedDateTimeParts(targetId) {
-            const input = document.getElementById(targetId);
-            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
-            if (!input || !wrapper) return null;
-
-            const dateVal = (wrapper.querySelector('.date-input')?.value || '').trim();
-            const timeText = (wrapper.querySelector('.time-trigger')?.textContent || '').trim();
-            const m = timeText.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-
-            if (dateVal && m) {
-                let hour24 = parseInt(m[1], 10) % 12;
-                const minute = parseInt(m[2], 10);
-                if (m[3].toUpperCase() === 'PM') hour24 += 12;
-                return buildDatetimeLocal(dateVal, hour24, minute);
-            }
-
-            return input.value || '';
-        }
-
         function syncEnhancedControl(targetId) {
             const input = document.getElementById(targetId);
             const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
@@ -1943,12 +1957,9 @@
             const summary = wrapper.querySelector('.picker-summary');
             const parsed = parseDatetimeLocalValue(input.value);
             if (parsed) {
-                if (!dateInput.value) dateInput.value = `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}`;
-                if (!/^\d{1,2}:\d{2}\s*(AM|PM)$/i.test(timeBtn.textContent || '')) {
-                    timeBtn.textContent = formatTime12(parsed.hour, parsed.minute);
-                }
-                const visibleDtVal = getEnhancedDateTimeParts(targetId);
-                const dayTime = formatDayTimeFromDatetimeLocal(visibleDtVal);
+                dateInput.value = `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}`;
+                timeBtn.textContent = formatTime12(parsed.hour, parsed.minute);
+                const dayTime = formatEnhancedDayTime(targetId);
                 summary.textContent = dayTime ? `ET: ${dayTime}` : '';
             } else {
                 dateInput.value = '';
@@ -2435,30 +2446,25 @@
 
         // Update title preview based on selection
         function updateTitlePreview() {
-            const dtVal = getEnhancedDateTimeParts('titleDayTime');
-            const dayTime = formatDayTimeFromDatetimeLocal(dtVal);
+            const dayTime = formatEnhancedDayTime('titleDayTime');
             const day = (dayTime.split(' ')[0] || "Friday");
             const newTitle = `Phan's ${day} Hockey`;
             document.getElementById('dynamicTitlePreview').innerText = newTitle;
-
-            const wrapper = document.querySelector('.enhanced-datetime[data-target="titleDayTime"]');
-            const summary = wrapper?.querySelector('.picker-summary');
-            if (summary) {
-                summary.textContent = dayTime ? `ET: ${dayTime}` : '';
-            }
         }
 
         // Update title and time
         async function updateTitle() {
-            const dtVal = getEnhancedDateTimeParts('titleDayTime');
-            const dayTime = formatDayTimeFromDatetimeLocal(dtVal);
-            if (!dayTime) {
+            const dtVal = getEnhancedDateTimeValue('titleDayTime');
+            const dayTime = formatEnhancedDayTime('titleDayTime');
+            if (!dayTime || !dtVal) {
                 alert('Please select a day and time first.');
                 return;
             }
+            const hiddenInput = document.getElementById('titleDayTime');
+            if (hiddenInput) hiddenInput.value = dtVal;
             const day = dayTime.split(' ')[0];
             const newTitle = `Phan's ${day} Hockey`;
-            const selectedGameDate = dtVal ? dtVal.split('T')[0] : '';
+            const selectedGameDate = dtVal.split('T')[0];
             
             try {
                 const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
