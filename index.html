@@ -735,10 +735,10 @@
         .announcement-bulletin {
             display: none;
             width: 100%;
-            max-width: 900px;
+            max-width: 1100px;
             background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
             color: #2f2410;
-            padding: 14px 16px;
+            padding: 16px;
             border-radius: 12px;
             margin-bottom: 22px;
             border: 1px solid #e2be57;
@@ -747,22 +747,29 @@
 
         .announcement-bulletin.active {
             display: flex;
-            align-items: center;
-            gap: 14px;
+            align-items: flex-start;
+            gap: 16px;
         }
 
         .announcement-thumb {
             width: 220px;
-            height: 220px;
+            max-width: 42vw;
+            height: auto;
             object-fit: contain;
             border-radius: 10px;
             background: rgba(255,255,255,0.55);
             flex: 0 0 auto;
             display: none;
+            cursor: zoom-in;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.15);
         }
 
         .announcement-thumb.visible {
             display: block;
+        }
+
+        .announcement-thumb:hover {
+            transform: scale(1.01);
         }
 
         .announcement-copy strong {
@@ -779,6 +786,41 @@
             line-height: 1.4;
         }
 
+        .announcement-modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            z-index: 9999;
+            background: rgba(0,0,0,0.92);
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+        }
+
+        .announcement-modal.active {
+            display: flex;
+        }
+
+        .announcement-modal img {
+            max-width: 96vw;
+            max-height: 92vh;
+            width: auto;
+            height: auto;
+            border-radius: 12px;
+            box-shadow: 0 18px 50px rgba(0,0,0,0.45);
+        }
+
+        .announcement-modal-close {
+            position: absolute;
+            top: 18px;
+            right: 24px;
+            font-size: 42px;
+            line-height: 1;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+        }
+
     </style>
 <base target="_blank">
 </head>
@@ -790,11 +832,16 @@
     </div>
 
     <div class="announcement-bulletin" id="announcementBulletin">
-        <img id="announcementThumb" class="announcement-thumb" style="cursor:pointer;" alt="Announcement">
+        <img id="announcementThumb" class="announcement-thumb" alt="Announcement" onclick="openAnnouncementImage()">
         <div class="announcement-copy">
             <strong>Attention:</strong>
             <span id="announcementText">&nbsp;</span>
         </div>
+    </div>
+
+    <div class="announcement-modal" id="announcementModal" onclick="closeAnnouncementImage(event)">
+        <span class="announcement-modal-close" onclick="closeAnnouncementImage(event)">&times;</span>
+        <img id="announcementModalImage" alt="Announcement full size">
     </div>
 
     <div class="container" id="playerView">
@@ -1306,6 +1353,28 @@
             bulletin.classList.add('active');
         }
 
+
+        function openAnnouncementImage() {
+            const thumbEl = document.getElementById('announcementThumb');
+            const modal = document.getElementById('announcementModal');
+            const modalImg = document.getElementById('announcementModalImage');
+            if (!thumbEl || !modal || !modalImg || !thumbEl.src) return;
+            modalImg.src = thumbEl.src;
+            modal.classList.add('active');
+        }
+
+        function closeAnnouncementImage(event) {
+            if (event) event.stopPropagation();
+            const modal = document.getElementById('announcementModal');
+            const modalImg = document.getElementById('announcementModalImage');
+            if (modal) modal.classList.remove('active');
+            if (modalImg) modalImg.src = '';
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape') closeAnnouncementImage();
+        });
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -1733,24 +1802,5 @@
             });
         });
     </script>
-
-<div id="imgModal" style="display:none;position:fixed;z-index:9999;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.9);text-align:center;">
-<span onclick="closeImgModal()" style="position:absolute;top:20px;right:40px;font-size:40px;color:white;cursor:pointer;">&times;</span>
-<img id="imgModalContent" style="max-width:95%;max-height:95%;margin-top:40px;">
-</div>
-
-<script>
-const thumb=document.getElementById('announcementThumb');
-if(thumb){
-thumb.addEventListener('click',function(){
-document.getElementById('imgModal').style.display='block';
-document.getElementById('imgModalContent').src=this.src;
-});
-}
-function closeImgModal(){
-document.getElementById('imgModal').style.display='none';
-}
-</script>
-
 </body>
 </html>

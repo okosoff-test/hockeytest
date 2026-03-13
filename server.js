@@ -40,9 +40,11 @@ if (pool) {
 }
 
 // Middleware
+app.disable('x-powered-by');
 app.use(cors());
 app.use(express.json({ limit: '15mb' }));
-app.use(express.static('public'));
+app.use(express.urlencoded({ extended: true, limit: '15mb' }));
+app.use(express.static('public', { maxAge: '1h', etag: true }));
 
 // --- DATA STORE ---
 let playerSpots = 20;
@@ -97,25 +99,6 @@ function getDynamicSignupCode(dayName = getGameDayName()) {
 function refreshDynamicSignupCode() {
     playerSignupCode = getDynamicSignupCode();
     return playerSignupCode;
-}
-
-function getDynamicAutoGoalies(dayName = getGameDayName()) {
-    const day = String(dayName || '').trim().toLowerCase();
-    const goalieMap = {
-        friday: ['Craig', 'Hao'],
-        sunday: ['Craig', 'Mat']
-    };
-    const preferred = goalieMap[day] || ['Craig', 'Hao'];
-
-    return AUTO_ADD_PLAYERS.filter(player => {
-        if (!player.isGoalie) return false;
-        return preferred.includes(player.firstName);
-    });
-}
-
-function getWeeklyAutoPlayers(dayName = getGameDayName()) {
-    const skaters = AUTO_ADD_PLAYERS.filter(player => !player.isGoalie);
-    return [...skaters, ...getDynamicAutoGoalies(dayName)];
 }
 
 function calculateNextGameDate() {
@@ -544,7 +527,7 @@ async function addAutoPlayers() {
     console.log('Adding auto-players for new week...');
     let addedCount = 0;
     
-    for (const autoPlayer of getWeeklyAutoPlayers()) {
+    for (const autoPlayer of AUTO_ADD_PLAYERS) {
         // Check if player already exists
         const normalizedName = (autoPlayer.firstName + ' ' + autoPlayer.lastName).toLowerCase().trim();
         const normalizedPhone = autoPlayer.phone.replace(/\D/g, '');
@@ -677,9 +660,6 @@ async function checkWeeklyReset() {
     manualOverrideState = null;
     requirePlayerCode = true;
     maintenanceMode = false;
-    announcementEnabled = false;
-    announcementText = '';
-    announcementImages = [];
     refreshDynamicSignupCode();
     resetWeekAt = '';
     signupLockStartAt = '';
@@ -1907,8 +1887,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
-        backupGoalies: BACKUP_GOALIES,
-        autoGoalies: getDynamicAutoGoalies()
+        backupGoalies: BACKUP_GOALIES
     });
 });
 
