@@ -2382,7 +2382,7 @@
                     announcementPreset.value = presetValues.includes(data.announcementText || '') ? (data.announcementText || '') : '';
                 }
                 if (announcementShowOnSignup) {
-                    announcementShowOnSignup.value = data.announcementEnabled ? 'yes' : 'no';
+                    announcementShowOnSignup.value = data.announcementShowOnSignup ? 'yes' : 'no';
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -3565,7 +3565,9 @@
             const checkbox = document.getElementById('announcementCheckbox');
             const text = document.getElementById('announcementText');
             const showOnSignup = document.getElementById('announcementShowOnSignup');
-            const enabled = !!(checkbox && checkbox.checked) && (!showOnSignup || showOnSignup.value === 'yes');
+            const checkboxEnabled = !!(checkbox && checkbox.checked);
+            const showEnabled = !showOnSignup || showOnSignup.value === 'yes';
+            const enabled = checkboxEnabled && showEnabled;
             const announcementTextValue = text ? text.value.trim() : '';
             const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
@@ -3575,7 +3577,8 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         sessionToken,
-                        announcementEnabled: enabled,
+                        announcementEnabled: checkboxEnabled,
+                        announcementShowOnSignup: showEnabled,
                         announcementText: announcementTextValue,
                         announcementImages
                     })
@@ -3597,6 +3600,17 @@
         }
 
         document.addEventListener('DOMContentLoaded', () => {
+            const checkbox = document.getElementById('announcementCheckbox');
+            const showSelect = document.getElementById('announcementShowOnSignup');
+            if (checkbox && showSelect) {
+                checkbox.addEventListener('change', () => {
+                    if (!checkbox.checked) showSelect.value = 'no';
+                    else if (showSelect.value !== 'yes') showSelect.value = 'yes';
+                });
+                showSelect.addEventListener('change', () => {
+                    if (showSelect.value === 'no') checkbox.checked = false;
+                });
+            }
             const preset = document.getElementById('announcementPreset');
             if (preset) preset.addEventListener('change', applyAnnouncementPreset);
             const upload = document.getElementById('announcementImageUpload');

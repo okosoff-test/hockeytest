@@ -275,6 +275,7 @@ let maintenanceMode = false;
 let maintenanceText = 'Portal is down for maintenance, check back later.';
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
+let announcementShowOnSignup = false;
 let announcementText = '';
 let announcementImages = [];
 
@@ -858,6 +859,7 @@ async function loadDataFromDB() {
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
+        if (appSettings.announcementShowOnSignup !== undefined) announcementShowOnSignup = appSettings.announcementShowOnSignup === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.announcementImages !== undefined) {
             try {
@@ -956,6 +958,7 @@ function loadDataFromFile() {
             maintenanceText = data.maintenanceText ?? 'Portal is down for maintenance, check back later.';
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
+            announcementShowOnSignup = data.announcementShowOnSignup ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             refreshDynamicSignupCode();
@@ -1392,7 +1395,8 @@ app.get('/api/status', (req, res) => {
         maintenanceMode: maintenanceMode,
         maintenanceText: maintenanceText,
         customTitle: customTitle,
-        announcementEnabled: announcementEnabled,
+        announcementEnabled: announcementEnabled && announcementShowOnSignup,
+        announcementShowOnSignup: announcementShowOnSignup,
         announcementText: announcementText,
         announcementImages: announcementImages,
         arenaOptions: ARENA_OPTIONS,
@@ -1870,6 +1874,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         maintenanceText,
         customTitle,
         announcementEnabled,
+        announcementShowOnSignup,
         announcementText,
         announcementImages,
         selectedDayTime: gameTime,
@@ -1884,7 +1889,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, maintenanceText: newMaintenanceText, customTitle: newTitle, 
-            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
+            announcementEnabled: newAnnouncementEnabled, announcementShowOnSignup: newAnnouncementShowOnSignup, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
 
     if (!adminSessions[sessionToken]) {
@@ -1897,6 +1902,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
     }
     if (newTitle) customTitle = newTitle;
     if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
+    if (newAnnouncementShowOnSignup !== undefined) announcementShowOnSignup = !!newAnnouncementShowOnSignup;
     if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
     if (newAnnouncementImages !== undefined) {
         announcementImages = Array.isArray(newAnnouncementImages)
@@ -1914,6 +1920,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             await pool.query(upsertSql, ['maintenanceText', maintenanceText]);
             await pool.query(upsertSql, ['customTitle', customTitle]);
             await pool.query(upsertSql, ['announcementEnabled', announcementEnabled.toString()]);
+            await pool.query(upsertSql, ['announcementShowOnSignup', announcementShowOnSignup.toString()]);
             await pool.query(upsertSql, ['announcementText', announcementText]);
             await pool.query(upsertSql, ['announcementImages', JSON.stringify(announcementImages)]);
             await pool.query(upsertSql, ['selectedDayTime', gameTime]);
@@ -1925,6 +1932,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             fileData.maintenanceText = maintenanceText;
             fileData.customTitle = customTitle;
             fileData.announcementEnabled = announcementEnabled;
+            fileData.announcementShowOnSignup = announcementShowOnSignup;
             fileData.announcementText = announcementText;
             fileData.announcementImages = announcementImages;
             fileData.gameTime = gameTime;
@@ -1939,6 +1947,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             maintenanceText,
             customTitle,
             announcementEnabled,
+            announcementShowOnSignup,
             announcementText,
             announcementImages,
             gameTime,
