@@ -1231,76 +1231,115 @@
         }
 
 
-        .maintenance-message-grid {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 12px;
-            margin-top: 15px;
+        .announcement-control {
+            background: linear-gradient(135deg, #1a2f4d, #2b3f66);
+            border: 2px solid #4a90e2;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 25px 0;
         }
 
-        .maintenance-message-grid textarea {
-            width: 100%;
-            min-height: 90px;
-            resize: vertical;
-            padding: 12px;
-            margin: 0;
-            background: #3d3d3d;
-            border: 1px solid #555;
+        .announcement-control h3 {
+            margin: 0 0 15px 0;
+            color: #7ab8ff;
+            font-size: 1.1rem;
+        }
+
+        .announcement-status {
+            margin-left: auto;
+            font-weight: bold;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-size: 0.95rem;
             color: white;
-            border-radius: 5px;
-            font-size: 1rem;
         }
 
-        .maintenance-inline-row {
+        .announcement-status.active {
+            background: #4a90e2;
+        }
+
+        .announcement-status.inactive {
+            background: #666;
+        }
+
+        .message-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 14px;
+            margin-top: 12px;
+        }
+
+        .message-grid textarea,
+        .message-grid select,
+        .message-grid input[type="file"] {
+            width: 100%;
+        }
+
+        .message-box {
+            background: rgba(0,0,0,0.18);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 14px;
+        }
+
+        .message-box label {
+            display: block;
+            color: #f0f0f0;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .message-box small {
+            color: #b8b8b8;
+            display: block;
+            margin-top: 6px;
+        }
+
+        .message-actions {
             display: flex;
             gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .secondary-btn {
+            background: #666;
+        }
+
+        .secondary-btn:hover {
+            background: #777;
+        }
+
+        .preview-row {
+            display: flex;
             align-items: center;
+            gap: 14px;
+            margin-top: 14px;
             flex-wrap: wrap;
         }
 
-        .maintenance-inline-row > * {
-            flex: 1 1 220px;
-        }
-
-        .maintenance-image-preview-wrap {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            flex-wrap: wrap;
-        }
-
-        .maintenance-image-preview {
+        .preview-thumb {
             width: 96px;
             height: 96px;
+            object-fit: contain;
             border-radius: 10px;
-            border: 1px solid #666;
-            background: #1d1d1d;
-            object-fit: cover;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid rgba(255,255,255,0.18);
             display: none;
         }
 
-        .maintenance-help {
-            color: #aaa;
-            font-size: 0.85rem;
-            line-height: 1.4;
-            margin: 0;
+        .preview-thumb.visible {
+            display: block;
         }
 
-        .maintenance-subtitle {
-            color: #ddd;
-            font-weight: 600;
-            margin: 4px 0 0 0;
+        @media (max-width: 700px) {
+            .message-grid {
+                grid-template-columns: 1fr;
+            }
         }
 
-        .maintenance-save-btn {
-            background: #4CAF50;
-        }
-
-        .maintenance-save-btn:hover {
-            background: #5dbb60;
-        }
-
-</style>
+    </style>
 </head>
 <body>
 
@@ -1343,51 +1382,70 @@
                 When enabled, a flashing alert will appear on all pages warning users that the portal is down for maintenance.
             </p>
 
-            <div class="maintenance-message-grid">
-                <div class="maintenance-inline-row">
-                    <div>
-                        <div class="maintenance-subtitle">Preset Message</div>
-                        <select id="maintenancePreset" onchange="applyMaintenancePreset()">
-                            <option value="">Choose a preset...</option>
-                            <option value="Portal is down for maintenance. Please check back later.">Portal Down For Maintenance</option>
-                            <option value="Tonight's skate has been delayed. Please watch for an update shortly.">Weather / Delay Notice</option>
-                            <option value="Signup page has been updated. Please review the latest notice before registering.">General League Notice</option>
-                            <option value="custom">Custom Message</option>
-                        </select>
-                    </div>
-                    <div>
-                        <div class="maintenance-subtitle">Display on Signup Page</div>
-                        <select id="announcementEnabledSelect">
-                            <option value="true">Yes - show message</option>
-                            <option value="false">No - hide message</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div>
-                    <div class="maintenance-subtitle">Custom Message</div>
-                    <textarea id="maintenanceMessageInput" placeholder="Type the message you want players to see on the signup page..."></textarea>
-                    <p class="maintenance-help">This can be used for maintenance, weather delays, league notices, or any custom player message.</p>
-                </div>
-
-                <div>
-                    <div class="maintenance-subtitle">Upload Picture</div>
-                    <div class="maintenance-inline-row">
-                        <input type="file" id="maintenanceImageUpload" accept="image/*">
-                        <button type="button" class="control-btn" onclick="clearMaintenanceImage()">Remove Picture</button>
-                    </div>
-                    <div class="maintenance-image-preview-wrap" style="margin-top:10px;">
-                        <img id="maintenanceImagePreview" class="maintenance-image-preview" alt="Maintenance preview">
-                        <p class="maintenance-help">Upload any image. It will auto-resize and compress to about <strong>1&quot; × 1&quot;</strong> display size (<strong>96 × 96 px</strong>) for players.</p>
-                    </div>
-                </div>
-
-                <div>
-                    <button type="button" class="control-btn maintenance-save-btn" onclick="saveMaintenanceDisplay()">Save Message / Picture</button>
-                </div>
-            </div>
         </div>
 
+        <!-- LEAGUE ANNOUNCEMENT -->
+        <div class="announcement-control">
+            <h3>📢 League Announcement (does not block signup)</h3>
+            <div class="maintenance-toggle">
+                <input type="checkbox" id="announcementCheckbox" class="maintenance-checkbox">
+                <label for="announcementCheckbox" class="maintenance-label">Enable League Announcement</label>
+                <div class="announcement-status inactive" id="announcementStatus">ANNOUNCEMENT OFF</div>
+            </div>
+            <p style="color:#9fc7ff; font-size:0.9rem; margin-top:10px;">
+                Use this for player notices like lost & found, roster reminders, weather notes, or general league messages.
+                Players can still sign up while this is showing.
+            </p>
+
+            <div class="message-grid">
+                <div class="message-box">
+                    <label for="announcementPreset">Preset Message</label>
+                    <select id="announcementPreset">
+                        <option value="">Custom Message</option>
+                        <option value="📢 General League Notice">General League Notice</option>
+                        <option value="🏒 Roster releases tonight.">Roster releases tonight.</option>
+                        <option value="🌧️ Weather update will be posted here.">Weather update will be posted here.</option>
+                        <option value="🔎 Lost and found item after hockey.">Lost and found item after hockey.</option>
+                    </select>
+                    <small>Select a preset or leave as Custom Message.</small>
+                </div>
+
+                <div class="message-box">
+                    <label for="announcementShowOnSignup">Display on Signup Page</label>
+                    <select id="announcementShowOnSignup">
+                        <option value="yes">Yes - show message</option>
+                        <option value="no">No - hide message</option>
+                    </select>
+                    <small>Set to "Yes" for players to see the banner on the signup page.</small>
+                </div>
+            </div>
+
+            <div class="message-box">
+                <label for="announcementText">Announcement Message</label>
+                <textarea id="announcementText" rows="4" placeholder="Type your custom player announcement here..."></textarea>
+                <small>This banner is separate from maintenance mode and will not shut down signup.</small>
+            </div>
+
+            <div class="message-grid">
+                <div class="message-box">
+                    <label for="announcementImageUpload">Upload Announcement Picture</label>
+                    <input type="file" id="announcementImageUpload" accept="image/*">
+                    <small>Image auto-resizes and compresses to about 1&quot; × 1&quot; (96 × 96 px).</small>
+                </div>
+
+                <div class="message-box">
+                    <label>Image Preview</label>
+                    <div class="preview-row">
+                        <img id="announcementImagePreview" class="preview-thumb" alt="Announcement preview">
+                        <button type="button" class="secondary-btn control-btn" onclick="clearAnnouncementImage()">Remove Picture</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="message-actions">
+                <button type="button" class="control-btn" onclick="saveAnnouncementSettings()">Save Announcement</button>
+            </div>
+        </div>
 
         <!-- TITLE EDITOR -->
         <div class="title-editor-section">
@@ -1775,7 +1833,6 @@
         const SESSION_KEY = 'hockey_admin_session';
         let sessionToken = localStorage.getItem(SESSION_KEY) || "";
         let maxGoalies = 2;
-        let maintenanceImageData = '';
         function pad2(n){ return String(n).padStart(2,'0'); }
 
         function getETNowDate() {
@@ -2249,102 +2306,6 @@
             if (e.key === 'Enter') login();
         });
 
-
-        function applyMaintenancePreset() {
-            const preset = document.getElementById('maintenancePreset').value;
-            const textarea = document.getElementById('maintenanceMessageInput');
-            if (!textarea || !preset || preset === 'custom') return;
-            textarea.value = preset;
-        }
-
-        function updateMaintenanceImagePreview(src) {
-            const img = document.getElementById('maintenanceImagePreview');
-            if (!img) return;
-            if (src) {
-                img.src = src;
-                img.style.display = 'block';
-            } else {
-                img.removeAttribute('src');
-                img.style.display = 'none';
-            }
-        }
-
-        function clearMaintenanceImage() {
-            maintenanceImageData = '';
-            const upload = document.getElementById('maintenanceImageUpload');
-            if (upload) upload.value = '';
-            updateMaintenanceImagePreview('');
-        }
-
-        async function saveMaintenanceDisplay() {
-            const announcementEnabled = document.getElementById('announcementEnabledSelect').value === 'true';
-            const announcementText = (document.getElementById('maintenanceMessageInput').value || '').trim();
-            const announcementImages = maintenanceImageData ? [maintenanceImageData] : [];
-
-            try {
-                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        sessionToken,
-                        announcementEnabled,
-                        announcementText,
-                        announcementImages
-                    })
-                });
-
-                if (!res.ok) {
-                    alert('Failed to save maintenance message / picture');
-                    return;
-                }
-
-                alert('✅ Message / picture saved');
-                loadAppSettings();
-            } catch (err) {
-                console.error('Error saving maintenance display:', err);
-                alert('Failed to save maintenance message / picture');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', function() {
-            const upload = document.getElementById('maintenanceImageUpload');
-            if (!upload) return;
-
-            upload.addEventListener('change', function(e) {
-                const file = e.target.files && e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function(event) {
-                    const img = new Image();
-                    img.onload = function() {
-                        const canvas = document.createElement('canvas');
-                        const ctx = canvas.getContext('2d');
-                        const SIZE = 96;
-
-                        canvas.width = SIZE;
-                        canvas.height = SIZE;
-                        ctx.clearRect(0, 0, SIZE, SIZE);
-
-                        const ratio = Math.min(SIZE / img.width, SIZE / img.height);
-                        const w = Math.round(img.width * ratio);
-                        const h = Math.round(img.height * ratio);
-                        const x = Math.round((SIZE - w) / 2);
-                        const y = Math.round((SIZE - h) / 2);
-
-                        ctx.fillStyle = '#1d1d1d';
-                        ctx.fillRect(0, 0, SIZE, SIZE);
-                        ctx.drawImage(img, x, y, w, h);
-
-                        maintenanceImageData = canvas.toDataURL('image/jpeg', 0.85);
-                        updateMaintenanceImagePreview(maintenanceImageData);
-                    };
-                    img.src = event.target.result;
-                };
-                reader.readAsDataURL(file);
-            });
-        });
-
         // Load app settings (maintenance mode, title, etc.)
         async function loadAppSettings() {
             try {
@@ -2399,6 +2360,37 @@
                     backupGoaliesData = data.backupGoalies;
                 }
                 
+                const announcementCheckbox = document.getElementById('announcementCheckbox');
+                const announcementStatus = document.getElementById('announcementStatus');
+                const announcementPreset = document.getElementById('announcementPreset');
+                const announcementText = document.getElementById('announcementText');
+                const announcementShowOnSignup = document.getElementById('announcementShowOnSignup');
+                const announcementImagePreview = document.getElementById('announcementImagePreview');
+
+                if (announcementCheckbox) {
+                    announcementCheckbox.checked = !!data.announcementEnabled;
+                }
+                if (announcementStatus) {
+                    announcementStatus.innerText = data.announcementEnabled ? 'ANNOUNCEMENT LIVE' : 'ANNOUNCEMENT OFF';
+                    announcementStatus.className = 'announcement-status ' + (data.announcementEnabled ? 'active' : 'inactive');
+                }
+                if (announcementText) {
+                    announcementText.value = data.announcementText || '';
+                }
+                if (announcementPreset) {
+                    const presetValues = Array.from(announcementPreset.options).map(o => o.value);
+                    announcementPreset.value = presetValues.includes(data.announcementText || '') ? (data.announcementText || '') : '';
+                }
+                if (announcementShowOnSignup) {
+                    announcementShowOnSignup.value = data.announcementEnabled ? 'yes' : 'no';
+                }
+                if (announcementImagePreview) {
+                    const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
+                    announcementImagePreview.src = firstImage || '';
+                    announcementImagePreview.classList.toggle('visible', !!firstImage);
+                    window.announcementImageData = firstImage || '';
+                }
+
                 updateTitlePreview();
             } catch (err) {
                 console.error("Error loading app settings:", err);
@@ -3503,6 +3495,113 @@
                 resultDiv.innerHTML = '❌ Network error';
             }
         }
+
+
+        function applyAnnouncementPreset() {
+            const preset = document.getElementById('announcementPreset');
+            const text = document.getElementById('announcementText');
+            if (!preset || !text) return;
+            if (preset.value) {
+                text.value = preset.value;
+            }
+        }
+
+        async function resizeImageToSquareDataUrl(file, size = 96, quality = 0.82) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        const canvas = document.createElement('canvas');
+                        const ctx = canvas.getContext('2d');
+                        canvas.width = size;
+                        canvas.height = size;
+                        ctx.clearRect(0, 0, size, size);
+                        const ratio = Math.min(size / img.width, size / img.height);
+                        const drawW = Math.round(img.width * ratio);
+                        const drawH = Math.round(img.height * ratio);
+                        const offsetX = Math.round((size - drawW) / 2);
+                        const offsetY = Math.round((size - drawH) / 2);
+                        ctx.drawImage(img, offsetX, offsetY, drawW, drawH);
+                        resolve(canvas.toDataURL('image/jpeg', quality));
+                    };
+                    img.onerror = () => reject(new Error('Invalid image file'));
+                    img.src = event.target.result;
+                };
+                reader.onerror = () => reject(new Error('Unable to read file'));
+                reader.readAsDataURL(file);
+            });
+        }
+
+        async function handleAnnouncementImageUpload(event) {
+            const file = event.target.files && event.target.files[0];
+            if (!file) return;
+            try {
+                const dataUrl = await resizeImageToSquareDataUrl(file, 96, 0.82);
+                window.announcementImageData = dataUrl;
+                const preview = document.getElementById('announcementImagePreview');
+                if (preview) {
+                    preview.src = dataUrl;
+                    preview.classList.add('visible');
+                }
+            } catch (err) {
+                console.error('Announcement image upload error:', err);
+                alert('Could not process that image. Please try a different file.');
+            }
+        }
+
+        function clearAnnouncementImage() {
+            window.announcementImageData = '';
+            const preview = document.getElementById('announcementImagePreview');
+            if (preview) {
+                preview.src = '';
+                preview.classList.remove('visible');
+            }
+            const upload = document.getElementById('announcementImageUpload');
+            if (upload) upload.value = '';
+        }
+
+        async function saveAnnouncementSettings() {
+            const checkbox = document.getElementById('announcementCheckbox');
+            const text = document.getElementById('announcementText');
+            const showOnSignup = document.getElementById('announcementShowOnSignup');
+            const enabled = !!(checkbox && checkbox.checked) && (!showOnSignup || showOnSignup.value === 'yes');
+            const announcementTextValue = text ? text.value.trim() : '';
+            const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        sessionToken,
+                        announcementEnabled: enabled,
+                        announcementText: announcementTextValue,
+                        announcementImages
+                    })
+                });
+
+                const result = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    throw new Error(result.error || 'Failed to save announcement');
+                }
+
+                await loadAppSettings();
+                alert(enabled
+                    ? '📢 Announcement saved and enabled on signup page.'
+                    : '✅ Announcement saved and hidden from signup page.');
+            } catch (err) {
+                console.error('Save announcement error:', err);
+                alert(err.message || 'Failed to save announcement');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const preset = document.getElementById('announcementPreset');
+            if (preset) preset.addEventListener('change', applyAnnouncementPreset);
+            const upload = document.getElementById('announcementImageUpload');
+            if (upload) upload.addEventListener('change', handleAnnouncementImageUpload);
+        });
 
         initializeEnhancedDateTimeControls();
         checkSession();

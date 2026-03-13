@@ -732,61 +732,68 @@
         }
 
 
-        .maintenance-bulletin.announcement-only {
-            border-color: #ff9800;
-            box-shadow: 0 0 25px rgba(255, 152, 0, 0.45);
+        .announcement-bulletin {
+            display: none;
+            width: 100%;
+            max-width: 900px;
+            background: linear-gradient(90deg, #15385f, #2b61a7, #15385f);
+            background-size: 200% 100%;
+            color: white;
+            padding: 16px 18px;
+            border-radius: 10px;
+            margin-bottom: 25px;
+            border: 2px solid #66a8ff;
+            box-shadow: 0 0 22px rgba(74, 144, 226, 0.35);
+            animation: flash 1.8s infinite;
         }
 
-        .maintenance-bulletin-inner {
+        .announcement-bulletin.active {
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 14px;
-            flex-wrap: wrap;
         }
 
-        .maintenance-bulletin-image {
+        .announcement-thumb {
             width: 96px;
             height: 96px;
-            object-fit: cover;
-            border-radius: 12px;
-            border: 2px solid rgba(255,255,255,0.45);
-            background: rgba(0,0,0,0.2);
+            object-fit: contain;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.08);
+            flex: 0 0 auto;
             display: none;
         }
 
-        .maintenance-bulletin-copy {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            text-align: left;
-            max-width: 620px;
+        .announcement-thumb.visible {
+            display: block;
         }
 
-        .maintenance-bulletin-heading {
+        .announcement-copy strong {
+            display: block;
+            font-size: 1.15rem;
+            margin-bottom: 4px;
+            letter-spacing: 0.4px;
+        }
+
+        .announcement-copy span {
+            color: #eef5ff;
             font-size: 1rem;
-            letter-spacing: 1px;
-            text-transform: uppercase;
         }
 
-        .maintenance-bulletin-text {
-            font-size: 1.05rem;
-            line-height: 1.35;
-        }
-
-</style>
+    </style>
 <base target="_blank">
 </head>
 <body>
 
-    <!-- MAINTENANCE / ANNOUNCEMENT BULLETIN -->
+    <!-- MAINTENANCE BULLETIN -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
-        <div class="maintenance-bulletin-inner">
-            <img id="maintenanceBulletinImage" class="maintenance-bulletin-image" alt="Announcement">
-            <div class="maintenance-bulletin-copy">
-                <div class="maintenance-bulletin-heading" id="maintenanceBulletinHeading">Maintenance Notice</div>
-                <div class="maintenance-bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later.</div>
-            </div>
+        Portal is down for maintenance, check back later
+    </div>
+
+    <div class="announcement-bulletin" id="announcementBulletin">
+        <img id="announcementThumb" class="announcement-thumb" alt="Announcement">
+        <div class="announcement-copy">
+            <strong>📢 League Announcement</strong>
+            <span id="announcementText">&nbsp;</span>
         </div>
     </div>
 
@@ -999,6 +1006,7 @@
         let rosterReleased = false;
         let currentPlayers = [];
         let maintenanceMode = false;
+        let currentAnnouncementEnabled = false;
 
         let playerToCancel = null;
 
@@ -1266,6 +1274,38 @@
         }
 
 
+
+        function renderAnnouncement(data) {
+            const bulletin = document.getElementById('announcementBulletin');
+            const textEl = document.getElementById('announcementText');
+            const thumbEl = document.getElementById('announcementThumb');
+            if (!bulletin || !textEl || !thumbEl) return;
+
+            const enabled = !!data.announcementEnabled;
+            const text = (data.announcementText || '').trim();
+            const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            const image = images.length ? String(images[0] || '').trim() : '';
+            const shouldShow = enabled && (!!text || !!image);
+
+            if (!shouldShow) {
+                bulletin.classList.remove('active');
+                textEl.textContent = '';
+                thumbEl.src = '';
+                thumbEl.classList.remove('visible');
+                return;
+            }
+
+            textEl.textContent = text || 'League announcement';
+            if (image) {
+                thumbEl.src = image;
+                thumbEl.classList.add('visible');
+            } else {
+                thumbEl.src = '';
+                thumbEl.classList.remove('visible');
+            }
+            bulletin.classList.add('active');
+        }
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -1275,12 +1315,14 @@
                 maintenanceMode = data.maintenanceMode;
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 if (maintenanceMode) {
+                    maintenanceBulletin.textContent = (data.maintenanceText || 'Portal is down for maintenance, check back later');
                     maintenanceBulletin.classList.add('active');
                 } else {
                     maintenanceBulletin.classList.remove('active');
                 }
-                
-                
+
+                renderAnnouncement(data);
+
                 // Update dynamic title
                 if (data.customTitle) {
                     document.getElementById('pageTitle').innerText = data.customTitle;

@@ -272,12 +272,11 @@ const DAY_TIME_OPTIONS = [
 
 // --- APP SETTINGS ---
 let maintenanceMode = false;
-let maintenanceMessage = 'Portal is down for maintenance, check back later';
-let maintenanceImage = '';
+let maintenanceText = 'Portal is down for maintenance, check back later.';
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
-let announcementImage = '';
+let announcementImages = [];
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -853,15 +852,21 @@ async function loadDataFromDB() {
             appSettings[row.key] = row.value;
         });
         
-        if (appSettings.maintenanceMode !== undefined) maintenanceMode = appSettings.maintenanceMode === 'true';
-        if (appSettings.maintenanceMessage !== undefined) maintenanceMessage = appSettings.maintenanceMessage || maintenanceMessage;
-        if (appSettings.maintenanceImage !== undefined) maintenanceImage = appSettings.maintenanceImage || '';
+        if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
+        if (appSettings.maintenanceText !== undefined) maintenanceText = appSettings.maintenanceText || 'Portal is down for maintenance, check back later.';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
-        if (appSettings.announcementImage !== undefined) announcementImage = appSettings.announcementImage || '';
+        if (appSettings.announcementImages !== undefined) {
+            try {
+                announcementImages = JSON.parse(appSettings.announcementImages || '[]');
+                if (!Array.isArray(announcementImages)) announcementImages = [];
+            } catch {
+                announcementImages = [];
+            }
+        }
         
     } catch (err) {
         console.error('Error loading from DB:', err);
@@ -903,39 +908,6 @@ async function saveData() {
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
-
-        const filePayload = {
-            playerSpots,
-            players,
-            waitlist,
-            gameLocation,
-            gameTime,
-            gameDate,
-            playerSignupCode,
-            requirePlayerCode,
-            manualOverride,
-            manualOverrideState,
-            lastResetWeek,
-            rosterReleased,
-            currentWeekData,
-            signupLockStartAt,
-            signupLockEndAt,
-            rosterReleaseAt,
-            resetWeekAt,
-            lastExactResetRunAt,
-            lastExactRosterReleaseRunAt,
-            signupLockSchedule,
-            rosterReleaseSchedule,
-            resetWeekSchedule,
-            maintenanceMode,
-            maintenanceMessage,
-            maintenanceImage,
-            customTitle,
-            announcementEnabled,
-            announcementText,
-            announcementImage
-        };
-        fs.writeFileSync(DATA_FILE, JSON.stringify(filePayload, null, 2));
     } catch (err) {
         console.error('Error saving data:', err);
     }
@@ -981,12 +953,11 @@ function loadDataFromFile() {
             };
             // Load new settings
             maintenanceMode = data.maintenanceMode ?? false;
-            maintenanceMessage = data.maintenanceMessage ?? maintenanceMessage;
-            maintenanceImage = data.maintenanceImage ?? '';
+            maintenanceText = data.maintenanceText ?? 'Portal is down for maintenance, check back later.';
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
-            announcementImage = data.announcementImage ?? '';
+            announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             refreshDynamicSignupCode();
         } else {
             gameDate = calculateNextGameDate();
@@ -1419,12 +1390,11 @@ app.get('/api/status', (req, res) => {
         players: publicPlayers,  // Sanitized - no ratings, no payment info
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
-        maintenanceMessage: maintenanceMessage,
-        maintenanceImage: maintenanceImage,
+        maintenanceText: maintenanceText,
         customTitle: customTitle,
         announcementEnabled: announcementEnabled,
         announcementText: announcementText,
-        announcementImage: announcementImage,
+        announcementImages: announcementImages,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -1897,12 +1867,11 @@ app.post('/api/admin/app-settings', (req, res) => {
     
     res.json({
         maintenanceMode,
-        maintenanceMessage,
-        maintenanceImage,
+        maintenanceText,
         customTitle,
         announcementEnabled,
         announcementText,
-        announcementImage,
+        announcementImages,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -1914,67 +1883,64 @@ app.post('/api/admin/app-settings', (req, res) => {
 
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
-    const {
-        sessionToken,
-        maintenanceMode: newMaintenance,
-        maintenanceMessage: newMaintenanceMessage,
-        maintenanceImage: newMaintenanceImage,
-        customTitle: newTitle,
-        announcementEnabled: newAnnouncementEnabled,
-        announcementText: newAnnouncementText,
-        announcementImage: newAnnouncementImage,
-        selectedDayTime,
-        selectedArena,
-        gameDate: newGameDate
-    } = req.body;
+    const { sessionToken, maintenanceMode: newMaintenance, maintenanceText: newMaintenanceText, customTitle: newTitle, 
+            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
+            selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
 
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
-    if (newMaintenanceMessage !== undefined) maintenanceMessage = String(newMaintenanceMessage || '').trim() || 'Portal is down for maintenance, check back later';
-    if (newMaintenanceImage !== undefined) maintenanceImage = String(newMaintenanceImage || '').trim();
+    if (newMaintenanceText !== undefined) {
+        maintenanceText = String(newMaintenanceText || '').trim() || 'Portal is down for maintenance, check back later.';
+    }
     if (newTitle) customTitle = newTitle;
     if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
     if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
-    if (newAnnouncementImage !== undefined) announcementImage = String(newAnnouncementImage || '').trim();
+    if (newAnnouncementImages !== undefined) {
+        announcementImages = Array.isArray(newAnnouncementImages)
+            ? newAnnouncementImages.map(v => String(v || '').trim()).filter(Boolean).slice(0, 6)
+            : [];
+    }
     if (selectedDayTime) gameTime = selectedDayTime;
     if (selectedArena) gameLocation = selectedArena;
     if (newGameDate) gameDate = newGameDate;
 
     try {
         if (pool) {
-            const appSettingsToSave = [
-                ['maintenanceMode', maintenanceMode.toString()],
-                ['maintenanceMessage', maintenanceMessage],
-                ['maintenanceImage', maintenanceImage],
-                ['customTitle', customTitle],
-                ['announcementEnabled', announcementEnabled.toString()],
-                ['announcementText', announcementText],
-                ['announcementImage', announcementImage],
-                ['selectedDayTime', gameTime],
-                ['selectedArena', gameLocation],
-                ['gameDate', gameDate]
-            ];
-            for (const [key, value] of appSettingsToSave) {
-                await pool.query(
-                    'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-                    [key, value]
-                );
-            }
+            const upsertSql = 'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2';
+            await pool.query(upsertSql, ['maintenanceMode', maintenanceMode.toString()]);
+            await pool.query(upsertSql, ['maintenanceText', maintenanceText]);
+            await pool.query(upsertSql, ['customTitle', customTitle]);
+            await pool.query(upsertSql, ['announcementEnabled', announcementEnabled.toString()]);
+            await pool.query(upsertSql, ['announcementText', announcementText]);
+            await pool.query(upsertSql, ['announcementImages', JSON.stringify(announcementImages)]);
+            await pool.query(upsertSql, ['selectedDayTime', gameTime]);
+            await pool.query(upsertSql, ['selectedArena', gameLocation]);
+            await pool.query(upsertSql, ['gameDate', gameDate]);
+        } else {
+            const fileData = fs.existsSync(DATA_FILE) ? JSON.parse(fs.readFileSync(DATA_FILE, 'utf8')) : {};
+            fileData.maintenanceMode = maintenanceMode;
+            fileData.maintenanceText = maintenanceText;
+            fileData.customTitle = customTitle;
+            fileData.announcementEnabled = announcementEnabled;
+            fileData.announcementText = announcementText;
+            fileData.announcementImages = announcementImages;
+            fileData.gameTime = gameTime;
+            fileData.gameLocation = gameLocation;
+            fileData.gameDate = gameDate;
+            fs.writeFileSync(DATA_FILE, JSON.stringify(fileData, null, 2), 'utf8');
         }
-        await saveData();
 
         res.json({
             success: true,
             maintenanceMode,
-            maintenanceMessage,
-            maintenanceImage,
+            maintenanceText,
             customTitle,
             announcementEnabled,
             announcementText,
-            announcementImage,
+            announcementImages,
             gameTime,
             gameLocation,
             gameDate
