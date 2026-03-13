@@ -274,9 +274,12 @@ const DAY_TIME_OPTIONS = [
 let maintenanceMode = false;
 let maintenanceText = 'Portal is down for maintenance, check back later.';
 let customTitle = `Phan's ${getGameDayName()} Hockey`;
-let announcementEnabled = false;
-let announcementShowOnSignup = false;
-let announcementText = '';
+
+// Default announcement configuration
+let announcementEnabled = true;
+
+let announcementText = 'E-transfer required immediately after roster release.';
+
 let announcementImages = [];
 
 // ============================================
