@@ -133,13 +133,6 @@ let rosterReleaseAt = '';
 let resetWeekAt = '';
 let lastExactResetRunAt = '';
 let lastExactRosterReleaseRunAt = '';
-let lastScheduleSnapshot = {
-    signupLockStartAt: '',
-    signupLockEndAt: '',
-    rosterReleaseAt: '',
-    resetWeekAt: '',
-    rolledAt: ''
-};
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -194,7 +187,7 @@ const GAME_RULES = [
 // ============================================
 
 // --- AUTO-ADD PLAYERS CONFIG ---
-const AUTO_ADD_CORE_PLAYERS = [
+const AUTO_ADD_PLAYERS = [
     {
         firstName: "Phan",
         lastName: "Ly",
@@ -204,57 +197,26 @@ const AUTO_ADD_CORE_PLAYERS = [
         isFree: true,
         paymentMethod: "FREE",
         protected: true  // Cannot be cancelled from signup page
+    },
+    {
+        firstName: "Craig",
+        lastName: "Scolack",  // FIXED: Scolak -> Scolack
+        phone: "(519) 982-6311",
+        rating: 9,
+        isGoalie: true,
+        isFree: false,
+        paymentMethod: "N/A"
+    },
+    {
+        firstName: "Hao",
+        lastName: "Chau",
+        phone: "(519) 995-9884",
+        rating: 8,
+        isGoalie: true,
+        isFree: false,
+        paymentMethod: "N/A"
     }
 ];
-
-const AUTO_ADD_GOALIES_BY_DAY = {
-    friday: [
-        {
-            firstName: "Craig",
-            lastName: "Scolack",
-            phone: "(519) 982-6311",
-            rating: 9,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        },
-        {
-            firstName: "Hao",
-            lastName: "Chau",
-            phone: "(519) 995-9884",
-            rating: 8,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        }
-    ],
-    sunday: [
-        {
-            firstName: "Craig",
-            lastName: "Scolack",
-            phone: "(519) 982-6311",
-            rating: 9,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        },
-        {
-            firstName: "Mat",
-            lastName: "Carriere",
-            phone: "(226) 350-0217",
-            rating: 7,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        }
-    ]
-};
-
-function getAutoAddPlayersForCurrentGameDay() {
-    const dayKey = String(getGameDayName() || '').trim().toLowerCase();
-    const goalies = AUTO_ADD_GOALIES_BY_DAY[dayKey] || AUTO_ADD_GOALIES_BY_DAY.friday;
-    return [...AUTO_ADD_CORE_PLAYERS, ...goalies];
-}
 
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
@@ -380,19 +342,6 @@ function parseDatetimeLocalToETDate(dtLocalStr) {
     const [hh, mm] = tPart.split(':').map(v => clampInt(v, NaN));
     if (![y, m, d, hh, mm].every(Number.isFinite)) return null;
     return { year: y, month: m, day: d, hour: hh, minute: mm };
-}
-
-function addDaysToDatetimeLocal(dtLocalStr, days) {
-    const parts = parseDatetimeLocalToETDate(dtLocalStr);
-    if (!parts) return '';
-    const d = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
-    d.setDate(d.getDate() + days);
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, '0');
-    const dd = String(d.getDate()).padStart(2, '0');
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mi = String(d.getMinutes()).padStart(2, '0');
-    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
 }
 
 function etPartsToMinuteKey(parts) {
@@ -532,6 +481,10 @@ async function autoReleaseRoster() {
         manualOverride = true;
         manualOverrideState = 'locked';
 
+        // Auto-enable payment reminder when roster is released
+        announcementEnabled = true;
+        announcementText = 'E-transfer required immediately after roster release.';
+
         currentWeekData = {
             weekNumber: week,
             year: year,
@@ -549,6 +502,15 @@ async function autoReleaseRoster() {
 
         if (pool) {
             await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
+
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['announcementEnabled', announcementEnabled.toString()]
+            );
+            await pool.query(
+                'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+                ['announcementText', announcementText]
+            );
         }
         await saveData();
         return true;
@@ -563,7 +525,7 @@ async function addAutoPlayers() {
     console.log('Adding auto-players for new week...');
     let addedCount = 0;
     
-    for (const autoPlayer of getAutoAddPlayersForCurrentGameDay()) {
+    for (const autoPlayer of AUTO_ADD_PLAYERS) {
         // Check if player already exists
         const normalizedName = (autoPlayer.firstName + ' ' + autoPlayer.lastName).toLowerCase().trim();
         const normalizedPhone = autoPlayer.phone.replace(/\D/g, '');
@@ -697,24 +659,14 @@ async function checkWeeklyReset() {
     requirePlayerCode = true;
     maintenanceMode = false;
     refreshDynamicSignupCode();
-
-    lastScheduleSnapshot = {
-        signupLockStartAt,
-        signupLockEndAt,
-        rosterReleaseAt,
-        resetWeekAt,
-        rolledAt: new Date().toISOString()
-    };
-
-    signupLockStartAt = addDaysToDatetimeLocal(signupLockStartAt, 7);
-    signupLockEndAt = addDaysToDatetimeLocal(signupLockEndAt, 7);
-    rosterReleaseAt = addDaysToDatetimeLocal(rosterReleaseAt, 7);
-    resetWeekAt = addDaysToDatetimeLocal(resetWeekAt, 7);
-
-    signupLockSchedule.start = signupLockStartAt ? parseDatetimeLocalToDowTime(signupLockStartAt) : null;
-    signupLockSchedule.end = signupLockEndAt ? parseDatetimeLocalToDowTime(signupLockEndAt) : null;
-    rosterReleaseSchedule.at = rosterReleaseAt ? parseDatetimeLocalToDowTime(rosterReleaseAt) : null;
-    resetWeekSchedule.at = resetWeekAt ? parseDatetimeLocalToDowTime(resetWeekAt) : null;
+    resetWeekAt = '';
+    signupLockStartAt = '';
+    signupLockEndAt = '';
+    rosterReleaseAt = '';
+    signupLockSchedule.start = null;
+    signupLockSchedule.end = null;
+    rosterReleaseSchedule.at = null;
+    resetWeekSchedule.at = null;
     lastExactRosterReleaseRunAt = '';
 
     if (pool) {
@@ -866,7 +818,6 @@ async function loadDataFromDB() {
         if (settings.resetWeekAt !== undefined) resetWeekAt = settings.resetWeekAt || '';
         if (settings.lastExactResetRunAt !== undefined) lastExactResetRunAt = settings.lastExactResetRunAt || '';
         if (settings.lastExactRosterReleaseRunAt !== undefined) lastExactRosterReleaseRunAt = settings.lastExactRosterReleaseRunAt || '';
-        if (settings.lastScheduleSnapshot) lastScheduleSnapshot = settings.lastScheduleSnapshot;
         if (settings.signupLockSchedule) signupLockSchedule = settings.signupLockSchedule;
         if (settings.rosterReleaseSchedule) rosterReleaseSchedule = settings.rosterReleaseSchedule;
         if (settings.resetWeekSchedule) resetWeekSchedule = settings.resetWeekSchedule;
@@ -965,7 +916,6 @@ async function saveData() {
         await saveSetting('resetWeekAt', resetWeekAt);
         await saveSetting('lastExactResetRunAt', lastExactResetRunAt);
         await saveSetting('lastExactRosterReleaseRunAt', lastExactRosterReleaseRunAt);
-        await saveSetting('lastScheduleSnapshot', lastScheduleSnapshot);
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
@@ -1002,7 +952,6 @@ function loadDataFromFile() {
             resetWeekAt = data.resetWeekAt ?? '';
             lastExactResetRunAt = data.lastExactResetRunAt ?? '';
             lastExactRosterReleaseRunAt = data.lastExactRosterReleaseRunAt ?? '';
-            lastScheduleSnapshot = data.lastScheduleSnapshot ?? lastScheduleSnapshot;
             signupLockSchedule = data.signupLockSchedule ?? signupLockSchedule;
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
@@ -1463,8 +1412,7 @@ app.get('/api/status', (req, res) => {
         lockNoticeLine: signupMessageData.lockNoticeLine,
         openLine: signupMessageData.openLine,
         noCodeLine: signupMessageData.noCodeLine,
-        rosterReleaseLine: signupMessageData.rosterReleaseLine,
-        lastScheduleSnapshot
+        rosterReleaseLine: signupMessageData.rosterReleaseLine
     });
 });
 
@@ -2151,8 +2099,7 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockStartAt,
         signupLockEndAt,
         rosterReleaseAt,
-        resetWeekAt,
-        lastScheduleSnapshot
+        resetWeekAt
     });
 });
 
@@ -2245,8 +2192,7 @@ app.post('/api/admin/update-schedules', (req, res) => {
         rosterReleaseAt,
         resetWeekAt,
         requireCode: requirePlayerCode,
-        isLockedWindow: lockStatus.isLockedWindow,
-        lastScheduleSnapshot
+        isLockedWindow: lockStatus.isLockedWindow
     });
 });
 
@@ -2620,6 +2566,10 @@ app.post('/api/admin/release-roster', async (req, res) => {
         requirePlayerCode = true;
         manualOverride = true;  // Keep locked after manual release
         manualOverrideState = 'locked';  // Force locked state
+
+        // Auto-enable payment reminder when roster is released
+        announcementEnabled = true;
+        announcementText = 'E-transfer required immediately after roster release.';
         
         currentWeekData = {
             weekNumber: week,
@@ -2635,6 +2585,16 @@ app.post('/api/admin/release-roster', async (req, res) => {
         }
         
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
+
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementEnabled', announcementEnabled.toString()]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementText', announcementText]
+        );
+
         await saveData();
         
         res.json({ 

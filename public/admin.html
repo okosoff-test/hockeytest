@@ -1858,25 +1858,272 @@
         }
 
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
-    if (!dtLocalValue || !dtLocalValue.includes('T')) return '';
+            if (!dtLocalValue) return "";
+            const d = new Date(dtLocalValue);
+            // Format using ET regardless of client locale.
+            const parts = new Intl.DateTimeFormat("en-US", {
+                timeZone: "America/New_York",
+                weekday: "long",
+                hour: "numeric",
+                minute: "2-digit",
+                hour12: true
+            }).formatToParts(d);
+            const get = (t) => (parts.find(p => p.type === t)?.value || "");
+            const weekday = get("weekday");
+            const hour = get("hour");
+            const minute = get("minute");
+            const dayPeriod = get("dayPeriod");
+            if (!weekday || !hour || !minute || !dayPeriod) return "";
+            return `${weekday} ${hour}:${minute} ${dayPeriod}`;
+        }
 
-    const [datePart, timePart] = dtLocalValue.split('T');
-    const [year, month, day] = datePart.split('-').map(Number);
-    const [hour24, minute] = timePart.split(':').map(Number);
+        
+        const ENHANCED_DT_IDS = ['titleDayTime', 'signupLockStart', 'signupLockEnd', 'rosterReleaseAt', 'resetWeekAt'];
+        let activeClockTargetId = null;
+        let clockMode = 'hour';
+        let clockState = { hour24: 12, minute: 0 };
+        let clockPointerDown = false;
 
-    if ([year, month, day, hour24, minute].some(v => !Number.isFinite(v))) return '';
+        function formatTime12(hour24, minute) {
+            const period = hour24 >= 12 ? 'PM' : 'AM';
+            const hour12 = (hour24 % 12) || 12;
+            return `${hour12}:${pad2(minute)} ${period}`;
+        }
 
-    const weekdayNames = [
-        'Sunday', 'Monday', 'Tuesday', 'Wednesday',
-        'Thursday', 'Friday', 'Saturday'
-    ];
+        function parseDatetimeLocalValue(dtVal) {
+            if (!dtVal || !dtVal.includes('T')) return null;
+            const [datePart, timePart] = dtVal.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour, minute] = timePart.split(':').map(Number);
+            if ([year, month, day, hour, minute].some(v => !Number.isFinite(v))) return null;
+            return { year, month, day, hour, minute };
+        }
 
-    const weekday = weekdayNames[new Date(year, month - 1, day).getDay()];
-    const period = hour24 >= 12 ? 'PM' : 'AM';
-    const hour12 = (hour24 % 12) || 12;
+        function buildDatetimeLocal(dateVal, hour24, minute) {
+            if (!dateVal) return '';
+            return `${dateVal}T${pad2(hour24)}:${pad2(minute)}`;
+        }
 
-    return `${weekday} ${hour12}:${String(minute).padStart(2, '0')} ${period}`;
-}
+        function ensureDateForInput(input) {
+            const parsed = parseDatetimeLocalValue(input.value);
+            if (parsed) return `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}`;
+            const now = new Date();
+            return `${now.getFullYear()}-${pad2(now.getMonth()+1)}-${pad2(now.getDate())}`;
+        }
+
+        function syncEnhancedControl(targetId) {
+            const input = document.getElementById(targetId);
+            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
+            if (!input || !wrapper) return;
+            const dateInput = wrapper.querySelector('.date-input');
+            const timeBtn = wrapper.querySelector('.time-trigger');
+            const summary = wrapper.querySelector('.picker-summary');
+            const parsed = parseDatetimeLocalValue(input.value);
+            if (parsed) {
+                dateInput.value = `${parsed.year}-${pad2(parsed.month)}-${pad2(parsed.day)}`;
+                timeBtn.textContent = formatTime12(parsed.hour, parsed.minute);
+                const dayTime = formatDayTimeFromDatetimeLocal(input.value);
+                summary.textContent = dayTime ? `ET: ${dayTime}` : '';
+            } else {
+                dateInput.value = '';
+                timeBtn.textContent = 'Select time';
+                summary.textContent = '';
+            }
+        }
+
+        function syncAllEnhancedControls() {
+            ENHANCED_DT_IDS.forEach(syncEnhancedControl);
+        }
+
+        function updateHiddenDatetimeFromEnhanced(targetId, triggerChange = true) {
+            const input = document.getElementById(targetId);
+            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${targetId}"]`);
+            if (!input || !wrapper) return;
+            const dateVal = wrapper.querySelector('.date-input').value;
+            const timeText = wrapper.querySelector('.time-trigger').textContent;
+            const parsed = parseDatetimeLocalValue(input.value);
+            let hour24 = parsed ? parsed.hour : 12;
+            let minute = parsed ? parsed.minute : 0;
+            const m = String(timeText).match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+            if (m) {
+                let hour12 = parseInt(m[1], 10) % 12;
+                minute = parseInt(m[2], 10);
+                if (m[3].toUpperCase() === 'PM') hour12 += 12;
+                hour24 = hour12;
+            }
+            input.value = buildDatetimeLocal(dateVal, hour24, minute);
+            syncEnhancedControl(targetId);
+            if (triggerChange) input.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+
+        function initializeEnhancedDateTimeControls() {
+            ENHANCED_DT_IDS.forEach((id) => {
+                const input = document.getElementById(id);
+                if (!input || input.dataset.enhanced === 'true') return;
+                input.dataset.enhanced = 'true';
+                input.classList.add('enhanced-datetime-hidden');
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'enhanced-datetime';
+                wrapper.dataset.target = id;
+                wrapper.innerHTML = `
+                    <div class="enhanced-datetime-row">
+                        <input type="date" class="date-input">
+                        <button type="button" class="time-trigger">Select time</button>
+                    </div>
+                    <div class="picker-summary"></div>
+                `;
+                input.insertAdjacentElement('afterend', wrapper);
+
+                const dateInput = wrapper.querySelector('.date-input');
+                const timeBtn = wrapper.querySelector('.time-trigger');
+                dateInput.addEventListener('change', () => updateHiddenDatetimeFromEnhanced(id));
+                timeBtn.addEventListener('click', () => openClockModal(id));
+                input.addEventListener('change', () => syncEnhancedControl(id));
+                syncEnhancedControl(id);
+            });
+
+            const analogClock = document.getElementById('analogClock');
+            if (analogClock && !analogClock.dataset.ready) {
+                analogClock.dataset.ready = 'true';
+                renderClockFace();
+                analogClock.addEventListener('pointerdown', handleClockPointerStart);
+                analogClock.addEventListener('pointermove', handleClockPointerMove);
+                window.addEventListener('pointerup', handleClockPointerEnd);
+            }
+        }
+
+        function renderClockFace() {
+            const clock = document.getElementById('analogClock');
+            if (!clock) return;
+            clock.querySelectorAll('.clock-number').forEach(el => el.remove());
+            const mode = clockMode;
+            const radius = 98;
+            const values = mode === 'hour'
+                ? Array.from({ length: 12 }, (_, i) => i + 1)
+                : Array.from({ length: 12 }, (_, i) => i * 5);
+
+            values.forEach((value, index) => {
+                const angle = ((index * 30) - 60) * Math.PI / 180;
+                const el = document.createElement('div');
+                el.className = 'clock-number';
+                el.textContent = mode === 'hour' ? value : pad2(value);
+                el.style.left = `${125 + Math.cos(angle) * radius}px`;
+                el.style.top = `${125 + Math.sin(angle) * radius}px`;
+                el.onclick = () => {
+                    if (mode === 'hour') {
+                        const isPM = clockState.hour24 >= 12;
+                        const selected = value % 12;
+                        clockState.hour24 = selected + (isPM ? 12 : 0);
+                    } else {
+                        clockState.minute = value;
+                    }
+                    refreshClockUi();
+                };
+                clock.appendChild(el);
+            });
+            refreshClockUi();
+        }
+
+        function refreshClockUi() {
+            document.getElementById('clockReadout').textContent = formatTime12(clockState.hour24, clockState.minute);
+            document.getElementById('clockHourBtn').classList.toggle('active', clockMode === 'hour');
+            document.getElementById('clockMinuteBtn').classList.toggle('active', clockMode === 'minute');
+            document.getElementById('clockAmBtn').classList.toggle('active', clockState.hour24 < 12);
+            document.getElementById('clockPmBtn').classList.toggle('active', clockState.hour24 >= 12);
+            document.getElementById('clockHelp').textContent = clockMode === 'hour'
+                ? 'Tap or drag on the clock to set the hour.'
+                : 'Tap or drag on the clock to set minutes in 5-minute steps.';
+
+            const hand = document.getElementById('clockHand');
+            const angle = clockMode === 'hour'
+                ? (((clockState.hour24 % 12) || 12) * 30)
+                : (clockState.minute * 6);
+            hand.style.transform = `rotate(${angle}deg)`;
+
+            document.querySelectorAll('.clock-number').forEach(el => {
+                const value = parseInt(el.textContent, 10);
+                const active = clockMode === 'hour'
+                    ? value === (((clockState.hour24 % 12) || 12))
+                    : value === clockState.minute;
+                el.classList.toggle('active', active);
+            });
+        }
+
+        function setClockMode(mode) {
+            clockMode = mode;
+            renderClockFace();
+        }
+
+        function setClockPeriod(period) {
+            let hour12 = clockState.hour24 % 12;
+            if (period === 'PM') hour12 += 12;
+            clockState.hour24 = hour12;
+            refreshClockUi();
+        }
+
+        function openClockModal(targetId) {
+            activeClockTargetId = targetId;
+            const input = document.getElementById(targetId);
+            const parsed = parseDatetimeLocalValue(input.value);
+            clockState = {
+                hour24: parsed ? parsed.hour : 12,
+                minute: parsed ? parsed.minute : 0
+            };
+            clockMode = 'hour';
+            renderClockFace();
+            document.getElementById('clockModal').classList.add('active');
+        }
+
+        function closeClockModal() {
+            document.getElementById('clockModal').classList.remove('active');
+            activeClockTargetId = null;
+            clockPointerDown = false;
+        }
+
+        function confirmClockSelection() {
+            if (!activeClockTargetId) return closeClockModal();
+            const wrapper = document.querySelector(`.enhanced-datetime[data-target="${activeClockTargetId}"]`);
+            if (!wrapper) return closeClockModal();
+            wrapper.querySelector('.time-trigger').textContent = formatTime12(clockState.hour24, clockState.minute);
+            if (!wrapper.querySelector('.date-input').value) {
+                wrapper.querySelector('.date-input').value = ensureDateForInput(document.getElementById(activeClockTargetId));
+            }
+            updateHiddenDatetimeFromEnhanced(activeClockTargetId);
+            closeClockModal();
+        }
+
+        function updateClockFromPointer(event) {
+            const clock = document.getElementById('analogClock');
+            const rect = clock.getBoundingClientRect();
+            const cx = rect.left + rect.width / 2;
+            const cy = rect.top + rect.height / 2;
+            const dx = event.clientX - cx;
+            const dy = event.clientY - cy;
+            let deg = Math.atan2(dy, dx) * 180 / Math.PI + 90;
+            if (deg < 0) deg += 360;
+            if (clockMode === 'hour') {
+                let hour12 = Math.round(deg / 30) % 12;
+                if (hour12 === 0) hour12 = 12;
+                const isPM = clockState.hour24 >= 12;
+                clockState.hour24 = (hour12 % 12) + (isPM ? 12 : 0);
+            } else {
+                clockState.minute = (Math.round(deg / 30) % 12) * 5;
+            }
+            refreshClockUi();
+        }
+
+        function handleClockPointerStart(event) {
+            clockPointerDown = true;
+            updateClockFromPointer(event);
+        }
+        function handleClockPointerMove(event) {
+            if (!clockPointerDown) return;
+            updateClockFromPointer(event);
+        }
+        function handleClockPointerEnd() {
+            clockPointerDown = false;
+        }
 
         function parseSelectedDayTime(str) {
             // Expects like: "Friday 9:30 PM"
