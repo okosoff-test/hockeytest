@@ -33,7 +33,7 @@
             background-size: 200% 100%;
             color: white;
             padding: 20px;
-            border-radius: 10px;
+            border-radius: 12px;
             margin-bottom: 25px;
             text-align: center;
             font-weight: bold;
@@ -734,81 +734,66 @@
 
         .announcement-bulletin {
             display: none;
-            background: linear-gradient(90deg, #1b6b33, #2f8f46, #1b6b33);
-            background-size: 200% 100%;
-            color: white;
-            padding: 18px 20px;
-            border-radius: 10px;
-            margin-bottom: 18px;
-            text-align: center;
-            font-weight: bold;
-            font-size: 1.15rem;
-            animation: flash 1.4s infinite;
-            border: 2px solid #4CAF50;
-            box-shadow: 0 0 24px rgba(76, 175, 80, 0.35);
             width: 100%;
             max-width: 900px;
+            background: linear-gradient(180deg, #fff7db 0%, #ffe8a3 100%);
+            color: #2f2410;
+            padding: 14px 16px;
+            border-radius: 12px;
+            margin-bottom: 22px;
+            border: 1px solid #e2be57;
+            box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
         }
 
         .announcement-bulletin.active {
             display: flex;
             align-items: center;
-            justify-content: center;
             gap: 14px;
-            flex-wrap: wrap;
         }
 
-        .bulletin-image {
+        .announcement-thumb {
             width: 96px;
             height: 96px;
-            object-fit: cover;
+            object-fit: contain;
             border-radius: 10px;
-            border: 1px solid rgba(255,255,255,0.35);
-            background: rgba(0,0,0,0.15);
+            background: rgba(255,255,255,0.55);
+            flex: 0 0 auto;
             display: none;
         }
 
-        .bulletin-copy {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-            text-align: left;
-            max-width: 720px;
+        .announcement-thumb.visible {
+            display: block;
         }
 
-        .bulletin-heading {
-            font-size: 1.3rem;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+        .announcement-copy strong {
+            display: block;
+            font-size: 1.05rem;
+            margin-bottom: 2px;
+            letter-spacing: 0.2px;
+            color: #5a4306;
         }
 
-        .bulletin-text {
+        .announcement-copy span {
+            color: #2f2410;
             font-size: 1rem;
-            font-weight: 600;
-            color: #fff;
-            white-space: pre-wrap;
+            line-height: 1.4;
         }
 
-</style>
+    </style>
 <base target="_blank">
 </head>
 <body>
 
     <!-- MAINTENANCE BULLETIN -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
-        <img id="maintenanceBulletinImage" class="bulletin-image" alt="Maintenance">
-        <div class="bulletin-copy">
-            <div class="bulletin-heading">Maintenance Notice</div>
-            <div class="bulletin-text" id="maintenanceBulletinText">Portal is down for maintenance, check back later</div>
-        </div>
+        Portal is down for maintenance, check back later
     </div>
 
-    <!-- LEAGUE ANNOUNCEMENT -->
     <div class="announcement-bulletin" id="announcementBulletin">
-        <img id="announcementBulletinImage" class="bulletin-image" alt="Announcement">
-        <div class="bulletin-copy">
-            <div class="bulletin-heading">League Announcement</div>
-            <div class="bulletin-text" id="announcementBulletinText"></div>
+        <img id="announcementThumb" class="announcement-thumb" alt="Announcement">
+        <div class="announcement-copy">
+            <strong>Attention:</strong>
+            <span id="announcementText">&nbsp;</span>
         </div>
     </div>
 
@@ -1021,7 +1006,7 @@
         let rosterReleased = false;
         let currentPlayers = [];
         let maintenanceMode = false;
-        let announcementEnabled = false;
+        let currentAnnouncementEnabled = false;
 
         let playerToCancel = null;
 
@@ -1290,45 +1275,35 @@
 
 
 
-        function updateBulletinImage(elementId, dataUrl) {
-            const img = document.getElementById(elementId);
-            if (!img) return;
-            if (dataUrl) {
-                img.src = dataUrl;
-                img.style.display = 'block';
-            } else {
-                img.removeAttribute('src');
-                img.style.display = 'none';
-            }
-        }
-
-        function renderMaintenanceBulletin(message, image) {
-            const bulletin = document.getElementById('maintenanceBulletin');
-            const text = document.getElementById('maintenanceBulletinText');
-            if (text) text.innerText = message || 'Portal is down for maintenance, check back later';
-            updateBulletinImage('maintenanceBulletinImage', image || '');
-            bulletin.classList.add('active');
-        }
-
-        function hideMaintenanceBulletin() {
-            const bulletin = document.getElementById('maintenanceBulletin');
-            bulletin.classList.remove('active');
-            updateBulletinImage('maintenanceBulletinImage', '');
-        }
-
-        function renderAnnouncementBulletin(enabled, message, image) {
+        function renderAnnouncement(data) {
             const bulletin = document.getElementById('announcementBulletin');
-            const text = document.getElementById('announcementBulletinText');
-            const hasContent = !!(message || image);
-            if (enabled && hasContent) {
-                if (text) text.innerText = message || '';
-                updateBulletinImage('announcementBulletinImage', image || '');
-                bulletin.classList.add('active');
-            } else {
+            const textEl = document.getElementById('announcementText');
+            const thumbEl = document.getElementById('announcementThumb');
+            if (!bulletin || !textEl || !thumbEl) return;
+
+            const enabled = !!data.announcementEnabled;
+            const text = (data.announcementText || '').trim();
+            const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            const image = images.length ? String(images[0] || '').trim() : '';
+            const shouldShow = enabled && (!!text || !!image);
+
+            if (!shouldShow) {
                 bulletin.classList.remove('active');
-                if (text) text.innerText = '';
-                updateBulletinImage('announcementBulletinImage', '');
+                textEl.textContent = '';
+                thumbEl.src = '';
+                thumbEl.classList.remove('visible');
+                return;
             }
+
+            textEl.textContent = text || 'Attention';
+            if (image) {
+                thumbEl.src = image;
+                thumbEl.classList.add('visible');
+            } else {
+                thumbEl.src = '';
+                thumbEl.classList.remove('visible');
+            }
+            bulletin.classList.add('active');
         }
 
         async function checkStatus() {
@@ -1340,12 +1315,14 @@
                 maintenanceMode = data.maintenanceMode;
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 if (maintenanceMode) {
+                    maintenanceBulletin.textContent = (data.maintenanceText || 'Portal is down for maintenance, check back later');
                     maintenanceBulletin.classList.add('active');
                 } else {
                     maintenanceBulletin.classList.remove('active');
                 }
-                
-                
+
+                renderAnnouncement(data);
+
                 // Update dynamic title
                 if (data.customTitle) {
                     document.getElementById('pageTitle').innerText = data.customTitle;
