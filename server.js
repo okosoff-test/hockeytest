@@ -133,13 +133,6 @@ let rosterReleaseAt = '';
 let resetWeekAt = '';
 let lastExactResetRunAt = '';
 let lastExactRosterReleaseRunAt = '';
-let lastWeeklyResetTime = '';
-let lastRosterReleaseTime = '';
-let lastLockStateChangedAt = '';
-let lastLockState = '';
-let lastLockStateSource = '';
-let lastAutoPlayersAddedAt = '';
-let lastAutoPlayersAddedCount = 0;
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -372,24 +365,6 @@ function nowETMinuteKey(etDate) {
     );
 }
 
-function markLockStateChange(isLocked, source = 'system') {
-    lastLockStateChangedAt = new Date().toISOString();
-    lastLockState = isLocked ? 'locked' : 'open';
-    lastLockStateSource = source;
-}
-
-function getEventHistory() {
-    return {
-        lastWeeklyResetTime,
-        lastRosterReleaseTime,
-        lastLockStateChangedAt,
-        lastLockState,
-        lastLockStateSource,
-        lastAutoPlayersAddedAt,
-        lastAutoPlayersAddedCount
-    };
-}
-
 function shouldBeLocked() {
     if (!signupLockSchedule || !signupLockSchedule.enabled) return false;
     if (!signupLockStartAt || !signupLockEndAt) return false;
@@ -416,7 +391,6 @@ function checkAutoLock() {
             requirePlayerCode = true;
             manualOverride = true;
             manualOverrideState = 'locked';
-            markLockStateChange(true, 'roster-release');
             saveData();
         }
         return {
@@ -434,7 +408,6 @@ function checkAutoLock() {
         if (manualOverrideState === 'locked') {
             if (!requirePlayerCode) {
                 requirePlayerCode = true;
-                markLockStateChange(true, 'manual-override');
                 saveData();
             }
             return {
@@ -447,7 +420,6 @@ function checkAutoLock() {
         } else if (manualOverrideState === 'open') {
             if (requirePlayerCode) {
                 requirePlayerCode = false;
-                markLockStateChange(false, 'manual-override');
                 saveData();
             }
             return {
@@ -463,12 +435,10 @@ function checkAutoLock() {
     if (shouldLock) {
         if (!requirePlayerCode) {
             requirePlayerCode = true;
-            markLockStateChange(true, 'scheduled-lock');
             saveData();
         }
     } else if (requirePlayerCode) {
         requirePlayerCode = false;
-        markLockStateChange(false, 'scheduled-unlock');
         saveData();
     }
 
@@ -501,7 +471,6 @@ async function autoReleaseRoster() {
     if (lastExactRosterReleaseRunAt === exactKey) return false;
 
     lastExactRosterReleaseRunAt = exactKey;
-    lastRosterReleaseTime = new Date().toISOString();
 
     try {
         const { week, year } = getWeekNumber(etTime);
@@ -524,10 +493,6 @@ async function autoReleaseRoster() {
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam
         };
-        lastRosterReleaseTime = new Date().toISOString();
-        markLockStateChange(true, 'roster-release');
-        lastRosterReleaseTime = new Date().toISOString();
-        markLockStateChange(true, 'roster-release');
 
         if (pool) {
             for (const player of players) {
@@ -613,8 +578,6 @@ async function addAutoPlayers() {
     }
     
     if (addedCount > 0) {
-        lastAutoPlayersAddedAt = new Date().toISOString();
-        lastAutoPlayersAddedCount = addedCount;
         await saveData();
     }
     console.log(`Auto-added ${addedCount} players`);
@@ -665,7 +628,6 @@ async function checkWeeklyReset() {
     if (lastExactResetRunAt === exactKey) return false;
 
     lastExactResetRunAt = exactKey;
-    lastWeeklyResetTime = new Date().toISOString();
 
     if (rosterReleased && currentWeekData.weekNumber &&
         (currentWeekData.whiteTeam.length > 0 || currentWeekData.darkTeam.length > 0) && pool) {
@@ -856,13 +818,6 @@ async function loadDataFromDB() {
         if (settings.resetWeekAt !== undefined) resetWeekAt = settings.resetWeekAt || '';
         if (settings.lastExactResetRunAt !== undefined) lastExactResetRunAt = settings.lastExactResetRunAt || '';
         if (settings.lastExactRosterReleaseRunAt !== undefined) lastExactRosterReleaseRunAt = settings.lastExactRosterReleaseRunAt || '';
-        if (settings.lastWeeklyResetTime !== undefined) lastWeeklyResetTime = settings.lastWeeklyResetTime || '';
-        if (settings.lastRosterReleaseTime !== undefined) lastRosterReleaseTime = settings.lastRosterReleaseTime || '';
-        if (settings.lastLockStateChangedAt !== undefined) lastLockStateChangedAt = settings.lastLockStateChangedAt || '';
-        if (settings.lastLockState !== undefined) lastLockState = settings.lastLockState || '';
-        if (settings.lastLockStateSource !== undefined) lastLockStateSource = settings.lastLockStateSource || '';
-        if (settings.lastAutoPlayersAddedAt !== undefined) lastAutoPlayersAddedAt = settings.lastAutoPlayersAddedAt || '';
-        if (settings.lastAutoPlayersAddedCount !== undefined) lastAutoPlayersAddedCount = Number(settings.lastAutoPlayersAddedCount) || 0;
         if (settings.signupLockSchedule) signupLockSchedule = settings.signupLockSchedule;
         if (settings.rosterReleaseSchedule) rosterReleaseSchedule = settings.rosterReleaseSchedule;
         if (settings.resetWeekSchedule) resetWeekSchedule = settings.resetWeekSchedule;
@@ -961,13 +916,6 @@ async function saveData() {
         await saveSetting('resetWeekAt', resetWeekAt);
         await saveSetting('lastExactResetRunAt', lastExactResetRunAt);
         await saveSetting('lastExactRosterReleaseRunAt', lastExactRosterReleaseRunAt);
-        await saveSetting('lastWeeklyResetTime', lastWeeklyResetTime);
-        await saveSetting('lastRosterReleaseTime', lastRosterReleaseTime);
-        await saveSetting('lastLockStateChangedAt', lastLockStateChangedAt);
-        await saveSetting('lastLockState', lastLockState);
-        await saveSetting('lastLockStateSource', lastLockStateSource);
-        await saveSetting('lastAutoPlayersAddedAt', lastAutoPlayersAddedAt);
-        await saveSetting('lastAutoPlayersAddedCount', lastAutoPlayersAddedCount);
         await saveSetting('signupLockSchedule', signupLockSchedule);
         await saveSetting('rosterReleaseSchedule', rosterReleaseSchedule);
         await saveSetting('resetWeekSchedule', resetWeekSchedule);
@@ -1004,13 +952,6 @@ function loadDataFromFile() {
             resetWeekAt = data.resetWeekAt ?? '';
             lastExactResetRunAt = data.lastExactResetRunAt ?? '';
             lastExactRosterReleaseRunAt = data.lastExactRosterReleaseRunAt ?? '';
-            lastWeeklyResetTime = data.lastWeeklyResetTime ?? '';
-            lastRosterReleaseTime = data.lastRosterReleaseTime ?? '';
-            lastLockStateChangedAt = data.lastLockStateChangedAt ?? '';
-            lastLockState = data.lastLockState ?? '';
-            lastLockStateSource = data.lastLockStateSource ?? '';
-            lastAutoPlayersAddedAt = data.lastAutoPlayersAddedAt ?? '';
-            lastAutoPlayersAddedCount = data.lastAutoPlayersAddedCount ?? 0;
             signupLockSchedule = data.signupLockSchedule ?? signupLockSchedule;
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
@@ -1944,8 +1885,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
-        backupGoalies: BACKUP_GOALIES,
-        eventHistory: getEventHistory()
+        backupGoalies: BACKUP_GOALIES
     });
 });
 
@@ -2124,8 +2064,7 @@ app.post('/api/admin/players-full', (req, res) => {
         rosterReleased, 
         currentWeekData, 
         playerSignupCode, 
-        requirePlayerCode,
-        eventHistory: getEventHistory() 
+        requirePlayerCode 
     });
 });
 
@@ -2160,8 +2099,7 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockStartAt,
         signupLockEndAt,
         rosterReleaseAt,
-        resetWeekAt,
-        eventHistory: getEventHistory()
+        resetWeekAt
     });
 });
 
@@ -2269,7 +2207,6 @@ app.post('/api/admin/toggle-code', (req, res) => {
     requirePlayerCode = newRequireCode;
     manualOverride = true;
     manualOverrideState = newRequireCode ? 'locked' : 'open';
-    markLockStateChange(newRequireCode, 'manual-toggle');
     
     saveData();
     
@@ -2713,7 +2650,6 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     manualOverrideState = null;
     requirePlayerCode = true;
     lastExactResetRunAt = '';
-    lastWeeklyResetTime = new Date().toISOString();
     
     // Code stays as 9855 - no auto-generation
     

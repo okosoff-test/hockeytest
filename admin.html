@@ -995,51 +995,6 @@
             display: block;
         }
 
-        .event-history-box {
-            background: linear-gradient(135deg, #1a263a, #24344d);
-            border: 2px solid #7ab8ff;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-
-        .event-history-box h3 {
-            margin: 0 0 15px 0;
-            color: #7ab8ff;
-            font-size: 1.1rem;
-        }
-
-        .event-history-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 12px;
-        }
-
-        .event-history-item {
-            background: rgba(0,0,0,0.2);
-            border: 1px solid rgba(255,255,255,0.08);
-            border-radius: 8px;
-            padding: 12px;
-        }
-
-        .event-history-label {
-            color: #9bb3cf;
-            font-size: 0.85rem;
-            margin-bottom: 6px;
-        }
-
-        .event-history-value {
-            color: #fff;
-            font-weight: 600;
-            line-height: 1.4;
-        }
-
-        .event-history-sub {
-            color: #aaa;
-            font-size: 0.8rem;
-            margin-top: 4px;
-        }
-
         /* Remove notification */
         .remove-notification {
             position: fixed;
@@ -1650,31 +1605,6 @@
             </div>
         </div>
 
-
-        <div class="event-history-box">
-            <h3>🕘 Scheduler Event History</h3>
-            <div class="event-history-grid">
-                <div class="event-history-item">
-                    <div class="event-history-label">Last Weekly Reset</div>
-                    <div class="event-history-value" id="lastWeeklyResetDisplay">—</div>
-                </div>
-                <div class="event-history-item">
-                    <div class="event-history-label">Last Roster Release</div>
-                    <div class="event-history-value" id="lastRosterReleaseDisplay">—</div>
-                </div>
-                <div class="event-history-item">
-                    <div class="event-history-label">Last Lock Change</div>
-                    <div class="event-history-value" id="lastLockChangeDisplay">—</div>
-                    <div class="event-history-sub" id="lastLockChangeSub"></div>
-                </div>
-                <div class="event-history-item">
-                    <div class="event-history-label">Last Auto-Add Players</div>
-                    <div class="event-history-value" id="lastAutoPlayersDisplay">—</div>
-                    <div class="event-history-sub" id="lastAutoPlayersSub"></div>
-                </div>
-            </div>
-        </div>
-
         <div class="roster-status">
             <h3>📋 Team Roster Status</h3>
             <div class="control-row">
@@ -1892,60 +1822,6 @@
         let maxGoalies = 2;
         function pad2(n){ return String(n).padStart(2,'0'); }
 
-        function formatETDateTime(value) {
-            if (!value) return '—';
-            const d = new Date(value);
-            if (Number.isNaN(d.getTime())) return '—';
-            return d.toLocaleString('en-US', {
-                timeZone: 'America/New_York',
-                weekday: 'short',
-                year: 'numeric',
-                month: 'short',
-                day: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            }) + ' ET';
-        }
-
-        function labelizeLockState(state) {
-            if (!state) return '—';
-            return state === 'locked' ? 'Locked' : state === 'open' ? 'Open' : state;
-        }
-
-        function labelizeLockSource(source) {
-            const map = {
-                'roster-release': 'Roster release',
-                'manual-override': 'Manual override',
-                'scheduled-lock': 'Scheduled lock',
-                'scheduled-unlock': 'Scheduled unlock',
-                'manual-toggle': 'Manual toggle',
-                'system': 'System'
-            };
-            return map[source] || source || '';
-        }
-
-        function updateEventHistory(history) {
-            const data = history || {};
-            document.getElementById('lastWeeklyResetDisplay').innerText = formatETDateTime(data.lastWeeklyResetTime);
-            document.getElementById('lastRosterReleaseDisplay').innerText = formatETDateTime(data.lastRosterReleaseTime);
-
-            const lockText = data.lastLockStateChangedAt
-                ? `${labelizeLockState(data.lastLockState)} — ${formatETDateTime(data.lastLockStateChangedAt)}`
-                : '—';
-            document.getElementById('lastLockChangeDisplay').innerText = lockText;
-            document.getElementById('lastLockChangeSub').innerText = data.lastLockStateSource ? `Source: ${labelizeLockSource(data.lastLockStateSource)}` : '';
-
-            const autoPlayersText = data.lastAutoPlayersAddedAt
-                ? formatETDateTime(data.lastAutoPlayersAddedAt)
-                : '—';
-            document.getElementById('lastAutoPlayersDisplay').innerText = autoPlayersText;
-            document.getElementById('lastAutoPlayersSub').innerText = data.lastAutoPlayersAddedAt
-                ? `Players added: ${data.lastAutoPlayersAddedCount || 0}`
-                : '';
-        }
-
         function getETNowDate() {
             // Creates a Date object representing "now" in America/New_York (approx).
             return new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
@@ -1982,23 +1858,27 @@
         }
 
         function formatDayTimeFromDatetimeLocal(dtLocalValue) {
-            if (!dtLocalValue) return "";
-            const d = new Date(dtLocalValue);
-            // Format using ET regardless of client locale.
-            const parts = new Intl.DateTimeFormat("en-US", {
-                timeZone: "America/New_York",
-                weekday: "long",
-                hour: "numeric",
-                minute: "2-digit",
-                hour12: true
-            }).formatToParts(d);
-            const get = (t) => (parts.find(p => p.type === t)?.value || "");
-            const weekday = get("weekday");
-            const hour = get("hour");
-            const minute = get("minute");
-            const dayPeriod = get("dayPeriod");
-            if (!weekday || !hour || !minute || !dayPeriod) return "";
-            return `${weekday} ${hour}:${minute} ${dayPeriod}`;
+            if (!dtLocalValue || !dtLocalValue.includes('T')) return "";
+
+            // IMPORTANT:
+            // Treat datetime-local values as ET wall-clock values exactly as entered.
+            // Do not convert from the browser's local timezone.
+            const [datePart, timePart] = dtLocalValue.split('T');
+            const [year, month, day] = datePart.split('-').map(Number);
+            const [hour24, minute] = timePart.split(':').map(Number);
+
+            if ([year, month, day, hour24, minute].some(v => !Number.isFinite(v))) return "";
+
+            const base = new Date(Date.UTC(year, month - 1, day));
+            const weekday = new Intl.DateTimeFormat('en-US', {
+                timeZone: 'UTC',
+                weekday: 'long'
+            }).format(base);
+
+            const hour12 = ((hour24 + 11) % 12) + 1;
+            const dayPeriod = hour24 >= 12 ? 'PM' : 'AM';
+
+            return `${weekday} ${hour12}:${pad2(minute)} ${dayPeriod}`;
         }
 
         
@@ -2315,7 +2195,6 @@
                 }
                 const data = await res.json();
                 document.getElementById('scheduleInfo').innerHTML = formatScheduleInfo(data);
-                updateEventHistory(data.eventHistory);
                 await refreshSettings();
             } catch (e) {
                 console.error(e);
@@ -2829,7 +2708,6 @@
                     syncEnhancedControl('resetWeekAt');
                 }
                 document.getElementById('scheduleInfo').innerHTML = formatScheduleInfo(data);
-                updateEventHistory(data.eventHistory);
                 const etNow = getETNowDate();
                 document.getElementById('etNowLine').innerText = `${dayName(etNow.getDay())} ${pad2(etNow.getHours())}:${pad2(etNow.getMinutes())} ET`;
                 
@@ -3176,7 +3054,6 @@
                 if (data.playerSignupCode) {
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
-                updateEventHistory(data.eventHistory);
                 
                 // Render players table with payment controls (ADMIN ONLY)
                 const tbody = document.getElementById('playerList');
