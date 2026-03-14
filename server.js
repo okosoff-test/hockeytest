@@ -393,42 +393,70 @@ function shouldBeLocked() {
 
 function checkAutoLock() {
     refreshDynamicSignupCode();
+    const etTime = getCurrentETTime();
 
-    const isLockedWindow = shouldBeLocked();
-    const hasManualOverride = !!(manualOverride && manualOverrideState);
-
-    let effectiveRequireCode;
-    let effectiveManualOverride = false;
-    let effectiveManualOverrideState = null;
-    let lockReason = 'open';
-
-    // Highest priority: once roster is released, signup always stays locked until reset.
     if (rosterReleased) {
-        effectiveRequireCode = true;
-        lockReason = 'rosterReleased';
-    } else if (hasManualOverride) {
-        // Manual override applies only before roster release.
-        effectiveRequireCode = manualOverrideState === 'locked';
-        effectiveManualOverride = true;
-        effectiveManualOverrideState = manualOverrideState;
-        lockReason = manualOverrideState === 'locked' ? 'manualLocked' : 'manualOpen';
-    } else {
-        effectiveRequireCode = isLockedWindow;
-        lockReason = isLockedWindow ? 'scheduledLock' : 'scheduledOpen';
+        if (!requirePlayerCode || manualOverrideState !== 'locked' || !manualOverride) {
+            requirePlayerCode = true;
+            manualOverride = true;
+            manualOverrideState = 'locked';
+            saveData();
+        }
+        return {
+            requirePlayerCode: true,
+            manualOverride: true,
+            manualOverrideState: 'locked',
+            isLockedWindow: true,
+            rosterReleased: true
+        };
     }
 
-    if (requirePlayerCode !== effectiveRequireCode) {
-        requirePlayerCode = effectiveRequireCode;
+    const shouldLock = shouldBeLocked();
+
+    if (manualOverride && manualOverrideState) {
+        if (manualOverrideState === 'locked') {
+            if (!requirePlayerCode) {
+                requirePlayerCode = true;
+                saveData();
+            }
+            return {
+                requirePlayerCode: true,
+                manualOverride: true,
+                manualOverrideState: 'locked',
+                isLockedWindow: shouldLock,
+                rosterReleased
+            };
+        } else if (manualOverrideState === 'open') {
+            if (requirePlayerCode) {
+                requirePlayerCode = false;
+                saveData();
+            }
+            return {
+                requirePlayerCode: false,
+                manualOverride: true,
+                manualOverrideState: 'open',
+                isLockedWindow: shouldLock,
+                rosterReleased
+            };
+        }
+    }
+
+    if (shouldLock) {
+        if (!requirePlayerCode) {
+            requirePlayerCode = true;
+            saveData();
+        }
+    } else if (requirePlayerCode) {
+        requirePlayerCode = false;
         saveData();
     }
 
     return {
         requirePlayerCode,
-        manualOverride: effectiveManualOverride,
-        manualOverrideState: effectiveManualOverrideState,
-        isLockedWindow,
-        rosterReleased,
-        lockReason
+        manualOverride: false,
+        manualOverrideState: null,
+        isLockedWindow: shouldLock,
+        rosterReleased
     };
 }
 
@@ -459,6 +487,8 @@ async function autoReleaseRoster() {
 
         rosterReleased = true;
         requirePlayerCode = true;
+        manualOverride = true;
+        manualOverrideState = 'locked';
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
@@ -658,7 +688,6 @@ async function checkWeeklyReset() {
     }
 
     await addAutoPlayers();
-    checkAutoLock();
     await saveData();
     return true;
 }
@@ -1370,6 +1399,18 @@ function formatETDateTimeLong(etParts) {
     return `${weekday}, ${monthName} ${etParts.day}, ${etParts.year} at ${hour12}:${String(etParts.minute).padStart(2, '0')} ${ampm} ET`;
 }
 
+function formatETDayTimeShort(etParts) {
+    if (!etParts) return '';
+    const base = new Date(Date.UTC(etParts.year, etParts.month - 1, etParts.day));
+    const weekday = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'UTC',
+        weekday: 'long'
+    }).format(base);
+    const hour12 = ((etParts.hour + 11) % 12) + 1;
+    const ampm = etParts.hour >= 12 ? 'PM' : 'AM';
+    return `${weekday} at ${hour12}:${String(etParts.minute).padStart(2, '0')} ${ampm} ET`;
+}
+
 function etPartsToIso(etParts) {
     if (!etParts) return null;
     return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00-05:00`;
@@ -1385,8 +1426,12 @@ function getSignupOpenMessageData() {
         ? parseDatetimeLocalToETDate(rosterReleaseAt)
         : null;
     const rosterReleaseLabel = releaseAtParts ? formatETDateTimeLong(releaseAtParts) : null;
+    const rosterReleaseShortLabel = releaseAtParts ? formatETDayTimeShort(releaseAtParts) : null;
 
     const gameDayName = getGameDayName();
+    const rosterReleaseMessage = rosterReleaseShortLabel
+        ? `📅 Check back ${rosterReleaseShortLabel} for team rosters`
+        : `📅 Check back ${gameDayName} at the scheduled roster release time for team rosters`;
 
     return {
         gameDayName,
@@ -1399,12 +1444,10 @@ function getSignupOpenMessageData() {
         noCodeLine: 'No code required after signup opens to all players.',
         rosterReleaseAtIso: etPartsToIso(releaseAtParts),
         rosterReleaseLabel,
-        rosterReleaseHeadline: rosterReleaseLabel
-            ? `📅 Check Back ${rosterReleaseLabel}`
-            : `📅 Check Back ${gameDayName} at the scheduled roster release time`,
-        rosterReleaseLine: rosterReleaseLabel
-            ? `Team rosters are released on ${rosterReleaseLabel}`
-            : `Team rosters are released at the scheduled time`
+        rosterReleaseShortLabel,
+        rosterReleaseMessage,
+        rosterReleaseHeadline: rosterReleaseMessage,
+        rosterReleaseLine: rosterReleaseMessage
     };
 }
 
@@ -1469,7 +1512,6 @@ app.get('/api/status', (req, res) => {
         lockNoticeLine: signupMessageData.lockNoticeLine,
         openLine: signupMessageData.openLine,
         noCodeLine: signupMessageData.noCodeLine,
-        rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline,
         rosterReleaseLine: signupMessageData.rosterReleaseLine
     });
 });
@@ -2564,6 +2606,8 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         rosterReleased = true;
         requirePlayerCode = true;
+        manualOverride = true;  // Keep locked after manual release
+        manualOverrideState = 'locked';  // Force locked state
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
@@ -2597,7 +2641,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: "Roster released successfully. Signup is now locked until the next reset.",
+            message: "Roster released successfully. Signup is now LOCKED until Monday 6pm.",
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam,
             whiteRating: teams.whiteRating.toFixed(1),
@@ -2662,7 +2706,6 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         
         // Auto-add predefined players after reset
         await addAutoPlayers();
-        checkAutoLock();
         
         await saveData();
     } catch (err) {
