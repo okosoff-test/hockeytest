@@ -1441,8 +1441,7 @@ app.get('/api/status', (req, res) => {
         isFull: playerSpots === 0,
         waitlistCount: waitlist.length,
         requireCode: requirePlayerCode,
-        signupLocked: !rosterReleased && requirePlayerCode,
-        registrationClosed: rosterReleased,
+        signupLocked: requirePlayerCode,
         isLockedWindow: lockStatus.isLockedWindow,
         manualOverride: lockStatus.manualOverride,
         manualOverrideState: lockStatus.manualOverrideState,
@@ -1611,10 +1610,6 @@ app.post('/api/verify-code', (req, res) => {
     checkAutoLock();
     
     const { code } = req.body;
-
-    if (rosterReleased) {
-        return res.status(403).json({ valid: false, error: 'Registration is closed after roster release.' });
-    }
     
     if (!requirePlayerCode) {
         return res.json({ valid: true, message: "Signup is open to all" });
@@ -2091,7 +2086,6 @@ app.post('/api/admin/settings', (req, res) => {
     res.json({
         code: playerSignupCode,
         requireCode: requirePlayerCode,
-        registrationClosed: rosterReleased,
         isLockedWindow: lockStatus.isLockedWindow,
         manualOverride: manualOverride,
         manualOverrideState: manualOverrideState,
@@ -2603,7 +2597,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: "Roster released successfully. Registration is now closed until the next reset.",
+            message: "Roster released successfully. Signup is now locked until the next reset.",
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam,
             whiteRating: teams.whiteRating.toFixed(1),
