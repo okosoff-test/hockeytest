@@ -393,70 +393,42 @@ function shouldBeLocked() {
 
 function checkAutoLock() {
     refreshDynamicSignupCode();
-    const etTime = getCurrentETTime();
 
+    const isLockedWindow = shouldBeLocked();
+    const hasManualOverride = !!(manualOverride && manualOverrideState);
+
+    let effectiveRequireCode;
+    let effectiveManualOverride = false;
+    let effectiveManualOverrideState = null;
+    let lockReason = 'open';
+
+    // Highest priority: once roster is released, signup always stays locked until reset.
     if (rosterReleased) {
-        if (!requirePlayerCode || manualOverrideState !== 'locked' || !manualOverride) {
-            requirePlayerCode = true;
-            manualOverride = true;
-            manualOverrideState = 'locked';
-            saveData();
-        }
-        return {
-            requirePlayerCode: true,
-            manualOverride: true,
-            manualOverrideState: 'locked',
-            isLockedWindow: true,
-            rosterReleased: true
-        };
+        effectiveRequireCode = true;
+        lockReason = 'rosterReleased';
+    } else if (hasManualOverride) {
+        // Manual override applies only before roster release.
+        effectiveRequireCode = manualOverrideState === 'locked';
+        effectiveManualOverride = true;
+        effectiveManualOverrideState = manualOverrideState;
+        lockReason = manualOverrideState === 'locked' ? 'manualLocked' : 'manualOpen';
+    } else {
+        effectiveRequireCode = isLockedWindow;
+        lockReason = isLockedWindow ? 'scheduledLock' : 'scheduledOpen';
     }
 
-    const shouldLock = shouldBeLocked();
-
-    if (manualOverride && manualOverrideState) {
-        if (manualOverrideState === 'locked') {
-            if (!requirePlayerCode) {
-                requirePlayerCode = true;
-                saveData();
-            }
-            return {
-                requirePlayerCode: true,
-                manualOverride: true,
-                manualOverrideState: 'locked',
-                isLockedWindow: shouldLock,
-                rosterReleased
-            };
-        } else if (manualOverrideState === 'open') {
-            if (requirePlayerCode) {
-                requirePlayerCode = false;
-                saveData();
-            }
-            return {
-                requirePlayerCode: false,
-                manualOverride: true,
-                manualOverrideState: 'open',
-                isLockedWindow: shouldLock,
-                rosterReleased
-            };
-        }
-    }
-
-    if (shouldLock) {
-        if (!requirePlayerCode) {
-            requirePlayerCode = true;
-            saveData();
-        }
-    } else if (requirePlayerCode) {
-        requirePlayerCode = false;
+    if (requirePlayerCode !== effectiveRequireCode) {
+        requirePlayerCode = effectiveRequireCode;
         saveData();
     }
 
     return {
         requirePlayerCode,
-        manualOverride: false,
-        manualOverrideState: null,
-        isLockedWindow: shouldLock,
-        rosterReleased
+        manualOverride: effectiveManualOverride,
+        manualOverrideState: effectiveManualOverrideState,
+        isLockedWindow,
+        rosterReleased,
+        lockReason
     };
 }
 
@@ -487,8 +459,6 @@ async function autoReleaseRoster() {
 
         rosterReleased = true;
         requirePlayerCode = true;
-        manualOverride = true;
-        manualOverrideState = 'locked';
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
@@ -688,6 +658,7 @@ async function checkWeeklyReset() {
     }
 
     await addAutoPlayers();
+    checkAutoLock();
     await saveData();
     return true;
 }
@@ -1470,7 +1441,8 @@ app.get('/api/status', (req, res) => {
         isFull: playerSpots === 0,
         waitlistCount: waitlist.length,
         requireCode: requirePlayerCode,
-        signupLocked: requirePlayerCode,
+        signupLocked: !rosterReleased && requirePlayerCode,
+        registrationClosed: rosterReleased,
         isLockedWindow: lockStatus.isLockedWindow,
         manualOverride: lockStatus.manualOverride,
         manualOverrideState: lockStatus.manualOverrideState,
@@ -1639,6 +1611,10 @@ app.post('/api/verify-code', (req, res) => {
     checkAutoLock();
     
     const { code } = req.body;
+
+    if (rosterReleased) {
+        return res.status(403).json({ valid: false, error: 'Registration is closed after roster release.' });
+    }
     
     if (!requirePlayerCode) {
         return res.json({ valid: true, message: "Signup is open to all" });
@@ -2115,6 +2091,7 @@ app.post('/api/admin/settings', (req, res) => {
     res.json({
         code: playerSignupCode,
         requireCode: requirePlayerCode,
+        registrationClosed: rosterReleased,
         isLockedWindow: lockStatus.isLockedWindow,
         manualOverride: manualOverride,
         manualOverrideState: manualOverrideState,
@@ -2593,8 +2570,6 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         rosterReleased = true;
         requirePlayerCode = true;
-        manualOverride = true;  // Keep locked after manual release
-        manualOverrideState = 'locked';  // Force locked state
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
@@ -2628,7 +2603,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: "Roster released successfully. Signup is now LOCKED until Monday 6pm.",
+            message: "Roster released successfully. Registration is now closed until the next reset.",
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam,
             whiteRating: teams.whiteRating.toFixed(1),
@@ -2693,6 +2668,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         
         // Auto-add predefined players after reset
         await addAutoPlayers();
+        checkAutoLock();
         
         await saveData();
     } catch (err) {
