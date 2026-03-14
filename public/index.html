@@ -257,6 +257,27 @@
             text-decoration: underline;
         }
 
+        .dynamic-release-notice {
+            background: linear-gradient(135deg, #2a1f0e, #3c2b12);
+            border: 2px solid #ffb347;
+            border-radius: 10px;
+            padding: 16px;
+            margin: 18px 0;
+            text-align: center;
+        }
+
+        .dynamic-release-notice strong {
+            display: block;
+            color: #ffd27a;
+            font-size: 1.05rem;
+            margin-bottom: 6px;
+        }
+
+        .dynamic-release-notice span {
+            color: #f4e0b2;
+            line-height: 1.45;
+        }
+
         .code-entry {
             background: linear-gradient(135deg, #2a1a3a, #3d2d4d);
             border: 2px solid var(--accent);
@@ -885,6 +906,10 @@
             <div class="game-time" id="gameTime">Loading...</div>
         </div>
 
+        <div class="dynamic-release-notice" id="dynamicReleaseNotice">
+            <strong id="dynamicReleaseHeadline">📅 Team Roster Release</strong>
+            <span id="dynamicReleaseLine">Teams are released at the scheduled time set in the admin panel.</span>
+        </div>
 
         <!-- Roster Display Section -->
         <div class="roster-display-section" id="rosterDisplay">
@@ -945,7 +970,7 @@
 
             <div class="roster-notice" id="rosterNotice">
                 <h3>📋 Team Roster</h3>
-                <p>Teams are auto-generated based on players self rating</p>
+                <p id="rosterNoticeText">Teams are auto-generated based on players self rating.</p>
                 <a href="/roster" class="roster-link">View Full Roster Page →</a><br>
                 <a href="/history" class="roster-link" style="font-size: 0.9rem; margin-top: 5px;">View Past Weeks →</a>
             </div>
@@ -1053,6 +1078,9 @@
         <div id="waitlistMessage" style="display:none; text-align:center; padding: 20px;">
             <h2 style="color: #ff6b00;">You're on the Waitlist!</h2>
             <p style="font-size: 1.2rem;">Position: <strong id="waitlistPosition">#</strong></p>
+            <p id="waitlistReleaseNotice" style="color: #ccc; margin-top: 18px; line-height: 1.5;">
+                Teams are released at the scheduled time set in the admin panel.
+            </p>
             <p style="color: #aaa; margin-top: 20px;">
                 Waitlist position 1 will automatically be promoted if a player cancels<br>
                 <a href="/waitlist" style="color:#ff6b00;">View Waitlist</a>
@@ -1477,6 +1505,17 @@
                 const isLockedWindow = data.isLockedWindow;
                 
                 currentPlayers = data.players || [];
+
+                const rosterHeadline = data.rosterReleaseHeadline || '📅 Team Roster Release';
+                const rosterLine = data.rosterReleaseLine || 'Teams are released at the scheduled time set in the admin panel.';
+                const dynamicReleaseHeadlineEl = document.getElementById('dynamicReleaseHeadline');
+                const dynamicReleaseLineEl = document.getElementById('dynamicReleaseLine');
+                const rosterNoticeTextEl = document.getElementById('rosterNoticeText');
+                const waitlistReleaseNoticeEl = document.getElementById('waitlistReleaseNotice');
+                if (dynamicReleaseHeadlineEl) dynamicReleaseHeadlineEl.innerText = rosterHeadline;
+                if (dynamicReleaseLineEl) dynamicReleaseLineEl.innerText = rosterLine;
+                if (rosterNoticeTextEl) rosterNoticeTextEl.innerText = `${rosterLine} Teams are auto-generated based on players self rating.`;
+                if (waitlistReleaseNoticeEl) waitlistReleaseNoticeEl.innerText = rosterLine;
                 
                 document.getElementById('gameLocation').innerText = currentLocation;
                 document.getElementById('gameTime').innerText = currentTime;

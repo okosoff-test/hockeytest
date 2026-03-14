@@ -297,6 +297,7 @@
         
         
         // Schedule info (dynamic by selected game day/time)
+        let rosterReleaseHeadline = "📅 Team Roster Release";
         let rosterReleaseLine = "Teams are released at the scheduled time";
         let gameDayName = "game day";
 
@@ -316,6 +317,7 @@
             try {
                 const res = await fetch(`${API_URL}/api/status`);
                 const status = await res.json();
+                if (status && status.rosterReleaseHeadline) rosterReleaseHeadline = status.rosterReleaseHeadline;
                 if (status && status.rosterReleaseLine) rosterReleaseLine = status.rosterReleaseLine;
                 if (status && status.gameDayName) gameDayName = status.gameDayName;
             } catch (e) {
@@ -397,9 +399,12 @@
                                 You're registered for the game!
                             </p>
                             ${!isGoalie ? `<p style="color: #ff4444; font-weight: bold; margin-bottom: 20px;">${paymentMsg}</p>` : `<p style="color: #4CAF50; font-weight: bold; margin-bottom: 20px;">${paymentMsg}</p>`}
-                            <p style="color: #888; margin-bottom: 30px;">
-                                ${rosterReleaseLine ? `${rosterReleaseLine} to see your team assignment!` : 'Check back for your team assignment once the roster is released.'}
-                            </p>
+                            <div style="background: linear-gradient(135deg, #2a1f0e, #3c2b12); border: 2px solid #ffb347; border-radius: 10px; padding: 16px; margin: 0 0 30px 0;">
+                                <p style="color: #ffd27a; font-weight: bold; margin: 0 0 8px 0;">${rosterReleaseHeadline || '📅 Team Roster Release'}</p>
+                                <p style="color: #f4e0b2; margin: 0; line-height: 1.5;">
+                                    ${rosterReleaseLine ? `${rosterReleaseLine} to see your team assignment.` : 'Check back for your team assignment once the roster is released.'}
+                                </p>
+                            </div>
                             <button onclick="window.location.href='/'" style="width: 100%; padding: 15px; background: #ff6b00; color: white; border: none; border-radius: 5px; font-size: 1.1rem; cursor: pointer;">
                                 Return to Home
                             </button>
