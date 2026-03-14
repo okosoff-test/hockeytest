@@ -1498,6 +1498,7 @@ app.get('/api/status', (req, res) => {
         lockNoticeLine: signupMessageData.lockNoticeLine,
         openLine: signupMessageData.openLine,
         noCodeLine: signupMessageData.noCodeLine,
+        rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline,
         rosterReleaseLine: signupMessageData.rosterReleaseLine
     });
 });
