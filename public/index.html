@@ -257,25 +257,26 @@
             text-decoration: underline;
         }
 
-        .dynamic-release-notice {
+        .release-banner {
             background: linear-gradient(135deg, #2a1f0e, #3c2b12);
             border: 2px solid #ffb347;
             border-radius: 10px;
-            padding: 16px;
+            padding: 18px;
             margin: 18px 0;
             text-align: center;
         }
 
-        .dynamic-release-notice strong {
-            display: block;
+        .release-banner-text {
             color: #ffd27a;
+            font-weight: bold;
             font-size: 1.05rem;
-            margin-bottom: 6px;
+            line-height: 1.45;
         }
 
-        .dynamic-release-notice span {
+        .release-countdown {
             color: #f4e0b2;
-            line-height: 1.45;
+            margin-top: 8px;
+            font-size: 0.95rem;
         }
 
         .code-entry {
@@ -906,9 +907,9 @@
             <div class="game-time" id="gameTime">Loading...</div>
         </div>
 
-        <div class="dynamic-release-notice" id="dynamicReleaseNotice">
-            <strong id="dynamicReleaseHeadline">📅 Team Roster Release</strong>
-            <span id="dynamicReleaseLine">Teams are released at the scheduled time set in the admin panel.</span>
+        <div class="release-banner" id="releaseBanner">
+            <div class="release-banner-text" id="releaseBannerText">📅 Check back at the scheduled roster release time for team rosters</div>
+            <div class="release-countdown" id="releaseCountdown">Countdown will appear once a roster release time is scheduled.</div>
         </div>
 
         <!-- Roster Display Section -->
@@ -970,7 +971,7 @@
 
             <div class="roster-notice" id="rosterNotice">
                 <h3>📋 Team Roster</h3>
-                <p id="rosterNoticeText">Teams are auto-generated based on players self rating.</p>
+                <p>Teams are auto-generated based on players self rating</p>
                 <a href="/roster" class="roster-link">View Full Roster Page →</a><br>
                 <a href="/history" class="roster-link" style="font-size: 0.9rem; margin-top: 5px;">View Past Weeks →</a>
             </div>
@@ -1078,9 +1079,6 @@
         <div id="waitlistMessage" style="display:none; text-align:center; padding: 20px;">
             <h2 style="color: #ff6b00;">You're on the Waitlist!</h2>
             <p style="font-size: 1.2rem;">Position: <strong id="waitlistPosition">#</strong></p>
-            <p id="waitlistReleaseNotice" style="color: #ccc; margin-top: 18px; line-height: 1.5;">
-                Teams are released at the scheduled time set in the admin panel.
-            </p>
             <p style="color: #aaa; margin-top: 20px;">
                 Waitlist position 1 will automatically be promoted if a player cancels<br>
                 <a href="/waitlist" style="color:#ff6b00;">View Waitlist</a>
@@ -1117,8 +1115,42 @@
         let currentPlayers = [];
         let maintenanceMode = false;
         let currentAnnouncementEnabled = false;
+        let rosterReleaseAtIso = null;
+        let rosterCountdownInterval = null;
 
         let playerToCancel = null;
+
+        function formatCountdown(msRemaining) {
+            if (!Number.isFinite(msRemaining) || msRemaining <= 0) return 'Roster release time has arrived.';
+            const totalSeconds = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSeconds / 86400);
+            const hours = Math.floor((totalSeconds % 86400) / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0 || days > 0) parts.push(`${hours}h`);
+            parts.push(`${minutes}m`);
+            if (days === 0) parts.push(`${seconds}s`);
+            return `Roster release in: ${parts.join(' ')}`;
+        }
+
+        function startRosterCountdown() {
+            if (rosterCountdownInterval) clearInterval(rosterCountdownInterval);
+            const countdownEl = document.getElementById('releaseCountdown');
+            if (!countdownEl) return;
+            const tick = () => {
+                if (!rosterReleaseAtIso) {
+                    countdownEl.textContent = 'Countdown will appear once a roster release time is scheduled.';
+                    return;
+                }
+                const target = new Date(rosterReleaseAtIso).getTime();
+                const remaining = target - Date.now();
+                countdownEl.textContent = formatCountdown(remaining);
+            };
+            tick();
+            rosterCountdownInterval = setInterval(tick, 1000);
+        }
 
         function capitalizeNamePart(part) {
             return String(part || '')
@@ -1505,21 +1537,17 @@
                 const isLockedWindow = data.isLockedWindow;
                 
                 currentPlayers = data.players || [];
-
-                const rosterHeadline = data.rosterReleaseHeadline || '📅 Team Roster Release';
-                const rosterLine = data.rosterReleaseLine || 'Teams are released at the scheduled time set in the admin panel.';
-                const dynamicReleaseHeadlineEl = document.getElementById('dynamicReleaseHeadline');
-                const dynamicReleaseLineEl = document.getElementById('dynamicReleaseLine');
-                const rosterNoticeTextEl = document.getElementById('rosterNoticeText');
-                const waitlistReleaseNoticeEl = document.getElementById('waitlistReleaseNotice');
-                if (dynamicReleaseHeadlineEl) dynamicReleaseHeadlineEl.innerText = rosterHeadline;
-                if (dynamicReleaseLineEl) dynamicReleaseLineEl.innerText = rosterLine;
-                if (rosterNoticeTextEl) rosterNoticeTextEl.innerText = `${rosterLine} Teams are auto-generated based on players self rating.`;
-                if (waitlistReleaseNoticeEl) waitlistReleaseNoticeEl.innerText = rosterLine;
                 
                 document.getElementById('gameLocation').innerText = currentLocation;
                 document.getElementById('gameTime').innerText = currentTime;
                 document.getElementById('gameDate').innerText = currentDate;
+
+                rosterReleaseAtIso = data.rosterReleaseAtIso || null;
+                const releaseBannerText = document.getElementById('releaseBannerText');
+                if (releaseBannerText) {
+                    releaseBannerText.textContent = data.rosterReleaseMessage || data.rosterReleaseLine || '📅 Check back at the scheduled roster release time for team rosters';
+                }
+                startRosterCountdown();
                 
                 if (rosterReleased) {
                     await loadAndDisplayRoster();
