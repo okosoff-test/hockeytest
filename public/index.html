@@ -525,33 +525,6 @@
             margin-top: 8px;
         }
 
-        .closed-notice {
-            background: linear-gradient(135deg, #4a1a1a, #5d2d2d);
-            border: 3px solid #ff4444;
-            border-radius: 10px;
-            padding: 20px;
-            margin: 20px 0;
-            text-align: center;
-            color: #ffd3d3;
-            box-shadow: 0 0 20px rgba(255, 68, 68, 0.22);
-        }
-
-        .closed-notice strong {
-            display: block;
-            margin-bottom: 10px;
-            font-size: 1.25rem;
-            color: #ff6b6b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-        }
-
-        .closed-notice .closed-subline {
-            color: #fff0f0;
-            font-weight: bold;
-            display: block;
-            margin-top: 10px;
-        }
-
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .spot-number { font-size: 2.5rem; }
@@ -993,12 +966,6 @@
                 <span class="no-code-note">
                     (No code required after the scheduled unlock time)
                 </span>
-            </div>
-
-            <div class="closed-notice" id="closedNotice" style="display:none;">
-                <strong>⛔ Registration Closed</strong>
-                <span id="closedNoticeText">Roster has been released. Registration is now closed for this game.</span>
-                <span class="closed-subline">View the roster below or use the full roster page.</span>
             </div>
 
             <div class="roster-notice" id="rosterNotice">
@@ -1569,14 +1536,11 @@
                     document.getElementById('waitlistMode').style.display = 'none';
                 }
                 
-                const registrationClosed = !!(data.registrationClosed || data.rosterReleased);
-                const effectiveLocked = !registrationClosed && !!(data.requireCode ?? data.signupLocked);
+                const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
                 codeRequired = effectiveLocked;
 
                 const lockNotice = document.getElementById('lockNotice');
-                const closedNotice = document.getElementById('closedNotice');
-                const closedNoticeText = document.getElementById('closedNoticeText');
-                if (effectiveLocked && !registrationClosed) {
+                if (effectiveLocked && !data.rosterReleased) {
                     lockNotice.style.display = 'block';
                     lockNotice.innerHTML = `
                         <strong>🔒 Signup Temporarily Locked</strong>
@@ -1587,22 +1551,16 @@
                     lockNotice.style.display = 'none';
                 }
 
-                if (registrationClosed) {
-                    closedNotice.style.display = 'block';
-                    closedNoticeText.innerText = 'Roster has been released. Registration and waitlist are now closed for this game.';
+                if (data.rosterReleased) {
                     document.getElementById('registeredPlayersSection').style.display = 'none';
                 } else {
-                    closedNotice.style.display = 'none';
                     document.getElementById('registeredPlayersSection').style.display = 'block';
                     await loadRegisteredPlayers();
                 }
 
+                
                 const codeTitle = document.getElementById('codeTitle');
-                if (registrationClosed) {
-                    document.getElementById('codeEntryBox').style.display = 'none';
-                    document.getElementById('openNotice').style.display = 'none';
-                    document.getElementById('signupForm').style.display = 'none';
-                } else if (effectiveLocked) {
+                if (effectiveLocked) {
                     document.getElementById('codeEntryBox').style.display = 'block';
                     document.getElementById('openNotice').style.display = 'none';
                     if (!verifiedCode) {
@@ -1839,12 +1797,6 @@
                     document.getElementById('codeSection').style.display = 'none';
                     document.getElementById('signupForm').style.display = 'block';
                 } else {
-                    let errorText = 'Invalid code';
-                    try {
-                        const errData = await res.json();
-                        errorText = errData.error || errorText;
-                    } catch (_) {}
-                    document.getElementById('codeError').innerText = errorText;
                     document.getElementById('codeError').style.display = 'block';
                     document.getElementById('code1').value = '';
                     document.getElementById('code2').value = '';
