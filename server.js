@@ -2,6 +2,10 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
+const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
 const { Pool } = require('pg');
 const app = express();
@@ -40,16 +44,49 @@ if (pool) {
 }
 
 // Middleware
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 app.use(cors());
 app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
+
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 10,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many login attempts. Please wait a few minutes and try again.' }
+});
+
+const adminApiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    max: 600,
+    standardHeaders: true,
+    legacyHeaders: false,
+    message: { error: 'Too many admin requests. Please slow down and try again.' }
+});
+
+app.use('/api/admin/login', loginLimiter);
+app.use('/api/admin', adminApiLimiter);
 app.use(express.static('public'));
 
 // --- DATA STORE ---
 let playerSpots = 20;
 let players = []; 
 let waitlist = [];
-const ADMIN_PASSWORD = "964888";
+
+const LEGACY_ADMIN_PASSWORD = '964888';
+const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim() || LEGACY_ADMIN_PASSWORD;
+const ADMIN_PASSWORD_HASH = String(process.env.ADMIN_PASSWORD_HASH || '').trim();
+const ADMIN_SESSION_SECRET = String(process.env.ADMIN_SESSION_SECRET || process.env.JWT_SECRET || '').trim() || crypto.createHash('sha256').update(`${ADMIN_PASSWORD}:${process.env.DATABASE_URL || 'file-mode'}`).digest('hex');
+const ADMIN_SESSION_TTL = '12h';
+const revokedAdminTokens = new Set();
+
+if (!process.env.ADMIN_PASSWORD && !process.env.ADMIN_PASSWORD_HASH) {
+    console.warn('[SECURITY] Using fallback admin password. Set ADMIN_PASSWORD or ADMIN_PASSWORD_HASH in your environment.');
+}
+if (!process.env.ADMIN_SESSION_SECRET && !process.env.JWT_SECRET) {
+    console.warn('[SECURITY] Using derived admin session secret. Set ADMIN_SESSION_SECRET for stronger security.');
+}
 
 // Game details - FRIDAY HOCKEY
 let gameLocation = "Capri Recreation Complex";
@@ -208,8 +245,48 @@ let resetWeekSchedule = {
 };
 
 
-// Store admin sessions
-let adminSessions = {};
+
+function timingSafeEqualStrings(a, b) {
+    const aBuf = Buffer.from(String(a || ''), 'utf8');
+    const bBuf = Buffer.from(String(b || ''), 'utf8');
+    if (aBuf.length !== bBuf.length) return false;
+    return crypto.timingSafeEqual(aBuf, bBuf);
+}
+
+function hashAdminPassword(password, salt = crypto.randomBytes(16).toString('hex')) {
+    const hash = crypto.scryptSync(String(password || ''), salt, 64).toString('hex');
+    return `${salt}:${hash}`;
+}
+
+function verifyAdminPassword(password) {
+    const candidate = String(password || '');
+
+    if (ADMIN_PASSWORD_HASH) {
+        const [salt, expectedHash] = ADMIN_PASSWORD_HASH.split(':');
+        if (!salt || !expectedHash) {
+            console.error('[SECURITY] Invalid ADMIN_PASSWORD_HASH format. Expected salt:hash');
+            return false;
+        }
+        const computedHash = crypto.scryptSync(candidate, salt, 64).toString('hex');
+        return timingSafeEqualStrings(computedHash, expectedHash);
+    }
+
+    return timingSafeEqualStrings(candidate, ADMIN_PASSWORD);
+}
+
+function createAdminSessionToken() {
+    return jwt.sign({ role: 'admin' }, ADMIN_SESSION_SECRET, { expiresIn: ADMIN_SESSION_TTL });
+}
+
+function isValidAdminSession(sessionToken) {
+    if (!sessionToken || revokedAdminTokens.has(sessionToken)) return false;
+    try {
+        const payload = jwt.verify(sessionToken, ADMIN_SESSION_SECRET);
+        return payload && payload.role === 'admin';
+    } catch (err) {
+        return false;
+    }
+}
 
 // Weekly reset tracking
 let lastResetWeek = null;
@@ -360,6 +437,21 @@ function getCurrentETTime() {
     return etDate;
 }
 
+function getETOffsetMinutes(date = new Date()) {
+    const formatter = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        timeZoneName: 'shortOffset',
+        hour: '2-digit'
+    });
+    const tzPart = formatter.formatToParts(date).find(part => part.type === 'timeZoneName')?.value || 'GMT-5';
+    const match = tzPart.match(/GMT([+-])(\d{1,2})(?::?(\d{2}))?/i);
+    if (!match) return -300;
+    const sign = match[1] === '-' ? -1 : 1;
+    const hours = parseInt(match[2], 10) || 0;
+    const minutes = parseInt(match[3] || '0', 10) || 0;
+    return sign * ((hours * 60) + minutes);
+}
+
 function getWeekNumber(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -371,7 +463,7 @@ function getWeekNumber(date) {
     };
 }
 
-// FRIDAY HOCKEY SCHEDULE: Locked Friday 5pm - Monday 6pm
+// Exact admin-configured schedule windows are evaluated in Eastern Time.
 
 function clampInt(n, fallback) {
     const x = parseInt(n, 10);
@@ -447,7 +539,7 @@ function checkAutoLock() {
             requirePlayerCode = true;
             manualOverride = true;
             manualOverrideState = 'locked';
-            saveData();
+            saveData().catch(err => console.error('Error saving lock state:', err));
         }
         return {
             requirePlayerCode: true,
@@ -464,7 +556,7 @@ function checkAutoLock() {
         if (manualOverrideState === 'locked') {
             if (!requirePlayerCode) {
                 requirePlayerCode = true;
-                saveData();
+                saveData().catch(err => console.error('Error saving lock state:', err));
             }
             return {
                 requirePlayerCode: true,
@@ -476,7 +568,7 @@ function checkAutoLock() {
         } else if (manualOverrideState === 'open') {
             if (requirePlayerCode) {
                 requirePlayerCode = false;
-                saveData();
+                saveData().catch(err => console.error('Error saving lock state:', err));
             }
             return {
                 requirePlayerCode: false,
@@ -491,7 +583,7 @@ function checkAutoLock() {
     if (shouldLock) {
         if (!requirePlayerCode) {
             requirePlayerCode = true;
-            saveData();
+            saveData().catch(err => console.error('Error saving lock state:', err));
         }
     } else if (requirePlayerCode) {
         requirePlayerCode = false;
@@ -759,9 +851,6 @@ async function runSchedulerTick() {
     try {
         checkMaintenanceModeSchedule();
         checkAutoLock();
-        await autoReleaseRoster();
-        await checkWeeklyReset();
-        await saveData();
     } catch (err) {
         console.error('Scheduler tick error:', err);
     } finally {
@@ -952,7 +1041,7 @@ async function loadDataFromDB() {
                 announcementImages = [];
             }
         }
-        
+        markPersistenceBaseline();
     } catch (err) {
         console.error('Error loading from DB:', err);
         throw err;
@@ -971,8 +1060,67 @@ async function saveSetting(key, value) {
     }
 }
 
-async function saveData() {
+let lastPersistedStateSignature = null;
+
+function getPersistentStateSnapshot() {
+    return {
+        playerSpots,
+        players,
+        waitlist,
+        gameLocation,
+        gameTime,
+        gameDate,
+        playerSignupCode,
+        requirePlayerCode,
+        manualOverride,
+        manualOverrideState,
+        lastResetWeek,
+        rosterReleased,
+        currentWeekData,
+        signupLockStartAt,
+        signupLockEndAt,
+        rosterReleaseAt,
+        resetWeekAt,
+        lastExactResetRunAt,
+        lastExactRosterReleaseRunAt,
+        signupLockSchedule,
+        rosterReleaseSchedule,
+        resetWeekSchedule,
+        maintenanceMode,
+        customTitle,
+        announcementEnabled,
+        announcementText,
+        announcementImages
+    };
+}
+
+function computePersistentStateSignature() {
+    return JSON.stringify(getPersistentStateSnapshot());
+}
+
+function markPersistenceBaseline() {
+    lastPersistedStateSignature = computePersistentStateSignature();
+}
+
+async function saveData(force = false) {
     try {
+        const nextSignature = computePersistentStateSignature();
+        if (!force && lastPersistedStateSignature === nextSignature) {
+            return false;
+        }
+
+        if (!pool) {
+            const filePayload = {
+                ...getPersistentStateSnapshot(),
+                players,
+                waitlist
+            };
+            fs.writeFileSync(DATA_FILE, JSON.stringify(filePayload, null, 2));
+            writeSettingsBackup('saveData');
+            lastPersistedStateSignature = nextSignature;
+            return true;
+        }
+
         await saveSetting('playerSpots', playerSpots);
         await saveSetting('gameLocation', gameLocation);
         await saveSetting('gameTime', gameTime);
@@ -1002,8 +1150,11 @@ async function saveData() {
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
         writeSettingsBackup('saveData');
+        lastPersistedStateSignature = nextSignature;
+        return true;
     } catch (err) {
         console.error('Error saving data:', err);
+        return false;
     }
 }
 
@@ -1126,10 +1277,12 @@ function loadDataFromFile() {
         } else {
             gameDate = calculateNextGameDate();
         }
+        markPersistenceBaseline();
     } catch (err) {
         console.error('Error loading data:', err);
         gameDate = calculateNextGameDate();
         refreshDynamicSignupCode();
+        markPersistenceBaseline();
     }
 }
 
@@ -1628,7 +1781,15 @@ function formatETDateTimeLong(etParts) {
 
 function etPartsToIso(etParts) {
     if (!etParts) return null;
-    return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00-05:00`;
+
+    const probeUtc = new Date(Date.UTC(etParts.year, etParts.month - 1, etParts.day, etParts.hour, etParts.minute, 0));
+    const offsetMinutes = getETOffsetMinutes(probeUtc);
+    const sign = offsetMinutes >= 0 ? '+' : '-';
+    const absoluteOffset = Math.abs(offsetMinutes);
+    const offsetHours = String(Math.floor(absoluteOffset / 60)).padStart(2, '0');
+    const offsetMins = String(absoluteOffset % 60).padStart(2, '0');
+
+    return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00${sign}${offsetHours}:${offsetMins}`;
 }
 
 function getSignupOpenMessageData() {
@@ -1836,9 +1997,9 @@ app.get('/api/history/:year/:week', async (req, res) => {
 });
 
 app.delete('/api/admin/history/:year/:week', async (req, res) => {
-    const { password, sessionToken } = req.body;
+    const { sessionToken } = req.body || {};
     
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2160,23 +2321,19 @@ app.post('/api/cancel-registration', async (req, res) => {
 // --- ADMIN API - FULL ACCESS TO ALL DATA ---
 
 app.post('/api/admin/check-session', (req, res) => {
-    const { sessionToken } = req.body;
-    if (adminSessions[sessionToken]) {
-        res.json({ loggedIn: true });
-    } else {
-        res.json({ loggedIn: false });
-    }
+    const { sessionToken } = req.body || {};
+    res.json({ loggedIn: isValidAdminSession(sessionToken) });
 });
 
 app.post('/api/admin/login', (req, res) => {
-    const { password } = req.body;
-    if (password === ADMIN_PASSWORD) {
-        const sessionToken = Date.now().toString() + Math.random().toString();
-        adminSessions[sessionToken] = true;
-        res.json({ success: true, sessionToken: sessionToken });
-    } else {
-        res.status(401).json({ success: false });
+    const { password } = req.body || {};
+
+    if (!verifyAdminPassword(password)) {
+        return res.status(401).json({ success: false });
     }
+
+    const sessionToken = createAdminSessionToken();
+    res.json({ success: true, sessionToken });
 });
 
 // ============================================
@@ -2186,7 +2343,7 @@ app.post('/api/admin/login', (req, res) => {
 // Get app settings (maintenance mode, title, etc.)
 app.post('/api/admin/app-settings', (req, res) => {
     const { sessionToken } = req.body;
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2211,7 +2368,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
 
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
@@ -2260,7 +2417,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
 app.post('/api/admin/add-backup-goalie', async (req, res) => {
     const { sessionToken, goalieIndex } = req.body;
     
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2320,7 +2477,7 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
 app.post('/api/admin/players-full', (req, res) => {
     const { sessionToken } = req.body;
     
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2368,8 +2525,8 @@ app.post('/api/admin/players', (req, res) => {
 });
 
 app.post('/api/admin/settings', (req, res) => {
-    const { password, sessionToken } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2396,8 +2553,8 @@ app.post('/api/admin/settings', (req, res) => {
 });
 
 app.post('/api/admin/update-details', (req, res) => {
-    const { password, sessionToken, location, time, date } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, location, time, date } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2423,9 +2580,9 @@ app.post('/api/admin/update-details', (req, res) => {
 });
 
 app.post('/api/admin/update-code', (req, res) => {
-    const { password, sessionToken, newCode } = req.body;
+    const { sessionToken, newCode } = req.body || {};
     
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized - invalid session" });
     }
     
@@ -2446,8 +2603,8 @@ app.post('/api/admin/update-code', (req, res) => {
 
 app.post('/api/admin/update-schedules', async (req, res) => {
         const body = req.body || {};
-    const { password, sessionToken, signupLockEnabled, signupLockStart, signupLockEnd, rosterReleaseEnabled, rosterReleaseAt: rosterReleaseAtInput, resetWeekEnabled, resetWeekAt: resetWeekAtInput } = body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, signupLockEnabled, signupLockStart, signupLockEnd, rosterReleaseEnabled, rosterReleaseAt: rosterReleaseAtInput, resetWeekEnabled, resetWeekAt: resetWeekAtInput } = body;
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2504,8 +2661,8 @@ app.post('/api/admin/update-schedules', async (req, res) => {
 });
 
 app.post('/api/admin/toggle-code', (req, res) => {
-    const { password, sessionToken } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2527,8 +2684,8 @@ app.post('/api/admin/toggle-code', (req, res) => {
 });
 
 app.post('/api/admin/reset-schedule', (req, res) => {
-    const { password, sessionToken } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2547,8 +2704,8 @@ app.post('/api/admin/reset-schedule', (req, res) => {
 });
 
 app.post('/api/admin/promote-waitlist', async (req, res) => {
-    const { password, sessionToken, waitlistId } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, waitlistId } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2602,8 +2759,8 @@ app.post('/api/admin/promote-waitlist', async (req, res) => {
 });
 
 app.post('/api/admin/remove-waitlist', async (req, res) => {
-    const { password, sessionToken, waitlistId } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, waitlistId } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2627,8 +2784,8 @@ app.post('/api/admin/remove-waitlist', async (req, res) => {
 });
 
 app.post('/api/admin/add-player', async (req, res) => {
-    const { password, sessionToken, firstName, lastName, phone, paymentMethod, rating, isGoalie, toWaitlist } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, firstName, lastName, phone, paymentMethod, rating, isGoalie, toWaitlist } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2716,9 +2873,9 @@ app.post('/api/admin/add-player', async (req, res) => {
 
 // ADMIN REMOVE PLAYER - WORKS ON ANY PLAYER AT ANY TIME (NO RESTRICTIONS)
 app.post('/api/admin/remove-player', async (req, res) => {
-    const { password, sessionToken, playerId } = req.body;
+    const { sessionToken, playerId } = req.body || {};
     
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2758,8 +2915,8 @@ app.post('/api/admin/remove-player', async (req, res) => {
 });
 
 app.post('/api/admin/update-spots', (req, res) => {
-    const { password, sessionToken, newSpots } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken, newSpots } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2775,9 +2932,9 @@ app.post('/api/admin/update-spots', (req, res) => {
 
 // Update paid amount endpoint
 app.post('/api/admin/update-paid-amount', async (req, res) => {
-    const { password, sessionToken, playerId, amount } = req.body;
+    const { sessionToken, playerId, amount } = req.body || {};
     
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2823,9 +2980,9 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
 // FIX: Store old rating before updating
 app.post('/api/admin/update-rating', async (req, res) => {
-    const { password, sessionToken, playerId, newRating } = req.body;
+    const { sessionToken, playerId, newRating } = req.body || {};
 
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
 
@@ -2853,9 +3010,9 @@ app.post('/api/admin/update-rating', async (req, res) => {
 });
 
 app.post('/api/admin/release-roster', async (req, res) => {
-    const { password, sessionToken } = req.body;
+    const { sessionToken } = req.body || {};
     
-    if (!adminSessions[sessionToken]) {
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2921,8 +3078,8 @@ app.post('/api/admin/release-roster', async (req, res) => {
 });
 
 app.post('/api/admin/manual-reset', async (req, res) => {
-    const { password, sessionToken } = req.body;
-    if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
+    const { sessionToken } = req.body || {};
+    if (!isValidAdminSession(sessionToken)) {
         return res.status(401).send("Unauthorized");
     }
     
@@ -2981,7 +3138,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
 app.get('/api/admin/export-payments', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: "Unauthorized - Admin access only" });
     }
 
@@ -2999,7 +3156,7 @@ app.get('/api/admin/export-payments', async (req, res) => {
 app.get('/api/admin/payment-reports', async (req, res) => {
     const { sessionToken, limit } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
@@ -3010,7 +3167,7 @@ app.get('/api/admin/payment-reports', async (req, res) => {
 app.get('/api/admin/payment-reports/latest', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
@@ -3027,7 +3184,7 @@ app.get('/api/admin/payment-reports/latest', async (req, res) => {
 app.get('/api/admin/payment-reports/:id/download', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !isValidAdminSession(sessionToken)) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
