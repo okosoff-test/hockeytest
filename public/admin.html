@@ -2285,7 +2285,7 @@
                     body: JSON.stringify({ sessionToken: sessionToken })
                 });
                 const data = await res.json();
-                if (data.loggedIn) {
+                if (data.valid) {
                     if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
                     showDashboard();
                     loadData();
