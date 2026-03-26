@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Secure Admin - Phan's Hockey</title>
+    <title>Admin - Phan's Hockey</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -478,62 +478,12 @@
             background: #5aa0f2;
         }
 
-
         .security-notice {
             color: #888;
             font-size: 0.8rem;
             text-align: center;
             margin-top: 10px;
             font-style: italic;
-        }
-
-        .login-card {
-            max-width: 420px;
-            margin: 0 auto;
-        }
-
-        .login-label {
-            display: block;
-            font-size: 0.95rem;
-            color: #ddd;
-            margin: 6px 0 8px;
-            font-weight: 600;
-        }
-
-        .password-wrap {
-            position: relative;
-            margin-bottom: 8px;
-        }
-
-        .password-wrap input {
-            margin: 0;
-            padding-right: 88px;
-            height: 50px;
-            font-size: 1.05rem;
-        }
-
-        .password-toggle {
-            position: absolute;
-            right: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            margin: 0;
-            min-width: 68px;
-            padding: 9px 12px;
-            background: #555;
-            font-size: 0.9rem;
-            border-radius: 8px;
-        }
-
-        .password-toggle:hover {
-            background: #666;
-        }
-
-        .login-hint {
-            color: #9aa0a6;
-            font-size: 0.82rem;
-            text-align: center;
-            margin: 6px 0 14px;
         }
 
         /* Goalies Section */
@@ -1401,16 +1351,9 @@
     <div class="container" id="loginBox">
         <h1>Admin Portal</h1>
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
-        <div class="login-card">
-            <label class="login-label" for="adminPass">Admin Password</label>
-            <div class="password-wrap">
-                <input type="password" id="adminPass" placeholder="Enter Admin Password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
-                <button type="button" class="password-toggle" id="togglePasswordBtn" onclick="togglePassword()" aria-label="Show password" aria-pressed="false">Show</button>
-            </div>
-            <div class="login-hint">Tip: tap Show to confirm what you typed before logging in.</div>
-            <button onclick="login()" style="width:100%;">Access Dashboard</button>
-            <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
-        </div>
+        <input type="password" id="adminPass" placeholder="Enter Admin Password">
+        <button onclick="login()" style="width:100%;">Access Dashboard</button>
+        <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
     </div>
 
     <div class="container admin-panel" id="adminPanel">
@@ -1877,24 +1820,8 @@
 
     <script>
         const API_URL = window.location.origin;
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function safeName(firstName, lastName) {
-            return `${escapeHtml(firstName)} ${escapeHtml(lastName)}`.trim();
-        }
-
         const SESSION_KEY = 'hockey_admin_session';
-        const CSRF_KEY = 'hockey_admin_csrf';
-        let sessionToken = sessionStorage.getItem(SESSION_KEY) || "";
-        let csrfToken = sessionStorage.getItem(CSRF_KEY) || "";
+        let sessionToken = localStorage.getItem(SESSION_KEY) || "";
         let maxGoalies = 2;
         function pad2(n){ return String(n).padStart(2,'0'); }
 
@@ -2342,8 +2269,7 @@
                     body: JSON.stringify({ sessionToken: sessionToken })
                 });
                 const data = await res.json();
-                if (data.valid) {
-                    if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
+                if (data.loggedIn) {
                     showDashboard();
                     loadData();
                     loadSettings();
@@ -2351,7 +2277,8 @@
                     loadPaymentReportSnapshots();
                     setTimeout(loadHistoryList, 500);
                 } else {
-                    saveAdminSession('', '');
+                    localStorage.removeItem(SESSION_KEY);
+                    sessionToken = "";
                     showLogin();
                 }
             } catch (err) {
@@ -2370,20 +2297,11 @@
             document.getElementById('adminPanel').style.display = 'block';
         }
 
-        
-        function togglePassword() {
-            const input = document.getElementById('adminPass');
-            const btn = document.getElementById('togglePasswordBtn');
-            const showing = input.type === 'text';
-            input.type = showing ? 'password' : 'text';
-            btn.textContent = showing ? 'Show' : 'Hide';
-            btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
-            btn.setAttribute('aria-pressed', showing ? 'false' : 'true');
-            input.focus();
-            input.setSelectionRange(input.value.length, input.value.length);
-        }
+        async function login() {
+            const msg = document.getElementById('errorMsg');
+            msg.style.display = 'none';
+            msg.innerText = '';
 
-async function login() {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const res = await fetch(`${API_URL}/api/admin/login`, {
@@ -2391,8 +2309,16 @@ async function login() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: pass })
                 });
-                const data = await res.json();
-                if (data.success) {
+
+                const raw = await res.text();
+                let data = {};
+                try {
+                    data = raw ? JSON.parse(raw) : {};
+                } catch (parseErr) {
+                    data = { success: false, error: `Server returned ${res.status} ${res.statusText}. Response was not JSON.` };
+                }
+
+                if (res.ok && data.success) {
                     saveAdminSession(data.sessionToken, data.csrfToken);
                     if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
                     showDashboard();
@@ -2401,24 +2327,25 @@ async function login() {
                     loadAppSettings();
                     loadPaymentReportSnapshots();
                     setTimeout(loadHistoryList, 500);
+                    return;
+                }
+
+                msg.style.display = 'block';
+                if (data.retryAfterSeconds) {
+                    msg.innerText = `${data.error || 'Login failed'} (${data.retryAfterSeconds}s)`;
                 } else {
-                    const msg = document.getElementById('errorMsg');
-                    msg.style.display = 'block';
-                    msg.innerText = data.error || 'Login failed';
+                    msg.innerText = data.error || `Login failed (${res.status})`;
                 }
             } catch (err) {
                 console.error("Login error:", err);
-                alert("Login failed.");
+                msg.style.display = 'block';
+                msg.innerText = 'Could not reach server. Check deploy and try again.';
             }
         }
 
         function logout() {
-            fetch(`${API_URL}/api/admin/logout`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ sessionToken: sessionToken })
-            }).catch(() => {});
-            saveAdminSession('', '');
+            localStorage.removeItem(SESSION_KEY);
+            sessionToken = "";
             showLogin();
         }
 
@@ -3258,124 +3185,57 @@ async function login() {
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
-                        const firstName = String(p.firstName || '');
-                        const lastName = String(p.lastName || '');
-                        const isProtected = firstName.toLowerCase() === 'phan' && lastName.toLowerCase() === 'ly';
-
-                        const nameTd = document.createElement('td');
-                        nameTd.appendChild(document.createTextNode(`${firstName} ${lastName}`.trim()));
+                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
+                            '<span class="protected-badge">PROTECTED</span>' : '';
+                        
+                        let paidInput = '';
                         if (p.isGoalie) {
-                            nameTd.appendChild(document.createTextNode(' '));
-                            const goalieBadge = document.createElement('span');
-                            goalieBadge.className = 'goalie-badge';
-                            goalieBadge.textContent = 'GOALIE';
-                            nameTd.appendChild(goalieBadge);
-                        }
-                        if (isProtected) {
-                            nameTd.appendChild(document.createTextNode(' '));
-                            const protectedBadge = document.createElement('span');
-                            protectedBadge.className = 'protected-badge';
-                            protectedBadge.textContent = 'PROTECTED';
-                            nameTd.appendChild(protectedBadge);
-                        }
-                        tr.appendChild(nameTd);
-
-                        const phoneTd = document.createElement('td');
-                        phoneTd.textContent = String(p.phone || '');
-                        tr.appendChild(phoneTd);
-
-                        const ratingTd = document.createElement('td');
-                        const ratingWrap = document.createElement('div');
-                        ratingWrap.style.display = 'flex';
-                        ratingWrap.style.alignItems = 'center';
-                        ratingWrap.style.gap = '5px';
-                        const ratingInput = document.createElement('input');
-                        ratingInput.type = 'number';
-                        ratingInput.id = `rating-${p.id}`;
-                        ratingInput.value = p.rating;
-                        ratingInput.min = '1';
-                        ratingInput.max = '10';
-                        ratingInput.style.width = '50px';
-                        ratingInput.style.padding = '5px';
-                        ratingInput.style.background = '#3d3d3d';
-                        ratingInput.style.border = '1px solid #555';
-                        ratingInput.style.color = 'white';
-                        ratingInput.style.borderRadius = '3px';
-                        ratingInput.style.textAlign = 'center';
-                        ratingInput.addEventListener('change', function() { updateRating(p.id, this.value); });
-                        ratingWrap.appendChild(ratingInput);
-                        const slashSpan = document.createElement('span');
-                        slashSpan.textContent = '/10';
-                        ratingWrap.appendChild(slashSpan);
-                        ratingTd.appendChild(ratingWrap);
-                        tr.appendChild(ratingTd);
-
-                        const methodTd = document.createElement('td');
-                        methodTd.textContent = p.isGoalie ? 'N/A' : String(p.paymentMethod || '');
-                        tr.appendChild(methodTd);
-
-                        const paidTd = document.createElement('td');
-                        if (p.isGoalie || (firstName === 'Phan' && lastName === 'Ly')) {
-                            const freeSpan = document.createElement('span');
-                            freeSpan.style.color = '#4CAF50';
-                            freeSpan.style.fontWeight = 'bold';
-                            freeSpan.textContent = 'FREE';
-                            paidTd.appendChild(freeSpan);
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-                            const paidWrap = document.createElement('div');
-                            paidWrap.style.display = 'flex';
-                            paidWrap.style.alignItems = 'center';
-                            paidWrap.style.gap = '5px';
-                            paidWrap.style.flexWrap = 'wrap';
-                            const quickBtn = document.createElement('button');
-                            quickBtn.textContent = '$15';
-                            quickBtn.style.padding = '4px 8px';
-                            quickBtn.style.fontSize = '0.75rem';
-                            quickBtn.style.background = isPaid ? '#555' : '#4CAF50';
-                            quickBtn.style.border = 'none';
-                            quickBtn.style.borderRadius = '3px';
-                            quickBtn.style.color = 'white';
-                            quickBtn.style.cursor = 'pointer';
-                            quickBtn.disabled = !!isPaid;
-                            quickBtn.addEventListener('click', () => quickPay15(p.id));
-                            paidWrap.appendChild(quickBtn);
-                            const paidInput = document.createElement('input');
-                            paidInput.type = 'number';
-                            paidInput.className = 'paid-input';
-                            paidInput.value = amount;
-                            paidInput.id = `paid-${p.id}`;
-                            paidInput.placeholder = '0.00';
-                            paidInput.step = '0.01';
-                            paidInput.min = '0';
-                            paidInput.style.width = '60px';
-                            paidInput.addEventListener('change', function() { updatePaidAmount(p.id, this.value); });
-                            paidWrap.appendChild(paidInput);
-                            const unpaidBtn = document.createElement('button');
-                            unpaidBtn.textContent = '✕';
-                            unpaidBtn.style.padding = '4px 8px';
-                            unpaidBtn.style.fontSize = '0.75rem';
-                            unpaidBtn.style.background = '#ff4444';
-                            unpaidBtn.style.border = 'none';
-                            unpaidBtn.style.borderRadius = '3px';
-                            unpaidBtn.style.color = 'white';
-                            unpaidBtn.style.cursor = 'pointer';
-                            unpaidBtn.title = 'Mark as unpaid';
-                            unpaidBtn.addEventListener('click', () => markUnpaid(p.id));
-                            paidWrap.appendChild(unpaidBtn);
-                            paidTd.appendChild(paidWrap);
+
+                            paidInput = `
+                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
+                                    <button onclick="quickPay15(${p.id})" 
+                                        style="padding:4px 8px;font-size:0.75rem;background:${isPaid ? '#555' : '#4CAF50'};border:none;border-radius:3px;color:white;cursor:pointer;"
+                                        ${isPaid ? 'disabled' : ''}>
+                                        $15
+                                    </button>
+                                    <input type="number" class="paid-input" value="${amount}" 
+                                        id="paid-${p.id}"
+                                        placeholder="0.00" step="0.01" min="0"
+                                        style="width:60px;"
+                                        onchange="updatePaidAmount(${p.id}, this.value)">
+                                    <button onclick="markUnpaid(${p.id})" 
+                                        style="padding:4px 8px;font-size:0.75rem;background:#ff4444;border:none;border-radius:3px;color:white;cursor:pointer;"
+                                        title="Mark as unpaid">
+                                        ✕
+                                    </button>
+                                </div>
+                            `;
                         }
-                        tr.appendChild(paidTd);
-
-                        const actionTd = document.createElement('td');
-                        const removeBtn = document.createElement('button');
-                        removeBtn.className = 'remove-btn';
-                        removeBtn.textContent = 'Remove';
-                        removeBtn.addEventListener('click', () => removePlayer(p.id));
-                        actionTd.appendChild(removeBtn);
-                        tr.appendChild(actionTd);
-
+                        
+                        tr.innerHTML = `
+                            <td>${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
+                            <td>${p.phone}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:5px;">
+                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
+                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    <span>/10</span>
+                                </div>
+                            </td>
+                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
+                            <td>${paidInput}</td>
+                            <td>
+                                <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
+                            </td>
+                        `;
                         tbody.appendChild(tr);
                     });
                 }
@@ -3388,64 +3248,24 @@ async function login() {
                 } else {
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
-                        const posTd = document.createElement('td');
-                        posTd.textContent = String(index + 1);
-                        tr.appendChild(posTd);
-
-                        const nameTd = document.createElement('td');
-                        nameTd.appendChild(document.createTextNode(`${p.firstName || ''} ${p.lastName || ''}`.trim()));
-                        if (p.isGoalie) {
-                            nameTd.appendChild(document.createTextNode(' '));
-                            const goalieBadge = document.createElement('span');
-                            goalieBadge.className = 'goalie-badge';
-                            goalieBadge.textContent = 'GOALIE';
-                            nameTd.appendChild(goalieBadge);
-                        }
-                        tr.appendChild(nameTd);
-
-                        const phoneTd = document.createElement('td');
-                        phoneTd.textContent = String(p.phone || '');
-                        tr.appendChild(phoneTd);
-
-                        const ratingTd = document.createElement('td');
-                        const ratingWrap = document.createElement('div');
-                        ratingWrap.style.display = 'flex';
-                        ratingWrap.style.alignItems = 'center';
-                        ratingWrap.style.gap = '5px';
-                        const ratingInput = document.createElement('input');
-                        ratingInput.type = 'number';
-                        ratingInput.id = `rating-${p.id}`;
-                        ratingInput.value = p.rating;
-                        ratingInput.min = '1';
-                        ratingInput.max = '10';
-                        ratingInput.style.width = '50px';
-                        ratingInput.style.padding = '5px';
-                        ratingInput.style.background = '#3d3d3d';
-                        ratingInput.style.border = '1px solid #555';
-                        ratingInput.style.color = 'white';
-                        ratingInput.style.borderRadius = '3px';
-                        ratingInput.style.textAlign = 'center';
-                        ratingInput.addEventListener('change', function() { updateRating(p.id, this.value); });
-                        ratingWrap.appendChild(ratingInput);
-                        const span = document.createElement('span');
-                        span.textContent = '/10';
-                        ratingWrap.appendChild(span);
-                        ratingTd.appendChild(ratingWrap);
-                        tr.appendChild(ratingTd);
-
-                        const actionsTd = document.createElement('td');
-                        const promoteBtn = document.createElement('button');
-                        promoteBtn.className = 'promote-btn';
-                        promoteBtn.dataset.playerId = String(p.id);
-                        promoteBtn.textContent = 'Promote';
-                        actionsTd.appendChild(promoteBtn);
-                        const removeBtn = document.createElement('button');
-                        removeBtn.className = 'remove-btn';
-                        removeBtn.textContent = 'Remove';
-                        removeBtn.addEventListener('click', () => removeWaitlist(p.id));
-                        actionsTd.appendChild(removeBtn);
-                        tr.appendChild(actionsTd);
-
+                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td>${p.firstName} ${p.lastName} ${goalieBadge}</td>
+                            <td>${p.phone}</td>
+                            <td>
+                                <div style="display:flex;align-items:center;gap:5px;">
+                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
+                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    <span>/10</span>
+                                </div>
+                            </td>
+                            <td>
+                                <button class="promote-btn" data-player-id="${p.id}">Promote</button>
+                                <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
+                            </td>
+                        `;
                         waitlistBody.appendChild(tr);
                     });
                 }
@@ -3991,18 +3811,5 @@ async function login() {
         </div>
     </div>
 
-<script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const passInput = document.getElementById('adminPass');
-        if (passInput) {
-            passInput.addEventListener('keydown', (event) => {
-                if (event.key === 'Enter') {
-                    event.preventDefault();
-                    login();
-                }
-            });
-        }
-    });
-</script>
 </body>
 </html>
