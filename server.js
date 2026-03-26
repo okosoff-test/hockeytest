@@ -1986,7 +1986,16 @@ function formatETDateTimeLong(etParts) {
 
 function etPartsToIso(etParts) {
     if (!etParts) return null;
-    return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00-05:00`;
+
+    const probe = new Date(Date.UTC(etParts.year, etParts.month - 1, etParts.day, 12, 0, 0));
+    const tzName = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        timeZoneName: 'short'
+    }).formatToParts(probe).find(p => p.type === 'timeZoneName')?.value || 'EST';
+
+    const offset = tzName === 'EDT' ? '-04:00' : '-05:00';
+
+    return `${String(etParts.year).padStart(4, '0')}-${String(etParts.month).padStart(2, '0')}-${String(etParts.day).padStart(2, '0')}T${String(etParts.hour).padStart(2, '0')}:${String(etParts.minute).padStart(2, '0')}:00${offset}`;
 }
 
 function getSignupOpenMessageData() {
