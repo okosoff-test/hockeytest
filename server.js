@@ -2558,7 +2558,7 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
 app.post('/api/admin/players-full', (req, res) => {
     const { sessionToken } = req.body;
     
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: "Unauthorized" });
     }
     
@@ -2598,93 +2598,73 @@ app.post('/api/admin/players-full', (req, res) => {
     });
 });
 
-app.post('/api/admin/players-full', (req, res) => {
-    const { sessionToken } = req.body;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
-        return res.status(401).json({ error: "Unauthorized" });
-    }
+// ADMIN ONLY: Restore players and waitlist from a previously downloaded backup JSON
+app.post('/api/admin/restore-backup', async (req, res) => {
+    const { sessionToken, backupData } = req.body || {};
 
-    const playerCount = getPlayerCount();
-    const goalieCount = getGoalieCount();
-
-    // Calculate totals
-    const totalPaid = players.reduce((sum, p) => {
-        if (p.paidAmount && !isNaN(parseFloat(p.paidAmount))) {
-            return sum + parseFloat(p.paidAmount);
-        }
-        return sum;
-    }, 0);
-
-    const paidCount = players.filter(p => p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-
-    // Return FULL data including payment info AND ratings (admin only)
-    res.json({ 
-        playerSpots, 
-        playerCount,
-        goalieCount,
-        maxGoalies: MAX_GOALIES,
-        totalPlayers: players.length,
-        totalPaid: totalPaid.toFixed(2),
-        paidCount: paidCount,
-        unpaidCount: unpaidCount,
-        players: players,  // Full data with payment AND rating
-        waitlist: waitlist, // Full waitlist data
-        location: gameLocation, 
-        time: gameTime,
-        date: gameDate,
-        rosterReleased, 
-        currentWeekData, 
-        playerSignupCode, 
-        requirePlayerCode 
-    });
-});
-
-// ADMIN ONLY: Download a full JSON backup of current portal data
-app.post('/api/admin/download-backup', async (req, res) => {
-    const { sessionToken } = req.body || {};
-
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: "Unauthorized" });
     }
 
     try {
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const backup = {
-            exportedAt: new Date().toISOString(),
-            portal: "Phan's Hockey",
-            summary: {
-                totalPlayers: players.length,
-                totalWaitlist: waitlist.length,
-                rosterReleased,
-                gameLocation,
-                gameTime,
-                gameDate
-            },
-            appSettings: {
-                maintenanceMode,
-                customTitle,
-                announcementEnabled,
-                announcementText,
-                announcementImages,
-                playerSpots,
-                maxGoalies: MAX_GOALIES,
-                requirePlayerCode,
-                playerSignupCode
-            },
-            currentWeekData,
-            players,
-            waitlist,
-            history: await getHistoryList()
-        };
+        if (!backupData || typeof backupData !== 'object') {
+            return res.status(400).json({ error: "Invalid backup file" });
+        }
 
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="phans-hockey-backup-${timestamp}.json"`);
-        return res.send(JSON.stringify(backup, null, 2));
+        const restoredPlayers = Array.isArray(backupData.players) ? backupData.players : null;
+        const restoredWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist : null;
+
+        if (!restoredPlayers || !restoredWaitlist) {
+            return res.status(400).json({ error: "Backup file is missing players or waitlist" });
+        }
+
+        // Replace in-memory data
+        players = restoredPlayers;
+        waitlist = restoredWaitlist;
+
+        // Restore supported settings only when present
+        if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
+            currentWeekData = backupData.currentWeekData;
+        }
+
+        if (backupData.summary && typeof backupData.summary === 'object') {
+            if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
+            if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
+            if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
+            if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
+        }
+
+        if (backupData.appSettings && typeof backupData.appSettings === 'object') {
+            const s = backupData.appSettings;
+            if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
+            if (typeof s.customTitle === 'string') customTitle = s.customTitle;
+            if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
+            if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+            if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
+            if (typeof s.playerSpots === 'number' && !isNaN(s.playerSpots)) playerSpots = s.playerSpots;
+            if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
+            if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
+        }
+
+        // Persist using existing save helper if available
+        try {
+            if (typeof saveData === 'function') {
+                await saveData();
+            }
+        } catch (saveErr) {
+            console.error('Restore completed in memory but saveData failed:', saveErr);
+        }
+
+        return res.json({
+            success: true,
+            restoredPlayers: players.length,
+            restoredWaitlist: waitlist.length,
+            message: "Backup restored successfully"
+        });
     } catch (err) {
-        console.error('Error generating admin backup:', err);
-        return res.status(500).json({ error: "Failed to generate backup" });
+        console.error('Error restoring backup:', err);
+        return res.status(500).json({ error: "Failed to restore backup" });
     }
 });
 
@@ -3320,7 +3300,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
 app.get('/api/admin/export-payments', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: "Unauthorized - Admin access only" });
     }
 
@@ -3338,7 +3318,7 @@ app.get('/api/admin/export-payments', async (req, res) => {
 app.get('/api/admin/payment-reports', async (req, res) => {
     const { sessionToken, limit } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
@@ -3349,7 +3329,7 @@ app.get('/api/admin/payment-reports', async (req, res) => {
 app.get('/api/admin/payment-reports/latest', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
@@ -3366,7 +3346,7 @@ app.get('/api/admin/payment-reports/latest', async (req, res) => {
 app.get('/api/admin/payment-reports/:id/download', async (req, res) => {
     const { sessionToken } = req.query;
 
-    if (!sessionToken || !adminSessions[sessionToken]) {
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
         return res.status(401).json({ error: 'Unauthorized - Admin access only' });
     }
 
