@@ -478,12 +478,62 @@
             background: #5aa0f2;
         }
 
+
         .security-notice {
             color: #888;
             font-size: 0.8rem;
             text-align: center;
             margin-top: 10px;
             font-style: italic;
+        }
+
+        .login-card {
+            max-width: 420px;
+            margin: 0 auto;
+        }
+
+        .login-label {
+            display: block;
+            font-size: 0.95rem;
+            color: #ddd;
+            margin: 6px 0 8px;
+            font-weight: 600;
+        }
+
+        .password-wrap {
+            position: relative;
+            margin-bottom: 8px;
+        }
+
+        .password-wrap input {
+            margin: 0;
+            padding-right: 88px;
+            height: 50px;
+            font-size: 1.05rem;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            margin: 0;
+            min-width: 68px;
+            padding: 9px 12px;
+            background: #555;
+            font-size: 0.9rem;
+            border-radius: 8px;
+        }
+
+        .password-toggle:hover {
+            background: #666;
+        }
+
+        .login-hint {
+            color: #9aa0a6;
+            font-size: 0.82rem;
+            text-align: center;
+            margin: 6px 0 14px;
         }
 
         /* Goalies Section */
@@ -1351,9 +1401,16 @@
     <div class="container" id="loginBox">
         <h1>Admin Portal</h1>
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
-        <input type="password" id="adminPass" placeholder="Enter Admin Password">
-        <button onclick="login()" style="width:100%;">Access Dashboard</button>
-        <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
+        <div class="login-card">
+            <label class="login-label" for="adminPass">Admin Password</label>
+            <div class="password-wrap">
+                <input type="password" id="adminPass" placeholder="Enter Admin Password" autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
+                <button type="button" class="password-toggle" id="togglePasswordBtn" onclick="togglePassword()" aria-label="Show password" aria-pressed="false">Show</button>
+            </div>
+            <div class="login-hint">Tip: tap Show to confirm what you typed before logging in.</div>
+            <button onclick="login()" style="width:100%;">Access Dashboard</button>
+            <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
+        </div>
     </div>
 
     <div class="container admin-panel" id="adminPanel">
@@ -2313,7 +2370,20 @@
             document.getElementById('adminPanel').style.display = 'block';
         }
 
-        async function login() {
+        
+        function togglePassword() {
+            const input = document.getElementById('adminPass');
+            const btn = document.getElementById('togglePasswordBtn');
+            const showing = input.type === 'text';
+            input.type = showing ? 'password' : 'text';
+            btn.textContent = showing ? 'Show' : 'Hide';
+            btn.setAttribute('aria-label', showing ? 'Show password' : 'Hide password');
+            btn.setAttribute('aria-pressed', showing ? 'false' : 'true');
+            input.focus();
+            input.setSelectionRange(input.value.length, input.value.length);
+        }
+
+async function login() {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const res = await fetch(`${API_URL}/api/admin/login`, {
@@ -3921,5 +3991,18 @@
         </div>
     </div>
 
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        const passInput = document.getElementById('adminPass');
+        if (passInput) {
+            passInput.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter') {
+                    event.preventDefault();
+                    login();
+                }
+            });
+        }
+    });
+</script>
 </body>
 </html>
