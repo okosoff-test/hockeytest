@@ -1352,9 +1352,12 @@
         <h1>Admin Portal</h1>
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
         <input type="password" id="adminPass" placeholder="Enter Render ADMIN_PASSWORD">
-        <div style="display:flex; align-items:center; gap:8px; margin-top:4px; margin-bottom:8px; color:#bbb; font-size:0.95rem;">
+        <div style="display:flex; align-items:center; gap:8px; margin-top:4px; margin-bottom:8px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
             <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;">
             <label for="showAdminPass" style="cursor:pointer;">Show password</label>
+            <span style="opacity:.45;">•</span>
+            <input type="checkbox" id="rememberDevice" style="width:auto; margin:0;" checked>
+            <label for="rememberDevice" style="cursor:pointer;">Remember this device for 30 days</label>
         </div>
         <button onclick="login()" style="width:100%;">Access Dashboard</button>
         <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
@@ -1367,8 +1370,20 @@
                 <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
                 <button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Backup</button>
                 <input type="file" id="restoreBackupFile" accept=".json,application/json" style="display:none;" onchange="restoreBackupFromFile(event)">
+                <button class="control-btn" onclick="logoutAllDevices()" style="background:#6d4c41;">Logout All Devices</button>
                 <button class="logout-btn" onclick="logout()">Logout</button>
             </div>
+        </div>
+
+        <div class="control-box" style="border-color:#3f51b5;">
+            <h3>🔐 Admin Security</h3>
+            <div id="securitySessionInfo" style="color:#cfcfcf; line-height:1.7;">Loading session info...</div>
+            <div style="margin-top:12px; color:#a8a8a8; font-size:.92rem;">Remembered logins last 30 days. Non-remembered logins expire after 12 hours by default.</div>
+        </div>
+
+        <div class="control-box" style="border-color:#607d8b;">
+            <h3>📝 Recent Admin Activity</h3>
+            <div id="adminAuditLog" style="color:#cfcfcf; line-height:1.7;">Loading activity...</div>
         </div>
         
         <div class="success-message" id="releaseSuccess">
@@ -1830,7 +1845,29 @@
     <script>
         const API_URL = window.location.origin;
         const SESSION_KEY = 'hockey_admin_session';
-        let sessionToken = localStorage.getItem(SESSION_KEY) || "";
+        const REMEMBER_KEY = 'hockey_admin_remember_device';
+
+        function getStoredSessionToken() {
+            return localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "";
+        }
+
+        function setStoredSessionToken(token, remember) {
+            if (remember) {
+                localStorage.setItem(SESSION_KEY, token);
+                sessionStorage.removeItem(SESSION_KEY);
+            } else {
+                sessionStorage.setItem(SESSION_KEY, token);
+                localStorage.removeItem(SESSION_KEY);
+            }
+            localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+        }
+
+        function clearStoredSessionToken() {
+            localStorage.removeItem(SESSION_KEY);
+            sessionStorage.removeItem(SESSION_KEY);
+        }
+
+        let sessionToken = getStoredSessionToken();
         let maxGoalies = 2;
 
         function getAdminHeaders(extra = {}) {
@@ -2278,6 +2315,65 @@
             { id: 'goalieHao', name: 'Hao Chau', phone: '(519) 995-9884', defaultRating: 8 }
         ];
 
+        function formatAuditAction(action) {
+            return String(action || '')
+                .replace(/_/g, ' ')
+                .replace(/\w/g, ch => ch.toUpperCase());
+        }
+
+        function formatDateTime(value) {
+            if (!value) return '—';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return value;
+            return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+        }
+
+        async function loadSessionInfo() {
+            const el = document.getElementById('securitySessionInfo');
+            if (!el || !sessionToken) return;
+            try {
+                const res = await adminFetch(`${API_URL}/api/admin/session-info`);
+                if (!res.ok) {
+                    el.textContent = 'Unable to load session details.';
+                    return;
+                }
+                const data = await res.json();
+                el.innerHTML = `
+                    <strong>Session type:</strong> ${data.remember ? 'Remembered device' : 'This browser session only'}<br>
+                    <strong>Issued:</strong> ${formatDateTime(data.issuedAt)}<br>
+                    <strong>Expires:</strong> ${formatDateTime(data.expiresAt)}
+                `;
+            } catch (err) {
+                console.error(err);
+                el.textContent = 'Unable to load session details.';
+            }
+        }
+
+        async function loadAuditLog() {
+            const el = document.getElementById('adminAuditLog');
+            if (!el || !sessionToken) return;
+            try {
+                const res = await adminFetch(`${API_URL}/api/admin/audit-log?limit=12`);
+                if (!res.ok) {
+                    el.textContent = 'Unable to load activity.';
+                    return;
+                }
+                const data = await res.json();
+                const entries = Array.isArray(data.entries) ? data.entries : [];
+                if (!entries.length) {
+                    el.textContent = 'No activity yet.';
+                    return;
+                }
+                el.innerHTML = entries.map(entry => {
+                    const ip = entry.ip ? ` • ${entry.ip}` : '';
+                    return `<div style="padding:8px 0; border-bottom:1px solid rgba(255,255,255,.08);"><strong>${formatAuditAction(entry.action)}</strong><br><span style="color:#aeb7bf;">${formatDateTime(entry.at)}${ip}</span></div>`;
+                }).join('');
+            } catch (err) {
+                console.error(err);
+                el.textContent = 'Unable to load activity.';
+            }
+        }
+
         async function checkSession() {
             if (!sessionToken) {
                 showLogin();
@@ -2296,9 +2392,11 @@
                     loadSettings();
                     loadAppSettings();
                     loadPaymentReportSnapshots();
+                    loadSessionInfo();
+                    loadAuditLog();
                     setTimeout(loadHistoryList, 500);
                 } else {
-                    localStorage.removeItem(SESSION_KEY);
+                    clearStoredSessionToken();
                     sessionToken = "";
                     showLogin();
                 }
@@ -2321,20 +2419,23 @@
         async function login() {
             try {
                 const pass = document.getElementById('adminPass').value;
+                const rememberMe = document.getElementById('rememberDevice').checked;
                 const res = await adminFetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify({ password: pass })
+                    body: JSON.stringify({ password: pass, rememberMe })
                 });
                 const data = await res.json().catch(() => ({}));
                 if (data.success) {
                     sessionToken = data.sessionToken;
-                    localStorage.setItem(SESSION_KEY, sessionToken);
+                    setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
                     loadData();
                     loadSettings();
                     loadAppSettings();
                     loadPaymentReportSnapshots();
+                    loadSessionInfo();
+                    loadAuditLog();
                     setTimeout(loadHistoryList, 500);
                 } else {
                     const errorMsg = document.getElementById('errorMsg');
@@ -2347,11 +2448,46 @@
             }
         }
 
-        function logout() {
-            localStorage.removeItem(SESSION_KEY);
+        async function logout() {
+            try {
+                if (sessionToken) {
+                    await adminFetch(`${API_URL}/api/admin/logout`, {
+                        method: 'POST',
+                        headers: getAdminHeaders(),
+                        body: JSON.stringify({ sessionToken })
+                    });
+                }
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+            clearStoredSessionToken();
             sessionToken = "";
             showLogin();
         }
+
+        async function logoutAllDevices() {
+            if (!confirm('Log out all other admin sessions? This device will stay active until you log out.')) return;
+            try {
+                const res = await adminFetch(`${API_URL}/api/admin/logout-all`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) {
+                    alert(data.error || 'Could not log out other devices.');
+                    return;
+                }
+                alert(data.message || 'Other devices logged out.');
+                loadAuditLog();
+                loadSessionInfo();
+            } catch (err) {
+                console.error(err);
+                alert('Could not log out other devices.');
+            }
+        }
+
+        document.getElementById('rememberDevice').checked = localStorage.getItem(REMEMBER_KEY) !== '0';
 
         document.getElementById('adminPass').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') login();
