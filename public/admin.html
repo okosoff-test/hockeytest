@@ -3726,6 +3726,52 @@
             if (upload) upload.value = '';
         }
 
+
+        async function downloadBackup() {
+            if (!sessionToken) {
+                alert('Please log in again.');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/download-backup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionToken })
+                });
+
+                let errorText = 'Download failed';
+                if (!res.ok) {
+                    try {
+                        const err = await res.json();
+                        errorText = err.error || errorText;
+                    } catch (e) {
+                        try {
+                            errorText = await res.text() || errorText;
+                        } catch (_) {}
+                    }
+                    throw new Error(errorText);
+                }
+
+                const blob = await res.blob();
+                const contentDisposition = res.headers.get('content-disposition') || '';
+                const match = contentDisposition.match(/filename="?([^";]+)"?/i);
+                const filename = match ? match[1] : `phans-hockey-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Download backup error:', err);
+                alert(err.message || 'Download failed');
+            }
+        }
+
         async function saveAnnouncementSettings() {
             const button = document.getElementById('saveAnnouncementBtn');
             return withBusyButton(button, 'Saving...', async () => {

@@ -2599,6 +2599,63 @@ app.post('/api/admin/players-full', (req, res) => {
 });
 
 
+
+// ADMIN ONLY: Download live signup backup JSON
+app.post('/api/admin/download-backup', async (req, res) => {
+    const { sessionToken } = req.body || {};
+
+    if (!sessionToken || !(typeof isValidAdminSession === 'function' ? isValidAdminSession(sessionToken) : adminSessions[sessionToken])) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const etNow = getCurrentETTime();
+        const yyyy = etNow.getFullYear();
+        const mm = String(etNow.getMonth() + 1).padStart(2, '0');
+        const dd = String(etNow.getDate()).padStart(2, '0');
+        const hh = String(etNow.getHours()).padStart(2, '0');
+        const mi = String(etNow.getMinutes()).padStart(2, '0');
+        const ss = String(etNow.getSeconds()).padStart(2, '0');
+
+        const backup = {
+            exportedAt: new Date().toISOString(),
+            exportedAtET: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
+            players,
+            waitlist,
+            currentWeekData,
+            summary: {
+                playerSpots,
+                gameLocation,
+                gameTime,
+                gameDate,
+                rosterReleased,
+                requirePlayerCode,
+                playerSignupCode,
+                totalPlayers: players.length,
+                totalWaitlist: waitlist.length
+            },
+            appSettings: {
+                maintenanceMode,
+                customTitle,
+                announcementEnabled,
+                announcementText,
+                announcementImages,
+                playerSpots,
+                requirePlayerCode,
+                playerSignupCode
+            }
+        };
+
+        const filename = `phans-hockey-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
+        res.setHeader('Content-Type', 'application/json; charset=utf-8');
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+        return res.status(200).send(JSON.stringify(backup, null, 2));
+    } catch (err) {
+        console.error('Error downloading backup:', err);
+        return res.status(500).json({ error: 'Failed to build backup file' });
+    }
+});
+
 // ADMIN ONLY: Restore players and waitlist from a previously downloaded backup JSON
 app.post('/api/admin/restore-backup', async (req, res) => {
     const { sessionToken, backupData } = req.body || {};
