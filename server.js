@@ -2,9 +2,6 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const crypto = require('crypto');
-const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const cron = require('node-cron');
 const { Pool } = require('pg');
 const app = express();
@@ -42,133 +39,17 @@ if (pool) {
     }
 }
 
-
 // Middleware
-app.set('trust proxy', 1);
-app.use(helmet({
-    contentSecurityPolicy: false,
-    crossOriginResourcePolicy: { policy: 'same-origin' },
-    referrerPolicy: { policy: 'same-origin' }
-}));
-
-const allowedOrigins = [
-    process.env.PUBLIC_APP_URL,
-    process.env.RENDER_EXTERNAL_URL
-].filter(Boolean);
-
-app.use(cors({
-    origin(origin, callback) {
-        if (!origin) return callback(null, true);
-        if (allowedOrigins.length === 0 || allowedOrigins.includes(origin)) return callback(null, true);
-        return callback(new Error('CORS blocked'));
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'X-CSRF-Token']
-}));
+app.use(cors());
 app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
-app.use(express.static('public', {
-    etag: true,
-    maxAge: '1h',
-    setHeaders(res) {
-        res.setHeader('X-Content-Type-Options', 'nosniff');
-    }
-}));
-
+app.use(express.static('public'));
 
 // --- DATA STORE ---
 let playerSpots = 20;
 let players = []; 
 let waitlist = [];
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'FridayPuckRun88!';
-
-const ADMIN_ROUTE_SLUG = process.env.ADMIN_ROUTE_SLUG || 'phan-puck-you-9648';
-const ADMIN_ROUTE_PATH = `/admin-${ADMIN_ROUTE_SLUG}.html`;
-const ADMIN_SESSION_COOKIE = 'ph_admin_sid';
-const ADMIN_SESSION_TTL_MS = 1000 * 60 * 60 * 8;
-const ADMIN_MAX_FAILED_ATTEMPTS = 5;
-const ADMIN_LOCKOUT_MS = 1000 * 60 * 15;
-
-function getClientIp(req) {
-    const forwarded = req.headers['x-forwarded-for'];
-    if (typeof forwarded === 'string' && forwarded.trim()) {
-        return forwarded.split(',')[0].trim();
-    }
-    return req.ip || req.socket?.remoteAddress || 'unknown';
-}
-
-function parseCookies(req) {
-    const raw = req.headers.cookie || '';
-    return raw.split(';').reduce((acc, part) => {
-        const idx = part.indexOf('=');
-        if (idx === -1) return acc;
-        const key = part.slice(0, idx).trim();
-        const value = part.slice(idx + 1).trim();
-        if (key) acc[key] = decodeURIComponent(value);
-        return acc;
-    }, {});
-}
-
-function createSecureToken(bytes = 32) {
-    return crypto.randomBytes(bytes).toString('hex');
-}
-
-function setAdminCookie(res, token) {
-    const secure = process.env.NODE_ENV === 'production';
-    const parts = [
-        `${ADMIN_SESSION_COOKIE}=${encodeURIComponent(token)}`,
-        'Path=/',
-        'HttpOnly',
-        'SameSite=Strict',
-        `Max-Age=${Math.floor(ADMIN_SESSION_TTL_MS / 1000)}`
-    ];
-    if (secure) parts.push('Secure');
-    res.setHeader('Set-Cookie', parts.join('; '));
-}
-
-function clearAdminCookie(res) {
-    const secure = process.env.NODE_ENV === 'production';
-    const parts = [
-        `${ADMIN_SESSION_COOKIE}=`,
-        'Path=/',
-        'HttpOnly',
-        'SameSite=Strict',
-        'Max-Age=0'
-    ];
-    if (secure) parts.push('Secure');
-    res.setHeader('Set-Cookie', parts.join('; '));
-}
-
-const loginAttempts = new Map();
-function getAttemptRecord(ip) {
-    const now = Date.now();
-    const existing = loginAttempts.get(ip);
-    if (existing && existing.lockUntil && existing.lockUntil > now) return existing;
-    if (existing && existing.lockUntil && existing.lockUntil <= now) {
-        loginAttempts.delete(ip);
-    }
-    return loginAttempts.get(ip) || { count: 0, lockUntil: 0 };
-}
-function registerFailedLogin(ip) {
-    const now = Date.now();
-    const record = getAttemptRecord(ip);
-    record.count = (record.count || 0) + 1;
-    if (record.count >= ADMIN_MAX_FAILED_ATTEMPTS) {
-        record.lockUntil = now + ADMIN_LOCKOUT_MS;
-        record.count = 0;
-    }
-    loginAttempts.set(ip, record);
-    return record;
-}
-function clearFailedLogins(ip) {
-    loginAttempts.delete(ip);
-}
-function getRemainingLockMs(ip) {
-    const rec = getAttemptRecord(ip);
-    return rec.lockUntil && rec.lockUntil > Date.now() ? rec.lockUntil - Date.now() : 0;
-}
-
+const ADMIN_PASSWORD = "964888";
 
 // Game details - FRIDAY HOCKEY
 let gameLocation = "Capri Recreation Complex";
@@ -337,51 +218,6 @@ let resetWeekSchedule = {
 
 // Store admin sessions
 let adminSessions = {};
-
-function createAdminSession(req) {
-    const sessionToken = createSecureToken(32);
-    const csrfToken = createSecureToken(24);
-    adminSessions[sessionToken] = {
-        csrfToken,
-        ip: getClientIp(req),
-        createdAt: Date.now(),
-        expiresAt: Date.now() + ADMIN_SESSION_TTL_MS
-    };
-    return { sessionToken, csrfToken };
-}
-
-function getValidAdminSession(req, sessionToken) {
-    if (!sessionToken) return null;
-    const session = adminSessions[sessionToken];
-    if (!session) return null;
-    if (session.expiresAt <= Date.now()) {
-        delete adminSessions[sessionToken];
-        return null;
-    }
-    const cookies = parseCookies(req);
-    if (cookies[ADMIN_SESSION_COOKIE] !== sessionToken) return null;
-    return session;
-}
-
-function requireAdminAuth(req, res, next) {
-    const sessionToken = req.body?.sessionToken || req.query?.sessionToken || req.headers['x-session-token'];
-    const session = getValidAdminSession(req, sessionToken);
-    if (!session) {
-        clearAdminCookie(res);
-        return res.status(401).json({ error: 'Unauthorized - invalid session' });
-    }
-    if (req.path !== '/check-session') {
-        const csrf = req.headers['x-csrf-token'];
-        if (!csrf || csrf !== session.csrfToken) {
-            return res.status(403).json({ error: 'Forbidden - invalid CSRF token' });
-        }
-    }
-    session.expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
-    req.adminSession = session;
-    req.adminSessionToken = sessionToken;
-    next();
-}
-
 
 // Weekly reset tracking
 let lastResetWeek = null;
@@ -1964,11 +1800,7 @@ function sendPublic(res, filename) {
     return res.status(404).send(`Missing ${filename}. Put it in /public or repo root.`);
 }
 
-app.get(['/admin', '/admin.html'], (req, res) => {
-    return res.status(404).send('Not found');
-});
-
-app.get(ADMIN_ROUTE_PATH, (req, res) => {
+app.get('/admin', (req, res) => {
     return sendPublic(res, 'admin.html');
 });
 
@@ -2223,14 +2055,8 @@ app.get('/api/history/:year/:week', async (req, res) => {
     }
 });
 
-
-app.use('/api/admin', (req, res, next) => {
-    if (req.path === '/login' || req.path === '/check-session' || req.path === '/logout') return next();
-    return requireAdminAuth(req, res, next);
-});
-
 app.delete('/api/admin/history/:year/:week', async (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -2553,55 +2379,25 @@ app.post('/api/cancel-registration', async (req, res) => {
 
 // --- ADMIN API - FULL ACCESS TO ALL DATA ---
 
-
 app.post('/api/admin/check-session', (req, res) => {
-    const { sessionToken } = req.body || {};
-    const session = getValidAdminSession(req, sessionToken);
-    if (session) {
-        session.expiresAt = Date.now() + ADMIN_SESSION_TTL_MS;
-        return res.json({ valid: true, csrfToken: session.csrfToken, adminPath: ADMIN_ROUTE_PATH });
+    const { sessionToken } = req.body;
+    if (adminSessions[sessionToken]) {
+        res.json({ loggedIn: true });
+    } else {
+        res.json({ loggedIn: false });
     }
-    clearAdminCookie(res);
-    return res.status(401).json({ valid: false });
 });
-
-app.post('/api/admin/logout', (req, res) => {
-    const { sessionToken } = req.body || {};
-    if (sessionToken && adminSessions[sessionToken]) delete adminSessions[sessionToken];
-    clearAdminCookie(res);
-    res.json({ success: true });
-});
-
-
 
 app.post('/api/admin/login', (req, res) => {
-    const { password } = req.body || {};
-    const ip = getClientIp(req);
-    const remainingLockMs = getRemainingLockMs(ip);
-    if (remainingLockMs > 0) {
-        return res.status(429).json({
-            success: false,
-            error: 'Too many failed attempts. Try again later.',
-            retryAfterSeconds: Math.ceil(remainingLockMs / 1000)
-        });
+    const { password } = req.body;
+    if (password === ADMIN_PASSWORD) {
+        const sessionToken = Date.now().toString() + Math.random().toString();
+        adminSessions[sessionToken] = true;
+        res.json({ success: true, sessionToken: sessionToken });
+    } else {
+        res.status(401).json({ success: false });
     }
-
-    if (password !== ADMIN_PASSWORD) {
-        const record = registerFailedLogin(ip);
-        const locked = record.lockUntil && record.lockUntil > Date.now();
-        return res.status(401).json({
-            success: false,
-            error: locked ? 'Too many failed attempts. Try again later.' : 'Invalid password',
-            retryAfterSeconds: locked ? Math.ceil((record.lockUntil - Date.now()) / 1000) : undefined
-        });
-    }
-
-    clearFailedLogins(ip);
-    const { sessionToken, csrfToken } = createAdminSession(req);
-    setAdminCookie(res, sessionToken);
-    res.json({ success: true, sessionToken, csrfToken, adminPath: ADMIN_ROUTE_PATH });
 });
-
 
 // ============================================
 // NEW ADMIN ENDPOINTS - ADD THESE HERE
@@ -2762,6 +2558,10 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
 app.post('/api/admin/players-full', (req, res) => {
     const { sessionToken } = req.body;
     
+    if (!sessionToken || !adminSessions[sessionToken]) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    
     const playerCount = getPlayerCount();
     const goalieCount = getGoalieCount();
     
@@ -2806,7 +2606,7 @@ app.post('/api/admin/players', (req, res) => {
 });
 
 app.post('/api/admin/settings', (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
         return res.status(401).send("Unauthorized");
     }
@@ -2862,6 +2662,10 @@ app.post('/api/admin/update-details', (req, res) => {
 
 app.post('/api/admin/update-code', (req, res) => {
     const { password, sessionToken, newCode } = req.body;
+    
+    if (!adminSessions[sessionToken]) {
+        return res.status(401).json({ error: "Unauthorized - invalid session" });
+    }
     
     if (!newCode || !/^\d{4}$/.test(newCode)) {
         return res.status(400).json({ error: "Code must be exactly 4 digits" });
@@ -2950,7 +2754,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
 });
 
 app.post('/api/admin/toggle-code', (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
         return res.status(401).send("Unauthorized");
     }
@@ -2973,7 +2777,7 @@ app.post('/api/admin/toggle-code', (req, res) => {
 });
 
 app.post('/api/admin/reset-schedule', (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
         return res.status(401).send("Unauthorized");
     }
@@ -3299,7 +3103,7 @@ app.post('/api/admin/update-rating', async (req, res) => {
 });
 
 app.post('/api/admin/release-roster', async (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     
     if (!adminSessions[sessionToken]) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -3367,7 +3171,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
 });
 
 app.post('/api/admin/manual-reset', async (req, res) => {
-    const { sessionToken } = req.body;
+    const { password, sessionToken } = req.body;
     if (!adminSessions[sessionToken] && password !== ADMIN_PASSWORD) {
         return res.status(401).send("Unauthorized");
     }
