@@ -352,20 +352,6 @@
 
     <script>
         const API_URL = window.location.origin;
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function safeName(firstName, lastName) {
-            return `${escapeHtml(firstName)} ${escapeHtml(lastName)}`.trim();
-        }
-
         let playerToCancel = null;
         let rosterReleased = false;
 
@@ -441,7 +427,7 @@
                 const data = await res.json();
                 if (res.ok && data.success) {
                     errorDiv.style.display = 'none';
-                    successDiv.textContent = `✅ ${playerToCancel.fullName || (playerToCancel.firstName + ' ' + playerToCancel.lastName)} has been removed from the waitlist.`;
+                    successDiv.innerHTML = `✅ ${playerToCancel.fullName || (playerToCancel.firstName + ' ' + playerToCancel.lastName)} has been removed from the waitlist.`;
                     successDiv.style.display = 'block';
                     setTimeout(async () => {
                         closeCancelModal();
@@ -500,32 +486,23 @@
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
 
                     // Build the inner HTML
-                    const pos = document.createElement('div');
-                    pos.className = 'position-number';
-                    pos.textContent = String(player.position ?? index + 1);
-                    li.appendChild(pos);
+                    let html = `
+                        <div class="position-number">${player.position}</div>
+                        <div class="player-info">
+                            <div class="player-name">${player.fullName} ${goalieBadge}</div>
+                        </div>
+                    `;
 
-                    const info = document.createElement('div');
-                    info.className = 'player-info';
-                    const nameDiv = document.createElement('div');
-                    nameDiv.className = 'player-name';
-                    nameDiv.textContent = String(player.fullName || '').trim();
-                    if (player.isGoalie) {
-                        const badge = document.createElement('span');
-                        badge.className = 'goalie-badge';
-                        badge.textContent = 'GOALIE';
-                        nameDiv.appendChild(document.createTextNode(' '));
-                        nameDiv.appendChild(badge);
-                    }
-                    info.appendChild(nameDiv);
-                    li.appendChild(info);
-
+                    // Add cancel button if allowed
                     if (player.canCancel !== false && !rosterReleased) {
-                        const btn = document.createElement('button');
-                        btn.type = 'button';
-                        btn.className = 'cancel-btn';
-                        btn.dataset.playerId = String(player.id);
-                        btn.textContent = 'Cancel';
+                        html += `<button type="button" class="cancel-btn" data-player-id="${player.id}">Cancel</button>`;
+                    }
+
+                    li.innerHTML = html;
+
+                    // Attach event listener to the cancel button
+                    const btn = li.querySelector('.cancel-btn');
+                    if (btn) {
                         console.log('Attaching click listener to cancel button for player:', player.id);
                         btn.onclick = function(e) {
                             e.preventDefault();
@@ -533,7 +510,6 @@
                             console.log('Cancel button clicked for player:', player);
                             openCancelModal(player);
                         };
-                        li.appendChild(btn);
                     }
 
                     list.appendChild(li);

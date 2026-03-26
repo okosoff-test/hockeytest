@@ -262,20 +262,6 @@
 
     <script>
         const API_URL = window.location.origin;
-
-        function escapeHtml(value) {
-            return String(value ?? '')
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;');
-        }
-
-        function safeName(firstName, lastName) {
-            return `${escapeHtml(firstName)} ${escapeHtml(lastName)}`.trim();
-        }
-
         let historyList = [];
 
         async function loadHistoryList() {
@@ -335,17 +321,11 @@
                 document.getElementById('weekDisplay').style.display = 'block';
                 
                 const releaseDate = new Date(data.releaseDate);
-                const gameInfo = document.getElementById('gameInfo');
-                gameInfo.innerHTML = '';
-                const weekStrong = document.createElement('strong');
-                weekStrong.textContent = `Week ${data.weekNumber}, ${data.year}`;
-                gameInfo.appendChild(weekStrong);
-                gameInfo.appendChild(document.createElement('br'));
-                gameInfo.appendChild(document.createTextNode(`${data.gameLocation || ''} | ${data.gameTime || ''}`));
-                gameInfo.appendChild(document.createElement('br'));
-                const releasedSmall = document.createElement('small');
-                releasedSmall.textContent = `Released: ${releaseDate.toLocaleString()}`;
-                gameInfo.appendChild(releasedSmall);
+                document.getElementById('gameInfo').innerHTML = `
+                    <strong>Week ${data.weekNumber}, ${data.year}</strong><br>
+                    ${data.gameLocation} | ${data.gameTime}<br>
+                    <small>Released: ${releaseDate.toLocaleString()}</small>
+                `;
                 
                 document.getElementById('whiteCount').innerText = data.whiteTeam.length;
                 document.getElementById('darkCount').innerText = data.darkTeam.length;
@@ -355,17 +335,10 @@
                 data.whiteTeam.forEach(player => {
                     const li = document.createElement('li');
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'player-name';
-                    nameSpan.textContent = `${player.firstName || ''} ${player.lastName || ''}`.trim();
-                    li.appendChild(nameSpan);
-                    if (player.isGoalie) {
-                        const badge = document.createElement('span');
-                        badge.className = 'goalie-badge';
-                        badge.textContent = 'GOALIE';
-                        nameSpan.appendChild(document.createTextNode(' '));
-                        nameSpan.appendChild(badge);
-                    }
+                    const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    li.innerHTML = `
+                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
+                    `;
                     whiteList.appendChild(li);
                 });
                 
@@ -374,17 +347,10 @@
                 data.darkTeam.forEach(player => {
                     const li = document.createElement('li');
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                    const nameSpan = document.createElement('span');
-                    nameSpan.className = 'player-name';
-                    nameSpan.textContent = `${player.firstName || ''} ${player.lastName || ''}`.trim();
-                    li.appendChild(nameSpan);
-                    if (player.isGoalie) {
-                        const badge = document.createElement('span');
-                        badge.className = 'goalie-badge';
-                        badge.textContent = 'GOALIE';
-                        nameSpan.appendChild(document.createTextNode(' '));
-                        nameSpan.appendChild(badge);
-                    }
+                    const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    li.innerHTML = `
+                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
+                    `;
                     darkList.appendChild(li);
                 });
                 

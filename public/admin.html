@@ -1357,9 +1357,12 @@
     </div>
 
     <div class="container admin-panel" id="adminPanel">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
             <h1 style="margin:0;">Admin Dashboard</h1>
-            <button class="logout-btn" onclick="logout()">Logout</button>
+            <div style="display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
+                <button class="logout-btn" onclick="logout()">Logout</button>
+            </div>
         </div>
         
         <div class="success-message" id="releaseSuccess">
@@ -2298,10 +2301,6 @@
         }
 
         async function login() {
-            const msg = document.getElementById('errorMsg');
-            msg.style.display = 'none';
-            msg.innerText = '';
-
             try {
                 const pass = document.getElementById('adminPass').value;
                 const res = await fetch(`${API_URL}/api/admin/login`, {
@@ -2309,37 +2308,22 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: pass })
                 });
-
-                const raw = await res.text();
-                let data = {};
-                try {
-                    data = raw ? JSON.parse(raw) : {};
-                } catch (parseErr) {
-                    data = { success: false, error: `Server returned ${res.status} ${res.statusText}. Response was not JSON.` };
-                }
-
-                if (res.ok && data.success) {
-                    saveAdminSession(data.sessionToken, data.csrfToken);
-                    if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
+                const data = await res.json();
+                if (data.success) {
+                    sessionToken = data.sessionToken;
+                    localStorage.setItem(SESSION_KEY, sessionToken);
                     showDashboard();
                     loadData();
                     loadSettings();
                     loadAppSettings();
                     loadPaymentReportSnapshots();
                     setTimeout(loadHistoryList, 500);
-                    return;
-                }
-
-                msg.style.display = 'block';
-                if (data.retryAfterSeconds) {
-                    msg.innerText = `${data.error || 'Login failed'} (${data.retryAfterSeconds}s)`;
                 } else {
-                    msg.innerText = data.error || `Login failed (${res.status})`;
+                    document.getElementById('errorMsg').style.display = 'block';
                 }
             } catch (err) {
                 console.error("Login error:", err);
-                msg.style.display = 'block';
-                msg.innerText = 'Could not reach server. Check deploy and try again.';
+                alert("Login failed. Check console.");
             }
         }
 
@@ -2347,6 +2331,43 @@
             localStorage.removeItem(SESSION_KEY);
             sessionToken = "";
             showLogin();
+        }
+
+        async function downloadBackup() {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/download-backup`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ sessionToken: sessionToken })
+                });
+
+                if (!res.ok) {
+                    let message = 'Backup download failed';
+                    try {
+                        const errData = await res.json();
+                        if (errData && errData.error) message = errData.error;
+                    } catch (e) {}
+                    throw new Error(message);
+                }
+
+                const blob = await res.blob();
+                const contentDisposition = res.headers.get('Content-Disposition') || '';
+                let filename = 'phans-hockey-backup.json';
+                const match = contentDisposition.match(/filename="?([^"]+)"?/i);
+                if (match && match[1]) filename = match[1];
+
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = filename;
+                document.body.appendChild(a);
+                a.click();
+                a.remove();
+                window.URL.revokeObjectURL(url);
+            } catch (err) {
+                console.error('Backup download error:', err);
+                alert(err.message || 'Backup download failed');
+            }
         }
 
         document.getElementById('adminPass').addEventListener('keypress', function(e) {
