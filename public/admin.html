@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin - Phan's Hockey</title>
+    <title>Secure Admin - Phan's Hockey</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -1820,8 +1820,24 @@
 
     <script>
         const API_URL = window.location.origin;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function safeName(firstName, lastName) {
+            return `${escapeHtml(firstName)} ${escapeHtml(lastName)}`.trim();
+        }
+
         const SESSION_KEY = 'hockey_admin_session';
-        let sessionToken = localStorage.getItem(SESSION_KEY) || "";
+        const CSRF_KEY = 'hockey_admin_csrf';
+        let sessionToken = sessionStorage.getItem(SESSION_KEY) || "";
+        let csrfToken = sessionStorage.getItem(CSRF_KEY) || "";
         let maxGoalies = 2;
         function pad2(n){ return String(n).padStart(2,'0'); }
 
@@ -2270,6 +2286,7 @@
                 });
                 const data = await res.json();
                 if (data.loggedIn) {
+                    if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
                     showDashboard();
                     loadData();
                     loadSettings();
@@ -2277,8 +2294,7 @@
                     loadPaymentReportSnapshots();
                     setTimeout(loadHistoryList, 500);
                 } else {
-                    localStorage.removeItem(SESSION_KEY);
-                    sessionToken = "";
+                    saveAdminSession('', '');
                     showLogin();
                 }
             } catch (err) {
@@ -2307,8 +2323,8 @@
                 });
                 const data = await res.json();
                 if (data.success) {
-                    sessionToken = data.sessionToken;
-                    localStorage.setItem(SESSION_KEY, sessionToken);
+                    saveAdminSession(data.sessionToken, data.csrfToken);
+                    if (data.adminPath && window.location.pathname !== data.adminPath) { window.history.replaceState({}, '', data.adminPath); }
                     showDashboard();
                     loadData();
                     loadSettings();
@@ -2316,17 +2332,23 @@
                     loadPaymentReportSnapshots();
                     setTimeout(loadHistoryList, 500);
                 } else {
-                    document.getElementById('errorMsg').style.display = 'block';
+                    const msg = document.getElementById('errorMsg');
+                    msg.style.display = 'block';
+                    msg.innerText = data.error || 'Login failed';
                 }
             } catch (err) {
                 console.error("Login error:", err);
-                alert("Login failed. Check console.");
+                alert("Login failed.");
             }
         }
 
         function logout() {
-            localStorage.removeItem(SESSION_KEY);
-            sessionToken = "";
+            fetch(`${API_URL}/api/admin/logout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sessionToken: sessionToken })
+            }).catch(() => {});
+            saveAdminSession('', '');
             showLogin();
         }
 
@@ -2440,6 +2462,13 @@
             } finally {
                 setButtonBusy(button, false, busyText);
             }
+        }
+
+        function weekdayName(year, month, day) {
+            return new Intl.DateTimeFormat('en-US', {
+                timeZone: 'UTC',
+                weekday: 'long'
+            }).format(new Date(Date.UTC(year, month - 1, day)));
         }
 
         function formatEtDateTimeLocal(value) {
@@ -3159,57 +3188,124 @@
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
-                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
-                            '<span class="protected-badge">PROTECTED</span>' : '';
-                        
-                        let paidInput = '';
+                        const firstName = String(p.firstName || '');
+                        const lastName = String(p.lastName || '');
+                        const isProtected = firstName.toLowerCase() === 'phan' && lastName.toLowerCase() === 'ly';
+
+                        const nameTd = document.createElement('td');
+                        nameTd.appendChild(document.createTextNode(`${firstName} ${lastName}`.trim()));
                         if (p.isGoalie) {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                            nameTd.appendChild(document.createTextNode(' '));
+                            const goalieBadge = document.createElement('span');
+                            goalieBadge.className = 'goalie-badge';
+                            goalieBadge.textContent = 'GOALIE';
+                            nameTd.appendChild(goalieBadge);
+                        }
+                        if (isProtected) {
+                            nameTd.appendChild(document.createTextNode(' '));
+                            const protectedBadge = document.createElement('span');
+                            protectedBadge.className = 'protected-badge';
+                            protectedBadge.textContent = 'PROTECTED';
+                            nameTd.appendChild(protectedBadge);
+                        }
+                        tr.appendChild(nameTd);
+
+                        const phoneTd = document.createElement('td');
+                        phoneTd.textContent = String(p.phone || '');
+                        tr.appendChild(phoneTd);
+
+                        const ratingTd = document.createElement('td');
+                        const ratingWrap = document.createElement('div');
+                        ratingWrap.style.display = 'flex';
+                        ratingWrap.style.alignItems = 'center';
+                        ratingWrap.style.gap = '5px';
+                        const ratingInput = document.createElement('input');
+                        ratingInput.type = 'number';
+                        ratingInput.id = `rating-${p.id}`;
+                        ratingInput.value = p.rating;
+                        ratingInput.min = '1';
+                        ratingInput.max = '10';
+                        ratingInput.style.width = '50px';
+                        ratingInput.style.padding = '5px';
+                        ratingInput.style.background = '#3d3d3d';
+                        ratingInput.style.border = '1px solid #555';
+                        ratingInput.style.color = 'white';
+                        ratingInput.style.borderRadius = '3px';
+                        ratingInput.style.textAlign = 'center';
+                        ratingInput.addEventListener('change', function() { updateRating(p.id, this.value); });
+                        ratingWrap.appendChild(ratingInput);
+                        const slashSpan = document.createElement('span');
+                        slashSpan.textContent = '/10';
+                        ratingWrap.appendChild(slashSpan);
+                        ratingTd.appendChild(ratingWrap);
+                        tr.appendChild(ratingTd);
+
+                        const methodTd = document.createElement('td');
+                        methodTd.textContent = p.isGoalie ? 'N/A' : String(p.paymentMethod || '');
+                        tr.appendChild(methodTd);
+
+                        const paidTd = document.createElement('td');
+                        if (p.isGoalie || (firstName === 'Phan' && lastName === 'Ly')) {
+                            const freeSpan = document.createElement('span');
+                            freeSpan.style.color = '#4CAF50';
+                            freeSpan.style.fontWeight = 'bold';
+                            freeSpan.textContent = 'FREE';
+                            paidTd.appendChild(freeSpan);
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-
-                            paidInput = `
-                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                                    <button onclick="quickPay15(${p.id})" 
-                                        style="padding:4px 8px;font-size:0.75rem;background:${isPaid ? '#555' : '#4CAF50'};border:none;border-radius:3px;color:white;cursor:pointer;"
-                                        ${isPaid ? 'disabled' : ''}>
-                                        $15
-                                    </button>
-                                    <input type="number" class="paid-input" value="${amount}" 
-                                        id="paid-${p.id}"
-                                        placeholder="0.00" step="0.01" min="0"
-                                        style="width:60px;"
-                                        onchange="updatePaidAmount(${p.id}, this.value)">
-                                    <button onclick="markUnpaid(${p.id})" 
-                                        style="padding:4px 8px;font-size:0.75rem;background:#ff4444;border:none;border-radius:3px;color:white;cursor:pointer;"
-                                        title="Mark as unpaid">
-                                        ✕
-                                    </button>
-                                </div>
-                            `;
+                            const paidWrap = document.createElement('div');
+                            paidWrap.style.display = 'flex';
+                            paidWrap.style.alignItems = 'center';
+                            paidWrap.style.gap = '5px';
+                            paidWrap.style.flexWrap = 'wrap';
+                            const quickBtn = document.createElement('button');
+                            quickBtn.textContent = '$15';
+                            quickBtn.style.padding = '4px 8px';
+                            quickBtn.style.fontSize = '0.75rem';
+                            quickBtn.style.background = isPaid ? '#555' : '#4CAF50';
+                            quickBtn.style.border = 'none';
+                            quickBtn.style.borderRadius = '3px';
+                            quickBtn.style.color = 'white';
+                            quickBtn.style.cursor = 'pointer';
+                            quickBtn.disabled = !!isPaid;
+                            quickBtn.addEventListener('click', () => quickPay15(p.id));
+                            paidWrap.appendChild(quickBtn);
+                            const paidInput = document.createElement('input');
+                            paidInput.type = 'number';
+                            paidInput.className = 'paid-input';
+                            paidInput.value = amount;
+                            paidInput.id = `paid-${p.id}`;
+                            paidInput.placeholder = '0.00';
+                            paidInput.step = '0.01';
+                            paidInput.min = '0';
+                            paidInput.style.width = '60px';
+                            paidInput.addEventListener('change', function() { updatePaidAmount(p.id, this.value); });
+                            paidWrap.appendChild(paidInput);
+                            const unpaidBtn = document.createElement('button');
+                            unpaidBtn.textContent = '✕';
+                            unpaidBtn.style.padding = '4px 8px';
+                            unpaidBtn.style.fontSize = '0.75rem';
+                            unpaidBtn.style.background = '#ff4444';
+                            unpaidBtn.style.border = 'none';
+                            unpaidBtn.style.borderRadius = '3px';
+                            unpaidBtn.style.color = 'white';
+                            unpaidBtn.style.cursor = 'pointer';
+                            unpaidBtn.title = 'Mark as unpaid';
+                            unpaidBtn.addEventListener('click', () => markUnpaid(p.id));
+                            paidWrap.appendChild(unpaidBtn);
+                            paidTd.appendChild(paidWrap);
                         }
-                        
-                        tr.innerHTML = `
-                            <td>${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
-                            <td>${p.phone}</td>
-                            <td>
-                                <div style="display:flex;align-items:center;gap:5px;">
-                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
-                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    <span>/10</span>
-                                </div>
-                            </td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>${paidInput}</td>
-                            <td>
-                                <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
-                            </td>
-                        `;
+                        tr.appendChild(paidTd);
+
+                        const actionTd = document.createElement('td');
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-btn';
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.addEventListener('click', () => removePlayer(p.id));
+                        actionTd.appendChild(removeBtn);
+                        tr.appendChild(actionTd);
+
                         tbody.appendChild(tr);
                     });
                 }
@@ -3222,24 +3318,64 @@
                 } else {
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
-                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        tr.innerHTML = `
-                            <td>${index + 1}</td>
-                            <td>${p.firstName} ${p.lastName} ${goalieBadge}</td>
-                            <td>${p.phone}</td>
-                            <td>
-                                <div style="display:flex;align-items:center;gap:5px;">
-                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
-                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    <span>/10</span>
-                                </div>
-                            </td>
-                            <td>
-                                <button class="promote-btn" data-player-id="${p.id}">Promote</button>
-                                <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
-                            </td>
-                        `;
+                        const posTd = document.createElement('td');
+                        posTd.textContent = String(index + 1);
+                        tr.appendChild(posTd);
+
+                        const nameTd = document.createElement('td');
+                        nameTd.appendChild(document.createTextNode(`${p.firstName || ''} ${p.lastName || ''}`.trim()));
+                        if (p.isGoalie) {
+                            nameTd.appendChild(document.createTextNode(' '));
+                            const goalieBadge = document.createElement('span');
+                            goalieBadge.className = 'goalie-badge';
+                            goalieBadge.textContent = 'GOALIE';
+                            nameTd.appendChild(goalieBadge);
+                        }
+                        tr.appendChild(nameTd);
+
+                        const phoneTd = document.createElement('td');
+                        phoneTd.textContent = String(p.phone || '');
+                        tr.appendChild(phoneTd);
+
+                        const ratingTd = document.createElement('td');
+                        const ratingWrap = document.createElement('div');
+                        ratingWrap.style.display = 'flex';
+                        ratingWrap.style.alignItems = 'center';
+                        ratingWrap.style.gap = '5px';
+                        const ratingInput = document.createElement('input');
+                        ratingInput.type = 'number';
+                        ratingInput.id = `rating-${p.id}`;
+                        ratingInput.value = p.rating;
+                        ratingInput.min = '1';
+                        ratingInput.max = '10';
+                        ratingInput.style.width = '50px';
+                        ratingInput.style.padding = '5px';
+                        ratingInput.style.background = '#3d3d3d';
+                        ratingInput.style.border = '1px solid #555';
+                        ratingInput.style.color = 'white';
+                        ratingInput.style.borderRadius = '3px';
+                        ratingInput.style.textAlign = 'center';
+                        ratingInput.addEventListener('change', function() { updateRating(p.id, this.value); });
+                        ratingWrap.appendChild(ratingInput);
+                        const span = document.createElement('span');
+                        span.textContent = '/10';
+                        ratingWrap.appendChild(span);
+                        ratingTd.appendChild(ratingWrap);
+                        tr.appendChild(ratingTd);
+
+                        const actionsTd = document.createElement('td');
+                        const promoteBtn = document.createElement('button');
+                        promoteBtn.className = 'promote-btn';
+                        promoteBtn.dataset.playerId = String(p.id);
+                        promoteBtn.textContent = 'Promote';
+                        actionsTd.appendChild(promoteBtn);
+                        const removeBtn = document.createElement('button');
+                        removeBtn.className = 'remove-btn';
+                        removeBtn.textContent = 'Remove';
+                        removeBtn.addEventListener('click', () => removeWaitlist(p.id));
+                        actionsTd.appendChild(removeBtn);
+                        tr.appendChild(actionsTd);
+
                         waitlistBody.appendChild(tr);
                     });
                 }

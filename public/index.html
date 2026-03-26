@@ -1043,6 +1043,20 @@
 
     <script>
         const API_URL = window.location.origin;
+
+        function escapeHtml(value) {
+            return String(value ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function safeName(firstName, lastName) {
+            return `${escapeHtml(firstName)} ${escapeHtml(lastName)}`.trim();
+        }
+
         let verifiedCode = null;
         let codeRequired = true;
         let currentLocation = "";
@@ -1292,10 +1306,17 @@
                     data.whiteTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
-                        `;
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'player-name';
+                        nameSpan.textContent = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+                        li.appendChild(nameSpan);
+                        if (player.isGoalie) {
+                            const badge = document.createElement('span');
+                            badge.className = 'goalie-badge';
+                            badge.textContent = 'GOALIE';
+                            nameSpan.appendChild(document.createTextNode(' '));
+                            nameSpan.appendChild(badge);
+                        }
                         whiteList.appendChild(li);
                     });
                 }
@@ -1306,10 +1327,17 @@
                     data.darkTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
-                        `;
+                        const nameSpan = document.createElement('span');
+                        nameSpan.className = 'player-name';
+                        nameSpan.textContent = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+                        li.appendChild(nameSpan);
+                        if (player.isGoalie) {
+                            const badge = document.createElement('span');
+                            badge.className = 'goalie-badge';
+                            badge.textContent = 'GOALIE';
+                            nameSpan.appendChild(document.createTextNode(' '));
+                            nameSpan.appendChild(badge);
+                        }
                         darkList.appendChild(li);
                     });
                 }
@@ -1573,7 +1601,13 @@
             const countSpan = document.getElementById('registeredCount');
 
             if (!players || players.length === 0) {
-                grid.innerHTML = '<div style="text-align: center; color: #666; padding: 20px;">No players registered yet</div>';
+                grid.innerHTML = '';
+                const empty = document.createElement('div');
+                empty.style.textAlign = 'center';
+                empty.style.color = '#666';
+                empty.style.padding = '20px';
+                empty.textContent = 'No players registered yet';
+                grid.appendChild(empty);
                 countSpan.innerText = '0';
                 return;
             }
@@ -1589,36 +1623,54 @@
             grid.innerHTML = '';
             sortedPlayers.forEach(player => {
                 const card = document.createElement('div');
-                
-                // Check if player is protected (Phan Ly)
-                const isProtected = player.firstName.toLowerCase() === 'phan' && player.lastName.toLowerCase() === 'ly';
-                const isGoalie = player.isGoalie;
-                
-                // Set card class
+
+                const firstName = String(player.firstName || '');
+                const lastName = String(player.lastName || '');
+                const safeFullName = `${firstName} ${lastName}`.trim();
+                const isProtected = firstName.toLowerCase() === 'phan' && lastName.toLowerCase() === 'ly';
+                const isGoalie = !!player.isGoalie;
+
                 let cardClass = 'player-card';
                 if (isGoalie) cardClass += ' goalie-card';
                 if (isProtected) cardClass += ' protected-card';
                 card.className = cardClass;
 
-                const initials = (player.firstName[0] + player.lastName[0]).toUpperCase();
-                const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
-                const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
-                
-                // Cancel button - hidden for protected players (Phan Ly) and goalies
-                let cancelButton = '';
-                if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
-                    cancelButton = `<button class="cancel-btn" onclick="openCancelModal(${player.id}, '${player.firstName}', '${player.lastName}')">Cancel</button>`;
+                const avatar = document.createElement('div');
+                avatar.className = 'player-avatar';
+                avatar.textContent = `${firstName.charAt(0)}${lastName.charAt(0)}`.toUpperCase();
+                card.appendChild(avatar);
+
+                const info = document.createElement('div');
+                info.className = 'player-info-simple';
+
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'player-name-simple';
+                nameDiv.textContent = safeFullName;
+                info.appendChild(nameDiv);
+
+                if (isGoalie) {
+                    const goalieDiv = document.createElement('div');
+                    goalieDiv.className = 'goalie-label';
+                    goalieDiv.textContent = 'GOALIE';
+                    info.appendChild(goalieDiv);
                 }
 
-                card.innerHTML = `
-                    <div class="player-avatar">${initials}</div>
-                    <div class="player-info-simple">
-                        <div class="player-name-simple">${player.firstName} ${player.lastName}</div>
-                        ${goalieLabel}
-                        ${protectedLabel}
-                    </div>
-                    ${cancelButton}
-                `;
+                if (isProtected) {
+                    const protectedDiv = document.createElement('div');
+                    protectedDiv.className = 'protected-label';
+                    protectedDiv.textContent = 'PROTECTED';
+                    info.appendChild(protectedDiv);
+                }
+
+                card.appendChild(info);
+
+                if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
+                    const cancelButton = document.createElement('button');
+                    cancelButton.className = 'cancel-btn';
+                    cancelButton.textContent = 'Cancel';
+                    cancelButton.addEventListener('click', () => openCancelModal(player.id, firstName, lastName));
+                    card.appendChild(cancelButton);
+                }
 
                 grid.appendChild(card);
             });
@@ -1679,9 +1731,12 @@
                     errorDiv.style.display = 'none';
                     let successMsg = `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s registration has been cancelled.`;
                     if (data.promotedPlayer) {
-                        successMsg += `<br><br>🎉 ${data.promotedPlayer.firstName} ${data.promotedPlayer.lastName} has been promoted from the waitlist!`;
+                        successMsg += `
+
+🎉 ${data.promotedPlayer.firstName} ${data.promotedPlayer.lastName} has been promoted from the waitlist!`;
                     }
-                    successDiv.innerHTML = successMsg;
+                    successDiv.textContent = successMsg;
+                    successDiv.style.whiteSpace = 'pre-line';
                     successDiv.style.display = 'block';
                     
                     setTimeout(() => {
