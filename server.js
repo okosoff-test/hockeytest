@@ -191,7 +191,7 @@ async function ensureSchema() {
     reset_week_at TIMESTAMPTZ DEFAULT NULL,
     manual_override BOOLEAN DEFAULT FALSE,
     current_location TEXT DEFAULT '${DEFAULT_ARENA}',
-    current_time TEXT DEFAULT '${DEFAULT_DAY_TIME}',
+    current_game_time TEXT DEFAULT '${DEFAULT_DAY_TIME}',
     player_spots INTEGER DEFAULT 20,
     last_reset_at TIMESTAMPTZ DEFAULT NULL,
     open_spots_notice TEXT DEFAULT '',
@@ -425,7 +425,7 @@ async function releaseRosterInternal(reqMeta = null) {
     date: settings.game_date || '',
     formattedDate: settings.game_date || '',
     location: settings.selected_arena || settings.current_location || DEFAULT_ARENA,
-    time: settings.selected_day_time || settings.current_time || DEFAULT_DAY_TIME,
+    time: settings.selected_day_time || settings.current_game_time || DEFAULT_DAY_TIME,
     whiteTeam: roster.whiteTeam,
     darkTeam: roster.darkTeam,
     whiteAvg: roster.whiteAvg,
@@ -744,7 +744,7 @@ app.post('/api/admin/update-app-settings', requireAdmin, async (req, res) => {
     if ('customTitle' in req.body) patch.custom_title = String(req.body.customTitle || "Phan's Hockey");
     if ('selectedDayTime' in req.body) {
       patch.selected_day_time = String(req.body.selectedDayTime || DEFAULT_DAY_TIME);
-      patch.current_time = patch.selected_day_time;
+      patch.current_game_time = patch.selected_day_time;
       const parsed = parseSelectedDayTime(patch.selected_day_time);
       if (parsed) patch.game_day_name = parsed.weekday;
     }
