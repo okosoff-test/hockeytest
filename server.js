@@ -171,7 +171,7 @@ async function ensureSchema() {
     id INTEGER PRIMARY KEY,
     require_code BOOLEAN DEFAULT TRUE,
     signup_code TEXT DEFAULT '${DEFAULT_CODE}',
-    custom_title TEXT DEFAULT 'Phan\'s Hockey',
+    custom_title TEXT DEFAULT 'Phan''s Hockey',
     selected_day_time TEXT DEFAULT '${DEFAULT_DAY_TIME}',
     game_day_name TEXT DEFAULT '${DEFAULT_GAME_DAY}',
     game_date TEXT DEFAULT NULL,
