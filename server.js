@@ -234,6 +234,7 @@ async function ensureSchema() {
   )`);
 
   await query(`INSERT INTO settings (id) VALUES (1) ON CONFLICT (id) DO NOTHING`);
+  await query(`ALTER TABLE settings ADD COLUMN IF NOT EXISTS current_game_time TEXT DEFAULT '${DEFAULT_DAY_TIME}'`);
   await query(`CREATE UNIQUE INDEX IF NOT EXISTS players_phone_active_idx ON players ((regexp_replace(phone, '\\D','','g'))) WHERE active = TRUE`);
   await query(`CREATE INDEX IF NOT EXISTS waitlist_created_idx ON waitlist (created_at ASC)`);
 }
@@ -241,6 +242,7 @@ async function ensureSchema() {
 async function getSettings() {
   const { rows } = await query(`SELECT * FROM settings WHERE id = 1 LIMIT 1`);
   const s = rows[0] || {};
+  if (!s.current_game_time && s.current_time) s.current_game_time = s.current_time;
   s.announcement_images = Array.isArray(s.announcement_images) ? s.announcement_images : (s.announcement_images || []);
   return s;
 }
