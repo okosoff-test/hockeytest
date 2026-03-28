@@ -1408,6 +1408,14 @@
             <h3>📝 Recent Admin Activity</h3>
             <div id="adminAuditLog" style="color:#cfcfcf; line-height:1.7;">Loading activity...</div>
         </div>
+
+        <div class="control-box" style="border-color:#009688;">
+            <h3>🩺 System Monitor</h3>
+            <div id="systemMonitorStatus" style="color:#cfcfcf; line-height:1.7;">Loading system status...</div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="control-btn" onclick="loadSystemStatus()" style="background:#009688;">Refresh Monitor</button>
+            </div>
+        </div>
         
         <div class="success-message" id="releaseSuccess">
             ✅ Roster Released Successfully! Players can now see the teams.
@@ -1850,6 +1858,7 @@
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
+                    <th>Profile</th>
                     <th>Payment</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
                     <th>Action</th>
@@ -1867,6 +1876,7 @@
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Rating</th>
+                        <th>Profile</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -2348,6 +2358,7 @@
             // re-run the existing settings refresh flow
             try {
                 await loadAdminData();
+                await loadSystemStatus();
             } catch(e) {
                 console.error(e);
             }
@@ -2424,6 +2435,42 @@
             }
         }
 
+        async function loadSystemStatus() {
+            const el = document.getElementById('systemMonitorStatus');
+            if (!el || !sessionToken) return;
+            try {
+                const res = await adminFetch(`${API_URL}/api/admin/system-status`);
+                if (!res.ok) {
+                    el.textContent = 'Unable to load system status.';
+                    return;
+                }
+                const data = await res.json();
+                const warnings = Array.isArray(data.warnings) ? data.warnings : [];
+                const warningHtml = warnings.length
+                    ? `<div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); color:${warnings.length ? '#ffb347' : '#8bc34a'};"><strong>${warnings.length ? 'Warnings' : 'Healthy'}</strong><br>${warnings.map(w => `• ${w}`).join('<br>')}</div>`
+                    : `<div style="margin-top:10px; padding-top:10px; border-top:1px solid rgba(255,255,255,.08); color:#8bc34a;"><strong>No active warnings</strong></div>`;
+
+                const dbSummary = data.database
+                    ? `${data.database.mode}${data.database.ok === false ? ' (connection issue)' : ''}${data.database.latencyMs != null ? ` • ${data.database.latencyMs} ms` : ''}`
+                    : 'Unknown';
+
+                el.innerHTML = `
+                    <strong>Database:</strong> ${dbSummary}<br>
+                    <strong>Last scheduler run:</strong> ${formatDateTime(data.scheduler?.lastRunAt)}${data.scheduler?.lastDurationMs != null ? ` • ${data.scheduler.lastDurationMs} ms` : ''}<br>
+                    <strong>Last cron heartbeat:</strong> ${formatDateTime(data.heartbeat?.lastCronHeartbeatAt)}<br>
+                    <strong>Last health ping:</strong> ${formatDateTime(data.heartbeat?.lastHealthPingAt)}<br>
+                    <strong>Players / Waitlist:</strong> ${data.counts?.players ?? 0} / ${data.counts?.waitlist ?? 0}<br>
+                    <strong>Backup snapshot:</strong> ${data.consistency?.backupExists ? 'Present' : 'Missing'} • Players ${data.consistency?.backupPlayers ?? 0} • Waitlist ${data.consistency?.backupWaitlist ?? 0}<br>
+                    <strong>Backup saved:</strong> ${formatDateTime(data.consistency?.backupSavedAt)}<br>
+                    <strong>Memory:</strong> RSS ${data.process?.rssMb ?? 0} MB • Heap ${data.process?.heapUsedMb ?? 0}/${data.process?.heapTotalMb ?? 0} MB
+                    ${warningHtml}
+                `;
+            } catch (err) {
+                console.error(err);
+                el.textContent = 'Unable to load system status.';
+            }
+        }
+
         async function checkSession() {
             if (!sessionToken) {
                 showLogin();
@@ -2444,6 +2491,8 @@
                     loadPaymentReportSnapshots();
                     loadSessionInfo();
                     loadAuditLog();
+                    loadSystemStatus();
+                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
                 } else {
                     clearStoredSessionToken();
@@ -2486,6 +2535,8 @@
                     loadPaymentReportSnapshots();
                     loadSessionInfo();
                     loadAuditLog();
+                    loadSystemStatus();
+                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
                 } else {
                     const errorMsg = document.getElementById('errorMsg');
@@ -3418,11 +3469,16 @@
                             <td>${p.phone}</td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:5px;">
-                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
-                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
+                                        style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
                                 </div>
+                            </td>
+                            <td style="font-size:0.8rem; color:#bbb; line-height:1.35;">
+                                Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
+                                Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
+                                Admin ${p.adminRating == null ? '—' : Number(p.adminRating).toFixed(1)}
                             </td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>${paidInput}</td>
@@ -3449,11 +3505,15 @@
                             <td>${p.phone}</td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:5px;">
-                                    <input type="number" id="rating-${p.id}" value="${p.rating}" min="1" max="10" 
-                                        style="width:50px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
+                                        style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
                                 </div>
+                            </td>
+                            <td style="font-size:0.8rem; color:#bbb; line-height:1.35;">
+                                Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
+                                Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}
                             </td>
                             <td>
                                 <button class="promote-btn" data-player-id="${p.id}">Promote</button>
@@ -3647,7 +3707,7 @@
         }
 
         async function updateRating(id, newRating) {
-            const ratingNum = parseInt(newRating);
+            const ratingNum = parseFloat(newRating);
             if (isNaN(ratingNum) || ratingNum < 1 || ratingNum > 10) {
                 alert("Rating must be between 1 and 10");
                 loadData();
@@ -3663,7 +3723,7 @@
 
                 if (res.ok) {
                     const data = await res.json();
-                    console.log(`Updated ${data.player.firstName} ${data.player.lastName} rating to ${data.player.rating}`);
+                    console.log(`Updated ${data.player.firstName} ${data.player.lastName} final rating to ${data.player.finalRating ?? data.player.rating}`);
                 } else if (res.status === 401) {
                     logout();
                 } else {
@@ -4052,6 +4112,9 @@
 
         initializeEnhancedDateTimeControls();
         checkSession();
+        setInterval(() => {
+            if (sessionToken) loadSystemStatus();
+        }, 60000);
     
         async function restoreBackupFromFile(event) {
             const file = event.target.files && event.target.files[0];
