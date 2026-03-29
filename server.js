@@ -221,7 +221,7 @@ let lastExactRosterReleaseRunAt = '';
 let lastExactResetMinuteKey = '';
 let lastExactRosterReleaseMinuteKey = '';
 
-const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = true;
+const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = false;
 const AUTO_SCHEDULE_LOCK_HOUR = 17;
 const AUTO_SCHEDULE_LOCK_MINUTE = 0;
 const AUTO_SCHEDULE_RESET_HOUR = 0;
@@ -3335,24 +3335,16 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         }
         if (selectedDayTime) {
             gameTime = selectedDayTime;
-            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
-                gameDate = newGameDate || calculateNextGameDate();
-                buildAutoSchedulesFromGameTime(gameTime, gameDate);
-                const guardTime = getCurrentETTime();
-                const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
-                const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
-                lastExactResetRunAt = resetGuard.occurrenceKey;
-                lastExactResetMinuteKey = resetGuard.minuteKey;
-                lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
-                lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
+            // IMPORTANT: changing the displayed game day/time must NOT silently re-arm
+            // recurring lock / roster-release / reset schedules. Those are controlled
+            // only through the dedicated schedule editor.
+            if (!newGameDate) {
+                gameDate = calculateNextGameDate();
             }
         }
         if (selectedArena) gameLocation = selectedArena;
         if (newGameDate) {
             gameDate = newGameDate;
-            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
-                buildAutoSchedulesFromGameTime(gameTime, gameDate);
-            }
         }
 
         await saveAppSetting('maintenanceMode', maintenanceMode.toString());
