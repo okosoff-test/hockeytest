@@ -221,7 +221,7 @@ let lastExactRosterReleaseRunAt = '';
 let lastExactResetMinuteKey = '';
 let lastExactRosterReleaseMinuteKey = '';
 
-const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = false;
+const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = true;
 const AUTO_SCHEDULE_LOCK_HOUR = 17;
 const AUTO_SCHEDULE_LOCK_MINUTE = 0;
 const AUTO_SCHEDULE_RESET_HOUR = 0;
@@ -3335,16 +3335,24 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         }
         if (selectedDayTime) {
             gameTime = selectedDayTime;
-            // IMPORTANT: changing the displayed game day/time must NOT silently re-arm
-            // recurring lock / roster-release / reset schedules. Those are controlled
-            // only through the dedicated schedule editor.
-            if (!newGameDate) {
-                gameDate = calculateNextGameDate();
+            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                gameDate = newGameDate || calculateNextGameDate();
+                buildAutoSchedulesFromGameTime(gameTime, gameDate);
+                const guardTime = getCurrentETTime();
+                const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
+                const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
+                lastExactResetRunAt = resetGuard.occurrenceKey;
+                lastExactResetMinuteKey = resetGuard.minuteKey;
+                lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
+                lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
             }
         }
         if (selectedArena) gameLocation = selectedArena;
         if (newGameDate) {
             gameDate = newGameDate;
+            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                buildAutoSchedulesFromGameTime(gameTime, gameDate);
+            }
         }
 
         await saveAppSetting('maintenanceMode', maintenanceMode.toString());
@@ -3539,12 +3547,51 @@ app.post('/api/admin/download-backup', async (req, res) => {
     }
 });
 
-// ADMIN ONLY: Restore players and waitlist from a previously downloaded backup JSON
+// ADMIN ONLY: Safer restore players and waitlist from a previously downloaded backup JSON
 app.post('/api/admin/restore-backup', async (req, res) => {
-    const { sessionToken, backupData } = req.body || {};
+    const {
+        sessionToken,
+        backupData,
+        restoreMode = 'merge',
+        forceReplace = false,
+        restoreSettings = false
+    } = req.body || {};
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    function clonePlain(value) {
+        return JSON.parse(JSON.stringify(value));
+    }
+
+    function normalizeRestoreList(list) {
+        return Array.isArray(list) ? list.filter(item => item && typeof item === 'object') : null;
+    }
+
+    function buildRestoreKey(item) {
+        const idPart = item && item.id != null ? `id:${String(item.id)}` : '';
+        const phoneDigits = normalizePhoneDigits(item && item.phone);
+        if (phoneDigits) return `phone:${phoneDigits}`;
+        const first = String(item && item.firstName || '').trim().toLowerCase();
+        const last = String(item && item.lastName || '').trim().toLowerCase();
+        if (first || last) return `name:${first}|${last}`;
+        return idPart || '';
+    }
+
+    function mergeUnique(currentList, backupList) {
+        const merged = Array.isArray(currentList) ? currentList.map(clonePlain) : [];
+        const seen = new Set(merged.map(buildRestoreKey).filter(Boolean));
+
+        for (const rawItem of Array.isArray(backupList) ? backupList : []) {
+            const item = clonePlain(rawItem);
+            const key = buildRestoreKey(item);
+            if (key && seen.has(key)) continue;
+            if (key) seen.add(key);
+            merged.push(item);
+        }
+
+        return merged;
     }
 
     try {
@@ -3552,40 +3599,77 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             return res.status(400).json({ error: "Invalid backup file" });
         }
 
-        const restoredPlayers = Array.isArray(backupData.players) ? backupData.players : null;
-        const restoredWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist : null;
+        const restoredPlayers = normalizeRestoreList(backupData.players);
+        const restoredWaitlist = normalizeRestoreList(backupData.waitlist);
 
         if (!restoredPlayers || !restoredWaitlist) {
             return res.status(400).json({ error: "Backup file is missing players or waitlist" });
         }
 
-        // Replace in-memory data
-        players = restoredPlayers;
-        waitlist = restoredWaitlist;
+        const requestedMode = String(restoreMode || 'merge').trim().toLowerCase();
+        const mode = requestedMode === 'replace' ? 'replace' : 'merge';
 
-        // Restore supported settings only when present
-        if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
-            currentWeekData = backupData.currentWeekData;
+        const beforeCounts = {
+            players: Array.isArray(players) ? players.length : 0,
+            waitlist: Array.isArray(waitlist) ? waitlist.length : 0
+        };
+
+        if (
+            mode === 'replace' &&
+            !forceReplace &&
+            (
+                restoredPlayers.length < beforeCounts.players ||
+                restoredWaitlist.length < beforeCounts.waitlist
+            )
+        ) {
+            return res.status(409).json({
+                error: "Backup has fewer records than live data. Replace blocked for safety.",
+                requiresForce: true,
+                currentPlayers: beforeCounts.players,
+                currentWaitlist: beforeCounts.waitlist,
+                backupPlayers: restoredPlayers.length,
+                backupWaitlist: restoredWaitlist.length
+            });
         }
 
-        if (backupData.summary && typeof backupData.summary === 'object') {
-            if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
-            if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
-            if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
-            if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
+        const originalPlayers = Array.isArray(players) ? players.map(clonePlain) : [];
+        const originalWaitlist = Array.isArray(waitlist) ? waitlist.map(clonePlain) : [];
+
+        if (mode === 'replace') {
+            players = restoredPlayers.map(clonePlain);
+            waitlist = restoredWaitlist.map(clonePlain);
+        } else {
+            players = mergeUnique(originalPlayers, restoredPlayers);
+            waitlist = mergeUnique(originalWaitlist, restoredWaitlist);
         }
 
-        if (backupData.appSettings && typeof backupData.appSettings === 'object') {
-            const s = backupData.appSettings;
-            if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
-            if (typeof s.customTitle === 'string') customTitle = s.customTitle;
-            if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
-            if (typeof s.announcementText === 'string') announcementText = s.announcementText;
-            if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
-            if (typeof s.playerSpots === 'number' && !isNaN(s.playerSpots)) playerSpots = s.playerSpots;
-            if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
-            if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
+        // Restore supported settings only when explicitly requested on a full replace
+        if (mode === 'replace' && restoreSettings === true) {
+            if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
+                currentWeekData = backupData.currentWeekData;
+            }
+
+            if (backupData.summary && typeof backupData.summary === 'object') {
+                if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
+                if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
+                if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
+                if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
+            }
+
+            if (backupData.appSettings && typeof backupData.appSettings === 'object') {
+                const s = backupData.appSettings;
+                if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
+                if (typeof s.customTitle === 'string') customTitle = s.customTitle;
+                if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
+                if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+                if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
+                if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
+                if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
+            }
         }
+
+        // Always recalculate spots from the resulting live roster instead of trusting backup counts.
+        playerSpots = Math.max(0, 20 - players.filter(p => !(p && p.isGoalie)).length);
 
         // Persist using existing save helper if available
         try {
@@ -3596,11 +3680,35 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             console.error('Restore completed in memory but saveData failed:', saveErr);
         }
 
+        try {
+            if (typeof addAdminAuditEntry === 'function') {
+                addAdminAuditEntry(`restore-backup-${mode}`, req, {
+                    beforePlayers: beforeCounts.players,
+                    beforeWaitlist: beforeCounts.waitlist,
+                    backupPlayers: restoredPlayers.length,
+                    backupWaitlist: restoredWaitlist.length,
+                    afterPlayers: players.length,
+                    afterWaitlist: waitlist.length,
+                    restoreSettings: mode === 'replace' && restoreSettings === true
+                });
+            }
+        } catch (auditErr) {
+            console.error('Error auditing restore action:', auditErr.message);
+        }
+
         return res.json({
             success: true,
+            mode,
             restoredPlayers: players.length,
             restoredWaitlist: waitlist.length,
-            message: "Backup restored successfully"
+            currentPlayersBefore: beforeCounts.players,
+            currentWaitlistBefore: beforeCounts.waitlist,
+            backupPlayers: restoredPlayers.length,
+            backupWaitlist: restoredWaitlist.length,
+            restoreSettingsApplied: mode === 'replace' && restoreSettings === true,
+            message: mode === 'merge'
+                ? "Backup merged safely with live data"
+                : "Backup replaced live data successfully"
         });
     } catch (err) {
         console.error('Error restoring backup:', err);
