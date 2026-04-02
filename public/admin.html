@@ -3574,13 +3574,15 @@
                         const goalieBadge = item.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const typeBadge = item.action === 'removed'
                             ? '<span class="cancelled-badge">ADMIN REMOVED</span>'
-                            : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
+                            : item.action === 'late_cancel_no_show_owed'
+                                ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
+                                : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
                         const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
                         tr.innerHTML = `
                             <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td>
                             <td>${item.source || '--'}</td>
                             <td>${typeBadge}</td>
-                            <td>${item.phone || '--'}</td>
+                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.75rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
                             <td>${when}</td>
                         `;
                         cancellationBody.appendChild(tr);

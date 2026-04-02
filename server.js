@@ -69,6 +69,36 @@ app.use(express.json({ limit: '12mb' }));
 app.use(express.urlencoded({ extended: true, limit: '12mb' }));
 app.use(express.static('public'));
 
+function shouldTriggerSchedulerOnRequest(req) {
+    const method = String(req.method || '').toUpperCase();
+    if (!['GET', 'HEAD', 'POST'].includes(method)) return false;
+
+    const url = String(req.path || req.originalUrl || '').toLowerCase();
+    if (!url || url === '/favicon.ico') return false;
+
+    // Skip obvious static assets. HTML routes and API routes should still trigger catch-up logic.
+    if (/\.(css|js|map|png|jpg|jpeg|gif|svg|ico|webp|woff|woff2|ttf|eot)$/i.test(url)) return false;
+
+    return true;
+}
+
+async function schedulerCatchupMiddleware(req, res, next) {
+    if (!shouldTriggerSchedulerOnRequest(req)) {
+        next();
+        return;
+    }
+
+    try {
+        await runSchedulerTick();
+    } catch (err) {
+        console.error('Request scheduler catch-up error:', err);
+    }
+
+    next();
+}
+
+app.use(schedulerCatchupMiddleware);
+
 // --- DATA STORE ---
 let playerSpots = 20;
 let players = []; 
@@ -394,18 +424,21 @@ let currentWeekData = {
 };
 
 const MAX_GOALIES = 2;
+const NO_SHOW_POLICY_TEXT = 'Cancellation must be done prior to roster release. Late cancel / no-show owes.';
 
 const GAME_RULES = [
-    "No Contact, may tie up player along board plays.",
-    "Keep negative comments to yourself.",
-    "Pass the puck!",
-    "Don't stick handle around everyone each and every shift. Don't be a hotdog.",
-    "Shift OFF often.",
-    "No slashing period., lift the bloody stick. If you slash, intentional or not and hurt the opposing player. You are done for the night and future infraction will end in being Banned period.",
-    "Skate hard, shift off when you're huffing and puffing.",
-    "Don't need to be overly aggressive, tone down the aggression. If pickup hockey.",
-    "Slap shots, don't take it if you can't control it. If you hit goalies in the head, or hurt anyone, you are banned from taking slapshots.",
-    "Have fun! And don't forget Traditional Handshake/Fist bump when game ends!"
+    "No contact. Board tie-ups only.",
+    "No slashing. Lift sticks. Injury = done + possible ban.",
+    "Move the puck. Don’t hog it.",
+    "Control slapshots. Head shots = no more slapshots.",
+    "Short shifts. Be fair with ice time.",
+    "No negativity. Keep it positive.",
+    "Skate hard, change often.",
+    "No excessive aggression. It’s pickup.",
+    "Don’t be “that guy.” You know who you are.",
+    "Handshake/fist bump after the game. Have fun.",
+    "Cancellation must be done prior to roster release. This gives waitlist players a chance for a spot. No-show owes.",
+    "Respect the game and players — or you’re done."
 ];
 
 // ============================================
@@ -2647,6 +2680,7 @@ app.get('/api/status', (req, res) => {
         date: gameDate,
         formattedDate: formatGameDate(gameDate),
         rosterReleased: rosterReleased,
+        noShowPolicy: NO_SHOW_POLICY_TEXT,
         rosterReleaseTime: currentWeekData.rosterReleaseTime,
         currentWeek: week,
         currentYear: year,
@@ -2669,7 +2703,9 @@ app.get('/api/status', (req, res) => {
         rosterReleaseAt: signupMessageData.rosterReleaseAtIso,
         rosterReleaseLabel: signupMessageData.rosterReleaseLabel,
         rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline,
-        rosterReleaseLine: signupMessageData.rosterReleaseLine
+        rosterReleaseLine: signupMessageData.rosterReleaseLine,
+        noShowPolicy: NO_SHOW_POLICY_TEXT,
+        cancellationDeadlineLine: 'Cancellation closes at roster release.'
     });
 });
 
@@ -3061,10 +3097,6 @@ app.post('/api/cancel-registration', async (req, res) => {
         return res.status(400).json({ error: "Invalid player ID." });
     }
 
-    if (rosterReleased) {
-        return res.status(403).json({ error: "Cannot cancel after roster has been released." });
-    }
-
     const submittedPhone = normalizePhoneDigits(phone);
     if (!submittedPhone) {
         return res.status(400).json({ error: "Phone number is required." });
@@ -3077,17 +3109,56 @@ app.post('/api/cancel-registration', async (req, res) => {
     const findById = (arr) => arr.findIndex(p => String(p.id).trim() === idToRemove);
 
     const playerIndex = findById(players);
+    const waitlistIndex = findById(waitlist);
+    const foundPlayer = playerIndex !== -1 ? players[playerIndex] : (waitlistIndex !== -1 ? waitlist[waitlistIndex] : null);
+    const foundSource = playerIndex !== -1 ? 'players' : (waitlistIndex !== -1 ? 'waitlist' : '');
+
+    if (!foundPlayer) {
+        return res.status(404).json({ error: "Player not found." });
+    }
+
+    if (isProtectedPlayer(foundPlayer)) {
+        return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
+    }
+
+    const storedPhone = normalizePhoneDigits(foundPlayer.phone);
+    if (submittedPhone !== storedPhone) {
+        return res.status(401).json({ error: "Phone number does not match registration." });
+    }
+
+    if (rosterReleased) {
+        const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
+            String(item?.id) === String(foundPlayer.id) &&
+            item?.action === 'late_cancel_no_show_owed'
+        );
+
+        if (!alreadyLoggedLateAttempt) {
+            appendCancellationLog({
+                id: foundPlayer.id,
+                firstName: foundPlayer.firstName,
+                lastName: foundPlayer.lastName,
+                phone: foundPlayer.phone,
+                rating: foundPlayer.rating,
+                isGoalie: foundPlayer.isGoalie,
+                paymentMethod: foundPlayer.paymentMethod,
+                source: foundSource || 'players',
+                action: 'late_cancel_no_show_owed',
+                cancelledBy: 'player',
+                cancelledAt: new Date().toISOString(),
+                notes: NO_SHOW_POLICY_TEXT
+            });
+            await saveData();
+        }
+
+        return res.status(403).json({
+            error: "Cancellation is closed because the roster has been released. No-show owes.",
+            noShowOwes: true,
+            policy: NO_SHOW_POLICY_TEXT
+        });
+    }
+
     if (playerIndex !== -1) {
         const player = players[playerIndex];
-
-        if (isProtectedPlayer(player)) {
-            return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
-        }
-
-        const storedPhone = normalizePhoneDigits(player.phone);
-        if (submittedPhone !== storedPhone) {
-            return res.status(401).json({ error: "Phone number does not match registration." });
-        }
 
         appendCancellationLog({
             id: player.id,
@@ -3165,18 +3236,8 @@ app.post('/api/cancel-registration', async (req, res) => {
         });
     }
 
-    const waitlistIndex = findById(waitlist);
     if (waitlistIndex !== -1) {
         const waitlistPlayer = waitlist[waitlistIndex];
-
-        if (isProtectedPlayer(waitlistPlayer)) {
-            return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
-        }
-
-        const storedPhone = normalizePhoneDigits(waitlistPlayer.phone);
-        if (submittedPhone !== storedPhone) {
-            return res.status(401).json({ error: "Phone number does not match registration." });
-        }
 
         appendCancellationLog({
             id: waitlistPlayer.id,
@@ -4711,7 +4772,9 @@ app.get('/health', async (req, res) => {
     });
 });
 
-app.head('/health', (req, res) => {
+app.head('/health', async (req, res) => {
+    lastHealthPingAt = new Date().toISOString();
+    await runSchedulerTick();
     res.sendStatus(200);
 });
 
@@ -4731,7 +4794,9 @@ app.get('/api/health', async (req, res) => {
     });
 });
 
-app.head('/api/health', (req, res) => {
+app.head('/api/health', async (req, res) => {
+    lastHealthPingAt = new Date().toISOString();
+    await runSchedulerTick();
     res.sendStatus(200);
 });
 
@@ -4741,7 +4806,8 @@ initDatabase().then(async () => {
     checkAutoLock();
     runSchedulerTick();
     
-    cron.schedule('* * * * *', async () => {
+    // Safety net only: the app no longer depends on cron because every request runs catch-up logic.
+    cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
         await runSchedulerTick();
     }, {
         timezone: 'America/New_York'
@@ -4767,7 +4833,8 @@ initDatabase().then(async () => {
     checkAutoLock();
     runSchedulerTick();
     
-    cron.schedule('* * * * *', async () => {
+    // Safety net only: the app no longer depends on cron because every request runs catch-up logic.
+    cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
         await runSchedulerTick();
     }, {
         timezone: 'America/New_York'

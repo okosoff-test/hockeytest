@@ -999,6 +999,9 @@
             <h3 style="text-align: center; color: var(--accent); margin: 20px 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
+            <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
+                Cancellation must be done before roster release. Late cancel / no-show owes.
+            </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
             </div>
@@ -1226,7 +1229,8 @@
     <div class="modal-overlay" id="cancelModal">
         <div class="modal-content">
             <h3>⚠️ Cancel Registration</h3>
-            <p>Enter the phone number you used to register to confirm cancellation:</p>
+            <p>Enter the phone number you used to register to confirm cancellation.</p>
+            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Cancellation must be done before roster release. Late cancel / no-show owes.</p>
             <input type="tel" id="cancelPhoneInput" placeholder="Phone Number" inputmode="numeric" autocomplete="tel" maxlength="14" style="margin-bottom: 15px;">
             <div class="cancel-error" id="cancelError"></div>
             <div class="cancel-success" id="cancelSuccess"></div>
@@ -2104,6 +2108,9 @@
                     }, 2500);
                 } else {
                     errorDiv.innerText = data.error || 'Failed to cancel registration.';
+                    if (data && data.noShowOwes) {
+                        errorDiv.innerHTML = `<strong>${data.error || 'Cancellation closed.'}</strong><br><span style="color:#ffb3b3;">${data.policy || 'Late cancel / no-show owes.'}</span>`;
+                    }
                     errorDiv.style.display = 'block';
                 }
             } catch (err) {
