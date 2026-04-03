@@ -1335,6 +1335,7 @@ async function initDatabase() {
                 puck_skills_rating NUMERIC(4,1),
                 hockey_sense_rating NUMERIC(4,1),
                 conditioning_rating NUMERIC(4,1),
+                effort_rating NUMERIC(4,1),
                 level_played VARCHAR(30),
                 peer_comparison VARCHAR(20),
                 confidence_level VARCHAR(20),
@@ -1353,6 +1354,7 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS puck_skills_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS hockey_sense_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS conditioning_rating NUMERIC(4,1)`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS effort_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS level_played VARCHAR(30)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS peer_comparison VARCHAR(20)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS confidence_level VARCHAR(20)`);
@@ -1374,6 +1376,7 @@ async function initDatabase() {
                 puck_skills_rating NUMERIC(4,1),
                 hockey_sense_rating NUMERIC(4,1),
                 conditioning_rating NUMERIC(4,1),
+                effort_rating NUMERIC(4,1),
                 level_played VARCHAR(30),
                 peer_comparison VARCHAR(20),
                 confidence_level VARCHAR(20),
@@ -1388,6 +1391,7 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS puck_skills_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS hockey_sense_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS conditioning_rating NUMERIC(4,1)`);
+        await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS effort_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS level_played VARCHAR(30)`);
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS peer_comparison VARCHAR(20)`);
         await pool.query(`ALTER TABLE waitlist ADD COLUMN IF NOT EXISTS confidence_level VARCHAR(20)`);
@@ -1497,6 +1501,7 @@ async function loadDataFromDB() {
             puckSkillsRating: p.puck_skills_rating == null ? null : Number(p.puck_skills_rating),
             hockeySenseRating: p.hockey_sense_rating == null ? null : Number(p.hockey_sense_rating),
             conditioningRating: p.conditioning_rating == null ? null : Number(p.conditioning_rating),
+            effortRating: p.effort_rating == null ? null : Number(p.effort_rating),
             levelPlayed: p.level_played,
             peerComparison: p.peer_comparison,
             confidenceLevel: p.confidence_level,
@@ -1527,6 +1532,7 @@ async function loadDataFromDB() {
             puckSkillsRating: p.puck_skills_rating == null ? null : Number(p.puck_skills_rating),
             hockeySenseRating: p.hockey_sense_rating == null ? null : Number(p.hockey_sense_rating),
             conditioningRating: p.conditioning_rating == null ? null : Number(p.conditioning_rating),
+            effortRating: p.effort_rating == null ? null : Number(p.effort_rating),
             levelPlayed: p.level_played,
             peerComparison: p.peer_comparison,
             confidenceLevel: p.confidence_level,
@@ -1976,25 +1982,16 @@ function roundRating(value) {
 }
 
 const LEVEL_PLAY_RATING_MAP = {
-    beginner: 3.5,
+    beginner: 3.0,
     house: 4.5,
-    pickup: 5.5,
-    select: 6.8,
-    competitive: 8.0
+    pickup: 6.0,
+    select: 7.5,
+    competitive: 9.0
 };
 
-const PEER_COMPARISON_ADJUSTMENT_MAP = {
-    below: -0.5,
-    average: 0,
-    above: 0.5,
-    top: 1.0
-};
+const PROFILE_SKILL_WEIGHT = 0.8;
+const PROFILE_LEVEL_WEIGHT = 0.2;
 
-const CONFIDENCE_WEIGHT_MAP = {
-    low: { selfWeight: 0.5, levelWeight: 0.5 },
-    medium: { selfWeight: 0.65, levelWeight: 0.35 },
-    high: { selfWeight: 0.75, levelWeight: 0.25 }
-};
 
 function normalizeSkillProfile(input = {}) {
     const ratingMode = String(input.ratingMode || '').toLowerCase() === 'direct' ? 'direct' : 'profile';
@@ -2011,6 +2008,7 @@ function normalizeSkillProfile(input = {}) {
             puckSkillsRating: null,
             hockeySenseRating: null,
             conditioningRating: null,
+            effortRating: null,
             levelPlayed: '',
             peerComparison: '',
             confidenceLevel: '',
@@ -2027,15 +2025,10 @@ function normalizeSkillProfile(input = {}) {
     const puckSkills = clampRating(input.puckSkillsRating);
     const hockeySense = clampRating(input.hockeySenseRating);
     const conditioning = clampRating(input.conditioningRating);
+    const effort = clampRating(input.effortRating);
 
     const levelPlayed = ['beginner', 'house', 'pickup', 'select', 'competitive'].includes(String(input.levelPlayed || '').toLowerCase())
         ? String(input.levelPlayed).toLowerCase()
-        : '';
-    const peerComparison = ['below', 'average', 'above', 'top'].includes(String(input.peerComparison || '').toLowerCase())
-        ? String(input.peerComparison).toLowerCase()
-        : '';
-    const confidenceLevel = ['low', 'medium', 'high'].includes(String(input.confidenceLevel || '').toLowerCase())
-        ? String(input.confidenceLevel).toLowerCase()
         : '';
 
     const missing = [];
@@ -2043,15 +2036,12 @@ function normalizeSkillProfile(input = {}) {
     if (!Number.isFinite(Number(input.puckSkillsRating))) missing.push('puck skills');
     if (!Number.isFinite(Number(input.hockeySenseRating))) missing.push('hockey sense');
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
-    if (!levelPlayed) missing.push('recent level played');
-    if (!peerComparison) missing.push('peer comparison');
-    if (!confidenceLevel) missing.push('confidence');
+    if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
+    if (!levelPlayed) missing.push('level played');
 
-    const baseSkill = roundRating((skating + puckSkills + hockeySense + conditioning) / 4);
+    const baseSkill = roundRating((skating + puckSkills + hockeySense + conditioning + effort) / 5);
     const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
-    const peerAdjustment = PEER_COMPARISON_ADJUSTMENT_MAP[peerComparison] ?? 0;
-    const weights = CONFIDENCE_WEIGHT_MAP[confidenceLevel] || CONFIDENCE_WEIGHT_MAP.medium;
-    const derivedRating = roundRating((baseSkill * weights.selfWeight) + (levelMapped * weights.levelWeight) + peerAdjustment);
+    const derivedRating = roundRating((baseSkill * PROFILE_SKILL_WEIGHT) + (levelMapped * PROFILE_LEVEL_WEIGHT));
 
     return {
         ratingMode: 'profile',
@@ -2060,9 +2050,10 @@ function normalizeSkillProfile(input = {}) {
         puckSkillsRating: puckSkills,
         hockeySenseRating: hockeySense,
         conditioningRating: conditioning,
+        effortRating: effort,
         levelPlayed,
-        peerComparison,
-        confidenceLevel,
+        peerComparison: '',
+        confidenceLevel: '',
         selfRatingRaw: baseSkill,
         derivedRating,
         finalRating: derivedRating,
@@ -2085,6 +2076,7 @@ function hydratePlayerRatingProfile(player = {}) {
         puckSkillsRating: clampRating(player.puckSkillsRating ?? derivedRating),
         hockeySenseRating: clampRating(player.hockeySenseRating ?? derivedRating),
         conditioningRating: clampRating(player.conditioningRating ?? derivedRating),
+        effortRating: clampRating(player.effortRating ?? derivedRating),
         levelPlayed: player.levelPlayed || '',
         peerComparison: player.peerComparison || '',
         confidenceLevel: player.confidenceLevel || '',
@@ -2105,6 +2097,7 @@ function buildPlayerFromSkillProfile(basePlayer, skillProfile = {}) {
         puckSkillsRating: profile.puckSkillsRating,
         hockeySenseRating: profile.hockeySenseRating,
         conditioningRating: profile.conditioningRating,
+        effortRating: profile.effortRating,
         levelPlayed: profile.levelPlayed,
         peerComparison: profile.peerComparison,
         confidenceLevel: profile.confidenceLevel,
@@ -2872,6 +2865,7 @@ app.post('/api/register-init', async (req, res) => {
         puckSkillsRating,
         hockeySenseRating,
         conditioningRating,
+        effortRating,
         levelPlayed,
         peerComparison,
         confidenceLevel,
@@ -2904,6 +2898,7 @@ app.post('/api/register-init', async (req, res) => {
         puckSkillsRating,
         hockeySenseRating,
         conditioningRating,
+        effortRating,
         levelPlayed,
         peerComparison,
         confidenceLevel,
@@ -2936,6 +2931,7 @@ app.post('/api/register-init', async (req, res) => {
             puckSkillsRating: skillProfile.puckSkillsRating,
             hockeySenseRating: skillProfile.hockeySenseRating,
             conditioningRating: skillProfile.conditioningRating,
+            effortRating: skillProfile.effortRating,
             levelPlayed: skillProfile.levelPlayed,
             peerComparison: skillProfile.peerComparison,
             confidenceLevel: skillProfile.confidenceLevel,
@@ -2951,14 +2947,14 @@ app.post('/api/register-init', async (req, res) => {
                 await pool.query(
                     `INSERT INTO waitlist (
                         id, first_name, last_name, phone, payment_method, rating,
-                        skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                        skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                         level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie
                     )
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
                     [
                         waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
                         waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
-                        waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating,
+                        waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
                         waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
                         waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false
                     ]
@@ -2999,6 +2995,7 @@ app.post('/api/register-init', async (req, res) => {
             puckSkillsRating: skillProfile.puckSkillsRating,
             hockeySenseRating: skillProfile.hockeySenseRating,
             conditioningRating: skillProfile.conditioningRating,
+            effortRating: skillProfile.effortRating,
             levelPlayed: skillProfile.levelPlayed,
             peerComparison: skillProfile.peerComparison,
             confidenceLevel: skillProfile.confidenceLevel,
@@ -3037,6 +3034,7 @@ app.post('/api/register-final', async (req, res) => {
         puckSkillsRating: tempData.puckSkillsRating,
         hockeySenseRating: tempData.hockeySenseRating,
         conditioningRating: tempData.conditioningRating,
+        effortRating: tempData.effortRating,
         levelPlayed: tempData.levelPlayed,
         peerComparison: tempData.peerComparison,
         confidenceLevel: tempData.confidenceLevel,
@@ -3058,14 +3056,14 @@ app.post('/api/register-final', async (req, res) => {
             await pool.query(
                 `INSERT INTO players (
                     id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
-                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team, rules_agreed
                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
                 [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
                  newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
-                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating,
+                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating, newPlayer.effortRating,
                  newPlayer.levelPlayed, newPlayer.peerComparison, newPlayer.confidenceLevel, newPlayer.selfRatingRaw,
                  newPlayer.derivedRating, newPlayer.adminRating, newPlayer.adminAdjustment, newPlayer.finalRating, false, null, true]
             );
@@ -4192,13 +4190,13 @@ app.post('/api/admin/add-player', async (req, res) => {
             await pool.query(
                 `INSERT INTO waitlist (
                     id, first_name, last_name, phone, payment_method, rating,
-                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie
                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
                 [waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
                  waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
-                 waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating,
+                 waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
                  waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
                  waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, isGoalieBool]
             );
@@ -4235,14 +4233,14 @@ app.post('/api/admin/add-player', async (req, res) => {
             await pool.query(
                 `INSERT INTO players (
                     id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
-                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team
                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
                 [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
                  newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
-                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating,
+                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating, newPlayer.effortRating,
                  newPlayer.levelPlayed, newPlayer.peerComparison, newPlayer.confidenceLevel, newPlayer.selfRatingRaw,
                  newPlayer.derivedRating, newPlayer.adminRating, newPlayer.adminAdjustment, newPlayer.finalRating, isGoalieBool, null]
             );

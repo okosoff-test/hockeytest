@@ -1087,57 +1087,40 @@
                 <div id="skillProfileWrapper" class="skill-profile-wrapper">
                 <div style="margin: 15px 0 5px 0; color: #aaa; font-size: 0.9rem;">Player Skill Profile:</div>
                 <div class="rating-grid">
-                    <div class="rating-card">
-                        <label for="skatingRating">Skating (1-10)</label>
-                        <input type="number" id="skatingRating" min="1" max="10" step="1" placeholder="Speed / edges" required style="margin:0;">
-                    </div>
-                    <div class="rating-card">
-                        <label for="puckSkillsRating">Puck Skills (1-10)</label>
-                        <input type="number" id="puckSkillsRating" min="1" max="10" step="1" placeholder="Hands / passing" required style="margin:0;">
-                    </div>
-                    <div class="rating-card">
-                        <label for="hockeySenseRating">Hockey Sense (1-10)</label>
-                        <input type="number" id="hockeySenseRating" min="1" max="10" step="1" placeholder="Reads / positioning" required style="margin:0;">
-                    </div>
-                    <div class="rating-card">
-                        <label for="conditioningRating">Conditioning (1-10)</label>
-                        <input type="number" id="conditioningRating" min="1" max="10" step="1" placeholder="Game pace" required style="margin:0;">
-                    </div>
-                </div>
+    <div class="rating-card">
+        <label for="skatingRating">Skating (1-10)</label>
+        <input type="number" id="skatingRating" min="1" max="10" step="1" placeholder="Speed / edges / agility" required style="margin:0;">
+    </div>
+    <div class="rating-card">
+        <label for="puckSkillsRating">Puck Skills (1-10)</label>
+        <input type="number" id="puckSkillsRating" min="1" max="10" step="1" placeholder="Hands / passing / control" required style="margin:0;">
+    </div>
+    <div class="rating-card">
+        <label for="hockeySenseRating">Hockey Sense (1-10)</label>
+        <input type="number" id="hockeySenseRating" min="1" max="10" step="1" placeholder="Reads / positioning / decisions" required style="margin:0;">
+    </div>
+    <div class="rating-card">
+        <label for="conditioningRating">Conditioning (1-10)</label>
+        <input type="number" id="conditioningRating" min="1" max="10" step="1" placeholder="Stamina through the game" required style="margin:0;">
+    </div>
+    <div class="rating-card">
+        <label for="effortRating">Compete / Effort (1-10)</label>
+        <input type="number" id="effortRating" min="1" max="10" step="1" placeholder="Battle level / hustle / backchecking" required style="margin:0;">
+    </div>
+</div>
 
-                <div class="profile-field">
-                    <label for="levelPlayed">Highest recent level played</label>
-                    <select id="levelPlayed" required>
-                        <option value="">Select one</option>
-                        <option value="beginner">Beginner / shinny only</option>
-                        <option value="house">House league</option>
-                        <option value="pickup">Intermediate pickup</option>
-                        <option value="select">Strong pickup / select</option>
-                        <option value="competitive">High-level competitive / junior</option>
-                    </select>
-                </div>
-
-                <div class="profile-field">
-                    <label for="peerComparison">Compared to the average player in this group</label>
-                    <select id="peerComparison" required>
-                        <option value="">Select one</option>
-                        <option value="below">Below average</option>
-                        <option value="average">Average</option>
-                        <option value="above">Above average</option>
-                        <option value="top">One of the stronger players</option>
-                    </select>
-                </div>
-
-                <div class="profile-field">
-                    <label for="confidenceLevel">How confident are you in your self-rating?</label>
-                    <select id="confidenceLevel" required>
-                        <option value="">Select one</option>
-                        <option value="low">Not very confident</option>
-                        <option value="medium">Somewhat confident</option>
-                        <option value="high">Very confident</option>
-                    </select>
-                </div>
-                </div>
+<div class="profile-field">
+    <label for="levelPlayed">Highest recent level played</label>
+    <select id="levelPlayed" required>
+        <option value="">Select one</option>
+        <option value="beginner">Beginner / shinny only</option>
+        <option value="house">House league</option>
+        <option value="pickup">Intermediate pickup</option>
+        <option value="select">Strong pickup / select</option>
+        <option value="competitive">High-level competitive / junior+</option>
+    </select>
+</div>
+</div>
 
                 <div class="direct-rating-box hidden" id="directRatingBox">
                     <label for="directRating" style="display:block; margin-bottom:6px; color:#d6ffd6; font-weight:600;">Enter your known rating (1-10)</label>
@@ -1328,25 +1311,15 @@
         }
 
         const LEVEL_PLAY_RATING_MAP = {
-            beginner: 3.5,
+            beginner: 3.0,
             house: 4.5,
-            pickup: 5.5,
-            select: 6.8,
-            competitive: 8.0
+            pickup: 6.0,
+            select: 7.5,
+            competitive: 9.0
         };
 
-        const PEER_COMPARISON_ADJUSTMENT_MAP = {
-            below: -0.5,
-            average: 0,
-            above: 0.5,
-            top: 1.0
-        };
-
-        const CONFIDENCE_WEIGHT_MAP = {
-            low: { selfWeight: 0.50, levelWeight: 0.50 },
-            medium: { selfWeight: 0.65, levelWeight: 0.35 },
-            high: { selfWeight: 0.75, levelWeight: 0.25 }
-        };
+        const PROFILE_SKILL_WEIGHT = 0.8;
+        const PROFILE_LEVEL_WEIGHT = 0.2;
 
         function clampRatingInput(value) {
             const num = Number(value);
@@ -1379,9 +1352,8 @@
                 'puckSkillsRating',
                 'hockeySenseRating',
                 'conditioningRating',
-                'levelPlayed',
-                'peerComparison',
-                'confidenceLevel'
+                'effortRating',
+                'levelPlayed'
             ];
 
             profileFields.forEach(id => {
@@ -1411,6 +1383,7 @@
                     puckSkillsRating: null,
                     hockeySenseRating: null,
                     conditioningRating: null,
+                    effortRating: null,
                     levelPlayed: '',
                     peerComparison: '',
                     confidenceLevel: '',
@@ -1424,19 +1397,16 @@
             const puck = clampRatingInput(document.getElementById('puckSkillsRating')?.value);
             const sense = clampRatingInput(document.getElementById('hockeySenseRating')?.value);
             const conditioning = clampRatingInput(document.getElementById('conditioningRating')?.value);
+            const effort = clampRatingInput(document.getElementById('effortRating')?.value);
             const levelPlayed = document.getElementById('levelPlayed')?.value || '';
-            const peerComparison = document.getElementById('peerComparison')?.value || '';
-            const confidenceLevel = document.getElementById('confidenceLevel')?.value || '';
 
-            if ([skating, puck, sense, conditioning].some(v => v === null) || !levelPlayed || !peerComparison || !confidenceLevel) {
+            if ([skating, puck, sense, conditioning, effort].some(v => v === null) || !levelPlayed) {
                 return null;
             }
 
-            const baseSkill = roundRatingValue((skating + puck + sense + conditioning) / 4);
+            const baseSkill = roundRatingValue((skating + puck + sense + conditioning + effort) / 5);
             const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
-            const peerAdjustment = PEER_COMPARISON_ADJUSTMENT_MAP[peerComparison] ?? 0;
-            const weights = CONFIDENCE_WEIGHT_MAP[confidenceLevel] || CONFIDENCE_WEIGHT_MAP.medium;
-            const derivedRating = roundRatingValue((baseSkill * weights.selfWeight) + (levelMapped * weights.levelWeight) + peerAdjustment);
+            const derivedRating = roundRatingValue((baseSkill * PROFILE_SKILL_WEIGHT) + (levelMapped * PROFILE_LEVEL_WEIGHT));
 
             return {
                 ratingMode: 'profile',
@@ -1445,9 +1415,10 @@
                 puckSkillsRating: puck,
                 hockeySenseRating: sense,
                 conditioningRating: conditioning,
+                effortRating: effort,
                 levelPlayed,
-                peerComparison,
-                confidenceLevel,
+                peerComparison: '',
+                confidenceLevel: '',
                 selfRatingRaw: baseSkill,
                 derivedRating,
                 finalRating: derivedRating
@@ -1502,9 +1473,8 @@
                 document.getElementById('puckSkillsRating').value = data.puckSkillsRating || '';
                 document.getElementById('hockeySenseRating').value = data.hockeySenseRating || '';
                 document.getElementById('conditioningRating').value = data.conditioningRating || '';
+                document.getElementById('effortRating').value = data.effortRating || '';
                 document.getElementById('levelPlayed').value = data.levelPlayed || '';
-                document.getElementById('peerComparison').value = data.peerComparison || '';
-                document.getElementById('confidenceLevel').value = data.confidenceLevel || '';
                 document.getElementById('rating').value = data.rating || '';
                 if (data.paymentMethod) {
                     const radio = document.querySelector(`input[name="payment"][value="${data.paymentMethod}"]`);
@@ -1528,9 +1498,10 @@
                 puckSkillsRating: document.getElementById('puckSkillsRating').value,
                 hockeySenseRating: document.getElementById('hockeySenseRating').value,
                 conditioningRating: document.getElementById('conditioningRating').value,
+                effortRating: document.getElementById('effortRating').value,
                 levelPlayed: document.getElementById('levelPlayed').value,
-                peerComparison: document.getElementById('peerComparison').value,
-                confidenceLevel: document.getElementById('confidenceLevel').value,
+                peerComparison: '',
+                confidenceLevel: '',
                 rating: document.getElementById('rating').value,
                 paymentMethod: document.querySelector('input[name="payment"]:checked')?.value
             };
@@ -2219,9 +2190,10 @@
                 puckSkillsRating: skillProfile.puckSkillsRating,
                 hockeySenseRating: skillProfile.hockeySenseRating,
                 conditioningRating: skillProfile.conditioningRating,
+                effortRating: skillProfile.effortRating,
                 levelPlayed: skillProfile.levelPlayed,
-                peerComparison: skillProfile.peerComparison,
-                confidenceLevel: skillProfile.confidenceLevel,
+                peerComparison: '',
+                confidenceLevel: '',
                 isGoalie: false,
                 signupCode: verifiedCode
             };
@@ -2274,7 +2246,7 @@
             updateRatingModeUi();
             updatePIACalculation();
             
-            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'conditioningRating'];
+            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'conditioningRating', 'effortRating'];
             inputs.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -2291,7 +2263,7 @@
                 });
             });
 
-            ['levelPlayed', 'peerComparison', 'confidenceLevel'].forEach(id => {
+            ['levelPlayed'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener('change', updateCalculatedRating);
