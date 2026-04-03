@@ -518,10 +518,10 @@
 
         .admin-player-row {
             display: grid;
-            grid-template-columns: minmax(220px, 2.1fr) minmax(120px, 1fr) minmax(240px, 1.7fr) auto;
-            gap: 14px;
+            grid-template-columns: minmax(230px, 1.9fr) minmax(110px, 0.72fr) minmax(210px, 1.15fr) 96px;
+            gap: 10px;
             align-items: center;
-            padding: 14px 16px;
+            padding: 12px 16px;
             background: linear-gradient(135deg, #2a2a2a, #333);
             border-bottom: 1px solid #444;
         }
@@ -551,20 +551,23 @@
         .admin-payment-stack {
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
+            align-self: center;
         }
 
         .admin-mini-label {
-            color: #999;
-            font-size: 0.72rem;
+            color: #9f9f9f;
+            font-size: 0.7rem;
             text-transform: uppercase;
-            letter-spacing: 0.6px;
+            letter-spacing: 0.9px;
+            font-weight: 600;
         }
 
         .admin-rating-row {
             display: flex;
             align-items: center;
             gap: 6px;
+            white-space: nowrap;
         }
 
         .admin-payment-row {
@@ -572,26 +575,64 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+            min-height: 38px;
         }
 
         .payment-method-pill {
-            background: rgba(255,255,255,0.08);
+            background: rgba(255,255,255,0.06);
             border: 1px solid #555;
             color: #ddd;
             border-radius: 999px;
-            padding: 5px 10px;
-            font-size: 0.78rem;
+            padding: 6px 11px;
+            font-size: 0.76rem;
             font-weight: 600;
+            line-height: 1;
         }
 
         .paid-quick-btn, .paid-clear-btn {
-            padding: 6px 10px;
+            height: 36px;
+            min-width: 36px;
+            padding: 0 10px;
             font-size: 0.78rem;
             border: none;
             border-radius: 6px;
             color: white;
             cursor: pointer;
             font-weight: 700;
+        }
+
+
+        .admin-payment-free {
+            color: #4CAF50;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+        }
+
+        .admin-player-actions {
+            display: flex;
+            justify-content: flex-end;
+            align-items: center;
+        }
+
+        .admin-rating-input,
+        .admin-paid-input {
+            height: 36px;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 6px;
+            text-align: center;
+            font-weight: 600;
+        }
+
+        .admin-rating-input {
+            width: 72px;
+            padding: 7px 8px;
+        }
+
+        .admin-paid-input {
+            width: 92px;
+            padding: 7px 8px;
         }
 
         .paid-quick-btn { background: #4CAF50; }
@@ -3570,7 +3611,7 @@
                         
                         let paymentBlock = '';
                         if (p.isGoalie || isProtected) {
-                            paymentBlock = '<div class="admin-payment-row"><span style="color:#4CAF50; font-weight:bold;">FREE</span></div>';
+                            paymentBlock = '<div class="admin-payment-row"><span class="admin-payment-free">FREE</span></div>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
@@ -3578,7 +3619,7 @@
                                 <div class="admin-payment-row">
                                     <span class="payment-method-pill">${p.paymentMethod || 'No method'}</span>
                                     <button onclick="quickPay15(${p.id})" class="paid-quick-btn" ${isPaid ? 'disabled' : ''}>$15</button>
-                                    <input type="number" class="paid-input" value="${amount}"
+                                    <input type="number" class="paid-input admin-paid-input" value="${amount}"
                                         id="paid-${p.id}"
                                         placeholder="0.00" step="0.01" min="0"
                                         onchange="updatePaidAmount(${p.id}, this.value)">
@@ -3596,7 +3637,7 @@
                                 <div class="admin-mini-label">Rating</div>
                                 <div class="admin-rating-row">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
-                                        style="width:68px;padding:7px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:6px;text-align:center;"
+                                        class="admin-rating-input"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
                                 </div>
