@@ -1362,6 +1362,78 @@
             }
         }
 
+        .player-name-cell {
+            min-width: 190px;
+        }
+
+        .player-name-main {
+            font-weight: 600;
+            line-height: 1.25;
+        }
+
+        .player-phone-inline {
+            display: none;
+            margin-top: 4px;
+            color: #aaa;
+            font-size: 0.8rem;
+        }
+
+        .payment-cell {
+            min-width: 150px;
+        }
+
+        .payment-method-line {
+            color: #ddd;
+            font-weight: 600;
+            margin-bottom: 6px;
+        }
+
+        .payment-paid-line {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .rating-inline {
+            display:flex;
+            align-items:center;
+            gap:5px;
+        }
+
+        .admin-players-table {
+            width: 100%;
+        }
+
+        @media (max-width: 760px) {
+            .admin-players-table th,
+            .admin-players-table td {
+                padding: 7px 6px;
+                font-size: 0.78rem;
+                vertical-align: top;
+            }
+
+            .admin-players-table th:nth-child(2),
+            .admin-players-table td:nth-child(2) {
+                display: none;
+            }
+
+            .player-phone-inline {
+                display: block;
+            }
+
+            .paid-input {
+                width: 52px !important;
+                font-size: 0.8rem;
+                padding: 4px;
+            }
+
+            .remove-btn {
+                padding: 4px 8px;
+                font-size: 0.72rem;
+            }
+        }
+
     </style>
 </head>
 <body>
@@ -1802,15 +1874,13 @@
         </div>
 
         <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table>
+        <table class="admin-players-table">
             <thead>
                 <tr>
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Profile</th>
-                    <th>Payment</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Payment / Paid <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -3474,7 +3544,7 @@
                 tbody.innerHTML = '';
                 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
@@ -3492,7 +3562,6 @@
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
                             paidInput = `
-                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                                     <button onclick="quickPay15(${p.id})" 
                                         style="padding:4px 8px;font-size:0.75rem;background:${isPaid ? '#555' : '#4CAF50'};border:none;border-radius:3px;color:white;cursor:pointer;"
                                         ${isPaid ? 'disabled' : ''}>
@@ -3508,28 +3577,29 @@
                                         title="Mark as unpaid">
                                         ✕
                                     </button>
-                                </div>
                             `;
                         }
                         
+                        const paymentMethodLabel = p.isGoalie ? 'N/A' : (p.paymentMethod || '—');
+
                         tr.innerHTML = `
-                            <td>${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
+                            <td class="player-name-cell">
+                                <div class="player-name-main">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</div>
+                                <div class="player-phone-inline">${p.phone}</div>
+                            </td>
                             <td>${p.phone}</td>
                             <td>
-                                <div style="display:flex;align-items:center;gap:5px;">
+                                <div class="rating-inline">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
                                         style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
                                 </div>
                             </td>
-                            <td style="font-size:0.8rem; color:#bbb; line-height:1.35;">
-                                Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
-                                Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
-                                Admin ${p.adminRating == null ? '—' : Number(p.adminRating).toFixed(1)}
+                            <td class="payment-cell">
+                                <div class="payment-method-line">${paymentMethodLabel}</div>
+                                <div class="payment-paid-line">${paidInput}</div>
                             </td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>${paidInput}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
