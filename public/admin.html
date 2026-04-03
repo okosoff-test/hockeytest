@@ -1412,6 +1412,42 @@ th, td { padding: 3px 5px !important; }
 .rating-wrap, .paid-wrap { gap: 2px !important; }
 </style>
 
+
+<style>
+/* FINAL POLISH */
+
+/* stack name + phone */
+.player-name-cell {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.1;
+}
+.player-name-cell span {
+    font-size: 0.8rem;
+    color: #aaa;
+}
+
+/* shrink phone column */
+td:nth-child(2) {
+    font-size: 0.85rem;
+    color: #bbb;
+    width: 110px;
+}
+
+/* ultra tight table */
+table { border-collapse: collapse !important; }
+th, td { padding: 2px 4px !important; }
+
+/* tighten gaps */
+.rating-wrap, .paid-wrap { gap: 2px !important; }
+
+/* smaller buttons */
+button {
+    padding: 4px 8px !important;
+    font-size: 0.8rem !important;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
