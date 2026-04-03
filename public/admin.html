@@ -1664,64 +1664,6 @@
             </div>
         </div>
 
-        <!-- Payment Summary -->
-        <div class="payment-summary-box">
-            <h3>💰 Payment Summary (Admin Only)</h3>
-            <div class="payment-stats">
-                <div class="payment-stat">
-                    <div class="payment-stat-value" id="totalCollected">$0.00</div>
-                    <div class="payment-stat-label">Total Collected</div>
-                </div>
-                <div class="payment-stat">
-                    <div class="payment-stat-value" id="paidCountDisplay">0</div>
-                    <div class="payment-stat-label">Paid Players</div>
-                </div>
-                <div class="payment-stat">
-                    <div class="payment-stat-value unpaid" id="unpaidCountDisplay">0</div>
-                    <div class="payment-stat-label">Unpaid Players</div>
-                </div>
-            </div>
-            <button class="export-btn" onclick="exportToExcel()">
-                📥 Download Full Payment Report (CSV)
-            </button>
-            <div class="message-actions" style="margin-top:12px;">
-                <button type="button" class="control-btn" onclick="downloadLatestSavedPaymentReport()" style="background:#6f42c1;">🗂️ Download Last Auto-Saved Report</button>
-                <button type="button" class="secondary-btn control-btn" onclick="loadPaymentReportSnapshots()">↻ Refresh Saved Reports</button>
-            </div>
-            <div class="message-box" style="margin-top:12px;">
-                <label for="paymentReportSnapshotSelect">Saved Payment Report Snapshots</label>
-                <div class="control-row">
-                    <select id="paymentReportSnapshotSelect" style="flex:1;">
-                        <option value="">No saved reports loaded</option>
-                    </select>
-                    <button type="button" class="control-btn" onclick="downloadSelectedPaymentReport()" style="background:#6f42c1;">Download Selected</button>
-                </div>
-                <small id="paymentReportSnapshotStatus">Reports are auto-saved to the database before scheduled and manual weekly reset.</small>
-            </div>
-            <p class="security-notice">
-                ⚠️ Payment and rating data is hidden from public view. Only admins can see this information.
-            </p>
-        </div>
-
-
-        <!-- Released Roster Preview -->
-        <div class="released-roster-preview" id="releasedRosterPreview">
-            <div class="preview-header">
-                <h3>🏒 Released Roster</h3>
-                <p id="previewGameInfo">--</p>
-            </div>
-            <div class="preview-teams">
-                <div class="preview-team white">
-                    <h4>Team White <span id="whiteAvgPreview"></span></h4>
-                    <ul class="preview-list" id="whiteTeamPreview"></ul>
-                </div>
-                <div class="preview-team dark">
-                    <h4>Team Dark <span id="darkAvgPreview"></span></h4>
-                    <ul class="preview-list" id="darkTeamPreview"></ul>
-                </div>
-            </div>
-        </div>
-
         <!-- Pre-defined Goalies Section - AUTO ADD -->
         <div class="goalies-section">
             <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
@@ -1868,6 +1810,65 @@
             </thead>
             <tbody id="playerList"></tbody>
         </table>
+
+        <!-- Payment Summary -->
+        <div class="payment-summary-box">
+            <h3>💰 Payment Summary (Admin Only)</h3>
+            <div class="payment-stats">
+                <div class="payment-stat">
+                    <div class="payment-stat-value" id="totalCollected">$0.00</div>
+                    <div class="payment-stat-label">Total Collected</div>
+                </div>
+                <div class="payment-stat">
+                    <div class="payment-stat-value" id="paidCountDisplay">0</div>
+                    <div class="payment-stat-label">Paid Players</div>
+                </div>
+                <div class="payment-stat">
+                    <div class="payment-stat-value unpaid" id="unpaidCountDisplay">0</div>
+                    <div class="payment-stat-label">Unpaid Players</div>
+                </div>
+            </div>
+            <button class="export-btn" onclick="exportToExcel()">
+                📥 Download Full Payment Report (CSV)
+            </button>
+            <div class="message-actions" style="margin-top:12px;">
+                <button type="button" class="control-btn" onclick="downloadLatestSavedPaymentReport()" style="background:#6f42c1;">🗂️ Download Last Auto-Saved Report</button>
+                <button type="button" class="secondary-btn control-btn" onclick="loadPaymentReportSnapshots()">↻ Refresh Saved Reports</button>
+            </div>
+            <div class="message-box" style="margin-top:12px;">
+                <label for="paymentReportSnapshotSelect">Saved Payment Report Snapshots</label>
+                <div class="control-row">
+                    <select id="paymentReportSnapshotSelect" style="flex:1;">
+                        <option value="">No saved reports loaded</option>
+                    </select>
+                    <button type="button" class="control-btn" onclick="downloadSelectedPaymentReport()" style="background:#6f42c1;">Download Selected</button>
+                </div>
+                <small id="paymentReportSnapshotStatus">Reports are auto-saved to the database before scheduled and manual weekly reset.</small>
+            </div>
+            <p class="security-notice">
+                ⚠️ Payment and rating data is hidden from public view. Only admins can see this information.
+            </p>
+        </div>
+
+
+        <!-- Released Roster Preview -->
+        <div class="released-roster-preview" id="releasedRosterPreview">
+            <div class="preview-header">
+                <h3>🏒 Released Roster</h3>
+                <p id="previewGameInfo">--</p>
+            </div>
+            <div class="preview-teams">
+                <div class="preview-team white">
+                    <h4>Team White <span id="whiteAvgPreview"></span></h4>
+                    <ul class="preview-list" id="whiteTeamPreview"></ul>
+                </div>
+                <div class="preview-team dark">
+                    <h4>Team Dark <span id="darkAvgPreview"></span></h4>
+                    <ul class="preview-list" id="darkTeamPreview"></ul>
+                </div>
+            </div>
+        </div>
+
 
         <div class="waitlist-section">
             <h3>⏳ Waitlist (<span id="waitlistCount">0</span>)</h3>
