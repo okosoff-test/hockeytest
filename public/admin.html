@@ -88,7 +88,7 @@
 
         input, select {
             width: 100%;
-            padding: 6px;
+            padding: 4px;
             margin: 8px 0;
             background: #3d3d3d;
             border: 1px solid #555;
@@ -126,7 +126,7 @@
         }
 
         th, td {
-            padding: 6px;
+            padding: 4px;
             text-align: left;
             border-bottom: 1px solid #444;
         }
@@ -980,7 +980,7 @@
             background: #3d3d3d;
             border: 1px solid #555;
             color: white;
-            padding: 6px;
+            padding: 4px;
             border-radius: 5px;
             font-size: 1rem;
             flex: 1;
@@ -998,7 +998,7 @@
 
         .delete-result {
             margin-top: 10px;
-            padding: 6px;
+            padding: 4px;
             border-radius: 5px;
             font-size: 0.9rem;
             display: none;
@@ -1059,9 +1059,9 @@
         .schedule-editor { margin-top: 12px; padding-top: 12px; border-top: 1px solid #444; }
         .schedule-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         @media (max-width: 900px) { .schedule-grid { grid-template-columns: 1fr; } }
-        .schedule-card { background: #262626; border: 1px solid #3a3a3a; border-radius: 10px; padding: 6px; }
+        .schedule-card { background: #262626; border: 1px solid #3a3a3a; border-radius: 10px; padding: 4px; }
         .schedule-title { font-weight: 700; margin-bottom: 4px; }
-        .schedule-label { display:flex; gap:8px; align-items:center; color:#ddd; margin-bottom:10px; }
+        .schedule-label { display:flex; gap:3px; align-items:center; color:#ddd; margin-bottom:10px; }
         .schedule-row { display:flex; gap:10px; flex-wrap:wrap; }
         .schedule-field { flex: 1; min-width: 220px; }
         .schedule-label2 { font-size: 0.85rem; color:#bbb; margin-bottom: 4px; }
@@ -1107,7 +1107,7 @@
             border: 1px solid #555;
             color: white;
             border-radius: 5px;
-            padding: 6px;
+            padding: 4px;
             font-size: 1rem;
             text-align: center;
         }
@@ -1163,7 +1163,7 @@
         .clock-ampm-row,
         .clock-action-row {
             display: flex;
-            gap: 8px;
+            gap: 3px;
             justify-content: center;
             margin-bottom: 10px;
             flex-wrap: wrap;
@@ -1372,11 +1372,31 @@
 .admin-layout-option-1 .rating-wrap,
 .admin-layout-option-1 .paid-wrap,
 .admin-layout-option-1 .waitlist-rating-wrap,
-.admin-layout-option-1 .waitlist-action-wrap { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; }
-.admin-layout-option-1 .paid-wrap { gap:6px; }
+.admin-layout-option-1 .waitlist-action-wrap { display:flex; align-items:center; justify-content:center; gap:2px; flex-wrap:wrap; }
+.admin-layout-option-1 .paid-wrap { gap:3px; }
 .admin-layout-option-1 .table-note-muted { font-size:0.8rem; color:#bbb; line-height:1.35; text-align:center; }
 
 </style>
+
+<style>
+table {
+    border-collapse: collapse !important;
+}
+th, td {
+    padding: 3px 6px !important;
+    white-space: nowrap;
+}
+.player-name-cell {
+    padding-right: 4px !important;
+}
+.rating-wrap, .paid-wrap {
+    gap: 2px !important;
+}
+input[type="number"] {
+    margin: 0 !important;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -1389,14 +1409,14 @@
         <h1>Admin Portal</h1>
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
         <input type="password" id="adminPass" placeholder="Enter Render ADMIN_PASSWORD">
-        <div style="display:flex; align-items:center; gap:8px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
+        <div style="display:flex; align-items:center; gap:3px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
             <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;">
             <label for="showAdminPass" style="cursor:pointer;">Show password</label>
             <span style="opacity:.45;">•</span>
             <input type="checkbox" id="rememberDevice" style="width:auto; margin:0;" checked>
             <label for="rememberDevice" style="cursor:pointer;">Remember this device for 30 days</label>
         </div>
-        <button onclick="login()" style="width:100%;">Access Dashboard</button>
+        <button onclick="login()" style="width:100%;border-spacing:0;">Access Dashboard</button>
         <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
     </div>
 
