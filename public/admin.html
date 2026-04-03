@@ -1457,6 +1457,12 @@
                 <small>This banner is separate from maintenance mode and will not shut down signup.</small>
             </div>
 
+            <div class="message-box">
+                <label for="paymentEmail">Dynamic Payment E-transfer Email</label>
+                <input type="email" id="paymentEmail" placeholder="okosoff@outlook.com">
+                <small>Used automatically when roster is released to build the payment reminder banner.</small>
+            </div>
+
             <div class="message-grid">
                 <div class="message-box">
                     <label for="announcementImageUpload">Upload Announcement Picture</label>
@@ -2666,7 +2672,8 @@
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
-                                const announcementImagePreview = document.getElementById('announcementImagePreview');
+                const paymentEmail = document.getElementById('paymentEmail');
+                const announcementImagePreview = document.getElementById('announcementImagePreview');
 
                 if (announcementCheckbox) {
                     announcementCheckbox.checked = !!data.announcementEnabled;
@@ -2677,6 +2684,9 @@
                 }
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
+                }
+                if (paymentEmail) {
+                    paymentEmail.value = data.paymentEmail || '';
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -4136,9 +4146,11 @@
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
+                const paymentEmailInput = document.getElementById('paymentEmail');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
+                const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -4149,6 +4161,7 @@
                             sessionToken,
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
+                            paymentEmail: paymentEmailValue,
                             announcementImages
                         })
                     });

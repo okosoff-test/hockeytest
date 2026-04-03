@@ -508,6 +508,13 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     return [...AUTO_ADD_CORE_PLAYERS, ...goalieList].map(player => ({ ...player }));
 }
 
+function buildRosterReleasePaymentAnnouncement() {
+    const email = String(paymentEmail || '').trim();
+    return email
+        ? `E-transfer required immediately after roster release to ${email}.`
+        : 'E-transfer required immediately after roster release.';
+}
+
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
     {
@@ -566,6 +573,7 @@ let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
+let paymentEmail = 'okosoff@outlook.com';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1055,7 +1063,7 @@ async function autoReleaseRoster() {
         manualOverrideState = 'locked';
 
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
+        announcementText = buildRosterReleasePaymentAnnouncement();
 
         currentWeekData = {
             weekNumber: week,
@@ -1558,6 +1566,7 @@ async function loadDataFromDB() {
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
+        if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
@@ -1620,6 +1629,7 @@ async function saveData() {
         await saveAppSetting('announcementEnabled', announcementEnabled.toString());
         await saveAppSetting('announcementText', announcementText);
         await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await saveAppSetting('paymentEmail', paymentEmail);
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
@@ -1666,6 +1676,7 @@ function buildFullDataSnapshot() {
         announcementEnabled,
         announcementText,
         announcementImages,
+        paymentEmail,
         savedAt: new Date().toISOString()
     };
 }
@@ -1772,6 +1783,7 @@ function getSettingsSnapshot() {
         announcementEnabled,
         announcementText,
         announcementImages,
+        paymentEmail,
         gameTime,
         gameLocation,
         gameDate,
@@ -2781,6 +2793,7 @@ app.get('/api/status', (req, res) => {
         announcementEnabled: announcementEnabled,
         announcementText: announcementText,
         announcementImages: announcementImages,
+        paymentEmail: paymentEmail,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -3470,6 +3483,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementEnabled,
         announcementText,
         announcementImages,
+        paymentEmail,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -3483,7 +3497,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
+            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -3494,6 +3508,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         if (newTitle !== undefined) customTitle = String(newTitle || '').trim() || customTitle;
         if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
         if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
+        if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
         if (newAnnouncementImages !== undefined) {
             announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
         }
@@ -3524,6 +3539,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         await saveAppSetting('announcementEnabled', announcementEnabled.toString());
         await saveAppSetting('announcementText', announcementText);
         await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await saveAppSetting('paymentEmail', paymentEmail);
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
@@ -3843,6 +3859,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
+                if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
             }
@@ -4546,7 +4563,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
+        announcementText = buildRosterReleasePaymentAnnouncement();
         
         currentWeekData = {
             weekNumber: week,
