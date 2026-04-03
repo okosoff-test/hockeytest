@@ -1822,8 +1822,8 @@
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Payment</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Payment</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -3535,8 +3535,8 @@
                                     <span>/10</span>
                                 </div>
                             </td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>${paidInput}</td>
+                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
