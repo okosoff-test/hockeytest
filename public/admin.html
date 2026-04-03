@@ -1363,22 +1363,23 @@
         }
 
     
-/* ===== Option 1: clean centered admin table ===== */
-.admin-layout-option-1 table th,
-.admin-layout-option-1 table td { text-align:center; vertical-align:middle; }
-.admin-layout-option-1 #playerList td:first-child,
-.admin-layout-option-1 #waitlistList td:nth-child(2) { text-align:center; }
-.admin-layout-option-1 .player-name-cell { text-align:center; }
-.admin-layout-option-1 .rating-wrap,
-.admin-layout-option-1 .paid-wrap,
-.admin-layout-option-1 .waitlist-rating-wrap,
-.admin-layout-option-1 .waitlist-action-wrap { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; }
-.admin-layout-option-1 .paid-wrap { gap:6px; }
-.admin-layout-option-1 .table-note-muted { font-size:0.8rem; color:#bbb; line-height:1.35; text-align:center; }
+/* ===== Option 2: mobile stacked table ===== */
+.admin-layout-option-2 table th,
+.admin-layout-option-2 table td { text-align:center; vertical-align:middle; }
+.admin-layout-option-2 .stacked-name-cell { text-align:left; min-width:180px; }
+.admin-layout-option-2 .stacked-name-main { font-weight:600; line-height:1.2; }
+.admin-layout-option-2 .stacked-name-sub { color:#aaa; font-size:0.8rem; line-height:1.2; margin-top:3px; }
+.admin-layout-option-2 .stacked-badges { margin-top:4px; display:flex; gap:6px; flex-wrap:wrap; align-items:center; }
+.admin-layout-option-2 .rating-wrap,
+.admin-layout-option-2 .paid-wrap,
+.admin-layout-option-2 .waitlist-rating-wrap,
+.admin-layout-option-2 .waitlist-action-wrap { display:flex; align-items:center; justify-content:center; gap:5px; flex-wrap:wrap; }
+.admin-layout-option-2 .table-note-muted { font-size:0.78rem; color:#bbb; line-height:1.3; text-align:center; }
+.admin-layout-option-2 .hide-desktop-col { display:none; }
 
 </style>
 </head>
-<body class="admin-layout-option-1">
+<body class="admin-layout-option-2">
 
     <!-- MAINTENANCE BULLETIN - Shows when activated -->
     <div class="maintenance-bulletin" id="maintenanceBulletin">
@@ -1820,7 +1821,6 @@
             <thead>
                 <tr>
                     <th>Name</th>
-                    <th>Phone</th>
                     <th>Rating</th>
                     <th>Payment</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
@@ -1896,7 +1896,6 @@
                     <tr>
                         <th>#</th>
                         <th>Name</th>
-                        <th>Phone</th>
                         <th>Rating</th>
                         <th>Action</th>
                     </tr>
@@ -3486,7 +3485,7 @@
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
@@ -3525,14 +3524,22 @@
                         }
 
                         tr.innerHTML = `
-                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
-                            <td>${p.phone}</td>
+                            <td class="stacked-name-cell">
+                                <div class="stacked-name-main">${p.firstName} ${p.lastName}</div>
+                                <div class="stacked-name-sub">${p.phone}</div>
+                                <div class="stacked-badges">${goalieBadge} ${protectedBadge}</div>
+                            </td>
                             <td>
                                 <div class="rating-wrap">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
                                         style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
+                                </div>
+                                <div class="table-note-muted">
+                                    Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)} ·
+                                    Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)} ·
+                                    Admin ${p.adminRating == null ? '—' : Number(p.adminRating).toFixed(1)}
                                 </div>
                             </td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
@@ -3549,21 +3556,28 @@
                 const waitlistBody = document.getElementById('waitlistList');
                 waitlistBody.innerHTML = '';
                 if (data.waitlist.length === 0) {
-                    waitlistBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
+                    waitlistBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
                 } else {
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         tr.innerHTML = `
                             <td>${index + 1}</td>
-                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge}</td>
-                            <td>${p.phone}</td>
+                            <td class="stacked-name-cell">
+                                <div class="stacked-name-main">${p.firstName} ${p.lastName}</div>
+                                <div class="stacked-name-sub">${p.phone}</div>
+                                <div class="stacked-badges">${goalieBadge}</div>
+                            </td>
                             <td>
                                 <div class="waitlist-rating-wrap">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
                                         style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
+                                </div>
+                                <div class="table-note-muted">
+                                    Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)} ·
+                                    Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}
                                 </div>
                             </td>
                             <td>
