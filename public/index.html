@@ -958,6 +958,11 @@
         </div>
     </div>
 
+    <div id="backendOfflineNotice" style="display:none; width:100%; max-width:900px; background:linear-gradient(135deg,#4a1a1a,#5d2d2d); color:#fff; padding:18px 20px; border-radius:12px; margin-bottom:22px; border:2px solid #ff4444; box-shadow:0 10px 24px rgba(0,0,0,0.18);">
+        <div style="font-size:1.08rem; font-weight:800; margin-bottom:6px;">Backend offline or not started</div>
+        <div style="line-height:1.45; color:#ffd7d7;">This page needs the Node server running. Start the backend with <code style="background:rgba(0,0,0,0.28); padding:2px 6px; border-radius:6px; color:#fff;">npm install && npm start</code> then open <code style="background:rgba(0,0,0,0.28); padding:2px 6px; border-radius:6px; color:#fff;">http://localhost:3000</code>.</div>
+    </div>
+
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
@@ -1261,6 +1266,52 @@
 
     <script>
         const API_URL = window.location.origin;
+        const FETCH_TIMEOUT_MS = 8000;
+        let backendOffline = false;
+
+        async function fetchJsonWithTimeout(url, options = {}, timeoutMs = FETCH_TIMEOUT_MS) {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const res = await fetch(url, { ...options, signal: controller.signal });
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+                return await res.json();
+            } finally {
+                clearTimeout(timer);
+            }
+        }
+
+        function showBackendOffline(message) {
+            backendOffline = true;
+            const el = document.getElementById('backendOfflineNotice');
+            if (el) el.style.display = 'block';
+            const gameLocation = document.getElementById('gameLocation');
+            const gameTime = document.getElementById('gameTime');
+            const gameDate = document.getElementById('gameDate');
+            if (gameLocation) gameLocation.textContent = 'Backend not connected';
+            if (gameTime) gameTime.textContent = 'Start server to load portal';
+            if (gameDate) gameDate.textContent = message || 'Unable to reach /api/status';
+            const spotsLeft = document.getElementById('spotsLeft');
+            const spotsText = document.getElementById('spotsText');
+            if (spotsLeft) spotsLeft.textContent = '--';
+            if (spotsText) spotsText.textContent = 'Waiting for backend';
+            const rosterMeta = document.getElementById('rosterMeta');
+            if (rosterMeta) rosterMeta.textContent = 'Server required: npm install && npm start';
+            const codeSection = document.getElementById('codeSection');
+            const signupForm = document.getElementById('signupForm');
+            const registeredPlayersSection = document.getElementById('registeredPlayersSection');
+            const waitlistMode = document.getElementById('waitlistMode');
+            if (codeSection) codeSection.style.display = 'none';
+            if (signupForm) signupForm.style.display = 'none';
+            if (registeredPlayersSection) registeredPlayersSection.style.display = 'none';
+            if (waitlistMode) waitlistMode.style.display = 'none';
+        }
+
+        function hideBackendOffline() {
+            backendOffline = false;
+            const el = document.getElementById('backendOfflineNotice');
+            if (el) el.style.display = 'none';
+        }
         let verifiedCode = null;
         let codeRequired = true;
         let currentLocation = "";
@@ -1685,8 +1736,7 @@ function updateCalculatedRating() {
 
         async function loadAndDisplayRoster() {
             try {
-                const res = await fetch(`${API_URL}/api/roster`);
-                const data = await res.json();
+                const data = await fetchJsonWithTimeout(`${API_URL}/api/roster`);
                 
                 if (!data.released) {
                     document.getElementById('rosterDisplay').classList.remove('active');
@@ -1863,9 +1913,10 @@ function updateCalculatedRating() {
 
         async function checkStatus() {
             try {
-                const res = await fetch(`${API_URL}/api/status`);
-                const data = await res.json();
+                const data = await fetchJsonWithTimeout(`${API_URL}/api/status`);
                 
+                hideBackendOffline();
+
                 // Handle maintenance mode
                 maintenanceMode = data.maintenanceMode;
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
@@ -1991,6 +2042,7 @@ function updateCalculatedRating() {
                 
             } catch (e) {
                 console.error("Error fetching status", e);
+                showBackendOffline('Could not reach backend API.');
             }
         }
 
@@ -2001,15 +2053,18 @@ function updateCalculatedRating() {
         
         async function loadRegisteredPlayers() {
             try {
+                const controller = new AbortController();
+                const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
                 const res = await fetch(`${API_URL}/api/admin/players`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: 'public_view' })
+                    body: JSON.stringify({ password: 'public_view' }),
+                    signal: controller.signal
                 });
+                clearTimeout(timer);
 
                 if (!res.ok) {
-                    const statusRes = await fetch(`${API_URL}/api/status`);
-                    const statusData = await statusRes.json();
+                    const statusData = await fetchJsonWithTimeout(`${API_URL}/api/status`);
 
                     if (statusData.players) {
                         renderPlayers(statusData.players);
@@ -2021,6 +2076,7 @@ function updateCalculatedRating() {
                 renderPlayers(data.players);
             } catch (err) {
                 console.error("Error loading players:", err);
+                if (backendOffline) return;
             }
         }
 
