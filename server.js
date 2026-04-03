@@ -1055,7 +1055,7 @@ async function autoReleaseRoster() {
         manualOverrideState = 'locked';
 
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release. Send to: okosoff@outlook.com';
+        announcementText = 'E-transfer required immediately after roster release.';
 
         currentWeekData = {
             weekNumber: week,
@@ -4452,7 +4452,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release. Send to: okosoff@outlook.com';
+        announcementText = 'E-transfer required immediately after roster release.';
         
         currentWeekData = {
             weekNumber: week,
