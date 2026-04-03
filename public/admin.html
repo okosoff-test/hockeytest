@@ -152,14 +152,16 @@
         }
         
         .paid-input {
-            width: 70px;
-            padding: 5px;
+            width: 82px;
+            min-height: 42px;
+            padding: 8px 10px;
             background: #3d3d3d;
             border: 1px solid #555;
             color: white;
-            border-radius: 3px;
-            text-align: right;
-            font-size: 0.9rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.95rem;
+            touch-action: manipulation;
         }
 
         .paid-input:focus {
@@ -174,14 +176,89 @@
         }
         
         .remove-btn {
-            padding: 5px 10px;
-            font-size: 0.8rem;
+            min-height: 42px;
+            padding: 8px 14px;
+            font-size: 0.85rem;
             width: auto;
             background: var(--danger);
             margin: 0;
+            border-radius: 8px;
+            touch-action: manipulation;
         }
 
         .remove-btn:hover { background: #ff6666; }
+
+        .admin-player-name-cell {
+            line-height: 1.2;
+        }
+
+        .admin-player-name-cell .phone-line {
+            display: block;
+            color: #bdbdbd;
+            font-size: 0.82rem;
+            margin-top: 4px;
+        }
+
+        .admin-rating-inline {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            white-space: nowrap;
+        }
+
+        .admin-rating-inline input {
+            width: 58px !important;
+            min-height: 42px;
+            padding: 8px 6px !important;
+            background: #3d3d3d;
+            border: 1px solid #555;
+            color: white;
+            border-radius: 8px;
+            text-align: center;
+            touch-action: manipulation;
+        }
+
+        .admin-payment-cell {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .admin-payment-method {
+            color: #d5d5d5;
+            font-size: 0.78rem;
+            padding: 6px 10px;
+            border: 1px solid #555;
+            border-radius: 999px;
+            background: rgba(255,255,255,0.06);
+            line-height: 1;
+        }
+
+        .admin-free-label {
+            color: #7bd38a;
+            font-size: 0.88rem;
+            font-weight: 500;
+        }
+
+        .thumb-btn {
+            min-height: 42px;
+            min-width: 42px;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            font-size: 0.82rem;
+            font-weight: 700;
+            touch-action: manipulation;
+        }
+
+        .thumb-btn.quick-pay { background: #4CAF50; }
+        .thumb-btn.quick-pay:disabled { background: #555; cursor: not-allowed; }
+        .thumb-btn.mark-unpaid { background: #ff4444; }
+
+
 
         .promote-btn {
             padding: 5px 10px;
@@ -507,143 +584,6 @@
             text-align: center;
             margin-top: 10px;
             font-style: italic;
-        }
-
-        .admin-player-list {
-            margin-top: 15px;
-            border: 1px solid #444;
-            border-radius: 12px;
-            overflow: hidden;
-        }
-
-        .admin-player-row {
-            display: grid;
-            grid-template-columns: minmax(220px, 1.6fr) minmax(96px, 0.62fr) minmax(185px, 0.95fr) 90px;
-            gap: 8px;
-            align-items: center;
-            padding: 10px 14px;
-            background: linear-gradient(135deg, #2a2a2a, #333);
-            border-bottom: 1px solid #444;
-        }
-
-        .admin-player-row:last-child { border-bottom: none; }
-        .admin-player-row.goalie { border-left: 4px solid #ff6b00; }
-        .admin-player-row.protected { border-left: 4px solid #4CAF50; }
-        .admin-player-row:not(.goalie):not(.protected) { border-left: 4px solid var(--accent); }
-
-        .admin-player-name-line {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            font-size: 1.05rem;
-            font-weight: 700;
-            line-height: 1.25;
-        }
-
-        .admin-player-phone-line {
-            margin-top: 3px;
-            color: #bbb;
-            font-size: 0.9rem;
-            line-height: 1.2;
-        }
-
-        .admin-rating-stack,
-        .admin-payment-stack {
-            display: flex;
-            flex-direction: column;
-            gap: 4px;
-            align-self: center;
-        }
-
-        .admin-mini-label {
-            color: #9f9f9f;
-            font-size: 0.68rem;
-            text-transform: uppercase;
-            letter-spacing: 0.75px;
-            font-weight: 600;
-        }
-
-        .admin-rating-row {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            white-space: nowrap;
-        }
-
-        .admin-payment-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
-            min-height: 36px;
-        }
-
-        .payment-method-pill {
-            background: rgba(255,255,255,0.06);
-            border: 1px solid #555;
-            color: #ddd;
-            border-radius: 999px;
-            padding: 6px 10px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            line-height: 1;
-        }
-
-        .paid-quick-btn, .paid-clear-btn {
-            height: 36px;
-            min-width: 36px;
-            padding: 0 10px;
-            font-size: 0.78rem;
-            border: none;
-            border-radius: 6px;
-            color: white;
-            cursor: pointer;
-            font-weight: 700;
-        }
-
-
-        .admin-payment-free {
-            color: #7bd38a;
-            font-weight: 500;
-            font-size: 0.92rem;
-            letter-spacing: 0.1px;
-        }
-
-        .admin-player-actions {
-            display: flex;
-            justify-content: flex-end;
-            align-items: center;
-        }
-
-        .admin-rating-input,
-        .admin-paid-input {
-            height: 36px;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 6px;
-            text-align: center;
-            font-weight: 600;
-        }
-
-        .admin-rating-input {
-            width: 68px;
-            padding: 7px 8px;
-        }
-
-        .admin-paid-input {
-            width: 86px;
-            padding: 7px 8px;
-        }
-
-        .paid-quick-btn { background: #4CAF50; }
-        .paid-quick-btn:disabled { background: #555; cursor: not-allowed; }
-        .paid-clear-btn { background: #ff4444; }
-
-        .admin-player-actions {
-            display: flex;
-            justify-content: flex-end;
         }
 
         /* Goalies Section */
@@ -1181,7 +1121,12 @@
 
         @media (max-width: 600px) {
             .container { padding: 20px; }
-            th, td { padding: 8px; font-size: 0.8rem; }
+            table { font-size: 0.82rem; }
+            th, td { padding: 8px 6px; font-size: 0.8rem; }
+            .admin-payment-cell { gap: 6px; }
+            .thumb-btn, .remove-btn, .paid-input, .admin-rating-inline input { min-height: 42px; }
+            .admin-payment-method { font-size: 0.72rem; }
+            .admin-player-name-cell .phone-line { font-size: 0.76rem; }
             .control-row { flex-direction: column; align-items: stretch; }
             .form-row { grid-template-columns: 1fr; }
             .preview-teams { grid-template-columns: 1fr; }
@@ -1191,18 +1136,6 @@
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
             .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
-            .admin-player-row { grid-template-columns: minmax(0, 1.2fr) auto; gap: 8px 10px; padding: 10px 12px; }
-            .admin-rating-stack, .admin-payment-stack { gap: 3px; }
-            .admin-mini-label { display: none; }
-            .admin-rating-row, .admin-payment-row { min-height: auto; }
-            .admin-rating-input { width: 62px; }
-            .admin-paid-input { width: 74px; }
-            .payment-method-pill { padding: 5px 9px; font-size: 0.72rem; }
-            .paid-quick-btn, .paid-clear-btn, .admin-rating-input, .admin-paid-input { height: 34px; }
-            .admin-player-actions { grid-column: 2; justify-content: flex-end; align-self: center; }
-            .admin-payment-stack { grid-column: 1 / -1; }
-            .admin-payment-row { gap: 6px; }
-            .admin-player-meta { grid-template-columns: 1fr; }
         }
     
         .schedule-editor { margin-top: 12px; padding-top: 12px; border-top: 1px solid #444; }
@@ -1950,8 +1883,18 @@
             <button class="add-btn" onclick="addPlayer()">Add Player</button>
         </div>
 
-        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></h3>
-        <div id="playerList" class="admin-player-list"></div>
+        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Name</th>
+                    <th>Rating</th>
+                    <th>Payment <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="playerList"></tbody>
+        </table>
 
         <!-- Payment Summary -->
         <div class="payment-summary-box">
@@ -3605,62 +3548,62 @@
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
                 
-                // Render registered players as compact rows (profile removed, payment + paid combined)
+                // Render players table with payment controls (ADMIN ONLY)
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
                 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<div style="text-align:center; color:#666; padding:30px; background:#2a2a2a; border:1px dashed #444; border-radius:12px;">No players registered</div>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     data.players.forEach(p => {
-                        const row = document.createElement('div');
-                        const isProtected = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly');
-                        row.className = `admin-player-row${p.isGoalie ? ' goalie' : ''}${isProtected ? ' protected' : ''}`;
+                        const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = isProtected ? '<span class="protected-badge">PROTECTED</span>' : '';
+                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
+                            '<span class="protected-badge">PROTECTED</span>' : '';
                         
-                        let paymentBlock = '';
-                        if (p.isGoalie || isProtected) {
-                            paymentBlock = '<div class="admin-payment-row"><span class="admin-payment-free">FREE</span></div>';
+                        let paidInput = '';
+                        if (p.isGoalie || (p.firstName === 'Phan' && p.lastName === 'Ly')) {
+                            paidInput = '<span class="admin-free-label">FREE</span>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-                            paymentBlock = `
-                                <div class="admin-payment-row">
-                                    <span class="payment-method-pill">${p.paymentMethod || 'No method'}</span>
-                                    <button onclick="quickPay15(${p.id})" class="paid-quick-btn" ${isPaid ? 'disabled' : ''}>$15</button>
-                                    <input type="number" class="paid-input admin-paid-input" value="${amount}"
+
+                            paidInput = `
+                                <div class="admin-payment-cell">
+                                    <span class="admin-payment-method">${p.paymentMethod || 'No method'}</span>
+                                    <button onclick="quickPay15(${p.id})"
+                                        class="thumb-btn quick-pay"
+                                        ${isPaid ? 'disabled' : ''}>
+                                        $15
+                                    </button>
+                                    <input type="number" class="paid-input" value="${amount}"
                                         id="paid-${p.id}"
                                         placeholder="0.00" step="0.01" min="0"
                                         onchange="updatePaidAmount(${p.id}, this.value)">
-                                    <button onclick="markUnpaid(${p.id})" class="paid-clear-btn" title="Mark as unpaid">✕</button>
+                                    <button onclick="markUnpaid(${p.id})"
+                                        class="thumb-btn mark-unpaid"
+                                        title="Mark as unpaid">
+                                        ✕
+                                    </button>
                                 </div>
                             `;
                         }
 
-                        row.innerHTML = `
-                            <div>
-                                <div class="admin-player-name-line">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</div>
-                                <div class="admin-player-phone-line">${p.phone}</div>
-                            </div>
-                            <div class="admin-rating-stack">
-                                <div class="admin-mini-label">Rating</div>
-                                <div class="admin-rating-row">
+                        tr.innerHTML = `
+                            <td class="admin-player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}<span class="phone-line">${p.phone}</span></td>
+                            <td>
+                                <div class="admin-rating-inline">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
-                                        class="admin-rating-input"
                                         onchange="updateRating(${p.id}, this.value)">
                                     <span>/10</span>
                                 </div>
-                            </div>
-                            <div class="admin-payment-stack">
-                                <div class="admin-mini-label">Payment</div>
-                                ${paymentBlock}
-                            </div>
-                            <div class="admin-player-actions">
+                            </td>
+                            <td>${paidInput}</td>
+                            <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
-                            </div>
+                            </td>
                         `;
-                        tbody.appendChild(row);
+                        tbody.appendChild(tr);
                     });
                 }
 
