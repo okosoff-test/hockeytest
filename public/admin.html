@@ -1805,9 +1805,12 @@
         <table>
             <thead>
                 <tr>
-                    <th>Name / Payment <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
+                    <th>Profile</th>
+                    <th>Payment</th>
+                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -1882,6 +1885,7 @@
                         <th>Name</th>
                         <th>Phone</th>
                         <th>Rating</th>
+                        <th>Profile</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -3470,7 +3474,7 @@
                 tbody.innerHTML = '';
                 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
@@ -3479,22 +3483,16 @@
                             '<span class="protected-badge">PROTECTED</span>' : '';
                         
                         let paidInput = '';
-                        let paymentSummary = '';
                         if (p.isGoalie) {
                             paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                            paymentSummary = '<div style="margin-top:8px; font-size:0.82rem; color:#4CAF50; font-weight:bold;">Payment: N/A • Paid: FREE</div>';
                         } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
                             paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                            paymentSummary = '<div style="margin-top:8px; font-size:0.82rem; color:#4CAF50; font-weight:bold;">Payment: FREE • Paid: FREE</div>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
-                            const numericAmount = parseFloat(p.paidAmount || 0);
-                            const isPaid = numericAmount > 0;
-                            const paymentMethod = p.paymentMethod || '—';
+                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
                             paidInput = `
-                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap; margin-top:8px;">
-                                    <span style="font-size:0.8rem; color:#bbb; min-width:max-content;">${paymentMethod}</span>
+                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
                                     <button onclick="quickPay15(${p.id})" 
                                         style="padding:4px 8px;font-size:0.75rem;background:${isPaid ? '#555' : '#4CAF50'};border:none;border-radius:3px;color:white;cursor:pointer;"
                                         ${isPaid ? 'disabled' : ''}>
@@ -3512,15 +3510,10 @@
                                     </button>
                                 </div>
                             `;
-                            paymentSummary = `<div style="margin-top:8px; font-size:0.82rem; color:${isPaid ? '#4CAF50' : '#bbb'};">Payment: ${paymentMethod} • Paid: ${isPaid ? '$' + numericAmount.toFixed(2) : '$0.00'}</div>`;
                         }
                         
                         tr.innerHTML = `
-                            <td>
-                                <div style="font-weight:600; line-height:1.35;">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</div>
-                                ${paymentSummary}
-                                ${paidInput}
-                            </td>
+                            <td>${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
                             <td>${p.phone}</td>
                             <td>
                                 <div style="display:flex;align-items:center;gap:5px;">
@@ -3530,6 +3523,13 @@
                                     <span>/10</span>
                                 </div>
                             </td>
+                            <td style="font-size:0.8rem; color:#bbb; line-height:1.35;">
+                                Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
+                                Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
+                                Admin ${p.adminRating == null ? '—' : Number(p.adminRating).toFixed(1)}
+                            </td>
+                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
+                            <td>${paidInput}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
