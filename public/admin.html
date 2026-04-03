@@ -1485,47 +1485,50 @@ button {
 
 
 <style>
-.compact-pay-control{
+.compact-pay{
     display:inline-flex;
     align-items:center;
+    justify-content:center;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
     width:auto;
     max-width:100%;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.12);
+    vertical-align:middle;
 }
-.compact-pay-control.paid{
-    background:#2e7d32;
-}
-.compact-pay-control.unpaid{
+.compact-pay.is-unpaid{
     background:#c62828;
 }
-.compact-pay-control .compact-pay-step,
-.compact-pay-control .compact-pay-main{
+.compact-pay.is-paid{
+    background:#2e7d32;
+}
+.compact-pay-btn{
     border:none;
     background:transparent;
     color:#fff;
-    margin:0;
+    margin:0 !important;
     cursor:pointer;
     line-height:1;
     font-weight:700;
 }
-.compact-pay-control .compact-pay-step{
+.compact-pay-minus,
+.compact-pay-plus{
     padding:4px 5px !important;
-    font-size:0.78rem !important;
     min-width:20px;
-}
-.compact-pay-control .compact-pay-main{
-    padding:4px 7px !important;
     font-size:0.78rem !important;
-    min-width:34px;
 }
-.compact-pay-control .compact-pay-step:hover,
-.compact-pay-control .compact-pay-main:hover{
-    background:rgba(255,255,255,0.10);
+.compact-pay-main{
+    padding:4px 8px !important;
+    min-width:34px;
+    font-size:0.78rem !important;
+}
+.compact-pay-btn:hover{
+    background:rgba(255,255,255,0.12);
 }
 .paid-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:center;
     gap:0 !important;
 }
 </style>
@@ -3656,14 +3659,16 @@ button {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
-                            const controlAmount = isPaid ? parseFloat(amount) : 15;
+                            const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '')
+                                ? parseFloat(p.paidAmount)
+                                : 15;
                             paidInput = `
-                                <div class="compact-pay-control ${isPaid ? 'paid' : 'unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-step" onclick="event.stopPropagation(); adjustCompactAmount(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-main" onclick="toggleCompactPaid(${p.id})" data-player-id="${p.id}" data-amount="${controlAmount}">
-                                        $${controlAmount}
+                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                    <button class="compact-pay-btn compact-pay-main" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                        $${compactAmount}
                                     </button>
-                                    <button class="compact-pay-step" onclick="event.stopPropagation(); adjustCompactAmount(${p.id}, 1)">+</button>
+                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
                                 </div>
                             `;
                         }
@@ -3679,15 +3684,7 @@ button {
                                     
                                 </div>
                             </td>
-                            <td>
-<select onchange="handlePaymentSelect(${p.id}, this.value)" style="padding:4px;border-radius:4px;background:#3d3d3d;color:white;">
-    <option value="">Unpaid</option>
-    <option value="15" ${p.paidAmount==15 ? 'selected' : ''}>$15</option>
-    <option value="custom">Custom</option>
-</select>
-<input type="number" id="custom-${p.id}" placeholder="$" style="width:50px;display:none;" 
-    onchange="updatePaidAmount(${p.id}, this.value)">
-</td>
+                            <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -4517,56 +4514,43 @@ This backup has fewer records than live data.
 
 
 <script>
-function handlePaymentSelect(id, value){
-    if(value === "15"){
-        updatePaidAmount(id, 15);
-    } else if(value === "custom"){
-        document.getElementById("custom-"+id).style.display="inline-block";
+function compactPayFind(playerId){
+    return document.querySelector('.compact-pay[data-player-id="' + playerId + '"]');
+}
+function compactPayMain(playerId){
+    const wrap = compactPayFind(playerId);
+    return wrap ? wrap.querySelector('.compact-pay-main') : null;
+}
+function compactPayAdjust(playerId, delta){
+    const main = compactPayMain(playerId);
+    const wrap = compactPayFind(playerId);
+    if(!main || !wrap) return;
+
+    let amount = parseFloat(main.dataset.amount || '15');
+    if(!Number.isFinite(amount) || amount <= 0) amount = 15;
+    amount = Math.max(1, Math.min(99, amount + delta));
+
+    main.dataset.amount = String(amount);
+    main.textContent = '$' + amount;
+
+    if(wrap.classList.contains('is-paid')){
+        updatePaidAmount(playerId, amount);
+        setTimeout(loadData, 150);
+    }
+}
+function compactPayToggle(playerId){
+    const main = compactPayMain(playerId);
+    const wrap = compactPayFind(playerId);
+    if(!main || !wrap) return;
+
+    const amount = parseFloat(main.dataset.amount || '15') || 15;
+
+    if(wrap.classList.contains('is-paid')){
+        updatePaidAmount(playerId, 0);
     } else {
-        updatePaidAmount(id, 0);
+        updatePaidAmount(playerId, amount);
     }
-}
-</script>
-
-
-<script>
-function getCompactPayMain(playerId){
-    return document.querySelector('.compact-pay-main[data-player-id="' + playerId + '"]');
-}
-
-function adjustCompactAmount(playerId, delta){
-    const btn = getCompactPayMain(playerId);
-    if(!btn) return;
-
-    let currentAmount = parseFloat(btn.dataset.amount || '15');
-    if(!Number.isFinite(currentAmount) || currentAmount <= 0) currentAmount = 15;
-
-    currentAmount = Math.max(1, Math.min(99, currentAmount + delta));
-    btn.dataset.amount = String(currentAmount);
-    btn.textContent = '$' + currentAmount;
-
-    const wrap = btn.closest('.compact-pay-control');
-    const isPaid = wrap && wrap.classList.contains('paid');
-
-    if(isPaid){
-        updatePaidAmount(playerId, currentAmount).then(() => loadData());
-    }
-}
-
-async function toggleCompactPaid(playerId){
-    const btn = getCompactPayMain(playerId);
-    if(!btn) return;
-
-    const wrap = btn.closest('.compact-pay-control');
-    const amount = parseFloat(btn.dataset.amount || '15') || 15;
-    const isPaid = wrap && wrap.classList.contains('paid');
-
-    if(isPaid){
-        await updatePaidAmount(playerId, null);
-    } else {
-        await updatePaidAmount(playerId, amount);
-    }
-    loadData();
+    setTimeout(loadData, 150);
 }
 </script>
 
