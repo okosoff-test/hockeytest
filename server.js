@@ -566,6 +566,10 @@ let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
+let eTransferEmail = 'okosoff@outlook.com';
+let standardGameFee = 15;
+let piaPerGameFee = 13;
+let paymentInstructions = 'Include your full name in the e-transfer message.';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1055,7 +1059,7 @@ async function autoReleaseRoster() {
         manualOverrideState = 'locked';
 
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
+        announcementText = `E-transfer $${standardGameFee.toFixed(2)} to ${eTransferEmail} immediately after roster release.`;
 
         currentWeekData = {
             weekNumber: week,
@@ -1566,6 +1570,16 @@ async function loadDataFromDB() {
                 announcementImages = [];
             }
         }
+        if (appSettings.eTransferEmail !== undefined) eTransferEmail = String(appSettings.eTransferEmail || '').trim() || eTransferEmail;
+        if (appSettings.standardGameFee !== undefined) {
+            const parsedFee = Number(appSettings.standardGameFee);
+            if (Number.isFinite(parsedFee) && parsedFee >= 0) standardGameFee = Math.round(parsedFee * 100) / 100;
+        }
+        if (appSettings.piaPerGameFee !== undefined) {
+            const parsedPia = Number(appSettings.piaPerGameFee);
+            if (Number.isFinite(parsedPia) && parsedPia >= 0) piaPerGameFee = Math.round(parsedPia * 100) / 100;
+        }
+        if (appSettings.paymentInstructions !== undefined) paymentInstructions = String(appSettings.paymentInstructions || '').trim() || paymentInstructions;
 
         await reconcileFromFileBackup();
         
@@ -1620,6 +1634,10 @@ async function saveData() {
         await saveAppSetting('announcementEnabled', announcementEnabled.toString());
         await saveAppSetting('announcementText', announcementText);
         await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await saveAppSetting('eTransferEmail', eTransferEmail);
+        await saveAppSetting('standardGameFee', standardGameFee);
+        await saveAppSetting('piaPerGameFee', piaPerGameFee);
+        await saveAppSetting('paymentInstructions', paymentInstructions);
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
@@ -1772,6 +1790,10 @@ function getSettingsSnapshot() {
         announcementEnabled,
         announcementText,
         announcementImages,
+        eTransferEmail,
+        standardGameFee,
+        piaPerGameFee,
+        paymentInstructions,
         gameTime,
         gameLocation,
         gameDate,
@@ -1884,6 +1906,16 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            eTransferEmail = String(data.eTransferEmail || eTransferEmail).trim() || eTransferEmail;
+            if (data.standardGameFee !== undefined) {
+                const parsedFee = Number(data.standardGameFee);
+                if (Number.isFinite(parsedFee) && parsedFee >= 0) standardGameFee = Math.round(parsedFee * 100) / 100;
+            }
+            if (data.piaPerGameFee !== undefined) {
+                const parsedPia = Number(data.piaPerGameFee);
+                if (Number.isFinite(parsedPia) && parsedPia >= 0) piaPerGameFee = Math.round(parsedPia * 100) / 100;
+            }
+            paymentInstructions = String(data.paymentInstructions || paymentInstructions).trim() || paymentInstructions;
             if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && (!signupLockSchedule.start || !signupLockSchedule.end || !rosterReleaseSchedule.at || !resetWeekSchedule.at)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
@@ -2781,6 +2813,10 @@ app.get('/api/status', (req, res) => {
         announcementEnabled: announcementEnabled,
         announcementText: announcementText,
         announcementImages: announcementImages,
+        eTransferEmail,
+        standardGameFee,
+        piaPerGameFee,
+        paymentInstructions,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -3171,8 +3207,11 @@ app.post('/api/register-final', async (req, res) => {
     res.json({ 
         success: true, 
         inWaitlist: false,
-        message: `You're registered! E-Transfer payment must be received before stepping on the ice.`,
+        message: `You're registered! E-Transfer $${standardGameFee.toFixed(2)} to ${eTransferEmail} before stepping on the ice.`,
         paymentDeadline: "Before stepping on the ice",
+        paymentEmail: eTransferEmail,
+        paymentAmount: standardGameFee,
+        paymentInstructions,
         rosterReleaseTime: getSignupOpenMessageData().rosterReleaseLine || "Teams released after admin generates roster",
         isGoalie: false
     });
@@ -3483,6 +3522,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
+            eTransferEmail: newETransferEmail, standardGameFee: newStandardGameFee, piaPerGameFee: newPiaPerGameFee, paymentInstructions: newPaymentInstructions,
             selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -3496,6 +3536,30 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
         if (newAnnouncementImages !== undefined) {
             announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
+        }
+        if (newETransferEmail !== undefined) {
+            const sanitizedEmail = String(newETransferEmail || '').trim();
+            if (!sanitizedEmail || !/^\S+@\S+\.\S+$/.test(sanitizedEmail)) {
+                return res.status(400).json({ error: 'A valid e-transfer email is required.' });
+            }
+            eTransferEmail = sanitizedEmail;
+        }
+        if (newStandardGameFee !== undefined) {
+            const parsedFee = Number(newStandardGameFee);
+            if (!Number.isFinite(parsedFee) || parsedFee < 0) {
+                return res.status(400).json({ error: 'Standard game fee must be a valid number.' });
+            }
+            standardGameFee = Math.round(parsedFee * 100) / 100;
+        }
+        if (newPiaPerGameFee !== undefined) {
+            const parsedPia = Number(newPiaPerGameFee);
+            if (!Number.isFinite(parsedPia) || parsedPia < 0) {
+                return res.status(400).json({ error: 'PIA fee must be a valid number.' });
+            }
+            piaPerGameFee = Math.round(parsedPia * 100) / 100;
+        }
+        if (newPaymentInstructions !== undefined) {
+            paymentInstructions = String(newPaymentInstructions || '').trim() || 'Include your full name in the e-transfer message.';
         }
         if (selectedDayTime) {
             gameTime = selectedDayTime;
@@ -3524,6 +3588,10 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         await saveAppSetting('announcementEnabled', announcementEnabled.toString());
         await saveAppSetting('announcementText', announcementText);
         await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await saveAppSetting('eTransferEmail', eTransferEmail);
+        await saveAppSetting('standardGameFee', standardGameFee);
+        await saveAppSetting('piaPerGameFee', piaPerGameFee);
+        await saveAppSetting('paymentInstructions', paymentInstructions);
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
@@ -4546,7 +4614,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
-        announcementText = 'E-transfer required immediately after roster release.';
+        announcementText = `E-transfer $${standardGameFee.toFixed(2)} to ${eTransferEmail} immediately after roster release.`;
         
         currentWeekData = {
             weekNumber: week,

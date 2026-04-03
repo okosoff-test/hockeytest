@@ -281,6 +281,9 @@
         let rosterReleaseLine = "Teams are released at the scheduled time";
         let rosterReleaseAtIso = null;
         let gameDayName = "game day";
+        let currentEtransferEmail = 'okosoff@outlook.com';
+        let currentStandardGameFee = 15;
+        let currentPaymentInstructions = 'Include your full name in the e-transfer message.';
 
         function applyGameDayBranding(dayName) {
             const safeDayName = String(dayName || 'Sunday').trim();
@@ -301,6 +304,9 @@
                 if (status && status.rosterReleaseLine) rosterReleaseLine = status.rosterReleaseLine;
                 if (status && status.rosterReleaseAt) rosterReleaseAtIso = status.rosterReleaseAt;
                 if (status && status.gameDayName) gameDayName = status.gameDayName;
+                if (status && status.eTransferEmail) currentEtransferEmail = status.eTransferEmail;
+                if (status && status.standardGameFee !== undefined && Number.isFinite(Number(status.standardGameFee))) currentStandardGameFee = Number(status.standardGameFee);
+                if (status && status.paymentInstructions) currentPaymentInstructions = status.paymentInstructions;
             } catch (e) {
                 console.warn('Could not load schedule info', e);
             } finally {
@@ -404,7 +410,7 @@
                     const isGoalie = result.isGoalie;
                     const paymentMsg = isGoalie 
     ? '✅ Goalies play FREE! No payment required.'
-    : '⚠️ E-Transfer payment must be received before stepping on the ice!';
+    : `⚠️ E-Transfer $${currentStandardGameFee.toFixed(2)} to ${currentEtransferEmail} before stepping on the ice!`;
                     
                     document.querySelector('.container').innerHTML = `
                         <div style="text-align: center; padding: 40px 20px;">
@@ -412,7 +418,7 @@
                             <p style="font-size: 1.2rem; color: #ccc; margin-bottom: 20px;">
                                 You're registered for the game!
                             </p>
-                            ${!isGoalie ? `<p style="color: #ff4444; font-weight: bold; margin-bottom: 20px;">${paymentMsg}</p>` : `<p style="color: #4CAF50; font-weight: bold; margin-bottom: 20px;">${paymentMsg}</p>`}
+                            ${!isGoalie ? `<p style="color: #ff4444; font-weight: bold; margin-bottom: 14px;">${paymentMsg}</p><p style="color:#ddd; margin:-4px 0 20px 0;">${currentPaymentInstructions}</p>` : `<p style="color: #4CAF50; font-weight: bold; margin-bottom: 20px;">${paymentMsg}</p>`}
                             <div style="background: linear-gradient(135deg, #2a1f0e, #3c2b12); border: 2px solid #ffb347; border-radius: 10px; padding: 16px; margin: 0 0 30px 0;">
                                 <p style="color: #ffd27a; font-weight: bold; margin: 0 0 8px 0;">${rosterReleaseLine}</p>
                                 <p id="rulesCountdown" style="color: #f4e0b2; margin: 0; line-height: 1.5;">Countdown will appear once a roster release time is scheduled.</p>

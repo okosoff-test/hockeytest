@@ -1176,32 +1176,36 @@
                 <div class="payment-options" id="paymentOptions">
                     <div>
                         <input type="radio" name="payment" id="etransfer" value="E-Transfer" checked>
-                        <label for="etransfer">E-Transfer ($15)</label>
+                        <label for="etransfer" id="paymentLabelEtransfer">E-Transfer ($15)</label>
                     </div>
                     <div>
                         <input type="radio" name="payment" id="cash" value="Cash">
-                        <label for="cash">Cash ($15)</label>
+                        <label for="cash" id="paymentLabelCash">Cash ($15)</label>
                     </div>
                     <div>
                         <input type="radio" name="payment" id="pia" value="PIA">
-                        <label for="pia">PIA - Pay In Advance</label>
+                        <label for="pia" id="paymentLabelPia">PIA - Pay In Advance</label>
                     </div>
                 </div>
                 
-                <div id="etransferInfo" style="background: #222; padding: 10px; border-radius: 5px; font-size: 0.85rem; margin-bottom: 15px;">
-                    Send $15 to: <strong>okosoff@outlook.com</strong><br>
-                    <span style="color: var(--accent);">* E-Transfer payment must be received before stepping on the ice *</span>
+                <div id="etransferInfo" style="background: #222; padding: 12px; border-radius: 5px; font-size: 0.9rem; margin-bottom: 15px; line-height: 1.55;">
+                    <div><strong>📧 Send <span id="etransferAmountText">$15.00</span> to:</strong> <strong id="etransferEmailDisplay">okosoff@outlook.com</strong></div>
+                    <div style="margin-top:8px; display:flex; gap:8px; flex-wrap:wrap;">
+                        <button type="button" onclick="copyEtransferEmail()" style="width:auto; margin-top:0; padding:8px 12px; font-size:0.85rem;">Copy Email</button>
+                    </div>
+                    <div id="paymentInstructionLine" style="margin-top:8px; color:#ddd;">Include your full name in the e-transfer message.</div>
+                    <span style="color: var(--accent); display:block; margin-top:8px;">* E-Transfer payment must be received before stepping on the ice *</span>
                 </div>
 
                 <div id="cashInfo" style="display:none; background: #3a2a1a; padding: 15px; border-radius: 5px; font-size: 0.85rem; margin-bottom: 15px; color: #ff9800; border: 1px solid #ff9800;">
-                    <strong>💵 Cash Payment ($15)</strong><br>
+                    <strong id="cashPaymentHeading">💵 Cash Payment ($15)</strong><br>
                     Phan collects cash prior to the game.<br>
                     <span style="color: #aaa;">If Phan is absent: Kyle Smith or Brad Gervais will collect</span><br>
                     <span style="color: var(--accent);">* Must be paid before taking the ice *</span>
                 </div>
 
                 <div id="piaInfo" style="display:none; background: #1a3a3a; padding: 15px; border-radius: 5px; font-size: 0.85rem; margin-bottom: 15px; color: #4a90e2; border: 1px solid #4a90e2;">
-                    <strong>💰 PIA (Pay In Advance) - $13 per Sunday</strong><br>
+                    <strong id="piaPaymentHeading">💰 PIA (Pay In Advance) - $13 per Sunday</strong><br>
                     <span id="piaCalculation">Calculating...</span><br>
                     <span style="color: var(--accent);">* Pay once per month for all upcoming Sundays *</span>
                 </div>
@@ -1218,9 +1222,12 @@
             <p style="font-size: 1.1rem; color: #ccc; margin: 20px 0;">
                 Check back to see your team assignment after roster is released.
             </p>
-            <p style="color: #ff4444; font-weight: bold; margin: 20px 0;">
+            <p id="successPaymentNotice" style="color: #ff4444; font-weight: bold; margin: 20px 0;">
                 ⚠️ E-Transfer payment must be received before stepping on the ice!
             </p>
+            <button type="button" onclick="copyEtransferEmail()" style="width:auto; margin:0 auto 14px; display:inline-block; padding:10px 14px; font-size:0.95rem;">
+                Copy E-Transfer Email
+            </button>
             <button type="button" class="view-roster-btn" onclick="window.location.href='/'" style="margin-top: 20px;">
                 View Current Page
             </button>
@@ -1268,6 +1275,10 @@
         let currentAnnouncementEnabled = false;
         let rosterCountdownTimer = null;
         let currentRosterReleaseAt = null;
+        let currentEtransferEmail = 'okosoff@outlook.com';
+        let currentStandardGameFee = 15;
+        let currentPiaPerGameFee = 13;
+        let currentPaymentInstructions = 'Include your full name in the e-transfer message.';
 
         let playerToCancel = null;
 
@@ -1601,17 +1612,51 @@ function updateCalculatedRating() {
             }
 
             const numDays = days.length;
-            const totalCost = numDays * 13;
+            const totalCost = numDays * currentPiaPerGameFee;
 
             const piaCalc = document.getElementById('piaCalculation');
             if (piaCalc) {
                 let html = monthLabel + ' ' + numDays + ' ' + dayLabel;
                 if (numDays !== 1) html += 's';
-                html += ' × $13 = <strong>$' + totalCost + '</strong> total';
+                html += ' × $' + currentPiaPerGameFee.toFixed(2) + ' = <strong>$' + totalCost.toFixed(2) + '</strong> total';
                 if (isLastGameDayOrAfter) {
                     html += ' <br><small style="color:#4CAF50;">🗓️ Showing next month rate</small>';
                 }
                 piaCalc.innerHTML = html;
+            }
+        }
+
+        function updatePaymentDisplayTexts() {
+            const feeLabel = '$' + currentStandardGameFee.toFixed(2);
+            const piaLabel = '$' + currentPiaPerGameFee.toFixed(2);
+
+            const etransferLabel = document.getElementById('paymentLabelEtransfer');
+            const cashLabel = document.getElementById('paymentLabelCash');
+            const piaLabelEl = document.getElementById('paymentLabelPia');
+            const emailEl = document.getElementById('etransferEmailDisplay');
+            const amountEl = document.getElementById('etransferAmountText');
+            const instructionsEl = document.getElementById('paymentInstructionLine');
+            const cashHeading = document.getElementById('cashPaymentHeading');
+            const piaHeading = document.getElementById('piaPaymentHeading');
+            const successNotice = document.getElementById('successPaymentNotice');
+
+            if (etransferLabel) etransferLabel.textContent = `E-Transfer (${feeLabel})`;
+            if (cashLabel) cashLabel.textContent = `Cash (${feeLabel})`;
+            if (piaLabelEl) piaLabelEl.textContent = 'PIA - Pay In Advance';
+            if (emailEl) emailEl.textContent = currentEtransferEmail;
+            if (amountEl) amountEl.textContent = feeLabel;
+            if (instructionsEl) instructionsEl.textContent = currentPaymentInstructions;
+            if (cashHeading) cashHeading.textContent = `💵 Cash Payment (${feeLabel})`;
+            if (piaHeading) piaHeading.textContent = `💰 PIA (Pay In Advance) - ${piaLabel} per ${getGameDayName()}`;
+            if (successNotice) successNotice.textContent = `⚠️ E-Transfer ${feeLabel} to ${currentEtransferEmail} before stepping on the ice.`;
+        }
+
+        async function copyEtransferEmail() {
+            try {
+                await navigator.clipboard.writeText(currentEtransferEmail);
+                alert(`Copied: ${currentEtransferEmail}`);
+            } catch (err) {
+                alert(currentEtransferEmail);
             }
         }
 
@@ -1832,6 +1877,12 @@ function updateCalculatedRating() {
                 }
 
                 renderAnnouncement(data);
+
+                currentEtransferEmail = data.eTransferEmail || currentEtransferEmail;
+                currentStandardGameFee = Number.isFinite(Number(data.standardGameFee)) ? Number(data.standardGameFee) : currentStandardGameFee;
+                currentPiaPerGameFee = Number.isFinite(Number(data.piaPerGameFee)) ? Number(data.piaPerGameFee) : currentPiaPerGameFee;
+                currentPaymentInstructions = (data.paymentInstructions || currentPaymentInstructions).trim() || currentPaymentInstructions;
+                updatePaymentDisplayTexts();
 
                 // Update dynamic title
                 if (data.customTitle) {
