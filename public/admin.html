@@ -3641,7 +3641,15 @@ button {
                                     
                                 </div>
                             </td>
-                            <td>${paidInput}</td>
+                            <td>
+<select onchange="handlePaymentSelect(${p.id}, this.value)" style="padding:4px;border-radius:4px;background:#3d3d3d;color:white;">
+    <option value="">Unpaid</option>
+    <option value="15" ${p.paidAmount==15 ? 'selected' : ''}>$15</option>
+    <option value="custom">Custom</option>
+</select>
+<input type="number" id="custom-${p.id}" placeholder="$" style="width:50px;display:none;" 
+    onchange="updatePaidAmount(${p.id}, this.value)">
+</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -4468,6 +4476,19 @@ This backup has fewer records than live data.
             </div>
         </div>
     </div>
+
+
+<script>
+function handlePaymentSelect(id, value){
+    if(value === "15"){
+        updatePaidAmount(id, 15);
+    } else if(value === "custom"){
+        document.getElementById("custom-"+id).style.display="inline-block";
+    } else {
+        updatePaidAmount(id, 0);
+    }
+}
+</script>
 
 </body>
 </html>
