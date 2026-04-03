@@ -509,6 +509,110 @@
             font-style: italic;
         }
 
+        .admin-player-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 14px;
+            margin-top: 15px;
+        }
+
+        .admin-player-card {
+            background: linear-gradient(135deg, #2a2a2a, #333);
+            border: 1px solid #444;
+            border-left: 4px solid var(--accent);
+            border-radius: 12px;
+            padding: 14px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+        }
+
+        .admin-player-card.goalie { border-left-color: #ff6b00; }
+        .admin-player-card.protected { border-left-color: #4CAF50; }
+
+        .admin-player-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            gap: 10px;
+        }
+
+        .admin-player-name {
+            font-size: 1.1rem;
+            font-weight: 700;
+            line-height: 1.25;
+        }
+
+        .admin-player-sub {
+            color: #bbb;
+            font-size: 0.92rem;
+            margin-top: 4px;
+        }
+
+        .admin-player-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .admin-meta-box {
+            background: rgba(0,0,0,0.22);
+            border: 1px solid #454545;
+            border-radius: 10px;
+            padding: 10px;
+        }
+
+        .admin-meta-label {
+            color: #999;
+            font-size: 0.74rem;
+            text-transform: uppercase;
+            letter-spacing: 0.6px;
+            margin-bottom: 6px;
+        }
+
+        .admin-rating-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .admin-payment-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .payment-method-pill {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid #555;
+            color: #ddd;
+            border-radius: 999px;
+            padding: 5px 10px;
+            font-size: 0.78rem;
+            font-weight: 600;
+        }
+
+        .paid-quick-btn, .paid-clear-btn {
+            padding: 6px 10px;
+            font-size: 0.78rem;
+            border: none;
+            border-radius: 6px;
+            color: white;
+            cursor: pointer;
+            font-weight: 700;
+        }
+
+        .paid-quick-btn { background: #4CAF50; }
+        .paid-quick-btn:disabled { background: #555; cursor: not-allowed; }
+        .paid-clear-btn { background: #ff4444; }
+
+        .admin-player-actions {
+            display: flex;
+            justify-content: flex-end;
+        }
+
         /* Goalies Section */
         .goalies-section {
             background: linear-gradient(135deg, #1a3a3a, #2d4d4d);
@@ -1054,6 +1158,8 @@
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
             .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
+            .admin-player-cards { grid-template-columns: 1fr; }
+            .admin-player-meta { grid-template-columns: 1fr; }
         }
     
         .schedule-editor { margin-top: 12px; padding-top: 12px; border-top: 1px solid #444; }
@@ -1801,21 +1907,8 @@
             <button class="add-btn" onclick="addPlayer()">Add Player</button>
         </div>
 
-        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Phone</th>
-                    <th>Rating</th>
-                    <th>Profile</th>
-                    <th>Payment</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="playerList"></tbody>
-        </table>
+        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></h3>
+        <div id="playerList" class="admin-player-cards"></div>
 
         <!-- Payment Summary -->
         <div class="payment-summary-box">
@@ -3469,72 +3562,67 @@
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
                 
-                // Render players table with payment controls (ADMIN ONLY)
+                // Render registered players as mobile-first cards (ADMIN ONLY)
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
                 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<div style="text-align:center; color:#666; padding:30px; background:#2a2a2a; border:1px dashed #444; border-radius:12px;">No players registered</div>';
                 } else {
                     data.players.forEach(p => {
-                        const tr = document.createElement('tr');
+                        const card = document.createElement('div');
+                        const isProtected = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly');
+                        card.className = `admin-player-card${p.isGoalie ? ' goalie' : ''}${isProtected ? ' protected' : ''}`;
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
-                            '<span class="protected-badge">PROTECTED</span>' : '';
+                        const protectedBadge = isProtected ? '<span class="protected-badge">PROTECTED</span>' : '';
                         
-                        let paidInput = '';
-                        if (p.isGoalie) {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        let paymentBlock = '';
+                        if (p.isGoalie || isProtected) {
+                            paymentBlock = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-
-                            paidInput = `
-                                <div style="display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
-                                    <button onclick="quickPay15(${p.id})" 
-                                        style="padding:4px 8px;font-size:0.75rem;background:${isPaid ? '#555' : '#4CAF50'};border:none;border-radius:3px;color:white;cursor:pointer;"
-                                        ${isPaid ? 'disabled' : ''}>
-                                        $15
-                                    </button>
+                            paymentBlock = `
+                                <div class="admin-payment-row">
+                                    <span class="payment-method-pill">${p.paymentMethod || 'No method'}</span>
+                                    <button onclick="quickPay15(${p.id})" class="paid-quick-btn" ${isPaid ? 'disabled' : ''}>$15</button>
                                     <input type="number" class="paid-input" value="${amount}" 
                                         id="paid-${p.id}"
                                         placeholder="0.00" step="0.01" min="0"
-                                        style="width:60px;"
                                         onchange="updatePaidAmount(${p.id}, this.value)">
-                                    <button onclick="markUnpaid(${p.id})" 
-                                        style="padding:4px 8px;font-size:0.75rem;background:#ff4444;border:none;border-radius:3px;color:white;cursor:pointer;"
-                                        title="Mark as unpaid">
-                                        ✕
-                                    </button>
+                                    <button onclick="markUnpaid(${p.id})" class="paid-clear-btn" title="Mark as unpaid">✕</button>
                                 </div>
                             `;
                         }
                         
-                        tr.innerHTML = `
-                            <td>${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
-                            <td>${p.phone}</td>
-                            <td>
-                                <div style="display:flex;align-items:center;gap:5px;">
-                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:62px;padding:5px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    <span>/10</span>
+                        card.innerHTML = `
+                            <div class="admin-player-top">
+                                <div>
+                                    <div class="admin-player-name">${p.firstName} ${p.lastName}</div>
+                                    <div class="admin-player-sub">${p.phone}</div>
                                 </div>
-                            </td>
-                            <td style="font-size:0.8rem; color:#bbb; line-height:1.35;">
-                                Self ${Number(p.selfRatingRaw ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
-                                Derived ${Number(p.derivedRating ?? p.finalRating ?? p.rating ?? 5).toFixed(1)}<br>
-                                Admin ${p.adminRating == null ? '—' : Number(p.adminRating).toFixed(1)}
-                            </td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>${paidInput}</td>
-                            <td>
+                                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${goalieBadge} ${protectedBadge}</div>
+                            </div>
+                            <div class="admin-player-meta">
+                                <div class="admin-meta-box">
+                                    <div class="admin-meta-label">Rating</div>
+                                    <div class="admin-rating-row">
+                                        <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
+                                            style="width:68px;padding:7px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:6px;text-align:center;"
+                                            onchange="updateRating(${p.id}, this.value)">
+                                        <span>/10</span>
+                                    </div>
+                                </div>
+                                <div class="admin-meta-box">
+                                    <div class="admin-meta-label">Payment</div>
+                                    ${paymentBlock}
+                                </div>
+                            </div>
+                            <div class="admin-player-actions">
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
-                            </td>
+                            </div>
                         `;
-                        tbody.appendChild(tr);
+                        tbody.appendChild(card);
                     });
                 }
 
