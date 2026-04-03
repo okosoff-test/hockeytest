@@ -152,9 +152,11 @@
         }
         
         .paid-input {
-            width: 82px;
+            width: 58px;
+            min-width: 58px;
+            height: 42px;
             min-height: 42px;
-            padding: 8px 10px;
+            padding: 8px 8px;
             background: #3d3d3d;
             border: 1px solid #555;
             color: white;
@@ -177,6 +179,7 @@
         
         .remove-btn {
             min-height: 42px;
+            height: 42px;
             padding: 8px 14px;
             font-size: 0.85rem;
             width: auto;
@@ -184,6 +187,7 @@
             margin: 0;
             border-radius: 8px;
             touch-action: manipulation;
+            white-space: nowrap;
         }
 
         .remove-btn:hover { background: #ff6666; }
@@ -220,9 +224,10 @@
 
         .admin-payment-cell {
             display: flex;
-            align-items: center;
-            gap: 8px;
-            flex-wrap: wrap;
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 6px;
+            min-width: 0;
         }
 
         .admin-payment-method {
@@ -233,6 +238,15 @@
             border-radius: 999px;
             background: rgba(255,255,255,0.06);
             line-height: 1;
+            max-width: 100%;
+            white-space: nowrap;
+        }
+
+        .admin-payment-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: nowrap;
         }
 
         .admin-free-label {
@@ -243,6 +257,7 @@
 
         .thumb-btn {
             min-height: 42px;
+            height: 42px;
             min-width: 42px;
             padding: 8px 12px;
             border: none;
@@ -252,6 +267,7 @@
             font-size: 0.82rem;
             font-weight: 700;
             touch-action: manipulation;
+            white-space: nowrap;
         }
 
         .thumb-btn.quick-pay { background: #4CAF50; }
@@ -1117,6 +1133,96 @@
 
         .remove-notification.success {
             background: var(--success);
+        }
+
+        @media (min-width: 701px) {
+            table {
+                table-layout: fixed;
+            }
+
+            th:nth-child(1), td:nth-child(1) { width: 31%; }
+            th:nth-child(2), td:nth-child(2) { width: 13%; }
+            th:nth-child(3), td:nth-child(3) { width: 38%; }
+            th:nth-child(4), td:nth-child(4) { width: 18%; }
+        }
+
+        @media (max-width: 700px) {
+            table, thead, tbody, th, td, tr {
+                display: block;
+            }
+
+            thead {
+                display: none;
+            }
+
+            tbody tr {
+                display: grid;
+                grid-template-columns: minmax(0, 1fr) auto;
+                gap: 10px 12px;
+                align-items: start;
+                padding: 12px;
+                margin-bottom: 12px;
+                background: linear-gradient(135deg, #2a2a2a, #333);
+                border: 1px solid #444;
+                border-radius: 12px;
+            }
+
+            tbody td {
+                border: 0;
+                padding: 0;
+                min-width: 0;
+            }
+
+            tbody td:nth-child(1) {
+                grid-column: 1 / 2;
+                grid-row: 1;
+            }
+
+            tbody td:nth-child(2) {
+                grid-column: 2 / 3;
+                grid-row: 1;
+                justify-self: end;
+            }
+
+            tbody td:nth-child(3) {
+                grid-column: 1 / -1;
+                grid-row: 2;
+            }
+
+            tbody td:nth-child(4) {
+                grid-column: 1 / -1;
+                grid-row: 3;
+            }
+
+            .admin-payment-cell {
+                width: 100%;
+            }
+
+            .admin-payment-row {
+                width: 100%;
+                gap: 5px;
+            }
+
+            .admin-payment-method {
+                font-size: 0.72rem;
+            }
+
+            .paid-input,
+            .thumb-btn.quick-pay {
+                width: 58px;
+                min-width: 58px;
+            }
+
+            .thumb-btn.mark-unpaid {
+                width: 42px;
+                min-width: 42px;
+                padding-left: 0;
+                padding-right: 0;
+            }
+
+            .remove-btn {
+                width: 100%;
+            }
         }
 
         @media (max-width: 600px) {
@@ -3571,20 +3677,22 @@
                             paidInput = `
                                 <div class="admin-payment-cell">
                                     <span class="admin-payment-method">${p.paymentMethod || 'No method'}</span>
-                                    <button onclick="quickPay15(${p.id})"
-                                        class="thumb-btn quick-pay"
-                                        ${isPaid ? 'disabled' : ''}>
-                                        $15
-                                    </button>
-                                    <input type="number" class="paid-input" value="${amount}"
-                                        id="paid-${p.id}"
-                                        placeholder="0.00" step="0.01" min="0"
-                                        onchange="updatePaidAmount(${p.id}, this.value)">
-                                    <button onclick="markUnpaid(${p.id})"
-                                        class="thumb-btn mark-unpaid"
-                                        title="Mark as unpaid">
-                                        ✕
-                                    </button>
+                                    <div class="admin-payment-row">
+                                        <button onclick="quickPay15(${p.id})"
+                                            class="thumb-btn quick-pay"
+                                            ${isPaid ? 'disabled' : ''}>
+                                            $15
+                                        </button>
+                                        <input type="number" class="paid-input" value="${amount}"
+                                            id="paid-${p.id}"
+                                            placeholder="0.00" step="0.01" min="0"
+                                            onchange="updatePaidAmount(${p.id}, this.value)">
+                                        <button onclick="markUnpaid(${p.id})"
+                                            class="thumb-btn mark-unpaid"
+                                            title="Mark as unpaid">
+                                            ✕
+                                        </button>
+                                    </div>
                                 </div>
                             `;
                         }
