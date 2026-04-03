@@ -1982,16 +1982,18 @@ function roundRating(value) {
 }
 
 const LEVEL_PLAY_RATING_MAP = {
-    beginner: 3.0,
-    house: 4.5,
-    pickup: 6.0,
-    select: 7.5,
-    competitive: 9.0
+    beginner: 4.0,
+    intermediate: 5.5,
+    competitive: 7.0,
+    junior: 8.5
 };
 
-const PROFILE_SKILL_WEIGHT = 0.8;
-const PROFILE_LEVEL_WEIGHT = 0.2;
-
+const LEVEL_PLAY_BOOST_MAP = {
+    beginner: 0.0,
+    intermediate: 0.2,
+    competitive: 0.45,
+    junior: 0.7
+};
 
 function normalizeSkillProfile(input = {}) {
     const ratingMode = String(input.ratingMode || '').toLowerCase() === 'direct' ? 'direct' : 'profile';
@@ -2027,21 +2029,27 @@ function normalizeSkillProfile(input = {}) {
     const conditioning = clampRating(input.conditioningRating);
     const effort = clampRating(input.effortRating);
 
-    const levelPlayed = ['beginner', 'house', 'pickup', 'select', 'competitive'].includes(String(input.levelPlayed || '').toLowerCase())
+    const levelPlayed = ['beginner', 'intermediate', 'competitive', 'junior'].includes(String(input.levelPlayed || '').toLowerCase())
         ? String(input.levelPlayed).toLowerCase()
         : '';
 
     const missing = [];
     if (!Number.isFinite(Number(input.skatingRating))) missing.push('skating');
-    if (!Number.isFinite(Number(input.puckSkillsRating))) missing.push('puck skills');
-    if (!Number.isFinite(Number(input.hockeySenseRating))) missing.push('hockey sense');
+    if (!Number.isFinite(Number(input.puckSkillsRating))) missing.push('puck control');
+    if (!Number.isFinite(Number(input.hockeySenseRating))) missing.push('hockey IQ');
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
     if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
-    if (!levelPlayed) missing.push('level played');
+    if (!levelPlayed) missing.push('highest recent level played');
 
-    const baseSkill = roundRating((skating + puckSkills + hockeySense + conditioning + effort) / 5);
+    const weightedSkill = roundRating(
+        (skating * 0.24) +
+        (puckSkills * 0.20) +
+        (hockeySense * 0.28) +
+        (conditioning * 0.08) +
+        (effort * 0.14)
+    );
     const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
-    const derivedRating = roundRating((baseSkill * PROFILE_SKILL_WEIGHT) + (levelMapped * PROFILE_LEVEL_WEIGHT));
+    const derivedRating = roundRating((weightedSkill * 0.94) + (levelMapped * 0.06));
 
     return {
         ratingMode: 'profile',
@@ -2054,7 +2062,7 @@ function normalizeSkillProfile(input = {}) {
         levelPlayed,
         peerComparison: '',
         confidenceLevel: '',
-        selfRatingRaw: baseSkill,
+        selfRatingRaw: weightedSkill,
         derivedRating,
         finalRating: derivedRating,
         adminRating: null,
@@ -2140,96 +2148,184 @@ function isGoalieSpotsAvailable() {
     return getGoalieCount() < MAX_GOALIES;
 }
 
+function getLevelPlayedBoost(levelPlayed) {
+    return LEVEL_PLAY_BOOST_MAP[String(levelPlayed || '').toLowerCase()] ?? 0;
+}
+
+function getPlayerProfileScore(player) {
+    const profile = hydratePlayerRatingProfile(player);
+    return roundRating(
+        (profile.skatingRating * 0.24) +
+        (profile.puckSkillsRating * 0.20) +
+        (profile.hockeySenseRating * 0.28) +
+        (profile.conditioningRating * 0.08) +
+        (profile.effortRating * 0.14) +
+        (getLevelPlayedBoost(profile.levelPlayed) * 0.06)
+    );
+}
+
+function getPlayerBalanceScore(player) {
+    const profile = hydratePlayerRatingProfile(player);
+    const finalRating = roundRating(profile.finalRating ?? profile.rating ?? 5);
+    const profileScore = getPlayerProfileScore(profile);
+    return roundRating((finalRating * 0.75) + (profileScore * 0.25));
+}
+
+function summarizeTeamMetrics(team = []) {
+    const skaters = team.filter(p => !p.isGoalie);
+    const goalies = team.filter(p => p.isGoalie);
+
+    const sumField = (arr, getter) => arr.reduce((sum, item) => sum + getter(hydratePlayerRatingProfile(item)), 0);
+    const goalieImpact = goalies.reduce((sum, goalie) => sum + (getPlayerBalanceScore(goalie) * 1.25), 0);
+
+    return {
+        skaterCount: skaters.length,
+        totalBalance: sumField(skaters, p => getPlayerBalanceScore(p)) + goalieImpact,
+        skating: sumField(skaters, p => p.skatingRating),
+        puckSkills: sumField(skaters, p => p.puckSkillsRating),
+        hockeySense: sumField(skaters, p => p.hockeySenseRating),
+        conditioning: sumField(skaters, p => p.conditioningRating),
+        effort: sumField(skaters, p => p.effortRating),
+        goalieImpact,
+        averageFinalRating: team.length ? roundRating(sumField(team, p => p.finalRating ?? p.rating ?? 5) / team.length) : 0
+    };
+}
+
+function computeTeamBalanceObjective(whiteTeam = [], darkTeam = []) {
+    const white = summarizeTeamMetrics(whiteTeam);
+    const dark = summarizeTeamMetrics(darkTeam);
+
+    return (
+        Math.abs(white.totalBalance - dark.totalBalance) * 1.0 +
+        Math.abs(white.skating - dark.skating) * 0.9 +
+        Math.abs(white.hockeySense - dark.hockeySense) * 1.1 +
+        Math.abs(white.effort - dark.effort) * 0.7 +
+        Math.abs(white.puckSkills - dark.puckSkills) * 0.45 +
+        Math.abs(white.conditioning - dark.conditioning) * 0.35 +
+        Math.abs(white.goalieImpact - dark.goalieImpact) * 1.1 +
+        Math.abs(white.skaterCount - dark.skaterCount) * 2.0
+    );
+}
+
 function generateFairTeams() {
-    const playerTeamRating = (player) => roundRating(player?.finalRating ?? player?.rating ?? 5);
+    const sortByBalance = (a, b) => {
+        const diff = getPlayerBalanceScore(b) - getPlayerBalanceScore(a);
+        if (diff !== 0) return diff;
+        const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
+        const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
+        return nameA.localeCompare(nameB);
+    };
 
-    const goalies = players
-        .filter(p => p.isGoalie)
-        .map(hydratePlayerRatingProfile)
-        .sort((a, b) => {
-            const ratingDiff = playerTeamRating(b) - playerTeamRating(a);
-            if (ratingDiff !== 0) return ratingDiff;
-
-            const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-            const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-            return nameA.localeCompare(nameB);
-        });
-
-    const skaters = players
-        .filter(p => !p.isGoalie)
-        .map(hydratePlayerRatingProfile)
-        .sort((a, b) => {
-            const ratingDiff = playerTeamRating(b) - playerTeamRating(a);
-            if (ratingDiff !== 0) return ratingDiff;
-
-            const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-            const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-            return nameA.localeCompare(nameB);
-        });
+    const goalies = players.filter(p => p.isGoalie).map(hydratePlayerRatingProfile).sort(sortByBalance);
+    const skaters = players.filter(p => !p.isGoalie).map(hydratePlayerRatingProfile).sort(sortByBalance);
 
     let whiteTeam = [];
     let darkTeam = [];
-    let whiteRating = 0;
-    let darkRating = 0;
 
-    // Split goalies first
     if (goalies.length >= 2) {
         whiteTeam.push({ ...goalies[0], team: 'White' });
         darkTeam.push({ ...goalies[1], team: 'Dark' });
-        whiteRating += playerTeamRating(goalies[0]);
-        darkRating += playerTeamRating(goalies[1]);
+        for (let i = 2; i < goalies.length; i += 1) {
+            const goalie = goalies[i];
+            const addWhite = [...whiteTeam, { ...goalie, team: 'White' }];
+            const addDark = [...darkTeam, { ...goalie, team: 'Dark' }];
+            const whiteScore = computeTeamBalanceObjective(addWhite, darkTeam);
+            const darkScore = computeTeamBalanceObjective(whiteTeam, addDark);
+            if (whiteScore <= darkScore) {
+                whiteTeam = addWhite;
+            } else {
+                darkTeam = addDark;
+            }
+        }
     } else if (goalies.length === 1) {
         whiteTeam.push({ ...goalies[0], team: 'White' });
-        whiteRating += playerTeamRating(goalies[0]);
     }
 
-    // Balance skaters by total team rating first, then by count
-    for (const skater of skaters) {
-        const skaterRating = playerTeamRating(skater);
+    const tierSize = Math.max(2, Math.min(4, Math.ceil(skaters.length / 5) || 2));
+    let snakeLeftToRight = true;
 
-        const whiteSkaterCount = whiteTeam.filter(p => !p.isGoalie).length;
-        const darkSkaterCount = darkTeam.filter(p => !p.isGoalie).length;
+    for (let start = 0; start < skaters.length; start += tierSize) {
+        const tier = skaters.slice(start, start + tierSize);
+        const preferredOrder = snakeLeftToRight ? ['White', 'Dark'] : ['Dark', 'White'];
 
-        let assignToWhite = false;
+        tier.forEach((skater, index) => {
+            const preferredTeam = preferredOrder[index % preferredOrder.length];
+            const tryWhite = [...whiteTeam, { ...skater, team: 'White' }];
+            const tryDark = [...darkTeam, { ...skater, team: 'Dark' }];
+            const whiteObjective = computeTeamBalanceObjective(tryWhite, darkTeam) + (preferredTeam === 'White' ? -0.08 : 0);
+            const darkObjective = computeTeamBalanceObjective(whiteTeam, tryDark) + (preferredTeam === 'Dark' ? -0.08 : 0);
 
-        if (whiteSkaterCount < darkSkaterCount) {
-            assignToWhite = true;
-        } else if (darkSkaterCount < whiteSkaterCount) {
-            assignToWhite = false;
-        } else if (whiteRating < darkRating) {
-            assignToWhite = true;
-        } else if (darkRating < whiteRating) {
-            assignToWhite = false;
-        } else {
-            assignToWhite = whiteTeam.length <= darkTeam.length;
-        }
-
-        if (assignToWhite) {
-            whiteTeam.push({ ...skater, team: 'White' });
-            whiteRating += skaterRating;
-        } else {
-            darkTeam.push({ ...skater, team: 'Dark' });
-            darkRating += skaterRating;
-        }
-    }
-
-    const sortTeamForDisplay = (team) => {
-        return team.sort((a, b) => {
-            if (a.isGoalie && !b.isGoalie) return -1;
-            if (!a.isGoalie && b.isGoalie) return 1;
-
-            const nameA = `${a.firstName} ${a.lastName}`.toLowerCase();
-            const nameB = `${b.firstName} ${b.lastName}`.toLowerCase();
-            return nameA.localeCompare(nameB);
+            if (whiteObjective <= darkObjective) {
+                whiteTeam = tryWhite;
+            } else {
+                darkTeam = tryDark;
+            }
         });
-    };
 
-    whiteTeam = sortTeamForDisplay(whiteTeam);
-    darkTeam = sortTeamForDisplay(darkTeam);
+        snakeLeftToRight = !snakeLeftToRight;
+    }
+
+    let improved = true;
+    let guard = 0;
+    while (improved && guard < 60) {
+        improved = false;
+        guard += 1;
+        let bestSwap = null;
+        const currentObjective = computeTeamBalanceObjective(whiteTeam, darkTeam);
+
+        for (const whitePlayer of whiteTeam.filter(p => !p.isGoalie)) {
+            for (const darkPlayer of darkTeam.filter(p => !p.isGoalie)) {
+                const nextWhite = whiteTeam
+                    .filter(p => p.id !== whitePlayer.id)
+                    .concat({ ...darkPlayer, team: 'White' });
+                const nextDark = darkTeam
+                    .filter(p => p.id !== darkPlayer.id)
+                    .concat({ ...whitePlayer, team: 'Dark' });
+
+                const nextObjective = computeTeamBalanceObjective(nextWhite, nextDark);
+                if (nextObjective + 0.01 < currentObjective) {
+                    if (!bestSwap || nextObjective < bestSwap.objective) {
+                        bestSwap = {
+                            whiteId: whitePlayer.id,
+                            darkId: darkPlayer.id,
+                            objective: nextObjective,
+                            nextWhite,
+                            nextDark
+                        };
+                    }
+                }
+            }
+        }
+
+        if (bestSwap) {
+            whiteTeam = bestSwap.nextWhite;
+            darkTeam = bestSwap.nextDark;
+            improved = true;
+        }
+    }
+
+    const sortTeamForDisplay = (team) => team.sort((a, b) => {
+        if (a.isGoalie && !b.isGoalie) return -1;
+        if (!a.isGoalie && b.isGoalie) return 1;
+        return `${a.firstName} ${a.lastName}`.toLowerCase().localeCompare(`${b.firstName} ${b.lastName}`.toLowerCase());
+    });
+
+    whiteTeam = sortTeamForDisplay(whiteTeam.map(p => ({ ...p, team: 'White' })));
+    darkTeam = sortTeamForDisplay(darkTeam.map(p => ({ ...p, team: 'Dark' })));
 
     players = [...whiteTeam, ...darkTeam];
 
-    return { whiteTeam, darkTeam, whiteRating, darkRating };
+    const whiteMetrics = summarizeTeamMetrics(whiteTeam);
+    const darkMetrics = summarizeTeamMetrics(darkTeam);
+
+    return {
+        whiteTeam,
+        darkTeam,
+        whiteRating: whiteMetrics.averageFinalRating,
+        darkRating: darkMetrics.averageFinalRating,
+        whiteBalance: roundRating(whiteMetrics.totalBalance),
+        darkBalance: roundRating(darkMetrics.totalBalance)
+    };
 }
 
 function escapeCsvValue(value) {
@@ -4190,13 +4286,13 @@ app.post('/api/admin/add-player', async (req, res) => {
             await pool.query(
                 `INSERT INTO waitlist (
                     id, first_name, last_name, phone, payment_method, rating,
-                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie
                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
                 [waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
                  waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
-                 waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
+                 waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating,
                  waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
                  waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, isGoalieBool]
             );
@@ -4233,14 +4329,14 @@ app.post('/api/admin/add-player', async (req, res) => {
             await pool.query(
                 `INSERT INTO players (
                     id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
-                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team
                 )
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23)`,
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
                 [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
                  newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
-                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating, newPlayer.effortRating,
+                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating,
                  newPlayer.levelPlayed, newPlayer.peerComparison, newPlayer.confidenceLevel, newPlayer.selfRatingRaw,
                  newPlayer.derivedRating, newPlayer.adminRating, newPlayer.adminAdjustment, newPlayer.finalRating, isGoalieBool, null]
             );
