@@ -509,66 +509,56 @@
             font-style: italic;
         }
 
-        .admin-player-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 14px;
+        .admin-player-list {
             margin-top: 15px;
-        }
-
-        .admin-player-card {
-            background: linear-gradient(135deg, #2a2a2a, #333);
             border: 1px solid #444;
-            border-left: 4px solid var(--accent);
             border-radius: 12px;
-            padding: 14px;
-            display: flex;
-            flex-direction: column;
-            gap: 12px;
-            box-shadow: 0 8px 20px rgba(0,0,0,0.18);
+            overflow: hidden;
         }
 
-        .admin-player-card.goalie { border-left-color: #ff6b00; }
-        .admin-player-card.protected { border-left-color: #4CAF50; }
-
-        .admin-player-top {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            gap: 10px;
+        .admin-player-row {
+            display: grid;
+            grid-template-columns: minmax(220px, 2.1fr) minmax(120px, 1fr) minmax(240px, 1.7fr) auto;
+            gap: 14px;
+            align-items: center;
+            padding: 14px 16px;
+            background: linear-gradient(135deg, #2a2a2a, #333);
+            border-bottom: 1px solid #444;
         }
 
-        .admin-player-name {
-            font-size: 1.1rem;
+        .admin-player-row:last-child { border-bottom: none; }
+        .admin-player-row.goalie { border-left: 4px solid #ff6b00; }
+        .admin-player-row.protected { border-left: 4px solid #4CAF50; }
+        .admin-player-row:not(.goalie):not(.protected) { border-left: 4px solid var(--accent); }
+
+        .admin-player-name-line {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            font-size: 1.05rem;
             font-weight: 700;
             line-height: 1.25;
         }
 
-        .admin-player-sub {
+        .admin-player-phone-line {
+            margin-top: 4px;
             color: #bbb;
             font-size: 0.92rem;
-            margin-top: 4px;
         }
 
-        .admin-player-meta {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
+        .admin-rating-stack,
+        .admin-payment-stack {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
         }
 
-        .admin-meta-box {
-            background: rgba(0,0,0,0.22);
-            border: 1px solid #454545;
-            border-radius: 10px;
-            padding: 10px;
-        }
-
-        .admin-meta-label {
+        .admin-mini-label {
             color: #999;
-            font-size: 0.74rem;
+            font-size: 0.72rem;
             text-transform: uppercase;
             letter-spacing: 0.6px;
-            margin-bottom: 6px;
         }
 
         .admin-rating-row {
@@ -1158,7 +1148,9 @@
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
             .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
-            .admin-player-cards { grid-template-columns: 1fr; }
+            .admin-player-row { grid-template-columns: 1fr; gap: 10px; padding: 12px; }
+            .admin-player-actions { justify-content: flex-start; }
+            .admin-payment-row { gap: 6px; }
             .admin-player-meta { grid-template-columns: 1fr; }
         }
     
@@ -1908,7 +1900,7 @@
         </div>
 
         <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></h3>
-        <div id="playerList" class="admin-player-cards"></div>
+        <div id="playerList" class="admin-player-list"></div>
 
         <!-- Payment Summary -->
         <div class="payment-summary-box">
@@ -3562,7 +3554,7 @@
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
                 
-                // Render registered players as mobile-first cards (ADMIN ONLY)
+                // Render registered players as compact rows (profile removed, payment + paid combined)
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
                 
@@ -3570,15 +3562,15 @@
                     tbody.innerHTML = '<div style="text-align:center; color:#666; padding:30px; background:#2a2a2a; border:1px dashed #444; border-radius:12px;">No players registered</div>';
                 } else {
                     data.players.forEach(p => {
-                        const card = document.createElement('div');
+                        const row = document.createElement('div');
                         const isProtected = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly');
-                        card.className = `admin-player-card${p.isGoalie ? ' goalie' : ''}${isProtected ? ' protected' : ''}`;
+                        row.className = `admin-player-row${p.isGoalie ? ' goalie' : ''}${isProtected ? ' protected' : ''}`;
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = isProtected ? '<span class="protected-badge">PROTECTED</span>' : '';
                         
                         let paymentBlock = '';
                         if (p.isGoalie || isProtected) {
-                            paymentBlock = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                            paymentBlock = '<div class="admin-payment-row"><span style="color:#4CAF50; font-weight:bold;">FREE</span></div>';
                         } else {
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
@@ -3586,7 +3578,7 @@
                                 <div class="admin-payment-row">
                                     <span class="payment-method-pill">${p.paymentMethod || 'No method'}</span>
                                     <button onclick="quickPay15(${p.id})" class="paid-quick-btn" ${isPaid ? 'disabled' : ''}>$15</button>
-                                    <input type="number" class="paid-input" value="${amount}" 
+                                    <input type="number" class="paid-input" value="${amount}"
                                         id="paid-${p.id}"
                                         placeholder="0.00" step="0.01" min="0"
                                         onchange="updatePaidAmount(${p.id}, this.value)">
@@ -3594,35 +3586,30 @@
                                 </div>
                             `;
                         }
-                        
-                        card.innerHTML = `
-                            <div class="admin-player-top">
-                                <div>
-                                    <div class="admin-player-name">${p.firstName} ${p.lastName}</div>
-                                    <div class="admin-player-sub">${p.phone}</div>
-                                </div>
-                                <div style="display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end;">${goalieBadge} ${protectedBadge}</div>
+
+                        row.innerHTML = `
+                            <div>
+                                <div class="admin-player-name-line">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</div>
+                                <div class="admin-player-phone-line">${p.phone}</div>
                             </div>
-                            <div class="admin-player-meta">
-                                <div class="admin-meta-box">
-                                    <div class="admin-meta-label">Rating</div>
-                                    <div class="admin-rating-row">
-                                        <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
-                                            style="width:68px;padding:7px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:6px;text-align:center;"
-                                            onchange="updateRating(${p.id}, this.value)">
-                                        <span>/10</span>
-                                    </div>
+                            <div class="admin-rating-stack">
+                                <div class="admin-mini-label">Rating</div>
+                                <div class="admin-rating-row">
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
+                                        style="width:68px;padding:7px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:6px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    <span>/10</span>
                                 </div>
-                                <div class="admin-meta-box">
-                                    <div class="admin-meta-label">Payment</div>
-                                    ${paymentBlock}
-                                </div>
+                            </div>
+                            <div class="admin-payment-stack">
+                                <div class="admin-mini-label">Payment</div>
+                                ${paymentBlock}
                             </div>
                             <div class="admin-player-actions">
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </div>
                         `;
-                        tbody.appendChild(card);
+                        tbody.appendChild(row);
                     });
                 }
 
