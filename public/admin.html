@@ -518,10 +518,10 @@
 
         .admin-player-row {
             display: grid;
-            grid-template-columns: minmax(230px, 1.9fr) minmax(110px, 0.72fr) minmax(210px, 1.15fr) 96px;
-            gap: 10px;
+            grid-template-columns: minmax(220px, 1.6fr) minmax(96px, 0.62fr) minmax(185px, 0.95fr) 90px;
+            gap: 8px;
             align-items: center;
-            padding: 12px 16px;
+            padding: 10px 14px;
             background: linear-gradient(135deg, #2a2a2a, #333);
             border-bottom: 1px solid #444;
         }
@@ -542,24 +542,25 @@
         }
 
         .admin-player-phone-line {
-            margin-top: 4px;
+            margin-top: 3px;
             color: #bbb;
-            font-size: 0.92rem;
+            font-size: 0.9rem;
+            line-height: 1.2;
         }
 
         .admin-rating-stack,
         .admin-payment-stack {
             display: flex;
             flex-direction: column;
-            gap: 5px;
+            gap: 4px;
             align-self: center;
         }
 
         .admin-mini-label {
             color: #9f9f9f;
-            font-size: 0.7rem;
+            font-size: 0.68rem;
             text-transform: uppercase;
-            letter-spacing: 0.9px;
+            letter-spacing: 0.75px;
             font-weight: 600;
         }
 
@@ -575,7 +576,7 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
-            min-height: 38px;
+            min-height: 36px;
         }
 
         .payment-method-pill {
@@ -583,8 +584,8 @@
             border: 1px solid #555;
             color: #ddd;
             border-radius: 999px;
-            padding: 6px 11px;
-            font-size: 0.76rem;
+            padding: 6px 10px;
+            font-size: 0.75rem;
             font-weight: 600;
             line-height: 1;
         }
@@ -603,9 +604,10 @@
 
 
         .admin-payment-free {
-            color: #4CAF50;
-            font-weight: 800;
-            letter-spacing: 0.2px;
+            color: #7bd38a;
+            font-weight: 500;
+            font-size: 0.92rem;
+            letter-spacing: 0.1px;
         }
 
         .admin-player-actions {
@@ -626,12 +628,12 @@
         }
 
         .admin-rating-input {
-            width: 72px;
+            width: 68px;
             padding: 7px 8px;
         }
 
         .admin-paid-input {
-            width: 92px;
+            width: 86px;
             padding: 7px 8px;
         }
 
@@ -1189,8 +1191,16 @@
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
             .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
-            .admin-player-row { grid-template-columns: 1fr; gap: 10px; padding: 12px; }
-            .admin-player-actions { justify-content: flex-start; }
+            .admin-player-row { grid-template-columns: minmax(0, 1.2fr) auto; gap: 8px 10px; padding: 10px 12px; }
+            .admin-rating-stack, .admin-payment-stack { gap: 3px; }
+            .admin-mini-label { display: none; }
+            .admin-rating-row, .admin-payment-row { min-height: auto; }
+            .admin-rating-input { width: 62px; }
+            .admin-paid-input { width: 74px; }
+            .payment-method-pill { padding: 5px 9px; font-size: 0.72rem; }
+            .paid-quick-btn, .paid-clear-btn, .admin-rating-input, .admin-paid-input { height: 34px; }
+            .admin-player-actions { grid-column: 2; justify-content: flex-end; align-self: center; }
+            .admin-payment-stack { grid-column: 1 / -1; }
             .admin-payment-row { gap: 6px; }
             .admin-player-meta { grid-template-columns: 1fr; }
         }
