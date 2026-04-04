@@ -515,6 +515,12 @@ function buildRosterReleasePaymentAnnouncement() {
         : 'Payments must be received prior to stepping on the ice.';
 }
 
+function clearAnnouncementState() {
+    announcementEnabled = false;
+    announcementText = '';
+    announcementImages = [];
+}
+
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
     {
@@ -1251,6 +1257,7 @@ async function checkWeeklyReset() {
     manualOverrideState = null;
     requirePlayerCode = true;
     maintenanceMode = false;
+    clearAnnouncementState();
     refreshDynamicSignupCode();
 
     // Keep weekly schedules intact
@@ -4647,6 +4654,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
     requirePlayerCode = true;
     lastExactResetRunAt = '';
     lastExactRosterReleaseRunAt = '';
+    clearAnnouncementState();
 
     try {
         if (pool) {

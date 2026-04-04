@@ -940,6 +940,20 @@
             margin-top:6px;
         }
 
+        .announcement-copy-email {
+            color: #1f5fbf;
+            font-weight: 800;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+
+        .announcement-copy-hint {
+            display: block;
+            margin-top: 6px;
+            font-size: 0.82rem;
+            color: #6b5310;
+        }
+
 </style>
 <base target="_blank">
 </head>
@@ -955,6 +969,7 @@
         <div class="announcement-copy">
             <strong>Attention:</strong>
             <span id="announcementText">&nbsp;</span>
+            <small id="announcementCopyHint" class="announcement-copy-hint" style="display:none;">Tap email to copy</small>
         </div>
     </div>
 
@@ -1693,27 +1708,84 @@ function updateCalculatedRating() {
 
 
 
+        function copyTextToClipboard(text) {
+            const value = String(text || '').trim();
+            if (!value) return;
+
+            const onCopied = () => {
+                const hintEl = document.getElementById('announcementCopyHint');
+                if (!hintEl) return;
+                hintEl.textContent = 'Copied payment email';
+                hintEl.style.display = 'block';
+                setTimeout(() => {
+                    hintEl.textContent = 'Tap email to copy';
+                }, 1600);
+            };
+
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(value).then(onCopied).catch(() => {
+                    window.prompt('Copy payment email:', value);
+                });
+                return;
+            }
+
+            window.prompt('Copy payment email:', value);
+        }
+
         function renderAnnouncement(data) {
             const bulletin = document.getElementById('announcementBulletin');
             const textEl = document.getElementById('announcementText');
             const thumbEl = document.getElementById('announcementThumb');
+            const hintEl = document.getElementById('announcementCopyHint');
             if (!bulletin || !textEl || !thumbEl) return;
 
             const enabled = !!data.announcementEnabled;
             const text = (data.announcementText || '').trim();
             const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             const image = images.length ? String(images[0] || '').trim() : '';
+            const email = String(data.paymentEmail || '').trim();
             const shouldShow = enabled && (!!text || !!image);
 
             if (!shouldShow) {
                 bulletin.classList.remove('active');
                 textEl.textContent = '';
+                textEl.onclick = null;
+                textEl.removeAttribute('role');
                 thumbEl.src = '';
                 thumbEl.classList.remove('visible');
+                if (hintEl) {
+                    hintEl.style.display = 'none';
+                    hintEl.textContent = 'Tap email to copy';
+                }
                 return;
             }
 
-            textEl.textContent = text || 'Attention';
+            const escapedEmail = email.replace(/[.*+?^${}()|[\]\]/g, '\$&');
+            const emailRegex = email ? new RegExp(escapedEmail, 'i') : null;
+            if (email && emailRegex && emailRegex.test(text)) {
+                const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeEmail = email.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                textEl.innerHTML = safeText.replace(emailRegex, `<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>`);
+                const copyTarget = textEl.querySelector('[data-copy-payment-email]');
+                if (copyTarget) {
+                    copyTarget.addEventListener('click', (event) => {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        copyTextToClipboard(email);
+                    });
+                }
+                if (hintEl) {
+                    hintEl.style.display = 'block';
+                    hintEl.textContent = 'Tap email to copy';
+                }
+            } else {
+                textEl.textContent = text || 'Attention';
+                if (hintEl) {
+                    hintEl.style.display = 'none';
+                    hintEl.textContent = 'Tap email to copy';
+                }
+            }
+
             if (image) {
                 thumbEl.src = image;
                 thumbEl.classList.add('visible');

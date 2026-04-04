@@ -1630,7 +1630,7 @@ button {
             <div class="message-box">
                 <label for="paymentEmail">Dynamic Payment E-transfer Email</label>
                 <input type="email" id="paymentEmail" placeholder="Enter payment email">
-                <small>Used automatically when roster is released to build the payment reminder banner.</small>
+                <small>Used automatically when roster is released to build the payment reminder banner. Players can tap the email on signup page to copy it.</small>
             </div>
 
             <div class="message-grid">
@@ -1651,6 +1651,7 @@ button {
 
             <div class="message-actions">
                 <button type="button" id="saveAnnouncementBtn" class="control-btn" onclick="saveAnnouncementSettings()">Save Announcement</button>
+                <button type="button" class="control-btn secondary-btn" onclick="clearAnnouncementSettings()">Clear & Turn Off</button>
             </div>
         </div>
 
@@ -3665,7 +3666,7 @@ button {
                             paidInput = `
                                 <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
                                     <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
                                     <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
@@ -4334,6 +4335,37 @@ button {
                     alert(err.message || 'Failed to save announcement');
                 }
             });
+        }
+
+
+        async function clearAnnouncementSettings() {
+            if (!confirm('Clear custom announcement, remove picture, and turn announcement off?')) return;
+            const checkbox = document.getElementById('announcementCheckbox');
+            const text = document.getElementById('announcementText');
+            if (checkbox) checkbox.checked = false;
+            if (text) text.value = '';
+            window.announcementImageData = '';
+            clearAnnouncementImage();
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({
+                        sessionToken,
+                        announcementEnabled: false,
+                        announcementText: '',
+                        announcementImages: []
+                    })
+                });
+                const result = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(result.error || 'Failed to clear announcement');
+                await loadAppSettings();
+                alert('Announcement cleared and turned off.');
+            } catch (err) {
+                console.error('Clear announcement error:', err);
+                alert(err.message || 'Failed to clear announcement');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', () => {
