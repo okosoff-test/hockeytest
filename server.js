@@ -511,8 +511,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
-        ? `E-transfer required immediately after roster release to ${email}.`
-        : 'E-transfer required immediately after roster release.';
+        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}.`
+        : 'Payments must be received prior to stepping on the ice.';
 }
 
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
