@@ -1189,7 +1189,7 @@
                 </div>
                 
                 <div id="etransferInfo" style="background: #222; padding: 10px; border-radius: 5px; font-size: 0.85rem; margin-bottom: 15px;">
-                    Send $15 to: <strong>okosoff@outlook.com</strong><br>
+                    Send $15 to: <strong id="paymentEmailDisplay">E-transfer email to be announced</strong><br>
                     <span style="color: var(--accent);">* E-Transfer payment must be received before stepping on the ice *</span>
                 </div>
 
@@ -1832,6 +1832,11 @@ function updateCalculatedRating() {
                 }
 
                 renderAnnouncement(data);
+
+                const paymentEmailDisplay = document.getElementById('paymentEmailDisplay');
+                if (paymentEmailDisplay) {
+                    paymentEmailDisplay.textContent = data.paymentEmail || 'E-transfer email to be announced';
+                }
 
                 // Update dynamic title
                 if (data.customTitle) {

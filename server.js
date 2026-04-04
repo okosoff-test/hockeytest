@@ -573,7 +573,7 @@ let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
-let paymentEmail = 'okosoff@outlook.com';
+let paymentEmail = String(process.env.PAYMENT_EMAIL || '').trim();
 
 // ============================================
 // END NEW CONFIGURATION SECTION
