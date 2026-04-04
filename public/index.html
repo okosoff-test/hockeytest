@@ -1760,12 +1760,14 @@ function updateCalculatedRating() {
                 return;
             }
 
-            const escapedEmail = email.replace(/[.*+?^${}()|[\]\]/g, '\$&');
-            const emailRegex = email ? new RegExp(escapedEmail, 'i') : null;
-            if (email && emailRegex && emailRegex.test(text)) {
-                const safeText = text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const safeEmail = email.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                textEl.innerHTML = safeText.replace(emailRegex, `<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>`);
+            const emailIndex = email ? text.toLowerCase().indexOf(email.toLowerCase()) : -1;
+            if (email && emailIndex !== -1) {
+                const before = text.slice(0, emailIndex);
+                const matchedEmail = text.slice(emailIndex, emailIndex + email.length);
+                const after = text.slice(emailIndex + email.length);
+                const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const safeEmail = escapeHtml(matchedEmail);
+                textEl.innerHTML = `${escapeHtml(before)}<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>${escapeHtml(after)}`;
                 const copyTarget = textEl.querySelector('[data-copy-payment-email]');
                 if (copyTarget) {
                     copyTarget.addEventListener('click', (event) => {
