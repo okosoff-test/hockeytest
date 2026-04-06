@@ -4516,16 +4516,10 @@ button {
                 const liveWaitlist = Number(preview.liveWaitlist || 0);
 
                 const ok = confirm(
-                    'Restore the latest server snapshot?
-
-' +
-                    `Snapshot saved: ${preview.snapshotSavedAt || 'unknown'}
-` +
-                    `Snapshot players: ${snapshotPlayers} (live now: ${livePlayers})
-` +
-                    `Snapshot waitlist: ${snapshotWaitlist} (live now: ${liveWaitlist})
-
-` +
+                    'Restore the latest server snapshot?\n\n' +
+                    `Snapshot saved: ${preview.snapshotSavedAt || 'unknown'}\n` +
+                    `Snapshot players: ${snapshotPlayers} (live now: ${livePlayers})\n` +
+                    `Snapshot waitlist: ${snapshotWaitlist} (live now: ${liveWaitlist})\n\n` +
                     'Press OK to continue.'
                 );
                 if (!ok) return;
@@ -4546,17 +4540,11 @@ button {
                 }
 
                 alert(
-                    `✅ Latest server snapshot restored
-
-` +
-                    `Source: ${data.snapshotFile || 'server snapshot'}
-` +
-                    `Saved: ${data.snapshotSavedAt || 'unknown'}
-` +
-                    `Mode: ${(data.mode || 'replace').toUpperCase()}
-` +
-                    `Players now: ${data.restoredPlayers}
-` +
+                    `✅ Latest server snapshot restored\n\n` +
+                    `Source: ${data.snapshotFile || 'server snapshot'}\n` +
+                    `Saved: ${data.snapshotSavedAt || 'unknown'}\n` +
+                    `Mode: ${(data.mode || 'replace').toUpperCase()}\n` +
+                    `Players now: ${data.restoredPlayers}\n` +
                     `Waitlist now: ${data.restoredWaitlist}`
                 );
 
