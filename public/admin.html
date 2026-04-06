@@ -4334,7 +4334,13 @@ button {
                 const blob = await res.blob();
                 const contentDisposition = res.headers.get('content-disposition') || '';
                 const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-                const filename = match ? match[1] : `phans-hockey-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                const fallbackDay = (() => {
+                    const gameTimeValue = String((window.currentGameTime || document.getElementById('titleDayTime')?.value || '')).toLowerCase();
+                    if (gameTimeValue.includes('sunday')) return 'sunday';
+                    if (gameTimeValue.includes('friday')) return 'friday';
+                    return 'backup';
+                })();
+                const filename = match ? match[1] : `phans-hockey-${fallbackDay}-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
