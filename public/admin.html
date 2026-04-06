@@ -1620,7 +1620,7 @@ button {
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
         <input type="password" id="adminPass" placeholder="Enter Render ADMIN_PASSWORD">
         <div style="display:flex; align-items:center; gap:3px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
-            <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;" onchange="toggleAdminPasswordVisibility()">
+            <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;">
             <label for="showAdminPass" style="cursor:pointer;">Show password</label>
             <span style="opacity:.45;">•</span>
             <input type="checkbox" id="rememberDevice" style="width:auto; margin:0;" checked>
@@ -2878,21 +2878,13 @@ button {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const rememberMe = document.getElementById('rememberDevice').checked;
-                const errorMsg = document.getElementById('errorMsg');
-                errorMsg.style.display = 'none';
-
-                clearStoredSessionToken();
-                sessionToken = "";
-
-                const res = await fetch(`${API_URL}/api/admin/login`, {
+                const res = await adminFetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAdminHeaders(),
                     body: JSON.stringify({ password: pass, rememberMe })
                 });
-
                 const data = await res.json().catch(() => ({}));
-
-                if (res.ok && data.success && data.sessionToken) {
+                if (data.success) {
                     sessionToken = data.sessionToken;
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
@@ -2903,25 +2895,17 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
+                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
-                    return;
+                } else {
+                    const errorMsg = document.getElementById('errorMsg');
+                    errorMsg.textContent = data.error || 'Wrong Password';
+                    errorMsg.style.display = 'block';
                 }
-
-                errorMsg.textContent = data.error || 'Wrong Password';
-                errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
-                const errorMsg = document.getElementById('errorMsg');
-                errorMsg.textContent = 'Login failed. Check server/admin password.';
-                errorMsg.style.display = 'block';
+                alert('Login failed.');
             }
-        }
-
-        function toggleAdminPasswordVisibility() {
-            const passInput = document.getElementById('adminPass');
-            const toggle = document.getElementById('showAdminPass');
-            if (!passInput || !toggle) return;
-            passInput.type = toggle.checked ? 'text' : 'password';
         }
 
         async function logout() {
@@ -2970,7 +2954,7 @@ button {
         });
 
         document.getElementById('showAdminPass').addEventListener('change', function() {
-            toggleAdminPasswordVisibility();
+            document.getElementById('adminPass').type = this.checked ? 'text' : 'password';
         });
 
         // Load app settings (maintenance mode, title, etc.)
@@ -3930,6 +3914,36 @@ button {
         }
 
 
+        function getAllowedRegularBuckets() {
+            return ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+        }
+
+        function regularBucketForPlayer(player) {
+            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay || {});
+            const first = String(player?.firstName || '').trim().toLowerCase();
+            const last = String(player?.lastName || '').trim().toLowerCase();
+            const phone = normalizePhoneDigits(player?.phone || '');
+
+            for (const bucket of getAllowedRegularBuckets()) {
+                const list = Array.isArray(map[bucket]) ? map[bucket] : [];
+                const match = list.find(existing => {
+                    const existingFirst = String(existing?.firstName || '').trim().toLowerCase();
+                    const existingLast = String(existing?.lastName || '').trim().toLowerCase();
+                    const existingPhone = normalizePhoneDigits(existing?.phone || '');
+                    const sameName = first && last && existingFirst === first && existingLast === last;
+                    const samePhone = phone && existingPhone === phone;
+                    return sameName || samePhone;
+                });
+                if (match) return bucket;
+            }
+            return player?.regularBucket || null;
+        }
+
+        function regularButtonLabel(player) {
+            const bucket = regularBucketForPlayer(player);
+            return bucket ? `Regular: ${bucket}` : 'Regular';
+        }
+
         function askRegularBucket(defaultBucket = 'everyday') {
             const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
             if (raw === null) return null;
@@ -3942,218 +3956,204 @@ button {
             return bucket;
         }
 
-        async function promotePlayerToRegular(playerId, suggestedBucket = 'everyday') {
-            const bucket = askRegularBucket(suggestedBucket);
+        async function togglePlayerRegular(playerId, playerRef = null, suggestedBucket = 'everyday') {
+            const existingBucket = playerRef ? regularBucketForPlayer(playerRef || {}) : null;
+            const bucket = askRegularBucket(existingBucket || suggestedBucket);
             if (!bucket) return;
 
             try {
-                const res = await fetch(`${API_URL}/api/admin/promote-player-to-regular`, {
+                const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
                     body: JSON.stringify({ sessionToken, playerId, bucket })
                 });
-                const data = await res.json();
+                const data = await res.json().catch(() => ({}));
 
-                if (!res.ok) {
-                    throw new Error(data.error || 'Failed to promote player to regular');
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to update regular player');
                 }
 
-                if (data.alreadyExists) {
-                    alert(`Already a regular in ${bucket}.`);
-                } else {
-                    alert(`✅ Added to ${bucket} regulars.`);
-                }
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                renderRegularSkatersList();
+                await loadData();
+                alert(data.action === 'removed'
+                    ? `✅ Removed from ${bucket} regulars.`
+                    : `✅ Added to ${bucket} regulars.`);
             } catch (err) {
-                console.error('Promote-to-regular error:', err);
-                alert(`❌ ${err.message || 'Failed to promote player to regular.'}`);
+                console.error('Toggle regular error:', err);
+                alert(`❌ ${err.message || 'Failed to update regular player.'}`);
             }
         }
 
 
+
+        async function fetchAdminPlayersData() {
+            const endpoints = [
+                `${API_URL}/api/admin/players-full`,
+                `${API_URL}/api/admin/players`
+            ];
+            let lastError = null;
+            for (const url of endpoints) {
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: getAdminHeaders(),
+                        body: JSON.stringify({ sessionToken })
+                    });
+                    if (res.ok) {
+                        const data = await res.json();
+                        return { res, data };
+                    }
+                    if (res.status === 401) {
+                        return { res, data: null };
+                    }
+                    lastError = new Error(`HTTP ${res.status} from ${url}`);
+                } catch (err) {
+                    lastError = err;
+                }
+            }
+            throw lastError || new Error('Failed to load admin players');
+        }
+
+
         async function loadData() {
+            const tbody = document.getElementById('playerList');
+            const waitlistBody = document.getElementById('waitlistList');
+            const cancellationBody = document.getElementById('cancellationList');
+            const cancellationCount = document.getElementById('cancellationCount');
+
             try {
-                const res = await fetch(`${API_URL}/api/admin/players-full`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken })
-                });
-                
+                if (tbody) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#aaa; padding:20px;">Loading players...</td></tr>';
+                }
+
+                const { res, data } = await fetchAdminPlayersData();
                 if (!res.ok) {
                     if (res.status === 401) {
                         logout();
                         return;
                     }
-                    console.error("Failed to load data:", res.status);
-                    return;
+                    throw new Error(`Failed to load data (${res.status})`);
                 }
-                
-                const data = await res.json();
 
-                playersCount = data.players.length;
-                maxGoalies = data.maxGoalies || 2;
-                currentGoalies = data.goalieCount;
-                currentTotalPaid = parseFloat(data.totalPaid) || 0;
-                
-                // Update payment summary
-                document.getElementById('totalCollected').innerText = '$' + currentTotalPaid.toFixed(2);
-                document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
-                document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
-                
-                // Update counts
-                document.getElementById('currentPlayerSpotsDisplay').innerText = data.playerSpots;
-                document.getElementById('playerSpotInput').value = data.playerSpots;
-                document.getElementById('currentPlayerCount').innerText = data.playerCount;
-                
+                const playersData = Array.isArray(data?.players) ? data.players : [];
+                const waitlistData = Array.isArray(data?.waitlist) ? data.waitlist : [];
+                const cancellations = Array.isArray(data?.cancellations) ? data.cancellations : [];
+
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data?.regularSkatersByDay || currentRegularSkatersByDay || {});
+                renderRegularSkatersList();
+
+                playersCount = playersData.length;
+                maxGoalies = Number(data?.maxGoalies || 2);
+                currentGoalies = Number(data?.goalieCount || 0);
+                currentTotalPaid = parseFloat(data?.totalPaid) || 0;
+
+                const setText = (id, value) => {
+                    const el = document.getElementById(id);
+                    if (el) el.innerText = value;
+                };
+                setText('totalCollected', '$' + currentTotalPaid.toFixed(2));
+                setText('paidCountDisplay', data?.paidCount || 0);
+                setText('unpaidCountDisplay', data?.unpaidCount || 0);
+                setText('currentPlayerSpotsDisplay', data?.playerSpots ?? 0);
+                const playerSpotInput = document.getElementById('playerSpotInput');
+                if (playerSpotInput) playerSpotInput.value = data?.playerSpots ?? 0;
+                setText('currentPlayerCount', data?.playerCount ?? playersData.length);
                 const goalieDisplay = document.getElementById('currentGoalieCount');
-                goalieDisplay.innerText = `${data.goalieCount}/${maxGoalies}`;
-                goalieDisplay.style.color = data.goalieCount >= maxGoalies ? '#ff4444' : '#4CAF50';
-                
-                document.getElementById('playerCount').innerText = data.playerCount;
-                document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
-                document.getElementById('waitlistCount').innerText = data.waitlist.length;
-                
-                document.getElementById('totalPaidDisplay').innerText = `($${currentTotalPaid.toFixed(2)})`;
-                
-                if (data.playerSignupCode) {
-                    document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
+                if (goalieDisplay) {
+                    goalieDisplay.innerText = `${data?.goalieCount || 0}/${maxGoalies}`;
+                    goalieDisplay.style.color = (Number(data?.goalieCount || 0) >= maxGoalies) ? '#ff4444' : '#4CAF50';
                 }
-                
-                // Render players table with payment controls (ADMIN ONLY)
-                const tbody = document.getElementById('playerList');
-                tbody.innerHTML = '';
+                setText('playerCount', data?.playerCount ?? playersData.length);
+                setText('goalieCountDisplay', data?.goalieCount ?? 0);
+                setText('waitlistCount', waitlistData.length);
+                setText('totalPaidDisplay', `($${currentTotalPaid.toFixed(2)})`);
+                if (data?.playerSignupCode) setText('currentCodeDisplay', data.playerSignupCode);
 
-                if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
-                } else {
-                    data.players.forEach(p => {
-                        const tr = document.createElement('tr');
-                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
-                            '<span class="protected-badge">PROTECTED</span>' : '';
-
-                        let paidInput = '';
-                        if (p.isGoalie) {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else {
-                            const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
-                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-
-                            const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '')
-                                ? parseFloat(p.paidAmount)
-                                : 15;
-                            paidInput = `
-                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
-                                        $${compactAmount}
-                                    </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                </div>
-                            `;
-                        }
-
-                        tr.innerHTML = `
-                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
-                            <td>${p.phone}</td>
-                            <td>
-                                <div class="rating-wrap">
-                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    
-                                </div>
-                            </td>
-                            <td>${paidInput}</td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>
-                                <div style="display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap;">
-                                    <select id="regular-bucket-${p.id}" style="width:auto; min-width:110px; margin:0; padding:5px 8px;">
-                                        <option value="everyday">Everyday</option>
-                                        <option value="friday">Friday</option>
-                                        <option value="sunday">Sunday</option>
-                                        <option value="wednesday">Wednesday</option>
-                                        <option value="saturday">Saturday</option>
-                                        <option value="monday">Monday</option>
-                                        <option value="tuesday">Tuesday</option>
-                                        <option value="thursday">Thursday</option>
-                                    </select>
-                                    <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${p.id})">${getRegularButtonLabel(p, data.regularSkatersByDay)}</button>
-                                </div>
-                            </td>
-                            <td>
-                                <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
-                            </td>
-                        `;
-                        tbody.appendChild(tr);
-                    });
+                if (tbody) {
+                    tbody.innerHTML = '';
+                    if (playersData.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    } else {
+                        playersData.forEach(p => {
+                            const tr = document.createElement('tr');
+                            const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                            const protectedBadge = p.protected ? '<span class="protected-badge">PROTECTED</span>' : '';
+                            let paidInput = '';
+                            if (p.isGoalie || p.isFree || (p.firstName === 'Phan' && p.lastName === 'Ly')) {
+                                paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                            } else {
+                                const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '') ? parseFloat(p.paidAmount) : 15;
+                                const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
+                                paidInput = `
+                                    <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                        <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                        <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">$${compactAmount}</button>
+                                        <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                    </div>`;
+                            }
+                            const safeBucket = (regularBucketForPlayer(p) || 'everyday').replace(/'/g, "\'");
+                            tr.innerHTML = `
+                                <td class="player-name-cell">${p.firstName || ''} ${p.lastName || ''} ${goalieBadge} ${protectedBadge}</td>
+                                <td>${p.phone || ''}</td>
+                                <td><div class="rating-wrap"><input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;" onchange="updateRating(${p.id}, this.value)"></div></td>
+                                <td>${paidInput}</td>
+                                <td>${p.isGoalie ? 'N/A' : (p.paymentMethod || 'N/A')}</td>
+                                <td><button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${p.id}, null, '${safeBucket}')">${regularButtonLabel(p)}</button></td>
+                                <td><button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button></td>`;
+                            tbody.appendChild(tr);
+                        });
+                    }
                 }
 
-                // Render waitlist with full data (ADMIN ONLY)
-                const waitlistBody = document.getElementById('waitlistList');
-                waitlistBody.innerHTML = '';
-                if (data.waitlist.length === 0) {
-                    waitlistBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
-                } else {
-                    data.waitlist.forEach((p, index) => {
-                        const tr = document.createElement('tr');
-                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        tr.innerHTML = `
-                            <td>${index + 1}</td>
-                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge}</td>
-                            <td>${p.phone}</td>
-                            <td>
-                                <div class="waitlist-rating-wrap">
-                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    
-                                </div>
-                            </td>
-                            <td>
-                                <div class="waitlist-action-wrap">
-                                    <button class="promote-btn" data-player-id="${p.id}">Promote</button>
-                                    <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
-                                </div>
-                            </td>
-                        `;
-                        waitlistBody.appendChild(tr);
-                    });
+                if (waitlistBody) {
+                    waitlistBody.innerHTML = '';
+                    if (waitlistData.length === 0) {
+                        waitlistBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
+                    } else {
+                        waitlistData.forEach((p, index) => {
+                            const tr = document.createElement('tr');
+                            const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                            tr.innerHTML = `
+                                <td>${index + 1}</td>
+                                <td class="player-name-cell">${p.firstName || ''} ${p.lastName || ''} ${goalieBadge}</td>
+                                <td>${p.phone || ''}</td>
+                                <td><div class="waitlist-rating-wrap"><input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;" onchange="updateRating(${p.id}, this.value)"></div></td>
+                                <td><div class="waitlist-action-wrap"><button class="promote-btn" data-player-id="${p.id}">Promote</button><button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button></div></td>`;
+                            waitlistBody.appendChild(tr);
+                        });
+                    }
                 }
 
-                const cancellationBody = document.getElementById('cancellationList');
-                const cancellationCount = document.getElementById('cancellationCount');
-                const cancellations = Array.isArray(data.cancellations) ? data.cancellations : [];
-                cancellationCount.innerText = cancellations.length;
-                cancellationBody.innerHTML = '';
-
-                if (cancellations.length === 0) {
-                    cancellationBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
-                } else {
-                    cancellations.forEach(item => {
-                        const tr = document.createElement('tr');
-                        const goalieBadge = item.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const typeBadge = item.action === 'removed'
-                            ? '<span class="cancelled-badge">ADMIN REMOVED</span>'
-                            : item.action === 'late_cancel_no_show_owed'
-                                ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
-                                : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
-                        const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
-                        tr.innerHTML = `
-                            <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td>
-                            <td>${item.source || '--'}</td>
-                            <td>${typeBadge}</td>
-                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.75rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
-                            <td>${when}</td>
-                        `;
-                        cancellationBody.appendChild(tr);
-                    });
+                if (cancellationCount) cancellationCount.innerText = cancellations.length;
+                if (cancellationBody) {
+                    cancellationBody.innerHTML = '';
+                    if (cancellations.length === 0) {
+                        cancellationBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
+                    } else {
+                        cancellations.forEach(item => {
+                            const tr = document.createElement('tr');
+                            const goalieBadge = item.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                            const typeBadge = item.action === 'removed'
+                                ? '<span class="cancelled-badge">ADMIN REMOVED</span>'
+                                : item.action === 'late_cancel_no_show_owed'
+                                    ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
+                                    : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
+                            const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
+                            tr.innerHTML = `<td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td><td>${item.source || '--'}</td><td>${typeBadge}</td><td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.75rem; margin-top:4px;">${item.notes}</div>` : ''}</td><td>${when}</td>`;
+                            cancellationBody.appendChild(tr);
+                        });
+                    }
                 }
+
             } catch (err) {
-                console.error("Load data error:", err);
+                console.error('Load data error:', err);
+                if (tbody) {
+                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ff8888; padding:30px;">Could not load registered players. ${String(err.message || err)}</td></tr>`;
+                }
             }
         }
+
 
         async function clearCancellations() {
             if (!confirm("Clear all recent cancellations from the admin panel log? This only clears the log list.")) return;
@@ -4768,7 +4768,7 @@ button {
             if (upload) upload.addEventListener('change', handleAnnouncementImageUpload);
         });
 
-        try { initializeEnhancedDateTimeControls(); } catch (err) { console.error('Enhanced date/time init error:', err); }
+        initializeEnhancedDateTimeControls();
         checkSession();
         setInterval(() => {
             if (sessionToken) loadSystemStatus();
