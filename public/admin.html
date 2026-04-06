@@ -1436,6 +1436,45 @@
             .regular-skaters-grid { grid-template-columns: 1fr; }
         }
 
+        .regular-summary-section {
+            background: linear-gradient(135deg, #173524, #234532);
+            border: 2px solid #53c27c;
+            border-radius: 10px;
+            padding: 16px;
+            margin-top: 25px;
+        }
+
+        .regular-summary-section h3 {
+            margin: 0 0 8px 0;
+            color: #53c27c;
+            font-size: 1.05rem;
+        }
+
+        .regular-summary-note {
+            color: #b9d9c4;
+            font-size: 0.9rem;
+            margin: 0 0 14px 0;
+        }
+
+        .regular-summary-list {
+            display: grid;
+            gap: 10px;
+        }
+
+        .regular-toggle-btn {
+            background: #607d8b !important;
+            color: white;
+            padding: 5px 8px !important;
+            font-size: 0.75rem !important;
+            width: auto;
+            margin: 0;
+        }
+
+        .regular-toggle-btn.active {
+            background: #2e7d32 !important;
+            box-shadow: 0 0 0 1px rgba(83, 194, 124, 0.45) inset;
+        }
+
     
 /* ===== Option 1: clean centered admin table ===== */
 .admin-layout-option-1 table th,
@@ -1740,51 +1779,7 @@ button {
         </div>
 
 
-        <div class="regular-skaters-section">
-            <h3>👥 Regular Skaters Auto-Add</h3>
-            <p style="color:#b9d9c4; font-size:0.9rem; margin-top:0;">
-                These players are auto-added during the weekly reset. Use <strong>everyday</strong> for players who always play, or assign them to a specific day like Friday or Sunday.
-            </p>
-
-            <div class="regular-skaters-toolbar">
-                <div class="field">
-                    <label for="regularSkaterDayBucket">Bucket</label>
-                    <select id="regularSkaterDayBucket">
-                        <option value="everyday">Everyday</option>
-                        <option value="friday">Friday</option>
-                        <option value="sunday">Sunday</option>
-                        <option value="wednesday">Wednesday</option>
-                        <option value="saturday">Saturday</option>
-                        <option value="monday">Monday</option>
-                        <option value="tuesday">Tuesday</option>
-                        <option value="thursday">Thursday</option>
-                    </select>
-                </div>
-                <div class="field">
-                    <button type="button" class="control-btn" style="background:#53c27c; width:100%;" onclick="saveRegularSkatersSettings()">💾 Save Regular Skaters</button>
-                </div>
-            </div>
-
-            <div class="regular-skaters-grid">
-                <input type="text" id="regularFirstName" placeholder="First Name">
-                <input type="text" id="regularLastName" placeholder="Last Name">
-                <input type="tel" id="regularPhone" placeholder="Phone Number">
-                <input type="number" id="regularRating" placeholder="Rating (1-10)" min="1" max="10" step="0.1">
-                <input type="text" id="regularPaymentMethod" placeholder="Payment Method" value="N/A">
-                <div class="checkbox-container" style="margin:0; background:rgba(0,0,0,0.18); border-radius:8px; padding:12px;">
-                    <input type="checkbox" id="regularProtected">
-                    <label for="regularProtected">Protected</label>
-                </div>
-                <div class="checkbox-container" style="margin:0; background:rgba(0,0,0,0.18); border-radius:8px; padding:12px;">
-                    <input type="checkbox" id="regularFree">
-                    <label for="regularFree">Free Player</label>
-                </div>
-                <button type="button" class="control-btn" style="background:#2e7d32; width:100%;" onclick="addRegularSkaterFromForm()">➕ Add Regular Skater</button>
-            </div>
-
-            <div class="regular-skaters-list" id="regularSkatersList"></div>
-        </div>
-
+        <div id="legacyRegularSkatersSection" style="display:none;"></div>
 
         <!-- TITLE EDITOR -->
         <div class="title-editor-section">
@@ -2211,6 +2206,12 @@ button {
                 </thead>
                 <tbody id="cancellationList"></tbody>
             </table>
+        </div>
+
+        <div class="regular-summary-section">
+            <h3>⭐ Regular Players</h3>
+            <p class="regular-summary-note">Use the one-click Regular button in the player list above. Active regulars are highlighted green.</p>
+            <div class="regular-summary-list" id="regularSkatersList"></div>
         </div>
     </div>
 
@@ -3398,100 +3399,103 @@ button {
             return defaults;
         }
 
+        function normalizePhoneDigitsClient(value) {
+            let digits = String(value || '').replace(/\D/g, '');
+            if (digits.length === 11 && digits.startsWith('1')) digits = digits.slice(1);
+            return digits.slice(0, 10);
+        }
+
+        function getRegularEntriesFlat() {
+            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
+            const order = ['everyday','friday','sunday','wednesday','saturday','monday','tuesday','thursday'];
+            const entries = [];
+            const seen = new Set();
+
+            order.forEach(day => {
+                (map[day] || []).forEach(player => {
+                    const key = normalizePhoneDigitsClient(player.phone) || `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}|${day}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    entries.push({ ...player, bucket: day });
+                });
+            });
+
+            return entries;
+        }
+
+        function getPlayerRegularInfo(player) {
+            const playerPhone = normalizePhoneDigitsClient(player && player.phone);
+            const first = String(player && player.firstName || '').trim().toLowerCase();
+            const last = String(player && player.lastName || '').trim().toLowerCase();
+            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
+            const order = ['everyday','friday','sunday','wednesday','saturday','monday','tuesday','thursday'];
+
+            for (const day of order) {
+                const match = (map[day] || []).find(existing => {
+                    const existingPhone = normalizePhoneDigitsClient(existing.phone);
+                    if (playerPhone && existingPhone && existingPhone === playerPhone) return true;
+                    return String(existing.firstName || '').trim().toLowerCase() === first &&
+                           String(existing.lastName || '').trim().toLowerCase() === last;
+                });
+                if (match) return { active: true, bucket: day, player: match };
+            }
+
+            return { active: false, bucket: null, player: null };
+        }
+
         function renderRegularSkatersList() {
             const wrap = document.getElementById('regularSkatersList');
             if (!wrap) return;
-            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
-            const order = ['everyday','friday','sunday','wednesday','saturday','monday','tuesday','thursday'];
-            const labels = {
-                everyday: 'Everyday', friday: 'Friday', sunday: 'Sunday', wednesday: 'Wednesday',
-                saturday: 'Saturday', monday: 'Monday', tuesday: 'Tuesday', thursday: 'Thursday'
-            };
 
-            let html = '';
-            order.forEach(day => {
-                const list = map[day] || [];
-                html += `<div class="message-box"><label>${labels[day]} (${list.length})</label>`;
-                if (!list.length) {
-                    html += '<div class="regular-skater-empty">No regular skaters saved in this bucket.</div>';
-                } else {
-                    list.forEach((player, index) => {
-                        const tags = [
-                            `Rating ${player.rating ?? '--'}`,
-                            player.paymentMethod ? `Pay: ${player.paymentMethod}` : 'Pay: N/A',
-                            player.isFree ? 'FREE' : 'UNPAID',
-                            player.protected ? 'Protected' : 'Not protected'
-                        ].join(' • ');
-                        html += `
-                            <div class="regular-skater-card">
-                                <div>
-                                    <strong>${player.firstName} ${player.lastName}</strong>
-                                    <div class="regular-skater-meta">${player.phone || ''}<br>${tags}</div>
-                                </div>
-                                <button type="button" class="remove-btn" onclick="removeRegularSkater('${day}', ${index})">Remove</button>
-                            </div>
-                        `;
-                    });
+            const entries = getRegularEntriesFlat();
+            if (!entries.length) {
+                wrap.innerHTML = '<div class="regular-skater-empty">No regular players set.</div>';
+                return;
+            }
+
+            wrap.innerHTML = entries.map(player => {
+                const tags = [
+                    `Rating ${player.rating ?? '--'}`,
+                    player.paymentMethod ? `Pay: ${player.paymentMethod}` : 'Pay: N/A',
+                    player.isFree ? 'FREE' : 'UNPAID',
+                    player.protected ? 'Protected' : 'Not protected'
+                ].join(' • ');
+                const bucketLabel = player.bucket && player.bucket !== 'everyday'
+                    ? `<div class="regular-skater-meta" style="margin-bottom:4px; color:#8ee0ad;">${player.bucket}</div>`
+                    : '';
+                const phoneKey = String(player.phone || '').replace(/'/g, "\'");
+                return `
+                    <div class="regular-skater-card">
+                        <div>
+                            <strong>${player.firstName} ${player.lastName}</strong>
+                            ${bucketLabel}
+                            <div class="regular-skater-meta">${player.phone || ''}<br>${tags}</div>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="removeRegularPlayer('${phoneKey}')">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function removeRegularPlayer(phone) {
+            if (!confirm('Remove this player from the regular list?')) return;
+            try {
+                const res = await fetch(`${API_URL}/api/admin/remove-regular-player`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, phone })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) {
+                    throw new Error(data.error || 'Failed to remove regular player');
                 }
-                html += '</div>';
-            });
-            wrap.innerHTML = html;
-        }
-
-        function addRegularSkaterFromForm() {
-            const day = (document.getElementById('regularSkaterDayBucket').value || 'everyday').toLowerCase();
-            const firstName = document.getElementById('regularFirstName').value.trim();
-            const lastName = document.getElementById('regularLastName').value.trim();
-            const phone = document.getElementById('regularPhone').value.trim();
-            const rating = parseFloat(document.getElementById('regularRating').value || '0');
-            const paymentMethod = document.getElementById('regularPaymentMethod').value.trim() || 'N/A';
-            const isFree = document.getElementById('regularFree').checked;
-            const isProtected = document.getElementById('regularProtected').checked;
-
-            if (!firstName || !lastName) {
-                alert('Enter first and last name.');
-                return;
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                renderRegularSkatersList();
+                await loadData();
+            } catch (err) {
+                console.error('Error removing regular player:', err);
+                alert(`❌ ${err.message || 'Failed to remove regular player.'}`);
             }
-            const digits = phone.replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-            if (digits.length !== 10) {
-                alert('Phone number must be 10 digits.');
-                return;
-            }
-            if (!Number.isFinite(rating) || rating < 1 || rating > 10) {
-                alert('Rating must be between 1 and 10.');
-                return;
-            }
-
-            currentRegularSkatersByDay = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
-            currentRegularSkatersByDay[day] = currentRegularSkatersByDay[day] || [];
-            currentRegularSkatersByDay[day].push({
-                firstName,
-                lastName,
-                phone,
-                rating,
-                isGoalie: false,
-                isFree,
-                paymentMethod,
-                protected: isProtected
-            });
-
-            document.getElementById('regularFirstName').value = '';
-            document.getElementById('regularLastName').value = '';
-            document.getElementById('regularPhone').value = '';
-            document.getElementById('regularRating').value = '';
-            document.getElementById('regularPaymentMethod').value = 'N/A';
-            document.getElementById('regularFree').checked = false;
-            document.getElementById('regularProtected').checked = false;
-
-            renderRegularSkatersList();
-        }
-
-        function removeRegularSkater(day, index) {
-            currentRegularSkatersByDay = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
-            const list = currentRegularSkatersByDay[day] || [];
-            if (index < 0 || index >= list.length) return;
-            list.splice(index, 1);
-            renderRegularSkatersList();
         }
 
         async function loadRegularSkatersSettings() {
@@ -3523,7 +3527,6 @@ button {
                 }
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
                 renderRegularSkatersList();
-                alert('✅ Regular skaters saved. They will auto-add on weekly reset.');
             } catch (err) {
                 console.error('Error saving regular skaters:', err);
                 alert(`❌ ${err.message || 'Failed to save regular skaters.'}`);
@@ -3914,58 +3917,12 @@ button {
         }
 
 
-        function getAllowedRegularBuckets() {
-            return ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-        }
-
-        function regularBucketForPlayer(player) {
-            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay || {});
-            const first = String(player?.firstName || '').trim().toLowerCase();
-            const last = String(player?.lastName || '').trim().toLowerCase();
-            const phone = normalizePhoneDigits(player?.phone || '');
-
-            for (const bucket of getAllowedRegularBuckets()) {
-                const list = Array.isArray(map[bucket]) ? map[bucket] : [];
-                const match = list.find(existing => {
-                    const existingFirst = String(existing?.firstName || '').trim().toLowerCase();
-                    const existingLast = String(existing?.lastName || '').trim().toLowerCase();
-                    const existingPhone = normalizePhoneDigits(existing?.phone || '');
-                    const sameName = first && last && existingFirst === first && existingLast === last;
-                    const samePhone = phone && existingPhone === phone;
-                    return sameName || samePhone;
-                });
-                if (match) return bucket;
-            }
-            return player?.regularBucket || null;
-        }
-
-        function regularButtonLabel(player) {
-            const bucket = regularBucketForPlayer(player);
-            return bucket ? `Regular: ${bucket}` : 'Regular';
-        }
-
-        function askRegularBucket(defaultBucket = 'everyday') {
-            const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
-            if (raw === null) return null;
-            const bucket = String(raw || '').trim().toLowerCase();
-            const allowed = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-            if (!allowed.includes(bucket)) {
-                alert('Please enter one of: ' + allowed.join(', '));
-                return null;
-            }
-            return bucket;
-        }
-
-        async function togglePlayerRegular(playerId, playerRef = null, suggestedBucket = 'everyday') {
-            const existingBucket = playerRef ? regularBucketForPlayer(playerRef || {}) : null;
-            const bucket = askRegularBucket(existingBucket || suggestedBucket);
-            if (!bucket) return;
-
+        async function togglePlayerRegular(playerId) {
             try {
                 const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken, playerId, bucket })
+                    body: JSON.stringify({ sessionToken, playerId })
                 });
                 const data = await res.json().catch(() => ({}));
 
@@ -3976,184 +3933,190 @@ button {
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
                 renderRegularSkatersList();
                 await loadData();
-                alert(data.action === 'removed'
-                    ? `✅ Removed from ${bucket} regulars.`
-                    : `✅ Added to ${bucket} regulars.`);
             } catch (err) {
                 console.error('Toggle regular error:', err);
                 alert(`❌ ${err.message || 'Failed to update regular player.'}`);
             }
         }
 
-
-
-        async function fetchAdminPlayersData() {
-            const endpoints = [
-                `${API_URL}/api/admin/players-full`,
-                `${API_URL}/api/admin/players`
-            ];
-            let lastError = null;
-            for (const url of endpoints) {
-                try {
-                    const res = await fetch(url, {
-                        method: 'POST',
-                        headers: getAdminHeaders(),
-                        body: JSON.stringify({ sessionToken })
-                    });
-                    if (res.ok) {
-                        const data = await res.json();
-                        return { res, data };
-                    }
-                    if (res.status === 401) {
-                        return { res, data: null };
-                    }
-                    lastError = new Error(`HTTP ${res.status} from ${url}`);
-                } catch (err) {
-                    lastError = err;
-                }
-            }
-            throw lastError || new Error('Failed to load admin players');
-        }
-
-
         async function loadData() {
-            const tbody = document.getElementById('playerList');
-            const waitlistBody = document.getElementById('waitlistList');
-            const cancellationBody = document.getElementById('cancellationList');
-            const cancellationCount = document.getElementById('cancellationCount');
-
             try {
-                if (tbody) {
-                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#aaa; padding:20px;">Loading players...</td></tr>';
-                }
-
-                const { res, data } = await fetchAdminPlayersData();
+                const res = await fetch(`${API_URL}/api/admin/players-full`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken })
+                });
+                
                 if (!res.ok) {
                     if (res.status === 401) {
                         logout();
                         return;
                     }
-                    throw new Error(`Failed to load data (${res.status})`);
+                    console.error("Failed to load data:", res.status);
+                    return;
                 }
+                
+                const data = await res.json();
 
-                const playersData = Array.isArray(data?.players) ? data.players : [];
-                const waitlistData = Array.isArray(data?.waitlist) ? data.waitlist : [];
-                const cancellations = Array.isArray(data?.cancellations) ? data.cancellations : [];
-
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data?.regularSkatersByDay || currentRegularSkatersByDay || {});
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay || {});
                 renderRegularSkatersList();
 
-                playersCount = playersData.length;
-                maxGoalies = Number(data?.maxGoalies || 2);
-                currentGoalies = Number(data?.goalieCount || 0);
-                currentTotalPaid = parseFloat(data?.totalPaid) || 0;
-
-                const setText = (id, value) => {
-                    const el = document.getElementById(id);
-                    if (el) el.innerText = value;
-                };
-                setText('totalCollected', '$' + currentTotalPaid.toFixed(2));
-                setText('paidCountDisplay', data?.paidCount || 0);
-                setText('unpaidCountDisplay', data?.unpaidCount || 0);
-                setText('currentPlayerSpotsDisplay', data?.playerSpots ?? 0);
-                const playerSpotInput = document.getElementById('playerSpotInput');
-                if (playerSpotInput) playerSpotInput.value = data?.playerSpots ?? 0;
-                setText('currentPlayerCount', data?.playerCount ?? playersData.length);
+                playersCount = data.players.length;
+                maxGoalies = data.maxGoalies || 2;
+                currentGoalies = data.goalieCount;
+                currentTotalPaid = parseFloat(data.totalPaid) || 0;
+                
+                // Update payment summary
+                document.getElementById('totalCollected').innerText = '$' + currentTotalPaid.toFixed(2);
+                document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
+                document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
+                
+                // Update counts
+                document.getElementById('currentPlayerSpotsDisplay').innerText = data.playerSpots;
+                document.getElementById('playerSpotInput').value = data.playerSpots;
+                document.getElementById('currentPlayerCount').innerText = data.playerCount;
+                
                 const goalieDisplay = document.getElementById('currentGoalieCount');
-                if (goalieDisplay) {
-                    goalieDisplay.innerText = `${data?.goalieCount || 0}/${maxGoalies}`;
-                    goalieDisplay.style.color = (Number(data?.goalieCount || 0) >= maxGoalies) ? '#ff4444' : '#4CAF50';
+                goalieDisplay.innerText = `${data.goalieCount}/${maxGoalies}`;
+                goalieDisplay.style.color = data.goalieCount >= maxGoalies ? '#ff4444' : '#4CAF50';
+                
+                document.getElementById('playerCount').innerText = data.playerCount;
+                document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
+                document.getElementById('waitlistCount').innerText = data.waitlist.length;
+                
+                document.getElementById('totalPaidDisplay').innerText = `($${currentTotalPaid.toFixed(2)})`;
+                
+                if (data.playerSignupCode) {
+                    document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
                 }
-                setText('playerCount', data?.playerCount ?? playersData.length);
-                setText('goalieCountDisplay', data?.goalieCount ?? 0);
-                setText('waitlistCount', waitlistData.length);
-                setText('totalPaidDisplay', `($${currentTotalPaid.toFixed(2)})`);
-                if (data?.playerSignupCode) setText('currentCodeDisplay', data.playerSignupCode);
+                
+                // Render players table with payment controls (ADMIN ONLY)
+                const tbody = document.getElementById('playerList');
+                tbody.innerHTML = '';
 
-                if (tbody) {
-                    tbody.innerHTML = '';
-                    if (playersData.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
-                    } else {
-                        playersData.forEach(p => {
-                            const tr = document.createElement('tr');
-                            const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                            const protectedBadge = p.protected ? '<span class="protected-badge">PROTECTED</span>' : '';
-                            let paidInput = '';
-                            if (p.isGoalie || p.isFree || (p.firstName === 'Phan' && p.lastName === 'Ly')) {
-                                paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                            } else {
-                                const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '') ? parseFloat(p.paidAmount) : 15;
-                                const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-                                paidInput = `
-                                    <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                        <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                        <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">$${compactAmount}</button>
-                                        <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                    </div>`;
-                            }
-                            const safeBucket = (regularBucketForPlayer(p) || 'everyday').replace(/'/g, "\'");
-                            tr.innerHTML = `
-                                <td class="player-name-cell">${p.firstName || ''} ${p.lastName || ''} ${goalieBadge} ${protectedBadge}</td>
-                                <td>${p.phone || ''}</td>
-                                <td><div class="rating-wrap"><input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;" onchange="updateRating(${p.id}, this.value)"></div></td>
-                                <td>${paidInput}</td>
-                                <td>${p.isGoalie ? 'N/A' : (p.paymentMethod || 'N/A')}</td>
-                                <td><button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${p.id}, null, '${safeBucket}')">${regularButtonLabel(p)}</button></td>
-                                <td><button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button></td>`;
-                            tbody.appendChild(tr);
-                        });
-                    }
-                }
+                if (data.players.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                } else {
+                    data.players.forEach(p => {
+                        const tr = document.createElement('tr');
+                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
+                            '<span class="protected-badge">PROTECTED</span>' : '';
+                        const regularInfo = getPlayerRegularInfo(p);
+                        const regularLabel = regularInfo.active ? 'Regular ✓' : 'Regular';
+                        const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
-                if (waitlistBody) {
-                    waitlistBody.innerHTML = '';
-                    if (waitlistData.length === 0) {
-                        waitlistBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
-                    } else {
-                        waitlistData.forEach((p, index) => {
-                            const tr = document.createElement('tr');
-                            const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                            tr.innerHTML = `
-                                <td>${index + 1}</td>
-                                <td class="player-name-cell">${p.firstName || ''} ${p.lastName || ''} ${goalieBadge}</td>
-                                <td>${p.phone || ''}</td>
-                                <td><div class="waitlist-rating-wrap"><input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;" onchange="updateRating(${p.id}, this.value)"></div></td>
-                                <td><div class="waitlist-action-wrap"><button class="promote-btn" data-player-id="${p.id}">Promote</button><button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button></div></td>`;
-                            waitlistBody.appendChild(tr);
-                        });
-                    }
-                }
+                        let paidInput = '';
+                        if (p.isGoalie) {
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        } else {
+                            const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
+                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
-                if (cancellationCount) cancellationCount.innerText = cancellations.length;
-                if (cancellationBody) {
-                    cancellationBody.innerHTML = '';
-                    if (cancellations.length === 0) {
-                        cancellationBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
-                    } else {
-                        cancellations.forEach(item => {
-                            const tr = document.createElement('tr');
-                            const goalieBadge = item.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                            const typeBadge = item.action === 'removed'
-                                ? '<span class="cancelled-badge">ADMIN REMOVED</span>'
-                                : item.action === 'late_cancel_no_show_owed'
-                                    ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
-                                    : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
-                            const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
-                            tr.innerHTML = `<td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td><td>${item.source || '--'}</td><td>${typeBadge}</td><td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.75rem; margin-top:4px;">${item.notes}</div>` : ''}</td><td>${when}</td>`;
-                            cancellationBody.appendChild(tr);
-                        });
-                    }
+                            const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '')
+                                ? parseFloat(p.paidAmount)
+                                : 15;
+                            paidInput = `
+                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                        $${compactAmount}
+                                    </button>
+                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                </div>
+                            `;
+                        }
+
+                        tr.innerHTML = `
+                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge} ${protectedBadge}</td>
+                            <td>${p.phone}</td>
+                            <td>
+                                <div class="rating-wrap">
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
+                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    
+                                </div>
+                            </td>
+                            <td>${paidInput}</td>
+                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
+                            <td>
+                                <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
+                            </td>
+                            <td>
+                                <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
+                            </td>
+                        `;
+                        tbody.appendChild(tr);
+                    });
                 }
 
+                // Render waitlist with full data (ADMIN ONLY)
+                const waitlistBody = document.getElementById('waitlistList');
+                waitlistBody.innerHTML = '';
+                if (data.waitlist.length === 0) {
+                    waitlistBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
+                } else {
+                    data.waitlist.forEach((p, index) => {
+                        const tr = document.createElement('tr');
+                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        tr.innerHTML = `
+                            <td>${index + 1}</td>
+                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge}</td>
+                            <td>${p.phone}</td>
+                            <td>
+                                <div class="waitlist-rating-wrap">
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
+                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    
+                                </div>
+                            </td>
+                            <td>
+                                <div class="waitlist-action-wrap">
+                                    <button class="promote-btn" data-player-id="${p.id}">Promote</button>
+                                    <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
+                                </div>
+                            </td>
+                        `;
+                        waitlistBody.appendChild(tr);
+                    });
+                }
+
+                const cancellationBody = document.getElementById('cancellationList');
+                const cancellationCount = document.getElementById('cancellationCount');
+                const cancellations = Array.isArray(data.cancellations) ? data.cancellations : [];
+                cancellationCount.innerText = cancellations.length;
+                cancellationBody.innerHTML = '';
+
+                if (cancellations.length === 0) {
+                    cancellationBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
+                } else {
+                    cancellations.forEach(item => {
+                        const tr = document.createElement('tr');
+                        const goalieBadge = item.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const typeBadge = item.action === 'removed'
+                            ? '<span class="cancelled-badge">ADMIN REMOVED</span>'
+                            : item.action === 'late_cancel_no_show_owed'
+                                ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
+                                : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
+                        const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
+                        tr.innerHTML = `
+                            <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td>
+                            <td>${item.source || '--'}</td>
+                            <td>${typeBadge}</td>
+                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.75rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
+                            <td>${when}</td>
+                        `;
+                        cancellationBody.appendChild(tr);
+                    });
+                }
             } catch (err) {
-                console.error('Load data error:', err);
-                if (tbody) {
-                    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; color:#ff8888; padding:30px;">Could not load registered players. ${String(err.message || err)}</td></tr>`;
-                }
+                console.error("Load data error:", err);
             }
         }
-
 
         async function clearCancellations() {
             if (!confirm("Clear all recent cancellations from the admin panel log? This only clears the log list.")) return;
