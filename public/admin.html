@@ -2681,6 +2681,9 @@ button {
         let playersCount = 0;
         let currentTotalPaid = 0;
         let backupGoaliesData = [];
+        let currentRegularSkatersByDay = {
+            everyday: [], sunday: [], monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: []
+        };
 
         // Pre-defined goalie data
         const PREDEFINED_GOALIES = [
@@ -3041,6 +3044,9 @@ button {
                     announcementImagePreview.classList.toggle('visible', !!firstImage);
                     window.announcementImageData = firstImage || '';
                 }
+
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                renderRegularSkatersList();
 
                 updateTitlePreview();
             } catch (err) {
@@ -3914,8 +3920,9 @@ button {
         }
 
 
-        function askRegularBucket(defaultBucket = 'everyday') {
-            const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
+        function askRegularBucket(defaultBucket = 'everyday', currentBuckets = []) {
+            const bucketNote = currentBuckets.length ? `\nCurrent regular bucket(s): ${currentBuckets.join(', ')}` : '';
+            const raw = prompt('Toggle this player in which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday' + bucketNote + '\n\nIf the player is already in the bucket you choose, they will be removed from it.', defaultBucket);
             if (raw === null) return null;
             const bucket = String(raw || '').trim().toLowerCase();
             const allowed = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -3926,12 +3933,39 @@ button {
             return bucket;
         }
 
-        async function promotePlayerToRegular(playerId, suggestedBucket = 'everyday') {
-            const bucket = askRegularBucket(suggestedBucket);
+        function getRegularBucketsForPlayerUI(player) {
+            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
+            const phoneDigits = String(((player && player.phone) || '')).replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+            return Object.entries(map)
+                .filter(([, list]) => Array.isArray(list))
+                .filter(([, list]) => list.some(existing => {
+                    const sameName =
+                        String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                        String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase();
+                    const existingDigits = String(existing.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
+                    const samePhone = phoneDigits && existingDigits === phoneDigits;
+                    return sameName || samePhone;
+                }))
+                .map(([bucket]) => bucket);
+        }
+
+        function getRegularToggleButtonHtml(player) {
+            const buckets = getRegularBucketsForPlayerUI(player);
+            const isRegular = buckets.length > 0;
+            const label = isRegular ? `Regular: ${buckets.join(', ')}` : 'Make Regular';
+            const bg = isRegular ? '#2e7d32' : '#7e57c2';
+            const defaultBucket = buckets[0] || 'everyday';
+            return `<button class="control-btn" style="background:${bg}; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${player.id}, '${defaultBucket}')">${label}</button>`;
+        }
+
+        async function togglePlayerRegular(playerId, suggestedBucket = 'everyday') {
+            const playerRow = (window.latestAdminPlayers || []).find(p => Number(p.id) === Number(playerId)) || null;
+            const currentBuckets = playerRow ? getRegularBucketsForPlayerUI(playerRow) : [];
+            const bucket = askRegularBucket(suggestedBucket, currentBuckets);
             if (!bucket) return;
 
             try {
-                const res = await fetch(`${API_URL}/api/admin/promote-player-to-regular`, {
+                const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
                     body: JSON.stringify({ sessionToken, playerId, bucket })
@@ -3939,8 +3973,23 @@ button {
                 const data = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(data.error || 'Failed to promote player to regular');
+                    throw new Error(data.error || 'Failed to update regular player');
                 }
+
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                renderRegularSkatersList();
+                await loadData();
+
+                if (data.action === 'removed') {
+                    alert(`✅ Removed from ${bucket} regulars.`);
+                } else {
+                    alert(`✅ Added to ${bucket} regulars.`);
+                }
+            } catch (err) {
+                console.error('Toggle regular error:', err);
+                alert(`❌ ${err.message || 'Failed to update regular player.'}`);
+            }
+        }
 
                 if (data.alreadyExists) {
                     alert(`Already a regular in ${bucket}.`);
@@ -3972,6 +4021,9 @@ button {
                 }
                 
                 const data = await res.json();
+                window.latestAdminPlayers = Array.isArray(data.players) ? data.players : [];
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay);
+                renderRegularSkatersList();
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
@@ -4051,9 +4103,7 @@ button {
                             </td>
                             <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>
-                                <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="promotePlayerToRegular(${p.id}, 'everyday')">Promote</button>
-                            </td>
+                            <td>${getRegularToggleButtonHtml(p)}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
@@ -4647,7 +4697,7 @@ button {
                 const blob = await res.blob();
                 const contentDisposition = res.headers.get('content-disposition') || '';
                 const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-                const filename = match ? match[1] : `Phan's Hockey ${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                const filename = match ? match[1] : `phans-hockey-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');

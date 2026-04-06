@@ -200,20 +200,6 @@ function getGameDayName() {
 }
 
 
-function sanitizeFilenamePart(value, fallback = 'Backup') {
-    const cleaned = String(value || '')
-        .replace(/[\/:*?"<>|]+/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim();
-    return cleaned || fallback;
-}
-
-function buildDynamicBackupBaseName() {
-    const titleSource = String(customTitle || `Phan's ${getGameDayName()} Hockey`).trim();
-    return sanitizeFilenamePart(titleSource || `Phan's ${getGameDayName()} Hockey`, `Phan's ${getGameDayName()} Hockey`);
-}
-
-
 const FRIDAY_SIGNUP_CODE = '9855';
 const SUNDAY_SIGNUP_CODE = '7666';
 const DEFAULT_SIGNUP_CODE = FRIDAY_SIGNUP_CODE;
@@ -578,6 +564,27 @@ function getRegularSkatersForDay(dayName = getGameDayName()) {
         ? regularSkatersByDay[dayKey]
         : [];
     return [...everydayPlayers, ...dayPlayers];
+}
+
+
+function getRegularBucketsForPlayer(playerLike = {}) {
+    regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
+    const normalizedPhone = normalizePhoneDigits(playerLike.phone || '');
+    const firstName = String(playerLike.firstName || '').trim().toLowerCase();
+    const lastName = String(playerLike.lastName || '').trim().toLowerCase();
+
+    return Object.entries(regularSkatersByDay)
+        .filter(([, list]) => Array.isArray(list))
+        .filter(([, list]) => list.some(existing => {
+            const sameName =
+                String(existing.firstName || '').trim().toLowerCase() === firstName &&
+                String(existing.lastName || '').trim().toLowerCase() === lastName;
+            const samePhone =
+                normalizedPhone &&
+                normalizePhoneDigits(existing.phone || '') === normalizedPhone;
+            return sameName || samePhone;
+        }))
+        .map(([bucket]) => bucket);
 }
 
 function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
@@ -3978,6 +3985,93 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
 
 
 
+app.post('/api/admin/toggle-player-regular', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const playerId = Number(req.body.playerId);
+        const bucketRaw = String(req.body.bucket || '').trim().toLowerCase();
+        const allowedBuckets = new Set(['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
+
+        if (!Number.isFinite(playerId)) {
+            return res.status(400).json({ error: 'Invalid player id' });
+        }
+        if (!allowedBuckets.has(bucketRaw)) {
+            return res.status(400).json({ error: 'Invalid regular-player bucket' });
+        }
+
+        const player = players.find(p => Number(p.id) === playerId);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found in registered players' });
+        }
+
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
+        regularSkatersByDay[bucketRaw] = Array.isArray(regularSkatersByDay[bucketRaw]) ? regularSkatersByDay[bucketRaw] : [];
+
+        const normalizedPhone = normalizePhoneDigits(player.phone);
+        const matchesPlayer = (existing) => (
+            (
+                String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase()
+            ) ||
+            (
+                normalizedPhone &&
+                normalizePhoneDigits(existing.phone) === normalizedPhone
+            )
+        );
+
+        const currentBuckets = getRegularBucketsForPlayer(player);
+        const existsInSelectedBucket = regularSkatersByDay[bucketRaw].some(matchesPlayer);
+
+        if (existsInSelectedBucket) {
+            regularSkatersByDay[bucketRaw] = regularSkatersByDay[bucketRaw].filter(existing => !matchesPlayer(existing));
+            await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+            await saveData('remove-player-from-regular');
+            return res.json({
+                success: true,
+                action: 'removed',
+                bucket: bucketRaw,
+                regularBuckets: getRegularBucketsForPlayer(player),
+                regularSkatersByDay,
+                message: `${player.firstName} ${player.lastName} removed from ${bucketRaw} regulars.`
+            });
+        }
+
+        const promotedRegular = normalizeRegularSkaterEntry({
+            firstName: player.firstName,
+            lastName: player.lastName,
+            phone: player.phone,
+            rating: Number(player.finalRating ?? player.rating ?? 5),
+            paymentMethod: player.paymentMethod || 'N/A',
+            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'),
+            protected: !!player.protected
+        });
+
+        regularSkatersByDay[bucketRaw].push(promotedRegular);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('promote-player-to-regular');
+
+        return res.json({
+            success: true,
+            action: 'added',
+            bucket: bucketRaw,
+            previousBuckets: currentBuckets,
+            regularBuckets: getRegularBucketsForPlayer(player),
+            regularSkatersByDay,
+            promotedPlayer: {
+                firstName: promotedRegular.firstName,
+                lastName: promotedRegular.lastName
+            },
+            message: `${promotedRegular.firstName} ${promotedRegular.lastName} added to ${bucketRaw} regulars.`
+        });
+    } catch (err) {
+        console.error('Error toggling player regular status:', err);
+        return res.status(500).json({ error: 'Failed to toggle player regular status' });
+    }
+});
+
 app.post('/api/admin/promote-player-to-regular', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -4182,7 +4276,8 @@ app.post('/api/admin/players-full', (req, res) => {
         rosterReleased, 
         currentWeekData, 
         playerSignupCode, 
-        requirePlayerCode 
+        requirePlayerCode,
+        regularSkatersByDay 
     });
 });
 
@@ -4248,11 +4343,9 @@ app.post('/api/admin/download-backup', async (req, res) => {
             }
         };
 
-        const baseName = `${buildDynamicBackupBaseName()} ${yyyy}-${mm}-${dd} ${hh}-${mi}-${ss} ET`;
-        const jsonFilename = `${baseName}.json`;
-
+        const filename = `phans-hockey-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${jsonFilename}"`);
+        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         return res.status(200).send(JSON.stringify(backup, null, 2));
     } catch (err) {
         console.error('Error downloading backup:', err);
