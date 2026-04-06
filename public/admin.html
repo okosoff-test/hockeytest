@@ -1361,6 +1361,81 @@
                 grid-template-columns: 1fr;
             }
         }
+
+
+        .regular-skaters-section {
+            background: linear-gradient(135deg, #173524, #234532);
+            border: 2px solid #53c27c;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .regular-skaters-section h3 {
+            margin: 0 0 15px 0;
+            color: #53c27c;
+            font-size: 1.1rem;
+        }
+
+        .regular-skaters-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: end;
+            margin-bottom: 12px;
+        }
+
+        .regular-skaters-toolbar .field {
+            flex: 1;
+            min-width: 150px;
+        }
+
+        .regular-skaters-grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .regular-skaters-list {
+            margin-top: 14px;
+            display: grid;
+            gap: 10px;
+        }
+
+        .regular-skater-card {
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            padding: 12px;
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .regular-skater-card strong {
+            color: #fff;
+        }
+
+        .regular-skater-meta {
+            color: #b9d9c4;
+            font-size: 0.86rem;
+            margin-top: 4px;
+            line-height: 1.45;
+        }
+
+        .regular-skater-empty {
+            color: #b9d9c4;
+            padding: 12px;
+            text-align: center;
+            border: 1px dashed rgba(255,255,255,0.16);
+            border-radius: 10px;
+        }
+
+        @media (max-width: 700px) {
+            .regular-skaters-grid { grid-template-columns: 1fr; }
+        }
+
         .regular-summary-section {
             background: linear-gradient(135deg, #173524, #234532);
             border: 2px solid #53c27c;
@@ -1414,6 +1489,8 @@
 .admin-layout-option-1 .paid-wrap { gap:3px; }
 .admin-layout-option-1 .table-note-muted { font-size:0.8rem; color:#bbb; line-height:1.35; text-align:center; }
 
+
+.regular-summary-section{display:none !important;}
 </style>
 
 <style>
@@ -2804,14 +2881,18 @@ button {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const rememberMe = document.getElementById('rememberDevice').checked;
-                const res = await adminFetch(`${API_URL}/api/admin/login`, {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.style.display = 'none';
+
+                const res = await fetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
-                    headers: getAdminHeaders(),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: pass, rememberMe })
                 });
                 const data = await res.json().catch(() => ({}));
-                if (data.success) {
-                    sessionToken = data.sessionToken;
+
+                if (res.ok && data.success) {
+                    sessionToken = data.sessionToken || "";
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
                     loadData();
@@ -2821,13 +2902,12 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
-                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
-                } else {
-                    const errorMsg = document.getElementById('errorMsg');
-                    errorMsg.textContent = data.error || 'Wrong Password';
-                    errorMsg.style.display = 'block';
+                    return;
                 }
+
+                errorMsg.textContent = data.error || 'Wrong Password';
+                errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
                 alert('Login failed.');
@@ -3368,6 +3448,16 @@ button {
             return { active: false, bucket: null, player: null };
         }
 
+        function renderRegularSkatersList() {
+            const wrap = document.getElementById('regularSkatersList');
+            if (!wrap) return;
+
+            const entries = getRegularEntriesFlat();
+            if (!entries.length) {
+                wrap.innerHTML = '<div class="regular-skater-empty">No regular players set.</div>';
+                return;
+            }
+
             wrap.innerHTML = entries.map(player => {
                 const tags = [
                     `Rating ${player.rating ?? '--'}`,
@@ -3405,7 +3495,7 @@ button {
                     throw new Error(data.error || 'Failed to remove regular player');
                 }
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-
+                renderRegularSkatersList();
                 await loadData();
             } catch (err) {
                 console.error('Error removing regular player:', err);
@@ -3423,7 +3513,7 @@ button {
                 if (!res.ok) return;
                 const data = await res.json();
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-
+                renderRegularSkatersList();
             } catch (err) {
                 console.error('Error loading regular skaters:', err);
             }
@@ -3441,7 +3531,7 @@ button {
                     throw new Error(data.error || 'Failed to save regular skaters');
                 }
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-
+                renderRegularSkatersList();
             } catch (err) {
                 console.error('Error saving regular skaters:', err);
                 alert(`❌ ${err.message || 'Failed to save regular skaters.'}`);
@@ -3846,7 +3936,7 @@ button {
                 }
 
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-
+                renderRegularSkatersList();
                 await loadData();
             } catch (err) {
                 console.error('Toggle regular error:', err);
@@ -3874,6 +3964,7 @@ button {
                 const data = await res.json();
 
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay || {});
+                renderRegularSkatersList();
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
