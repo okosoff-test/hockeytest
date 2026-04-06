@@ -1489,8 +1489,6 @@
 .admin-layout-option-1 .paid-wrap { gap:3px; }
 .admin-layout-option-1 .table-note-muted { font-size:0.8rem; color:#bbb; line-height:1.35; text-align:center; }
 
-
-.regular-summary-section{display:none !important;}
 </style>
 
 <style>
@@ -2881,18 +2879,14 @@ button {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const rememberMe = document.getElementById('rememberDevice').checked;
-                const errorMsg = document.getElementById('errorMsg');
-                errorMsg.style.display = 'none';
-
-                const res = await fetch(`${API_URL}/api/admin/login`, {
+                const res = await adminFetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: getAdminHeaders(),
                     body: JSON.stringify({ password: pass, rememberMe })
                 });
                 const data = await res.json().catch(() => ({}));
-
-                if (res.ok && data.success) {
-                    sessionToken = data.sessionToken || "";
+                if (data.success) {
+                    sessionToken = data.sessionToken;
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
                     loadData();
@@ -2902,12 +2896,13 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
+                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
-                    return;
+                } else {
+                    const errorMsg = document.getElementById('errorMsg');
+                    errorMsg.textContent = data.error || 'Wrong Password';
+                    errorMsg.style.display = 'block';
                 }
-
-                errorMsg.textContent = data.error || 'Wrong Password';
-                errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
                 alert('Login failed.');
