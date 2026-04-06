@@ -1489,6 +1489,8 @@
 .admin-layout-option-1 .paid-wrap { gap:3px; }
 .admin-layout-option-1 .table-note-muted { font-size:0.8rem; color:#bbb; line-height:1.35; text-align:center; }
 
+
+.regular-summary-section{display:none !important;}
 </style>
 
 <style>
@@ -1643,6 +1645,15 @@ button {
     align-items:center;
     justify-content:center;
     gap:0 !important;
+}
+</style>
+
+
+<style id="safe-admin-hide-unused-panels">
+.add-player-form,
+.regular-summary-section,
+.regular-skaters-section {
+    display: none !important;
 }
 </style>
 
@@ -2879,14 +2890,18 @@ button {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const rememberMe = document.getElementById('rememberDevice').checked;
-                const res = await adminFetch(`${API_URL}/api/admin/login`, {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.style.display = 'none';
+
+                const res = await fetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
-                    headers: getAdminHeaders(),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: pass, rememberMe })
                 });
                 const data = await res.json().catch(() => ({}));
-                if (data.success) {
-                    sessionToken = data.sessionToken;
+
+                if (res.ok && data.success) {
+                    sessionToken = data.sessionToken || "";
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
                     loadData();
@@ -2896,13 +2911,12 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
-                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
-                } else {
-                    const errorMsg = document.getElementById('errorMsg');
-                    errorMsg.textContent = data.error || 'Wrong Password';
-                    errorMsg.style.display = 'block';
+                    return;
                 }
+
+                errorMsg.textContent = data.error || 'Wrong Password';
+                errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
                 alert('Login failed.');
