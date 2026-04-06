@@ -4041,6 +4041,80 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
 });
 
 
+
+app.post('/api/admin/toggle-regular-player', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const playerId = Number(req.body.playerId);
+        if (!Number.isFinite(playerId)) {
+            return res.status(400).json({ error: 'Invalid player id' });
+        }
+
+        const player = players.find(p => Number(p.id) === playerId);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found in registered players' });
+        }
+
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
+        const normalizedPhone = normalizePhoneDigits(player.phone);
+        let removed = false;
+
+        for (const bucket of Object.keys(regularSkatersByDay)) {
+            const before = regularSkatersByDay[bucket].length;
+            regularSkatersByDay[bucket] = regularSkatersByDay[bucket].filter(existing => {
+                const sameName =
+                    String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                    String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase();
+                const samePhone = normalizedPhone && normalizePhoneDigits(existing.phone) === normalizedPhone;
+                return !(sameName || samePhone);
+            });
+            if (regularSkatersByDay[bucket].length !== before) {
+                removed = true;
+            }
+        }
+
+        let bucketUsed = null;
+        let isRegular = false;
+
+        if (!removed) {
+            const dynamicBucket = String(getGameDayName() || '').trim().toLowerCase() || 'everyday';
+            const safeBucket = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].includes(dynamicBucket)
+                ? dynamicBucket
+                : 'everyday';
+
+            regularSkatersByDay[safeBucket] = Array.isArray(regularSkatersByDay[safeBucket]) ? regularSkatersByDay[safeBucket] : [];
+            regularSkatersByDay[safeBucket].push(normalizeRegularSkaterEntry({
+                firstName: player.firstName,
+                lastName: player.lastName,
+                phone: player.phone,
+                rating: Number(player.finalRating ?? player.rating ?? 5),
+                isFree: !!player.isGoalie || (player.firstName === 'Phan' && player.lastName === 'Ly'),
+                paymentMethod: player.isGoalie ? 'N/A' : (player.paymentMethod || 'N/A'),
+                protected: !!player.protected || (String(player.firstName || '').toLowerCase() === 'phan' && String(player.lastName || '').toLowerCase() === 'ly')
+            }));
+            bucketUsed = safeBucket;
+            isRegular = true;
+        }
+
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('toggle-regular-player');
+
+        return res.json({
+            success: true,
+            regularSkatersByDay,
+            isRegular,
+            bucket: bucketUsed,
+            gameDayName: getGameDayName()
+        });
+    } catch (err) {
+        console.error('Error toggling regular player:', err);
+        return res.status(500).json({ error: 'Failed to toggle regular player' });
+    }
+});
+
 app.post('/api/admin/regular-skaters', (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -4168,7 +4242,9 @@ app.post('/api/admin/players-full', (req, res) => {
         rosterReleased, 
         currentWeekData, 
         playerSignupCode, 
-        requirePlayerCode 
+        requirePlayerCode,
+        regularSkatersByDay,
+        gameDayName: getGameDayName()
     });
 });
 
