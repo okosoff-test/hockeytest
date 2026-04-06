@@ -5,6 +5,7 @@ const fs = require('fs');
 const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
+const AdmZip = require('adm-zip');
 const { Pool } = require('pg');
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -197,6 +198,21 @@ function parseGameTimeString(gameTimeStr) {
 
 function getGameDayName() {
     return parseGameTimeString(gameTime).dayName;
+}
+
+
+function sanitizeFilenamePart(value, fallback = 'Backup') {
+    const cleaned = String(value || '')
+        .replace(/[\/:*?"<>|]+/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim();
+    return cleaned || fallback;
+}
+
+function buildDynamicBackupBaseName() {
+    const dayName = getGameDayName();
+    const fullTitle = sanitizeFilenamePart(customTitle || `Phan's ${dayName} Hockey`, `Phan's ${dayName} Hockey`);
+    return `${fullTitle} Backup`;
 }
 
 
@@ -4234,10 +4250,17 @@ app.post('/api/admin/download-backup', async (req, res) => {
             }
         };
 
-        const filename = `phans-hockey-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
-        res.setHeader('Content-Type', 'application/json; charset=utf-8');
-        res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
-        return res.status(200).send(JSON.stringify(backup, null, 2));
+        const baseName = `${buildDynamicBackupBaseName()} ${yyyy}-${mm}-${dd} ${hh}-${mi}-${ss} ET`;
+        const jsonFilename = `${baseName}.json`;
+        const zipFilename = `${baseName}.zip`;
+
+        const zip = new AdmZip();
+        zip.addFile(jsonFilename, Buffer.from(JSON.stringify(backup, null, 2), 'utf8'));
+        const zipBuffer = zip.toBuffer();
+
+        res.setHeader('Content-Type', 'application/zip');
+        res.setHeader('Content-Disposition', `attachment; filename="${zipFilename}"`);
+        return res.status(200).send(zipBuffer);
     } catch (err) {
         console.error('Error downloading backup:', err);
         return res.status(500).json({ error: 'Failed to build backup file' });
