@@ -1495,6 +1495,7 @@
 
         function renderQuickReturnProfiles() {
             const section = document.getElementById('quickReturnSection');
+            const subtitle = section ? section.querySelector('.quick-return-subtitle') : null;
             const primary = document.getElementById('quickReturnPrimary');
             const primaryName = document.getElementById('quickReturnPrimaryName');
             const primaryMeta = document.getElementById('quickReturnPrimaryMeta');
@@ -1506,6 +1507,12 @@
             const profiles = getStoredQuickPlayers()
                 .map(sanitizeQuickPlayerProfile)
                 .filter(Boolean);
+
+            if (subtitle) {
+                subtitle.textContent = (codeRequired && !verifiedCode)
+                    ? 'Saved players are ready. Enter the 4-digit code, then tap your name for 1-tap signup.'
+                    : 'Returning players can sign up in 1 tap on this device, or fill the form if they need to change details.';
+            }
 
             list.innerHTML = '';
 
@@ -1538,11 +1545,14 @@
 
         function updateQuickReturnVisibility() {
             const section = document.getElementById('quickReturnSection');
-            const form = document.getElementById('signupForm');
-            if (!section || !form) return;
+            if (!section) return;
             const hasProfiles = getStoredQuickPlayers().length > 0;
-            section.style.display = (form.style.display !== 'none' && hasProfiles) ? 'block' : 'none';
-            if (hasProfiles) section.classList.add('active');
+            section.style.display = hasProfiles ? 'block' : 'none';
+            if (hasProfiles) {
+                section.classList.add('active');
+            } else {
+                section.classList.remove('active');
+            }
         }
 
 
