@@ -504,10 +504,73 @@ const REGULAR_GOALIES_BY_DAY = {
     ]
 };
 
+// --- REGULAR SKATERS FOR WEEKLY RESET AUTO-ADD ---
+// Supported keys: everyday, friday, sunday, wednesday, saturday, etc.
+// protected: false is recommended for most regulars so they can still cancel from the signup page.
+const DEFAULT_REGULAR_SKATERS_BY_DAY = {
+    everyday: [],
+    friday: [],
+    sunday: []
+};
+
+let regularSkatersByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
+
+function normalizeRegularSkaterEntry(input = {}) {
+    const firstName = String(input.firstName || '').trim();
+    const lastName = String(input.lastName || '').trim();
+    const phone = String(input.phone || '').trim();
+    const ratingNumber = Number(input.rating);
+    const rating = Number.isFinite(ratingNumber) ? Math.max(1, Math.min(10, Number(ratingNumber.toFixed(1)))) : 5;
+    const paymentMethodRaw = String(input.paymentMethod || 'N/A').trim();
+
+    return {
+        firstName,
+        lastName,
+        phone,
+        rating,
+        isGoalie: false,
+        isFree: !!input.isFree,
+        paymentMethod: paymentMethodRaw || 'N/A',
+        protected: !!input.protected
+    };
+}
+
+function normalizeRegularSkatersByDayMap(input = {}) {
+    const allowedKeys = new Set([
+        'everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'
+    ]);
+
+    const merged = { ...DEFAULT_REGULAR_SKATERS_BY_DAY };
+    if (!input || typeof input !== 'object') return merged;
+
+    for (const [rawKey, rawList] of Object.entries(input)) {
+        const key = String(rawKey || '').trim().toLowerCase();
+        if (!allowedKeys.has(key)) continue;
+        const list = Array.isArray(rawList) ? rawList : [];
+        merged[key] = list
+            .map(normalizeRegularSkaterEntry)
+            .filter(player => player.firstName && player.lastName && normalizePhoneDigits(player.phone).length === 10);
+    }
+
+    return merged;
+}
+
+function getRegularSkatersForDay(dayName = getGameDayName()) {
+    const dayKey = String(dayName || '').trim().toLowerCase();
+    const everydayPlayers = Array.isArray(regularSkatersByDay.everyday)
+        ? regularSkatersByDay.everyday
+        : [];
+    const dayPlayers = Array.isArray(regularSkatersByDay[dayKey])
+        ? regularSkatersByDay[dayKey]
+        : [];
+    return [...everydayPlayers, ...dayPlayers];
+}
+
 function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
     const goalieList = REGULAR_GOALIES_BY_DAY[dayKey] || REGULAR_GOALIES_BY_DAY.friday;
-    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList].map(player => ({ ...player }));
+    const skaterList = getRegularSkatersForDay(dayKey);
+    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
 }
 
 function buildRosterReleasePaymentAnnouncement() {
@@ -1596,6 +1659,13 @@ async function loadDataFromDB() {
                 announcementImages = [];
             }
         }
+        if (appSettings.regularSkatersByDay !== undefined) {
+            try {
+                regularSkatersByDay = normalizeRegularSkatersByDayMap(JSON.parse(appSettings.regularSkatersByDay || '{}'));
+            } catch {
+                regularSkatersByDay = normalizeRegularSkatersByDayMap({});
+            }
+        }
 
         await reconcileFromFileBackup();
         
@@ -1834,6 +1904,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData') {
             ['rosterReleased', rosterReleased],
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
+            ['regularSkatersByDay', regularSkatersByDay],
             ['customSignupCode', customSignupCode],
             ['signupLockStartAt', signupLockStartAt],
             ['signupLockEndAt', signupLockEndAt],
@@ -2017,6 +2088,7 @@ function buildFullDataSnapshot() {
         players,
         waitlist,
         cancelledRegistrations,
+        regularSkatersByDay,
         customSignupCode,
         gameLocation,
         gameTime,
@@ -2116,6 +2188,7 @@ function getSettingsSnapshot() {
         rosterReleased,
         currentWeekData,
         cancelledRegistrations,
+        regularSkatersByDay,
         customSignupCode,
         lastExactResetMinuteKey,
         lastExactRosterReleaseMinuteKey
@@ -2199,6 +2272,7 @@ function loadDataFromFile() {
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
+            regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             customSignupCode = String(data.customSignupCode || '').trim();
             currentWeekData = data.currentWeekData ?? {
                 weekNumber: null,
@@ -3806,7 +3880,8 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
-        backupGoalies: BACKUP_GOALIES
+        backupGoalies: BACKUP_GOALIES,
+        regularSkatersByDay
     });
 });
 
@@ -3814,7 +3889,8 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate } = req.body;
+            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
+            regularSkatersByDay: newRegularSkatersByDay } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -3828,6 +3904,9 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
         if (newAnnouncementImages !== undefined) {
             announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
+        }
+        if (newRegularSkatersByDay !== undefined) {
+            regularSkatersByDay = normalizeRegularSkatersByDayMap(newRegularSkatersByDay);
         }
         if (selectedDayTime) {
             gameTime = selectedDayTime;
@@ -3857,6 +3936,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         await saveAppSetting('announcementText', announcementText);
         await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
         await saveAppSetting('paymentEmail', paymentEmail);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
@@ -3870,6 +3950,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled,
             announcementText,
             announcementImages,
+            regularSkatersByDay,
             gameTime,
             gameLocation,
             gameDate
@@ -3878,6 +3959,31 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         console.error('Error saving app settings:', err);
         const message = err && err.message ? err.message : 'Failed to save settings';
         res.status(500).json({ error: message });
+    }
+});
+
+
+app.post('/api/admin/regular-skaters', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    res.json({ success: true, regularSkatersByDay });
+});
+
+app.post('/api/admin/update-regular-skaters', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(req.body.regularSkatersByDay || {});
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('update-regular-skaters');
+        res.json({ success: true, regularSkatersByDay });
+    } catch (err) {
+        console.error('Error saving regular skaters:', err);
+        res.status(500).json({ error: 'Failed to save regular skaters' });
     }
 });
 
@@ -4432,6 +4538,7 @@ app.post('/api/admin/settings', (req, res) => {
         resetWeekAt,
         customSignupCode,
         usingCustomSignupCode: /^\d{4}$/.test(String(customSignupCode || '').trim()),
+        regularSkatersByDay,
         defaultSignupCode: (() => {
             const day = String(getGameDayName() || '').trim().toLowerCase();
             if (day === 'friday') return FRIDAY_SIGNUP_CODE;
