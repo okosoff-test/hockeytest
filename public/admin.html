@@ -1739,9 +1739,54 @@ button {
             </div>
         </div>
 
-<!-- TITLE EDITOR -->
-        
-<!-- Unused admin UI sections removed safely: manual add, regular skaters panel, auto-add regular goalies -->
+
+        <div class="regular-skaters-section">
+            <h3>👥 Regular Skaters Auto-Add</h3>
+            <p style="color:#b9d9c4; font-size:0.9rem; margin-top:0;">
+                These players are auto-added during the weekly reset. Use <strong>everyday</strong> for players who always play, or assign them to a specific day like Friday or Sunday.
+            </p>
+
+            <div class="regular-skaters-toolbar">
+                <div class="field">
+                    <label for="regularSkaterDayBucket">Bucket</label>
+                    <select id="regularSkaterDayBucket">
+                        <option value="everyday">Everyday</option>
+                        <option value="friday">Friday</option>
+                        <option value="sunday">Sunday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="saturday">Saturday</option>
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="thursday">Thursday</option>
+                    </select>
+                </div>
+                <div class="field">
+                    <button type="button" class="control-btn" style="background:#53c27c; width:100%;" onclick="saveRegularSkatersSettings()">💾 Save Regular Skaters</button>
+                </div>
+            </div>
+
+            <div class="regular-skaters-grid">
+                <input type="text" id="regularFirstName" placeholder="First Name">
+                <input type="text" id="regularLastName" placeholder="Last Name">
+                <input type="tel" id="regularPhone" placeholder="Phone Number">
+                <input type="number" id="regularRating" placeholder="Rating (1-10)" min="1" max="10" step="0.1">
+                <input type="text" id="regularPaymentMethod" placeholder="Payment Method" value="N/A">
+                <div class="checkbox-container" style="margin:0; background:rgba(0,0,0,0.18); border-radius:8px; padding:12px;">
+                    <input type="checkbox" id="regularProtected">
+                    <label for="regularProtected">Protected</label>
+                </div>
+                <div class="checkbox-container" style="margin:0; background:rgba(0,0,0,0.18); border-radius:8px; padding:12px;">
+                    <input type="checkbox" id="regularFree">
+                    <label for="regularFree">Free Player</label>
+                </div>
+                <button type="button" class="control-btn" style="background:#2e7d32; width:100%;" onclick="addRegularSkaterFromForm()">➕ Add Regular Skater</button>
+            </div>
+
+            <div class="regular-skaters-list" id="regularSkatersList"></div>
+        </div>
+
+
+        <!-- TITLE EDITOR -->
         <div class="title-editor-section">
             <h3>🏷️ Title Editor</h3>
             <div class="title-preview" id="titlePreview">Phan's Friday Hockey</div>
@@ -1927,7 +1972,48 @@ button {
             </div>
         </div>
 
-<!-- Backup Goalies Section - FOR SUBSTITUTIONS -->
+        <!-- Pre-defined Goalies Section - AUTO ADD -->
+        <div class="goalies-section">
+            <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
+            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
+                These goalies can be added manually now. Weekly reset is dynamic: Friday auto-adds Craig + Hao, Sunday auto-adds Craig + Mat.
+            </p>
+            <div class="goalie-list" id="predefinedGoalies">
+                <div class="goalie-item">
+                    <div class="goalie-checkbox-wrapper">
+                        <input type="checkbox" id="goalieCraig" value="Craig Scolack">
+                        <label for="goalieCraig">Craig Scolack</label>
+                    </div>
+                    <div class="goalie-rating">
+                        <label>Rating:</label>
+                        <input type="number" id="ratingCraig" min="1" max="10" value="9">
+                    </div>
+                </div>
+                <div class="goalie-item">
+                    <div class="goalie-checkbox-wrapper">
+                        <input type="checkbox" id="goalieHao" value="Hao Chau">
+                        <label for="goalieHao">Hao Chau</label>
+                    </div>
+                    <div class="goalie-rating">
+                        <label>Rating:</label>
+                        <input type="number" id="ratingHao" min="1" max="10" value="8">
+                    </div>
+                </div>
+                <div class="goalie-item">
+                    <div class="goalie-checkbox-wrapper">
+                        <input type="checkbox" id="goalieMat" value="Mat Carriere">
+                        <label for="goalieMat">Mat Carriere</label>
+                    </div>
+                    <div class="goalie-rating">
+                        <label>Rating:</label>
+                        <input type="number" id="ratingMat" min="1" max="10" value="7">
+                    </div>
+                </div>
+            </div>
+            <button class="add-goalies-btn" onclick="addSelectedGoalies()">➕ Add Selected Goalies Now</button>
+        </div>
+
+        <!-- Backup Goalies Section - FOR SUBSTITUTIONS -->
         <div class="backup-goalies-section">
             <h3>🔄 Backup Goalies (Substitutions)</h3>
             <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
@@ -1994,7 +2080,30 @@ button {
             <div id="deleteResult" class="delete-result"></div>
         </div>
 
-<h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
+        <!-- Add Player Form -->
+        <div class="add-player-form">
+            <h3>➕ Add Player Manually</h3>
+            <div class="form-row">
+                <input type="text" id="newFirstName" placeholder="First Name">
+                <input type="text" id="newLastName" placeholder="Last Name">
+            </div>
+            <input type="tel" id="newPhone" placeholder="Phone Number">
+            <div class="form-row">
+                <input type="number" id="newRating" placeholder="Rating (1-10)" min="1" max="10">
+                <select id="newPayment">
+                    <option value="Cash">Cash</option>
+                    <option value="E-Transfer">E-Transfer</option>
+                    <option value="PIA">PIA (Pay In Advance)</option>
+                </select>
+            </div>
+            <label style="display:flex; align-items:center; gap:10px; margin:10px 0; color:#aaa;">
+                <input type="checkbox" id="addToWaitlist" style="width:auto;">
+                Add to Waitlist
+            </label>
+            <button class="add-btn" onclick="addPlayer()">Add Player</button>
+        </div>
+
+        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
         <table>
             <thead>
                 <tr>
@@ -3806,7 +3915,7 @@ button {
 
 
         function askRegularBucket(defaultBucket = 'everyday') {
-            const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
+            const raw = prompt('Regular this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
             if (raw === null) return null;
             const bucket = String(raw || '').trim().toLowerCase();
             const allowed = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -3839,7 +3948,7 @@ button {
                     alert(`✅ Added to ${bucket} regulars.`);
                 }
             } catch (err) {
-                console.error('Promote-to-regular error:', err);
+                console.error('Regular-to-regular error:', err);
                 alert(`❌ ${err.message || 'Failed to promote player to regular.'}`);
             }
         }
@@ -3943,7 +4052,7 @@ button {
                             <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>
-                                <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="promotePlayerToRegular(${p.id}, 'everyday')">Promote</button>
+                                <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="promotePlayerToRegular(${p.id}, 'everyday')">Regular</button>
                             </td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -3976,7 +4085,7 @@ button {
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
-                                    <button class="promote-btn" data-player-id="${p.id}">Promote</button>
+                                    <button class="promote-btn" data-player-id="${p.id}">Regular</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
                             </td>
@@ -4138,9 +4247,9 @@ button {
             const spotsDisplay = document.getElementById('currentPlayerSpotsDisplay').innerText;
             const spots = parseInt(spotsDisplay);
             
-            let confirmMsg = "Promote this player from waitlist to game?";
+            let confirmMsg = "Regular this player from waitlist to game?";
             if (spots <= 0) {
-                confirmMsg = "⚠️ ADMIN OVERRIDE\n\nPlayer spots are currently 0.\nPromote player anyway?";
+                confirmMsg = "⚠️ ADMIN OVERRIDE\n\nPlayer spots are currently 0.\nRegular player anyway?";
             }
             
             if (!confirm(confirmMsg)) return;
@@ -4170,7 +4279,7 @@ button {
                     alert("Error: " + err.error);
                 }
             } catch (err) {
-                console.error("Promote player error:", err);
+                console.error("Regular player error:", err);
                 alert("Error promoting player");
             }
         }
@@ -4903,6 +5012,26 @@ This backup has fewer records than live data.
             }
         }
 
+
+function isPlayerRegular(player, regularMap) {
+    if (!regularMap) return false;
+    const phone = (player.phone || '').replace(/\D/g, '');
+    return Object.values(regularMap).some(list =>
+        (list || []).some(p =>
+            (p.phone || '').replace(/\D/g, '') === phone
+        )
+    );
+}
+
+async function toggleRegular(phone) {
+    await fetch('/admin/toggle-regular-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+    });
+    loadAdminData();
+}
+
 </script>
 
     <div class="clock-modal" id="clockModal">
@@ -4969,6 +5098,26 @@ function compactPayToggle(playerId){
     }
     setTimeout(loadData, 150);
 }
+
+function isPlayerRegular(player, regularMap) {
+    if (!regularMap) return false;
+    const phone = (player.phone || '').replace(/\D/g, '');
+    return Object.values(regularMap).some(list =>
+        (list || []).some(p =>
+            (p.phone || '').replace(/\D/g, '') === phone
+        )
+    );
+}
+
+async function toggleRegular(phone) {
+    await fetch('/admin/toggle-regular-player', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone })
+    });
+    loadAdminData();
+}
+
 </script>
 
 </body>
