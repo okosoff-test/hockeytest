@@ -2112,6 +2112,7 @@ button {
                     <th>Rating</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
                     <th>Payment</th>
+                    <th>Regular</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -2240,7 +2241,6 @@ button {
 
         let sessionToken = getStoredSessionToken();
         let maxGoalies = 2;
-        let currentRegularSkatersByDay = { everyday: [], friday: [], sunday: [] };
 
         function getAdminHeaders(extra = {}) {
             const headers = { 'Content-Type': 'application/json', ...extra };
@@ -3644,9 +3644,6 @@ button {
                     document.getElementById('releasedRosterPreview').classList.remove('active');
                 }
 
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay);
-                renderRegularSkatersList();
-                loadRegularSkatersSettings();
             } catch (err) {
                 console.error("Error loading settings:", err);
             }
@@ -3916,6 +3913,47 @@ button {
             }
         }
 
+
+        function askRegularBucket(defaultBucket = 'everyday') {
+            const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
+            if (raw === null) return null;
+            const bucket = String(raw || '').trim().toLowerCase();
+            const allowed = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+            if (!allowed.includes(bucket)) {
+                alert('Please enter one of: ' + allowed.join(', '));
+                return null;
+            }
+            return bucket;
+        }
+
+        async function promotePlayerToRegular(playerId, suggestedBucket = 'everyday') {
+            const bucket = askRegularBucket(suggestedBucket);
+            if (!bucket) return;
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/promote-player-to-regular`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, playerId, bucket })
+                });
+                const data = await res.json();
+
+                if (!res.ok) {
+                    throw new Error(data.error || 'Failed to promote player to regular');
+                }
+
+                if (data.alreadyExists) {
+                    alert(`Already a regular in ${bucket}.`);
+                } else {
+                    alert(`✅ Added to ${bucket} regulars.`);
+                }
+            } catch (err) {
+                console.error('Promote-to-regular error:', err);
+                alert(`❌ ${err.message || 'Failed to promote player to regular.'}`);
+            }
+        }
+
+
         async function loadData() {
             try {
                 const res = await fetch(`${API_URL}/api/admin/players-full`, {
@@ -3969,7 +4007,7 @@ button {
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     data.players.forEach(p => {
                         const tr = document.createElement('tr');
@@ -4013,6 +4051,9 @@ button {
                             </td>
                             <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
+                            <td>
+                                <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="promotePlayerToRegular(${p.id}, 'everyday')">Promote</button>
+                            </td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>

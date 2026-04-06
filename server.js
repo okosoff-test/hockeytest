@@ -3963,6 +3963,84 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
 });
 
 
+
+app.post('/api/admin/promote-player-to-regular', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const playerId = Number(req.body.playerId);
+        const bucketRaw = String(req.body.bucket || '').trim().toLowerCase();
+        const allowedBuckets = new Set(['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
+
+        if (!Number.isFinite(playerId)) {
+            return res.status(400).json({ error: 'Invalid player id' });
+        }
+        if (!allowedBuckets.has(bucketRaw)) {
+            return res.status(400).json({ error: 'Invalid regular-player bucket' });
+        }
+
+        const player = players.find(p => Number(p.id) === playerId);
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found in registered players' });
+        }
+
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
+        regularSkatersByDay[bucketRaw] = Array.isArray(regularSkatersByDay[bucketRaw]) ? regularSkatersByDay[bucketRaw] : [];
+
+        const normalizedPhone = normalizePhoneDigits(player.phone);
+        const alreadyExists = regularSkatersByDay[bucketRaw].some(existing =>
+            (
+                String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase()
+            ) ||
+            (
+                normalizedPhone &&
+                normalizePhoneDigits(existing.phone) === normalizedPhone
+            )
+        );
+
+        if (alreadyExists) {
+            return res.json({
+                success: true,
+                alreadyExists: true,
+                bucket: bucketRaw,
+                regularSkatersByDay,
+                message: `${player.firstName} ${player.lastName} is already a regular in ${bucketRaw}.`
+            });
+        }
+
+        const promotedRegular = normalizeRegularSkaterEntry({
+            firstName: player.firstName,
+            lastName: player.lastName,
+            phone: player.phone,
+            rating: Number(player.finalRating ?? player.rating ?? 5),
+            paymentMethod: player.paymentMethod || 'N/A',
+            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'),
+            protected: !!player.protected
+        });
+
+        regularSkatersByDay[bucketRaw].push(promotedRegular);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('promote-player-to-regular');
+
+        return res.json({
+            success: true,
+            bucket: bucketRaw,
+            regularSkatersByDay,
+            promotedPlayer: {
+                firstName: promotedRegular.firstName,
+                lastName: promotedRegular.lastName
+            }
+        });
+    } catch (err) {
+        console.error('Error promoting player to regular:', err);
+        return res.status(500).json({ error: 'Failed to promote player to regular' });
+    }
+});
+
+
 app.post('/api/admin/regular-skaters', (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
