@@ -1620,7 +1620,7 @@ button {
         <p style="text-align:center; color:#888;">Phan's Hockey</p>
         <input type="password" id="adminPass" placeholder="Enter Render ADMIN_PASSWORD">
         <div style="display:flex; align-items:center; gap:3px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
-            <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;">
+            <input type="checkbox" id="showAdminPass" style="width:auto; margin:0;" onchange="toggleAdminPasswordVisibility()">
             <label for="showAdminPass" style="cursor:pointer;">Show password</label>
             <span style="opacity:.45;">•</span>
             <input type="checkbox" id="rememberDevice" style="width:auto; margin:0;" checked>
@@ -2681,9 +2681,6 @@ button {
         let playersCount = 0;
         let currentTotalPaid = 0;
         let backupGoaliesData = [];
-        let currentRegularSkatersByDay = {
-            everyday: [], sunday: [], monday: [], tuesday: [], wednesday: [], thursday: [], friday: [], saturday: []
-        };
 
         // Pre-defined goalie data
         const PREDEFINED_GOALIES = [
@@ -2881,13 +2878,21 @@ button {
             try {
                 const pass = document.getElementById('adminPass').value;
                 const rememberMe = document.getElementById('rememberDevice').checked;
-                const res = await adminFetch(`${API_URL}/api/admin/login`, {
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.style.display = 'none';
+
+                clearStoredSessionToken();
+                sessionToken = "";
+
+                const res = await fetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
-                    headers: getAdminHeaders(),
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ password: pass, rememberMe })
                 });
+
                 const data = await res.json().catch(() => ({}));
-                if (data.success) {
+
+                if (res.ok && data.success && data.sessionToken) {
                     sessionToken = data.sessionToken;
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
@@ -2898,17 +2903,25 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
-                    loadSystemStatus();
                     setTimeout(loadHistoryList, 500);
-                } else {
-                    const errorMsg = document.getElementById('errorMsg');
-                    errorMsg.textContent = data.error || 'Wrong Password';
-                    errorMsg.style.display = 'block';
+                    return;
                 }
+
+                errorMsg.textContent = data.error || 'Wrong Password';
+                errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
-                alert('Login failed.');
+                const errorMsg = document.getElementById('errorMsg');
+                errorMsg.textContent = 'Login failed. Check server/admin password.';
+                errorMsg.style.display = 'block';
             }
+        }
+
+        function toggleAdminPasswordVisibility() {
+            const passInput = document.getElementById('adminPass');
+            const toggle = document.getElementById('showAdminPass');
+            if (!passInput || !toggle) return;
+            passInput.type = toggle.checked ? 'text' : 'password';
         }
 
         async function logout() {
@@ -2957,7 +2970,7 @@ button {
         });
 
         document.getElementById('showAdminPass').addEventListener('change', function() {
-            document.getElementById('adminPass').type = this.checked ? 'text' : 'password';
+            toggleAdminPasswordVisibility();
         });
 
         // Load app settings (maintenance mode, title, etc.)
@@ -3044,9 +3057,6 @@ button {
                     announcementImagePreview.classList.toggle('visible', !!firstImage);
                     window.announcementImageData = firstImage || '';
                 }
-
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-                renderRegularSkatersList();
 
                 updateTitlePreview();
             } catch (err) {
@@ -3920,9 +3930,8 @@ button {
         }
 
 
-        function askRegularBucket(defaultBucket = 'everyday', currentBuckets = []) {
-            const bucketNote = currentBuckets.length ? `\nCurrent regular bucket(s): ${currentBuckets.join(', ')}` : '';
-            const raw = prompt('Toggle this player in which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday' + bucketNote + '\n\nIf the player is already in the bucket you choose, they will be removed from it.', defaultBucket);
+        function askRegularBucket(defaultBucket = 'everyday') {
+            const raw = prompt('Promote this player to which regular bucket?\nType: everyday, friday, sunday, monday, tuesday, wednesday, thursday, saturday', defaultBucket);
             if (raw === null) return null;
             const bucket = String(raw || '').trim().toLowerCase();
             const allowed = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
@@ -3933,39 +3942,12 @@ button {
             return bucket;
         }
 
-        function getRegularBucketsForPlayerUI(player) {
-            const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
-            const phoneDigits = String(((player && player.phone) || '')).replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-            return Object.entries(map)
-                .filter(([, list]) => Array.isArray(list))
-                .filter(([, list]) => list.some(existing => {
-                    const sameName =
-                        String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
-                        String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase();
-                    const existingDigits = String(existing.phone || '').replace(/\D/g, '').replace(/^1(?=\d{10}$)/, '');
-                    const samePhone = phoneDigits && existingDigits === phoneDigits;
-                    return sameName || samePhone;
-                }))
-                .map(([bucket]) => bucket);
-        }
-
-        function getRegularToggleButtonHtml(player) {
-            const buckets = getRegularBucketsForPlayerUI(player);
-            const isRegular = buckets.length > 0;
-            const label = isRegular ? `Regular: ${buckets.join(', ')}` : 'Make Regular';
-            const bg = isRegular ? '#2e7d32' : '#7e57c2';
-            const defaultBucket = buckets[0] || 'everyday';
-            return `<button class="control-btn" style="background:${bg}; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${player.id}, '${defaultBucket}')">${label}</button>`;
-        }
-
-        async function togglePlayerRegular(playerId, suggestedBucket = 'everyday') {
-            const playerRow = (window.latestAdminPlayers || []).find(p => Number(p.id) === Number(playerId)) || null;
-            const currentBuckets = playerRow ? getRegularBucketsForPlayerUI(playerRow) : [];
-            const bucket = askRegularBucket(suggestedBucket, currentBuckets);
+        async function promotePlayerToRegular(playerId, suggestedBucket = 'everyday') {
+            const bucket = askRegularBucket(suggestedBucket);
             if (!bucket) return;
 
             try {
-                const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
+                const res = await fetch(`${API_URL}/api/admin/promote-player-to-regular`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
                     body: JSON.stringify({ sessionToken, playerId, bucket })
@@ -3973,23 +3955,8 @@ button {
                 const data = await res.json();
 
                 if (!res.ok) {
-                    throw new Error(data.error || 'Failed to update regular player');
+                    throw new Error(data.error || 'Failed to promote player to regular');
                 }
-
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-                renderRegularSkatersList();
-                await loadData();
-
-                if (data.action === 'removed') {
-                    alert(`✅ Removed from ${bucket} regulars.`);
-                } else {
-                    alert(`✅ Added to ${bucket} regulars.`);
-                }
-            } catch (err) {
-                console.error('Toggle regular error:', err);
-                alert(`❌ ${err.message || 'Failed to update regular player.'}`);
-            }
-        }
 
                 if (data.alreadyExists) {
                     alert(`Already a regular in ${bucket}.`);
@@ -4021,9 +3988,6 @@ button {
                 }
                 
                 const data = await res.json();
-                window.latestAdminPlayers = Array.isArray(data.players) ? data.players : [];
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay);
-                renderRegularSkatersList();
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
@@ -4103,7 +4067,21 @@ button {
                             </td>
                             <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
-                            <td>${getRegularToggleButtonHtml(p)}</td>
+                            <td>
+                                <div style="display:flex; gap:6px; align-items:center; justify-content:center; flex-wrap:wrap;">
+                                    <select id="regular-bucket-${p.id}" style="width:auto; min-width:110px; margin:0; padding:5px 8px;">
+                                        <option value="everyday">Everyday</option>
+                                        <option value="friday">Friday</option>
+                                        <option value="sunday">Sunday</option>
+                                        <option value="wednesday">Wednesday</option>
+                                        <option value="saturday">Saturday</option>
+                                        <option value="monday">Monday</option>
+                                        <option value="tuesday">Tuesday</option>
+                                        <option value="thursday">Thursday</option>
+                                    </select>
+                                    <button class="control-btn" style="background:#7e57c2; padding:5px 8px; font-size:0.75rem; width:auto; margin:0;" onclick="togglePlayerRegular(${p.id})">${getRegularButtonLabel(p, data.regularSkatersByDay)}</button>
+                                </div>
+                            </td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
@@ -4790,7 +4768,7 @@ button {
             if (upload) upload.addEventListener('change', handleAnnouncementImageUpload);
         });
 
-        initializeEnhancedDateTimeControls();
+        try { initializeEnhancedDateTimeControls(); } catch (err) { console.error('Enhanced date/time init error:', err); }
         checkSession();
         setInterval(() => {
             if (sessionToken) loadSystemStatus();

@@ -573,28 +573,6 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
 }
 
-function findRegularBucketForPlayer(player) {
-    if (!player) return '';
-    regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
-    const playerPhone = normalizePhoneDigits(player.phone || '');
-    const firstName = String(player.firstName || '').trim().toLowerCase();
-    const lastName = String(player.lastName || '').trim().toLowerCase();
-    const allowedBuckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-
-    for (const bucket of allowedBuckets) {
-        const list = Array.isArray(regularSkatersByDay[bucket]) ? regularSkatersByDay[bucket] : [];
-        const match = list.some(existing => {
-            const existingPhone = normalizePhoneDigits(existing.phone || '');
-            return (playerPhone && existingPhone && playerPhone === existingPhone)
-                || (String(existing.firstName || '').trim().toLowerCase() === firstName
-                    && String(existing.lastName || '').trim().toLowerCase() === lastName);
-        });
-        if (match) return bucket;
-    }
-
-    return '';
-}
-
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
@@ -3986,69 +3964,6 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
 
 
 
-app.post('/api/admin/toggle-player-regular', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) {
-        return res.status(401).json({ error: 'Unauthorized' });
-    }
-
-    try {
-        const { playerId, bucket } = req.body || {};
-        const bucketRaw = String(bucket || '').trim().toLowerCase();
-        const allowedBuckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-
-        if (!allowedBuckets.includes(bucketRaw)) {
-            return res.status(400).json({ error: 'Invalid regular-player bucket' });
-        }
-
-        const player = players.find(p => String(p.id) === String(playerId));
-        if (!player) {
-            return res.status(404).json({ error: 'Player not found' });
-        }
-
-        regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
-        regularSkatersByDay[bucketRaw] = Array.isArray(regularSkatersByDay[bucketRaw]) ? regularSkatersByDay[bucketRaw] : [];
-
-        const normalizedPhone = normalizePhoneDigits(player.phone || '');
-        const beforeCount = regularSkatersByDay[bucketRaw].length;
-
-        regularSkatersByDay[bucketRaw] = regularSkatersByDay[bucketRaw].filter(existing => {
-            const existingPhone = normalizePhoneDigits(existing.phone || '');
-            const samePhone = normalizedPhone && existingPhone && normalizedPhone === existingPhone;
-            const sameName = String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase()
-                && String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase();
-            return !(samePhone || sameName);
-        });
-
-        let action = 'removed';
-
-        if (regularSkatersByDay[bucketRaw].length === beforeCount) {
-            regularSkatersByDay[bucketRaw].push(normalizeRegularSkaterEntry({
-                firstName: player.firstName,
-                lastName: player.lastName,
-                phone: player.phone,
-                rating: Number(player.finalRating ?? player.rating ?? 5),
-                paymentMethod: player.isGoalie ? 'N/A' : (player.paymentMethod || 'N/A'),
-                isFree: !!player.paid && Number(player.paidAmount || 0) === 0,
-                protected: !!player.protected
-            }));
-            action = 'added';
-        }
-
-        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
-        await saveData('toggle-player-regular');
-
-        return res.json({
-            success: true,
-            action,
-            bucket: bucketRaw,
-            regularSkatersByDay
-        });
-    } catch (err) {
-        console.error('Error toggling player regular state:', err);
-        return res.status(500).json({ error: 'Failed to update regular player' });
-    }
-});
-
 app.post('/api/admin/promote-player-to-regular', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -4087,12 +4002,23 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
         );
 
         if (alreadyExists) {
+            regularSkatersByDay[bucketRaw] = regularSkatersByDay[bucketRaw].filter(existing => {
+                const sameName =
+                    String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                    String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase();
+                const samePhone = normalizedPhone && normalizePhoneDigits(existing.phone) === normalizedPhone;
+                return !(sameName || samePhone);
+            });
+
+            await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+            await saveData('unpromote-player-from-regular');
+
             return res.json({
                 success: true,
-                alreadyExists: true,
+                removed: true,
                 bucket: bucketRaw,
                 regularSkatersByDay,
-                message: `${player.firstName} ${player.lastName} is already a regular in ${bucketRaw}.`
+                message: `${player.firstName} ${player.lastName} removed from ${bucketRaw} regular resets.`
             });
         }
 
@@ -4254,7 +4180,7 @@ app.post('/api/admin/players-full', (req, res) => {
         currentWeekData, 
         playerSignupCode, 
         requirePlayerCode,
-        regularSkatersByDay 
+        regularSkatersByDay
     });
 });
 
