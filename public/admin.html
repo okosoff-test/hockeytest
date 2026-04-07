@@ -1650,9 +1650,13 @@ button {
 
 
 <style id="safe-ui-hide-unused-admin-panels">
-.add-player-form,
 .regular-summary-section,
 .regular-skaters-section,
+.goalies-section,
+.backup-goalies-section,
+.add-goalie-fly-section {
+    display: none !important;
+}
 </style>
 
 </head>
@@ -1682,7 +1686,7 @@ button {
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
             <h1 style="margin:0;">Admin Dashboard</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Game Day Backup</button>
+                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
                 <button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
                 <button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
                 <button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Backup</button>
@@ -1976,96 +1980,7 @@ button {
             </div>
         </div>
 
-        <!-- Pre-defined Goalies Section - AUTO ADD -->
-        <div class="goalies-section">
-            <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                These goalies can be added manually now. Weekly reset is dynamic: Friday auto-adds Craig + Hao, Sunday auto-adds Craig + Mat.
-            </p>
-            <div class="goalie-list" id="predefinedGoalies">
-                <div class="goalie-item">
-                    <div class="goalie-checkbox-wrapper">
-                        <input type="checkbox" id="goalieCraig" value="Craig Scolack">
-                        <label for="goalieCraig">Craig Scolack</label>
-                    </div>
-                    <div class="goalie-rating">
-                        <label>Rating:</label>
-                        <input type="number" id="ratingCraig" min="1" max="10" value="9">
-                    </div>
-                </div>
-                <div class="goalie-item">
-                    <div class="goalie-checkbox-wrapper">
-                        <input type="checkbox" id="goalieHao" value="Hao Chau">
-                        <label for="goalieHao">Hao Chau</label>
-                    </div>
-                    <div class="goalie-rating">
-                        <label>Rating:</label>
-                        <input type="number" id="ratingHao" min="1" max="10" value="8">
-                    </div>
-                </div>
-                <div class="goalie-item">
-                    <div class="goalie-checkbox-wrapper">
-                        <input type="checkbox" id="goalieMat" value="Mat Carriere">
-                        <label for="goalieMat">Mat Carriere</label>
-                    </div>
-                    <div class="goalie-rating">
-                        <label>Rating:</label>
-                        <input type="number" id="ratingMat" min="1" max="10" value="7">
-                    </div>
-                </div>
-            </div>
-            <button class="add-goalies-btn" onclick="addSelectedGoalies()">➕ Add Selected Goalies Now</button>
-        </div>
-
-        <!-- Backup Goalies Section - FOR SUBSTITUTIONS -->
-        <div class="backup-goalies-section">
-            <h3>🔄 Backup Goalies (Substitutions)</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                Select a backup goalie to substitute when needed. Sunday regular setup now uses Craig + Mat.
-            </p>
-            <div class="backup-goalie-select">
-                <select id="backupGoalieSelect">
-                    <option value="">-- Select Backup Goalie --</option>
-                    <option value="0">Mat Carriere (Rating: 7, 226-350-0217)</option>
-                    <option value="1">Jesse Laframboise (Rating: 7, 519-566-6711)</option>
-                    <option value="2">Kent Nelson (Rating: 7, 250-884-6609)</option>
-                </select>
-                <button class="add-backup-btn" onclick="addBackupGoalie()">Add as Substitute</button>
-            </div>
-            <p style="color: #888; font-size: 0.8rem; margin-top: 10px;">
-                * Backup goalies will be added with "N/A" payment method and auto-marked as paid.
-            </p>
-        </div>
-
-        <!-- Add Goalie On The Fly -->
-        <div class="add-goalie-fly-section">
-            <h3>✨ Add/Edit Goalie On The Fly</h3>
-            <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                Quickly add a new goalie not in the system. Edit by removing and re-adding.
-            </p>
-            <div class="fly-goalie-form">
-                <input type="text" id="flyGoalieFirstName" placeholder="First Name">
-                <input type="text" id="flyGoalieLastName" placeholder="Last Name">
-                <input type="tel" id="flyGoaliePhone" placeholder="Phone Number">
-            </div>
-            <div class="fly-goalie-form" style="grid-template-columns: 1fr 2fr; margin-top:10px;">
-                <input type="number" id="flyGoalieRating" min="1" max="10" value="7" placeholder="Rating (1-10)">
-                <input type="text" id="flyGoalieNote" placeholder="Notes (optional)">
-            </div>
-            <button class="add-fly-btn" onclick="addGoalieOnTheFly()">➕ Add New Goalie</button>
-        </div>
-
-        <div class="control-box">
-            <h3>📚 History</h3>
-            <div class="control-row">
-                <button class="control-btn" onclick="window.open('/history', '_blank')" style="background: #4a90e2;">
-                    View Roster History
-                </button>
-                <div class="status-display">
-                    Past weeks are automatically archived
-                </div>
-            </div>
-        </div>
+        <!-- Goalie-only admin sections removed to keep panel short and neat -->
 
         <!-- History Management -->
         <div class="history-delete-box">
@@ -2100,10 +2015,19 @@ button {
                     <option value="PIA">PIA (Pay In Advance)</option>
                 </select>
             </div>
-            <label style="display:flex; align-items:center; gap:10px; margin:10px 0; color:#aaa;">
-                <input type="checkbox" id="addToWaitlist" style="width:auto;">
-                Add to Waitlist
-            </label>
+            <div class="form-row" style="grid-template-columns: 1fr 1fr; align-items:center;">
+                <label style="display:flex; align-items:center; gap:10px; margin:4px 0; color:#aaa;">
+                    <input type="checkbox" id="newIsGoalie" style="width:auto;" onchange="toggleManualGoalieMode()">
+                    Goalie (always free)
+                </label>
+                <label style="display:flex; align-items:center; gap:10px; margin:4px 0; color:#aaa; justify-self:start;">
+                    <input type="checkbox" id="addToWaitlist" style="width:auto;">
+                    Add to Waitlist
+                </label>
+            </div>
+            <div id="goalieFreeNote" style="display:none; color:#4CAF50; font-size:0.9rem; margin-top:4px;">
+                Goalies are added as free and marked paid automatically.
+            </div>
             <button class="add-btn" onclick="addPlayer()">Add Player</button>
         </div>
 
@@ -4357,12 +4281,32 @@ button {
             }
         }
 
+        function toggleManualGoalieMode() {
+            const goalieCheckbox = document.getElementById('newIsGoalie');
+            const paymentSelect = document.getElementById('newPayment');
+            const freeNote = document.getElementById('goalieFreeNote');
+            if (!goalieCheckbox || !paymentSelect) return;
+
+            const isGoalie = !!goalieCheckbox.checked;
+            paymentSelect.disabled = isGoalie;
+            paymentSelect.style.opacity = isGoalie ? '0.65' : '1';
+            paymentSelect.style.cursor = isGoalie ? 'not-allowed' : 'pointer';
+            if (freeNote) freeNote.style.display = isGoalie ? 'block' : 'none';
+            if (isGoalie) {
+                paymentSelect.dataset.previousValue = paymentSelect.value;
+                paymentSelect.value = 'Cash';
+            } else if (paymentSelect.dataset.previousValue) {
+                paymentSelect.value = paymentSelect.dataset.previousValue;
+            }
+        }
+
         async function addPlayer() {
             const firstName = document.getElementById('newFirstName').value;
             const lastName = document.getElementById('newLastName').value;
             const phone = document.getElementById('newPhone').value;
             const rating = document.getElementById('newRating').value;
             const paymentMethod = document.getElementById('newPayment').value;
+            const isGoalie = document.getElementById('newIsGoalie').checked;
             const toWaitlist = document.getElementById('addToWaitlist').checked;
 
             if (!firstName || !lastName || !phone || !rating) {
@@ -4380,8 +4324,8 @@ button {
                         lastName, 
                         phone, 
                         rating,
-                        paymentMethod, 
-                        isGoalie: false,
+                        paymentMethod: isGoalie ? 'FREE' : paymentMethod, 
+                        isGoalie,
                         toWaitlist 
                     })
                 });
@@ -4391,7 +4335,9 @@ button {
                     document.getElementById('newLastName').value = '';
                     document.getElementById('newPhone').value = '';
                     document.getElementById('newRating').value = '';
+                    document.getElementById('newIsGoalie').checked = false;
                     document.getElementById('addToWaitlist').checked = false;
+                    toggleManualGoalieMode();
                     loadData();
                 } else if (res.status === 401) {
                     logout();
@@ -4650,7 +4596,7 @@ button {
                 const blob = await res.blob();
                 const contentDisposition = res.headers.get('content-disposition') || '';
                 const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-                const filename = match ? match[1] : `GameDay-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                const filename = match ? match[1] : `phans-hockey-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
