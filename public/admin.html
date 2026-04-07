@@ -1653,11 +1653,6 @@ button {
 .add-player-form,
 .regular-summary-section,
 .regular-skaters-section,
-.goalies-section,
-.backup-goalies-section,
-.add-goalie-fly-section {
-    display: none !important;
-}
 </style>
 
 </head>
@@ -1687,7 +1682,7 @@ button {
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
             <h1 style="margin:0;">Admin Dashboard</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
+                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Game Day Backup</button>
                 <button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
                 <button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
                 <button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Backup</button>
@@ -2693,7 +2688,6 @@ button {
         }
 
         let currentGoalies = 0;
-        let currentPlayers = [];
         let playersCount = 0;
         let currentTotalPaid = 0;
         let backupGoaliesData = [];
@@ -3271,115 +3265,6 @@ button {
             } catch (err) {
                 console.error("Error adding backup goalie:", err);
                 alert("Error adding backup goalie");
-            }
-        }
-
-        async function editGoalie(playerId) {
-            const goalie = (currentPlayers || []).find(p => String(p.id) === String(playerId) && p.isGoalie);
-            if (!goalie) {
-                alert('Goalie not found.');
-                return;
-            }
-
-            const firstName = prompt('Goalie first name:', goalie.firstName || '');
-            if (firstName === null) return;
-            const lastName = prompt('Goalie last name:', goalie.lastName || '');
-            if (lastName === null) return;
-            const phone = prompt('Goalie phone number:', goalie.phone || '');
-            if (phone === null) return;
-            const rating = prompt('Goalie rating (1-10):', String(Number(goalie.finalRating ?? goalie.rating ?? 7).toFixed(1)));
-            if (rating === null) return;
-
-            try {
-                const res = await fetch(`${API_URL}/api/admin/update-goalie`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({
-                        sessionToken,
-                        goalieId: playerId,
-                        firstName: firstName.trim(),
-                        lastName: lastName.trim(),
-                        phone: phone.trim(),
-                        rating: parseFloat(rating)
-                    })
-                });
-
-                const data = await res.json();
-                if (!res.ok) {
-                    throw new Error(data.error || 'Failed to update goalie');
-                }
-
-                alert(`✅ ${data.goalie.firstName} ${data.goalie.lastName} updated.`);
-                loadData();
-            } catch (err) {
-                console.error('Edit goalie error:', err);
-                alert(err.message || 'Failed to update goalie');
-            }
-        }
-
-        async function substituteGoalie(playerId) {
-            const goalie = (currentPlayers || []).find(p => String(p.id) === String(playerId) && p.isGoalie);
-            if (!goalie) {
-                alert('Goalie not found.');
-                return;
-            }
-
-            const backupOptions = [
-                '1 = Mat Carriere (226-350-0217, rating 7)',
-                '2 = Jesse Laframboise (519-566-6711, rating 7)',
-                '3 = Kent Nelson (250-884-6609, rating 7)',
-                'C = custom goalie details'
-            ].join('\n');
-
-            const choice = prompt(
-                `Substitute ${goalie.firstName} ${goalie.lastName}\n\nChoose replacement:\n${backupOptions}`,
-                '1'
-            );
-            if (choice === null) return;
-
-            try {
-                let payload = { sessionToken, goalieId: playerId };
-                const normalizedChoice = String(choice).trim().toUpperCase();
-
-                if (normalizedChoice === 'C') {
-                    const firstName = prompt('Replacement goalie first name:', '');
-                    if (firstName === null) return;
-                    const lastName = prompt('Replacement goalie last name:', '');
-                    if (lastName === null) return;
-                    const phone = prompt('Replacement goalie phone number:', '');
-                    if (phone === null) return;
-                    const rating = prompt('Replacement goalie rating (1-10):', '7');
-                    if (rating === null) return;
-                    payload.customGoalie = {
-                        firstName: firstName.trim(),
-                        lastName: lastName.trim(),
-                        phone: phone.trim(),
-                        rating: parseFloat(rating)
-                    };
-                } else {
-                    const numericChoice = parseInt(normalizedChoice, 10);
-                    if (![1, 2, 3].includes(numericChoice)) {
-                        alert('Invalid selection. Use 1, 2, 3, or C.');
-                        return;
-                    }
-                    payload.backupGoalieIndex = numericChoice - 1;
-                }
-
-                const res = await fetch(`${API_URL}/api/admin/substitute-goalie`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify(payload)
-                });
-                const data = await res.json();
-                if (!res.ok) {
-                    throw new Error(data.error || 'Failed to substitute goalie');
-                }
-
-                alert(`✅ ${data.message}`);
-                loadData();
-            } catch (err) {
-                console.error('Substitute goalie error:', err);
-                alert(err.message || 'Failed to substitute goalie');
             }
         }
 
@@ -4088,8 +3973,7 @@ button {
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay || {});
                 renderRegularSkatersList();
 
-                currentPlayers = Array.isArray(data.players) ? data.players : [];
-                playersCount = currentPlayers.length;
+                playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
                 currentGoalies = data.goalieCount;
                 currentTotalPaid = parseFloat(data.totalPaid) || 0;
@@ -4174,10 +4058,6 @@ button {
                                 <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
                             </td>
                             <td>
-                                ${p.isGoalie ? `
-                                    <button class="promote-btn" onclick="editGoalie(${p.id})">Edit</button>
-                                    <button class="control-btn" style="background:#ff9800; width:auto; padding:5px 10px; font-size:0.8rem; margin:0 5px 0 0;" onclick="substituteGoalie(${p.id})">Swap</button>
-                                ` : ''}
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
                         `;
@@ -4770,7 +4650,7 @@ button {
                 const blob = await res.blob();
                 const contentDisposition = res.headers.get('content-disposition') || '';
                 const match = contentDisposition.match(/filename="?([^";]+)"?/i);
-                const filename = match ? match[1] : `phans-hockey-backup-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
+                const filename = match ? match[1] : `GameDay-${new Date().toISOString().replace(/[:.]/g, '-')}.json`;
 
                 const url = window.URL.createObjectURL(blob);
                 const a = document.createElement('a');
