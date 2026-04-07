@@ -1773,7 +1773,7 @@ button {
 
         <div class="snapshot-pro-section">
             <h3>🧠 Snapshot Center</h3>
-            <div class="snapshot-pro-subtitle">Browse durable snapshots, preview the exact record you want, and restore by fingerprint so the selected snapshot cannot silently change.</div>
+            <div class="snapshot-pro-subtitle">Browse durable snapshots, preview the exact record you want, restore by fingerprint, create a manual safety point anytime, and keep cleanup compact with the newest 100 snapshots retained per source.</div>
             <div class="snapshot-stats">
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Snapshots Loaded</div><div class="snapshot-stat-value" id="snapshotStatCount">--</div></div>
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Database Snapshots</div><div class="snapshot-stat-value" id="snapshotStatDb">--</div></div>
@@ -1793,6 +1793,7 @@ button {
                     <option value="">Loading snapshots...</option>
                 </select>
                 <button class="control-btn" onclick="loadSnapshotCatalog()" style="background:#1e88e5;">↻ Refresh</button>
+                <button class="control-btn" onclick="createManualSnapshot()" style="background:#8e24aa;">＋ Create Snapshot</button>
                 <button class="control-btn" onclick="previewSelectedSnapshot()" style="background:#546e7a;">👁 Preview</button>
                 <button class="control-btn" onclick="restoreSelectedSnapshot()" style="background:#2e7d32;">♻ Restore</button>
             </div>
@@ -5081,6 +5082,34 @@ button {
             } catch (err) {
                 console.error('Load snapshot catalog error:', err);
                 document.getElementById('snapshotList').innerHTML = `<div class="snapshot-empty">${escapeHtml(err.message || 'Failed to load snapshots')}</div>`;
+            }
+        }
+
+        async function createManualSnapshot() {
+            try {
+                const note = prompt('Optional note for this manual snapshot:', '');
+                if (note === null) return;
+                const res = await fetch(`${API_URL}/api/admin/snapshots/create`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, note })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Failed to create manual snapshot');
+                alert(
+                    `✅ Manual snapshot created
+
+` +
+                    `Saved: ${formatSnapshotDateTime(data.snapshotSavedAt)}
+` +
+                    `DB snapshot: ${data.databaseSnapshot?.id ? '#' + data.databaseSnapshot.id : (data.databaseSnapshot?.skipped ? 'Skipped' : 'Created')}
+` +
+                    `Local snapshot: ${data.localSnapshot?.file ? 'Created' : 'Skipped'}`
+                );
+                await loadSnapshotCatalog(false);
+            } catch (err) {
+                console.error('Create manual snapshot error:', err);
+                alert(err.message || 'Failed to create manual snapshot');
             }
         }
 

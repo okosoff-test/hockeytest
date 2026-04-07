@@ -1787,9 +1787,9 @@ async function saveSetting(key, value) {
 const DATA_FILE = './data.json';
 const SETTINGS_BACKUP_FILE = './app-settings.backup.json';
 const SNAPSHOT_DIR = './data-backups';
-const SNAPSHOT_RETENTION = Number(process.env.LOCAL_SNAPSHOT_RETENTION || 200);
-const DB_SNAPSHOT_RETENTION = Number(process.env.DB_SNAPSHOT_RETENTION || 500);
-const DB_SNAPSHOT_FORCE_ON_EVERY_SAVE = String(process.env.DB_SNAPSHOT_FORCE_ON_EVERY_SAVE || 'true').toLowerCase() !== 'false';
+const SNAPSHOT_RETENTION = Number(process.env.LOCAL_SNAPSHOT_RETENTION || 100);
+const DB_SNAPSHOT_RETENTION = Number(process.env.DB_SNAPSHOT_RETENTION || 100);
+const DB_SNAPSHOT_FORCE_ON_EVERY_SAVE = String(process.env.DB_SNAPSHOT_FORCE_ON_EVERY_SAVE || 'false').toLowerCase() === 'true';
 const REQUEST_SNAPSHOT_ENABLED = String(process.env.REQUEST_SNAPSHOT_ENABLED || 'false').toLowerCase() === 'true';
 const REQUEST_SNAPSHOT_MIN_INTERVAL_MS = Number(process.env.REQUEST_SNAPSHOT_MIN_INTERVAL_MS || 60000);
 const REQUEST_SELF_HEAL_ENABLED = String(process.env.REQUEST_SELF_HEAL_ENABLED || 'false').toLowerCase() === 'true';
@@ -1804,6 +1804,19 @@ let lastAuditPruneAt = 0;
 let latestLocalSnapshotMeta = { exists: false, savedAt: null, file: null, players: 0, waitlist: 0, source: 'memory' };
 let saveQueue = Promise.resolve();
 let recentDataAudit = [];
+
+const DURABLE_SNAPSHOT_REASONS = new Set([
+    'player-signup',
+    'player-cancel',
+    'manual-create-snapshot',
+    'pre-restore-safety'
+]);
+
+function shouldCreateDurableSnapshot(reason = '') {
+    const normalized = String(reason || '').trim().toLowerCase();
+    if (!normalized) return !!DB_SNAPSHOT_FORCE_ON_EVERY_SAVE;
+    return DURABLE_SNAPSHOT_REASONS.has(normalized) || DB_SNAPSHOT_FORCE_ON_EVERY_SAVE;
+}
 
 
 function ensureDirSync(dirPath) {
@@ -1874,7 +1887,7 @@ async function pruneDatabaseSnapshotsIfNeeded(clientOrPool = pool) {
 }
 
 async function insertDatabaseSnapshot(snapshot, reason = 'saveData', clientOrPool = pool) {
-    if (!clientOrPool || !DB_SNAPSHOT_FORCE_ON_EVERY_SAVE) {
+    if (!clientOrPool || !shouldCreateDurableSnapshot(reason)) {
         return { ok: !pool, skipped: true, reason: 'db-snapshot-disabled' };
     }
 
@@ -2019,7 +2032,6 @@ async function listAvailableSnapshots(limit = 100) {
 
     try {
         const localFiles = [];
-        if (fs.existsSync(DATA_FILE)) localFiles.push(DATA_FILE);
         if (fs.existsSync(SNAPSHOT_DIR)) {
             for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
                 if (!/^snapshot-.*\.json$/i.test(name)) continue;
@@ -2096,6 +2108,43 @@ function buildSnapshotPreviewPayload(item) {
     };
 }
 
+
+async function createManualSnapshot(reason = 'manual-create-snapshot', req = null, extras = {}) {
+    const snapshot = buildFullDataSnapshot();
+    const normalizedReason = String(reason || 'manual-create-snapshot').trim() || 'manual-create-snapshot';
+    let database = { ok: !pool, skipped: !pool, reason: 'no-database' };
+    if (pool && shouldCreateDurableSnapshot(normalizedReason)) {
+        database = await insertDatabaseSnapshot(snapshot, normalizedReason, pool);
+    }
+    const localSnapshot = persistDataToFile(normalizedReason, snapshot);
+    try {
+        if (req && typeof addAdminAuditEntry === 'function') {
+            addAdminAuditEntry(normalizedReason, req, {
+                snapshotSavedAt: snapshot.savedAt,
+                databaseSnapshot: database,
+                localSnapshot,
+                ...extras
+            });
+        }
+        if (typeof appendDataAudit === 'function') {
+            await appendDataAudit(normalizedReason, 'success', {
+                snapshotSavedAt: snapshot.savedAt,
+                databaseSnapshot: database,
+                localSnapshot,
+                ...extras
+            });
+        }
+    } catch (auditErr) {
+        console.error('Error auditing manual snapshot creation:', auditErr.message);
+    }
+    return {
+        success: true,
+        snapshotSavedAt: snapshot.savedAt,
+        databaseSnapshot: database,
+        localSnapshot
+    };
+}
+
 async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-replace') {
     const backupData = item.data;
     const restoredPlayers = Array.isArray(backupData.players) ? backupData.players.filter(obj => obj && typeof obj === 'object') : null;
@@ -2108,6 +2157,11 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         players: Array.isArray(players) ? players.length : 0,
         waitlist: Array.isArray(waitlist) ? waitlist.length : 0
     };
+
+    const safetySnapshot = await createManualSnapshot('pre-restore-safety', req, {
+        restoringSnapshotKey: item.snapshotKey,
+        restoringFingerprint: item.fingerprint
+    });
 
     players = JSON.parse(JSON.stringify(restoredPlayers));
     waitlist = JSON.parse(JSON.stringify(restoredWaitlist));
@@ -2186,7 +2240,8 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
             snapshotSavedAt: item.savedAt || null,
             snapshotReason: item.reason || null,
             fingerprint: item.fingerprint,
-            message: 'Snapshot restored successfully.'
+            message: 'Snapshot restored successfully.',
+            safetySnapshot
         }
     };
 }
@@ -2212,13 +2267,16 @@ function persistDataToFile(reason = 'saveData', snapshot = null) {
         const text = JSON.stringify(payload, null, 2);
         atomicWriteTextFile(DATA_FILE, text);
 
-        ensureDirSync(SNAPSHOT_DIR);
-        const snapshotFile = path.join(SNAPSHOT_DIR, `snapshot-${safeIsoStamp(payload.savedAt || new Date())}-${String(reason || 'save').replace(/[^a-z0-9_-]+/gi, '-').slice(0,40)}.json`);
-        atomicWriteTextFile(snapshotFile, text);
-        trimSnapshotBackups();
-        updateLatestSnapshotMeta(payload, snapshotFile, reason);
+        let snapshotFile = null;
+        if (shouldCreateDurableSnapshot(reason)) {
+            ensureDirSync(SNAPSHOT_DIR);
+            snapshotFile = path.join(SNAPSHOT_DIR, `snapshot-${safeIsoStamp(payload.savedAt || new Date())}-${String(reason || 'save').replace(/[^a-z0-9_-]+/gi, '-').slice(0,40)}.json`);
+            atomicWriteTextFile(snapshotFile, text);
+            trimSnapshotBackups();
+            updateLatestSnapshotMeta(payload, snapshotFile, reason);
+        }
         writeSettingsBackup(reason);
-        return { ok: true, file: snapshotFile, savedAt: payload.savedAt };
+        return { ok: true, file: snapshotFile, savedAt: payload.savedAt, durableSnapshotCreated: !!snapshotFile };
     } catch (err) {
         console.error('Error writing local data snapshot:', err.message);
         return { ok: false, error: err.message };
@@ -2237,9 +2295,6 @@ function readJsonFileSafe(filePath) {
 
 function getBestLocalSnapshot() {
     const candidates = [];
-    if (fs.existsSync(DATA_FILE)) {
-        candidates.push({ file: DATA_FILE, stat: fs.statSync(DATA_FILE) });
-    }
     if (fs.existsSync(SNAPSHOT_DIR)) {
         for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
             if (!/^snapshot-.*\.json$/i.test(name)) continue;
@@ -4038,7 +4093,7 @@ app.post('/api/register-final', async (req, res) => {
 
     players.push(newPlayer);
     playerSpots = Math.max(0, playerSpots - 1);
-    await saveData();
+    await saveData('player-signup');
 
     if (pool) {
         try {
@@ -4865,6 +4920,29 @@ app.post('/api/admin/download-backup', async (req, res) => {
 });
 
 
+
+
+app.post('/api/admin/snapshots/create', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const note = String(req.body?.note || '').trim();
+        const result = await createManualSnapshot('manual-create-snapshot', req, {
+            note,
+            triggeredBy: 'admin-panel'
+        });
+        return res.json({
+            success: true,
+            message: 'Manual snapshot created successfully.',
+            ...result
+        });
+    } catch (err) {
+        console.error('Error creating manual snapshot:', err);
+        return res.status(500).json({ error: 'Failed to create manual snapshot' });
+    }
+});
 
 app.get('/api/admin/snapshots', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
