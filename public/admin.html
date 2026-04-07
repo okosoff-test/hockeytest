@@ -1709,6 +1709,16 @@ button {
 .snapshot-preview-box .k { color:#b5c9e1; font-size:0.8rem; }
 .snapshot-preview-box .v { color:#fff; font-size:1.15rem; font-weight:800; margin-top:4px; }
 .snapshot-preview-notes { margin-top:12px; color:#d7e5f3; font-size:0.88rem; line-height:1.45; }
+.snapshot-picker-toolbar { margin-top:-4px; }
+.snapshot-picker-toolbar select { font-weight:700; }
+.snapshot-compact-card { margin-top:12px; background:rgba(0,0,0,0.24); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:14px; }
+.snapshot-compact-head { display:flex; justify-content:space-between; gap:10px; align-items:flex-start; flex-wrap:wrap; }
+.snapshot-compact-title { color:#fff; font-weight:800; font-size:1.02rem; }
+.snapshot-compact-sub { color:#9eb6cf; font-size:0.82rem; margin-top:4px; }
+.snapshot-compact-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:8px 16px; margin-top:12px; }
+.snapshot-compact-item { color:#c8d7e6; font-size:0.86rem; line-height:1.35; }
+.snapshot-compact-item strong { color:#fff; }
+.snapshot-compact-fingerprint { color:#9eb6cf; font-size:0.8rem; }
 .snapshot-empty { text-align:center; color:#b5c9e1; border:1px dashed rgba(255,255,255,0.16); border-radius:12px; padding:24px; }
 .snapshot-mini { color:#9eb6cf; font-size:0.8rem; }
 @media (max-width: 900px) {
@@ -1777,11 +1787,17 @@ button {
                     <option value="database">Database only</option>
                     <option value="local">Local only</option>
                 </select>
-                <button class="control-btn" onclick="loadSnapshotCatalog()" style="background:#1e88e5;">↻ Refresh</button>
-                <button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Latest Preview</button>
-                <button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
             </div>
-            <div id="snapshotList" class="snapshot-list"><div class="snapshot-empty">Loading snapshots...</div></div>
+            <div class="snapshot-toolbar snapshot-picker-toolbar">
+                <select id="snapshotPicker" class="grow" onchange="handleSnapshotPickerChange()">
+                    <option value="">Loading snapshots...</option>
+                </select>
+                <button class="control-btn" onclick="loadSnapshotCatalog()" style="background:#1e88e5;">↻ Refresh</button>
+                <button class="control-btn" onclick="previewSelectedSnapshot()" style="background:#546e7a;">👁 Preview</button>
+                <button class="control-btn" onclick="restoreSelectedSnapshot()" style="background:#2e7d32;">♻ Restore</button>
+            </div>
+            <div id="snapshotCompactCard" class="snapshot-compact-card" style="display:none;"></div>
+            <div id="snapshotList" class="snapshot-list" style="display:none;"><div class="snapshot-empty">Loading snapshots...</div></div>
             <div id="snapshotPreviewPanel" class="snapshot-preview-panel" style="display:none;">
                 <div class="snapshot-preview-title" id="snapshotPreviewTitle">Snapshot Preview</div>
                 <div class="snapshot-preview-grid">
@@ -4947,6 +4963,71 @@ button {
             document.getElementById('snapshotStatSelected').innerText = selected ? formatSnapshotDateTime(selected.snapshotSavedAt) : 'None';
         }
 
+        function buildSnapshotPickerLabel(item, index) {
+            const sourceLabel = item.snapshotSource === 'database' ? 'DB' : 'LOCAL';
+            const latestLabel = index === 0 ? ' • latest' : '';
+            const statusLabel = item.rosterReleasedInSnapshot === true
+                ? ' • released'
+                : (item.rosterReleasedInSnapshot === false ? ' • pending' : '');
+            const counts = ` • P${Number(item.snapshotPlayers || 0)} / W${Number(item.snapshotWaitlist || 0)}`;
+            return `${formatSnapshotDateTime(item.snapshotSavedAt)} • ${sourceLabel}${counts}${statusLabel}${latestLabel}`;
+        }
+
+        function renderSnapshotCompactCard(item, index) {
+            const cardEl = document.getElementById('snapshotCompactCard');
+            if (!cardEl) return;
+            if (!item) {
+                cardEl.style.display = 'none';
+                cardEl.innerHTML = '';
+                return;
+            }
+            const badges = [
+                `<span class="snapshot-badge ${item.snapshotSource === 'database' ? 'db' : 'local'}">${item.snapshotSource === 'database' ? 'DB' : 'LOCAL'}</span>`,
+                index === 0 ? '<span class="snapshot-badge latest">LATEST IN VIEW</span>' : '',
+                item.rosterReleasedInSnapshot === true ? '<span class="snapshot-badge release-yes">ROSTER RELEASED</span>' : '',
+                item.rosterReleasedInSnapshot === false ? '<span class="snapshot-badge release-no">ROSTER PENDING</span>' : ''
+            ].join('');
+            cardEl.style.display = 'block';
+            cardEl.innerHTML = `
+                <div class="snapshot-compact-head">
+                    <div>
+                        <div class="snapshot-compact-title">${escapeHtml(formatSnapshotDateTime(item.snapshotSavedAt))}</div>
+                        <div class="snapshot-compact-sub">${escapeHtml(item.snapshotReason || 'No reason saved')} • ${escapeHtml(item.snapshotFile || item.snapshotKey || '')}</div>
+                    </div>
+                    <div class="snapshot-compact-fingerprint">${escapeHtml(item.fingerprint || '').slice(0, 16)}</div>
+                </div>
+                <div class="snapshot-badges">${badges}</div>
+                <div class="snapshot-compact-grid">
+                    <div class="snapshot-compact-item"><strong>Players:</strong> ${Number(item.snapshotPlayers || 0)}</div>
+                    <div class="snapshot-compact-item"><strong>Waitlist:</strong> ${Number(item.snapshotWaitlist || 0)}</div>
+                    <div class="snapshot-compact-item"><strong>Game:</strong> ${escapeHtml(item.gameTime || '—')}</div>
+                    <div class="snapshot-compact-item"><strong>Arena:</strong> ${escapeHtml(item.gameLocation || '—')}</div>
+                </div>
+            `;
+        }
+
+        function syncSnapshotPicker() {
+            const pickerEl = document.getElementById('snapshotPicker');
+            if (!pickerEl) return;
+            if (!filteredSnapshotCatalog.length) {
+                pickerEl.innerHTML = '<option value="">No snapshots matched the current filter</option>';
+                pickerEl.value = '';
+                renderSnapshotCompactCard(null, -1);
+                return;
+            }
+            pickerEl.innerHTML = filteredSnapshotCatalog.map((item, index) => {
+                const selected = item.snapshotKey === selectedSnapshotKey ? 'selected' : '';
+                return `<option value="${escapeHtml(item.snapshotKey)}" ${selected}>${escapeHtml(buildSnapshotPickerLabel(item, index))}</option>`;
+            }).join('');
+            if (!filteredSnapshotCatalog.some(item => item.snapshotKey === selectedSnapshotKey)) {
+                selectedSnapshotKey = filteredSnapshotCatalog[0].snapshotKey;
+                selectedSnapshotFingerprint = filteredSnapshotCatalog[0].fingerprint || '';
+                pickerEl.value = selectedSnapshotKey;
+            }
+            const selectedIndex = filteredSnapshotCatalog.findIndex(item => item.snapshotKey === selectedSnapshotKey);
+            renderSnapshotCompactCard(filteredSnapshotCatalog[selectedIndex] || filteredSnapshotCatalog[0], selectedIndex >= 0 ? selectedIndex : 0);
+        }
+
         function renderSnapshotList() {
             const listEl = document.getElementById('snapshotList');
             if (!listEl) return;
@@ -4954,49 +5035,28 @@ button {
             const source = document.getElementById('snapshotSourceFilter')?.value || 'all';
             filteredSnapshotCatalog = snapshotCatalog.filter(item => snapshotMatchesFilter(item, term, source));
             updateSnapshotStats();
+            syncSnapshotPicker();
+            listEl.innerHTML = '';
+        }
 
-            if (!filteredSnapshotCatalog.length) {
-                listEl.innerHTML = '<div class="snapshot-empty">No snapshots matched the current filter.</div>';
-                return;
-            }
-
-            listEl.innerHTML = filteredSnapshotCatalog.map((item, index) => {
-                const isSelected = item.snapshotKey === selectedSnapshotKey;
-                const badges = [
-                    `<span class="snapshot-badge ${item.snapshotSource === 'database' ? 'db' : 'local'}">${item.snapshotSource === 'database' ? 'DB' : 'LOCAL'}</span>`,
-                    index === 0 ? '<span class="snapshot-badge latest">LATEST IN VIEW</span>' : '',
-                    item.rosterReleasedInSnapshot === true ? '<span class="snapshot-badge release-yes">ROSTER RELEASED</span>' : '',
-                    item.rosterReleasedInSnapshot === false ? '<span class="snapshot-badge release-no">ROSTER PENDING</span>' : ''
-                ].join('');
-                return `
-                    <div class="snapshot-card ${isSelected ? 'selected' : ''}" onclick="selectSnapshot('${escapeHtml(item.snapshotKey)}', '${escapeHtml(item.fingerprint || '')}')">
-                        <div class="snapshot-card-top">
-                            <div>
-                                <div style="font-weight:800; color:#fff;">${escapeHtml(formatSnapshotDateTime(item.snapshotSavedAt))}</div>
-                                <div class="snapshot-mini">${escapeHtml(item.snapshotReason || 'No reason saved')} • ${escapeHtml(item.snapshotFile || item.snapshotKey || '')}</div>
-                            </div>
-                            <div class="snapshot-mini">${escapeHtml(item.fingerprint || '').slice(0, 16)}</div>
-                        </div>
-                        <div class="snapshot-badges">${badges}</div>
-                        <div class="snapshot-meta-grid">
-                            <div class="snapshot-meta-item"><strong>Players:</strong> ${Number(item.snapshotPlayers || 0)}</div>
-                            <div class="snapshot-meta-item"><strong>Waitlist:</strong> ${Number(item.snapshotWaitlist || 0)}</div>
-                            <div class="snapshot-meta-item"><strong>Game:</strong> ${escapeHtml(item.gameTime || '—')}</div>
-                            <div class="snapshot-meta-item"><strong>Arena:</strong> ${escapeHtml(item.gameLocation || '—')}</div>
-                        </div>
-                        <div class="snapshot-actions">
-                            <button class="control-btn" onclick="event.stopPropagation(); previewSnapshotByKey('${escapeHtml(item.snapshotKey)}','${escapeHtml(item.fingerprint || '')}')" style="background:#546e7a;">Preview</button>
-                            <button class="control-btn" onclick="event.stopPropagation(); restoreSnapshotByKey('${escapeHtml(item.snapshotKey)}','${escapeHtml(item.fingerprint || '')}')" style="background:#2e7d32;">Restore</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
+        function handleSnapshotPickerChange() {
+            const pickerEl = document.getElementById('snapshotPicker');
+            const snapshotKey = pickerEl?.value || '';
+            if (!snapshotKey) return;
+            const selected = filteredSnapshotCatalog.find(item => item.snapshotKey === snapshotKey)
+                || snapshotCatalog.find(item => item.snapshotKey === snapshotKey);
+            selectedSnapshotKey = snapshotKey;
+            selectedSnapshotFingerprint = selected?.fingerprint || '';
+            updateSnapshotStats();
+            const selectedIndex = filteredSnapshotCatalog.findIndex(item => item.snapshotKey === snapshotKey);
+            renderSnapshotCompactCard(selected, selectedIndex >= 0 ? selectedIndex : 0);
         }
 
         function selectSnapshot(snapshotKey, fingerprint = '') {
             selectedSnapshotKey = snapshotKey;
             selectedSnapshotFingerprint = fingerprint || '';
-            renderSnapshotList();
+            syncSnapshotPicker();
+            updateSnapshotStats();
         }
 
         async function loadSnapshotCatalog(autoPreview = true) {
@@ -5027,7 +5087,8 @@ button {
         async function previewSnapshotByKey(snapshotKey, fingerprint = '') {
             selectedSnapshotKey = snapshotKey;
             selectedSnapshotFingerprint = fingerprint || selectedSnapshotFingerprint || '';
-            renderSnapshotList();
+            syncSnapshotPicker();
+            updateSnapshotStats();
             return previewSelectedSnapshot();
         }
 
@@ -5075,7 +5136,8 @@ button {
         async function restoreSnapshotByKey(snapshotKey, fingerprint = '') {
             selectedSnapshotKey = snapshotKey;
             selectedSnapshotFingerprint = fingerprint || selectedSnapshotFingerprint || '';
-            renderSnapshotList();
+            syncSnapshotPicker();
+            updateSnapshotStats();
             return restoreSelectedSnapshot();
         }
 
