@@ -4252,6 +4252,239 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
     }
 });
 
+
+app.post('/api/admin/update-goalie', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const goalieId = parseInt(req.body.goalieId, 10);
+        const firstName = String(req.body.firstName || '').trim();
+        const lastName = String(req.body.lastName || '').trim();
+        const phone = String(req.body.phone || '').trim();
+        const rating = roundRating(parseFloat(req.body.rating) || 0);
+
+        if (!Number.isFinite(goalieId)) {
+            return res.status(400).json({ error: 'Valid goalie ID is required' });
+        }
+        if (!firstName || !lastName || !phone) {
+            return res.status(400).json({ error: 'First name, last name, and phone are required' });
+        }
+        if (!validatePhoneNumber(phone)) {
+            return res.status(400).json({ error: 'Invalid phone number format' });
+        }
+        if (!Number.isFinite(rating) || rating < 1 || rating > 10) {
+            return res.status(400).json({ error: 'Rating must be between 1 and 10' });
+        }
+
+        const goalieIndex = players.findIndex(p => String(p.id) === String(goalieId) && !!p.isGoalie);
+        if (goalieIndex === -1) {
+            return res.status(404).json({ error: 'Goalie not found' });
+        }
+
+        const formattedPhone = formatPhoneNumber(phone);
+        const normalizedPhone = normalizePhoneDigits(formattedPhone);
+        const duplicate = players.find(p => String(p.id) !== String(goalieId) && normalizePhoneDigits(p.phone) === normalizedPhone);
+        if (duplicate) {
+            return res.status(400).json({ error: 'Another player already uses that phone number' });
+        }
+
+        const updatedGoalie = hydratePlayerRatingProfile({
+            ...players[goalieIndex],
+            firstName: capitalizeFullName(firstName),
+            lastName: capitalizeFullName(lastName),
+            phone: formattedPhone,
+            paymentMethod: 'N/A',
+            paid: true,
+            paidAmount: 0,
+            rating,
+            derivedRating: rating,
+            finalRating: rating,
+            selfRatingRaw: rating,
+            adminRating: null,
+            adminAdjustment: null,
+            isGoalie: true
+        });
+
+        players[goalieIndex] = updatedGoalie;
+
+        if (pool) {
+            await pool.query(
+                `UPDATE players
+                    SET first_name = $1,
+                        last_name = $2,
+                        phone = $3,
+                        payment_method = $4,
+                        paid = $5,
+                        paid_amount = $6,
+                        rating = $7,
+                        self_rating_raw = $8,
+                        derived_rating = $9,
+                        admin_rating = $10,
+                        admin_adjustment = $11,
+                        final_rating = $12,
+                        is_goalie = $13
+                  WHERE id = $14`,
+                [
+                    updatedGoalie.firstName,
+                    updatedGoalie.lastName,
+                    updatedGoalie.phone,
+                    updatedGoalie.paymentMethod,
+                    updatedGoalie.paid,
+                    updatedGoalie.paidAmount,
+                    updatedGoalie.rating,
+                    updatedGoalie.selfRatingRaw,
+                    updatedGoalie.derivedRating,
+                    updatedGoalie.adminRating,
+                    updatedGoalie.adminAdjustment,
+                    updatedGoalie.finalRating,
+                    true,
+                    goalieId
+                ]
+            );
+        }
+
+        await saveData('update-goalie');
+
+        return res.json({
+            success: true,
+            goalie: updatedGoalie,
+            message: `${updatedGoalie.firstName} ${updatedGoalie.lastName} updated successfully`
+        });
+    } catch (err) {
+        console.error('Error updating goalie:', err);
+        return res.status(500).json({ error: 'Failed to update goalie' });
+    }
+});
+
+app.post('/api/admin/substitute-goalie', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    try {
+        const goalieId = parseInt(req.body.goalieId, 10);
+        if (!Number.isFinite(goalieId)) {
+            return res.status(400).json({ error: 'Valid goalie ID is required' });
+        }
+
+        const goalieIndex = players.findIndex(p => String(p.id) === String(goalieId) && !!p.isGoalie);
+        if (goalieIndex === -1) {
+            return res.status(404).json({ error: 'Goalie not found' });
+        }
+
+        let replacement = null;
+        if (req.body.backupGoalieIndex !== undefined && req.body.backupGoalieIndex !== null && req.body.backupGoalieIndex !== '') {
+            const backupGoalieIndex = parseInt(req.body.backupGoalieIndex, 10);
+            if (!Number.isInteger(backupGoalieIndex) || backupGoalieIndex < 0 || backupGoalieIndex >= BACKUP_GOALIES.length) {
+                return res.status(400).json({ error: 'Invalid backup goalie selection' });
+            }
+            replacement = BACKUP_GOALIES[backupGoalieIndex];
+        } else if (req.body.customGoalie && typeof req.body.customGoalie === 'object') {
+            replacement = req.body.customGoalie;
+        } else {
+            return res.status(400).json({ error: 'Replacement goalie details are required' });
+        }
+
+        const firstName = String(replacement.firstName || '').trim();
+        const lastName = String(replacement.lastName || '').trim();
+        const phone = String(replacement.phone || '').trim();
+        const rating = roundRating(parseFloat(replacement.rating) || 0);
+
+        if (!firstName || !lastName || !phone) {
+            return res.status(400).json({ error: 'Replacement goalie first name, last name, and phone are required' });
+        }
+        if (!validatePhoneNumber(phone)) {
+            return res.status(400).json({ error: 'Replacement goalie phone number is invalid' });
+        }
+        if (!Number.isFinite(rating) || rating < 1 || rating > 10) {
+            return res.status(400).json({ error: 'Replacement goalie rating must be between 1 and 10' });
+        }
+
+        const formattedPhone = formatPhoneNumber(phone);
+        const normalizedPhone = normalizePhoneDigits(formattedPhone);
+        const duplicate = players.find(p => String(p.id) !== String(goalieId) && normalizePhoneDigits(p.phone) === normalizedPhone);
+        if (duplicate) {
+            return res.status(400).json({ error: 'Another player already uses that phone number' });
+        }
+
+        const previousGoalie = { ...players[goalieIndex] };
+        const substitutedGoalie = hydratePlayerRatingProfile({
+            ...players[goalieIndex],
+            firstName: capitalizeFullName(firstName),
+            lastName: capitalizeFullName(lastName),
+            phone: formattedPhone,
+            paymentMethod: 'N/A',
+            paid: true,
+            paidAmount: 0,
+            rating,
+            derivedRating: rating,
+            finalRating: rating,
+            selfRatingRaw: rating,
+            adminRating: null,
+            adminAdjustment: null,
+            isGoalie: true
+        });
+
+        players[goalieIndex] = substitutedGoalie;
+
+        if (pool) {
+            await pool.query(
+                `UPDATE players
+                    SET first_name = $1,
+                        last_name = $2,
+                        phone = $3,
+                        payment_method = $4,
+                        paid = $5,
+                        paid_amount = $6,
+                        rating = $7,
+                        self_rating_raw = $8,
+                        derived_rating = $9,
+                        admin_rating = $10,
+                        admin_adjustment = $11,
+                        final_rating = $12,
+                        is_goalie = $13
+                  WHERE id = $14`,
+                [
+                    substitutedGoalie.firstName,
+                    substitutedGoalie.lastName,
+                    substitutedGoalie.phone,
+                    substitutedGoalie.paymentMethod,
+                    substitutedGoalie.paid,
+                    substitutedGoalie.paidAmount,
+                    substitutedGoalie.rating,
+                    substitutedGoalie.selfRatingRaw,
+                    substitutedGoalie.derivedRating,
+                    substitutedGoalie.adminRating,
+                    substitutedGoalie.adminAdjustment,
+                    substitutedGoalie.finalRating,
+                    true,
+                    goalieId
+                ]
+            );
+        }
+
+        await saveData('substitute-goalie');
+
+        return res.json({
+            success: true,
+            replaced: {
+                id: previousGoalie.id,
+                firstName: previousGoalie.firstName,
+                lastName: previousGoalie.lastName,
+                phone: previousGoalie.phone,
+                rating: previousGoalie.finalRating ?? previousGoalie.rating
+            },
+            goalie: substitutedGoalie,
+            message: `${previousGoalie.firstName} ${previousGoalie.lastName} substituted with ${substitutedGoalie.firstName} ${substitutedGoalie.lastName}`
+        });
+    } catch (err) {
+        console.error('Error substituting goalie:', err);
+        return res.status(500).json({ error: 'Failed to substitute goalie' });
+    }
+});
+
 // END NEW ADMIN ENDPOINTS
 
 // ADMIN ONLY: Get full player data with payment AND rating info
@@ -4364,7 +4597,8 @@ app.post('/api/admin/download-backup', async (req, res) => {
             }
         };
 
-        const filename = `phans-hockey-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
+        const safeDayName = String(getGameDayName() || 'gameday').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-');
+        const filename = `phans-hockey-${safeDayName}-backup-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         return res.status(200).send(JSON.stringify(backup, null, 2));
