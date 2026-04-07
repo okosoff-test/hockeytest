@@ -1826,6 +1826,34 @@ function safeIsoStamp(date = new Date()) {
     return new Date(date).toISOString().replace(/[:.]/g, '-');
 }
 
+function formatDateTimeET12(value) {
+    if (!value) return null;
+    const d = new Date(value);
+    if (Number.isNaN(d.getTime())) return null;
+    return new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/New_York',
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+    }).format(d) + ' ET';
+}
+
+function buildSnapshotFingerprint(snapshotRef = {}) {
+    const raw = JSON.stringify({
+        file: snapshotRef.file || null,
+        source: snapshotRef.source || null,
+        savedAt: snapshotRef.snapshotSavedAt || snapshotRef.data?.savedAt || null,
+        reason: snapshotRef.snapshotReason || null,
+        players: Array.isArray(snapshotRef.data?.players) ? snapshotRef.data.players.length : null,
+        waitlist: Array.isArray(snapshotRef.data?.waitlist) ? snapshotRef.data.waitlist.length : null
+    });
+    return crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16);
+}
+
 function updateLatestSnapshotMeta(snapshot, filePath, source = 'memory') {
     latestLocalSnapshotMeta = {
         exists: true,
@@ -1937,10 +1965,18 @@ async function getLatestDatabaseSnapshot() {
 
 async function getBestAvailableSnapshot() {
     const dbSnapshot = await getLatestDatabaseSnapshot();
-    if (dbSnapshot && dbSnapshot.data) return dbSnapshot;
-    const localSnapshot = getBestLocalSnapshot();
+    if (dbSnapshot && dbSnapshot.data) {
+        return { ...dbSnapshot, snapshotFingerprint: buildSnapshotFingerprint(dbSnapshot) };
+    }
+    const localSnapshot = getLatestLocalSnapshot();
     if (localSnapshot && localSnapshot.data) {
-        return { ...localSnapshot, source: 'local', snapshotSavedAt: localSnapshot.data?.savedAt || null, snapshotReason: 'local-file' };
+        return {
+            ...localSnapshot,
+            source: 'local',
+            snapshotSavedAt: localSnapshot.snapshotSavedAt || localSnapshot.data?.savedAt || null,
+            snapshotReason: localSnapshot.snapshotReason || 'local-file',
+            snapshotFingerprint: buildSnapshotFingerprint(localSnapshot)
+        };
     }
     return null;
 }
@@ -1989,10 +2025,12 @@ function readJsonFileSafe(filePath) {
 }
 
 
-function getBestLocalSnapshot() {
+function listLocalSnapshotCandidates() {
     const candidates = [];
     if (fs.existsSync(DATA_FILE)) {
-        candidates.push({ file: DATA_FILE, stat: fs.statSync(DATA_FILE) });
+        try {
+            candidates.push({ file: DATA_FILE, stat: fs.statSync(DATA_FILE) });
+        } catch (err) {}
     }
     if (fs.existsSync(SNAPSHOT_DIR)) {
         for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
@@ -2003,20 +2041,44 @@ function getBestLocalSnapshot() {
             } catch (err) {}
         }
     }
+    return candidates;
+}
 
-    let best = null;
-    for (const candidate of candidates) {
-        const data = readJsonFileSafe(candidate.file);
-        if (!data) continue;
-        const savedAtMs = Date.parse(data.savedAt || '') || candidate.stat.mtimeMs || 0;
-        const score = ((Array.isArray(data.players) ? data.players.length : 0) * 1000000) +
-            ((Array.isArray(data.waitlist) ? data.waitlist.length : 0) * 1000) +
-            savedAtMs;
-        if (!best || score > best.score) {
-            best = { file: candidate.file, data, savedAtMs, score };
-        }
-    }
+function normalizeSnapshotCandidate(candidate) {
+    if (!candidate || !candidate.file) return null;
+    const data = readJsonFileSafe(candidate.file);
+    if (!data) return null;
+    const playersCount = Array.isArray(data.players) ? data.players.length : 0;
+    const waitlistCount = Array.isArray(data.waitlist) ? data.waitlist.length : 0;
+    const savedAtMs = Date.parse(data.savedAt || '') || candidate.stat?.mtimeMs || 0;
+    return {
+        file: candidate.file,
+        data,
+        savedAtMs,
+        score: (playersCount * 1000000) + (waitlistCount * 1000) + savedAtMs,
+        source: 'local',
+        snapshotSavedAt: data.savedAt || (candidate.stat ? new Date(candidate.stat.mtimeMs).toISOString() : null),
+        snapshotReason: data?.meta?.reason || data?.snapshotReason || 'local-file'
+    };
+}
 
+function getLatestLocalSnapshot() {
+    const normalized = listLocalSnapshotCandidates()
+        .map(normalizeSnapshotCandidate)
+        .filter(Boolean)
+        .sort((a, b) => {
+            if (b.savedAtMs !== a.savedAtMs) return b.savedAtMs - a.savedAtMs;
+            return String(b.file).localeCompare(String(a.file));
+        });
+
+    const latest = normalized[0] || null;
+    if (latest) updateLatestSnapshotMeta(latest.data, latest.file, 'latest-local-snapshot');
+    return latest;
+}
+
+function getBestLocalSnapshot() {
+    const normalized = listLocalSnapshotCandidates().map(normalizeSnapshotCandidate).filter(Boolean);
+    const best = normalized.sort((a, b) => b.score - a.score)[0] || null;
     if (best) updateLatestSnapshotMeta(best.data, best.file, 'best-local-snapshot');
     return best;
 }
@@ -4578,9 +4640,10 @@ app.post('/api/admin/download-backup', async (req, res) => {
         const mi = String(etNow.getMinutes()).padStart(2, '0');
         const ss = String(etNow.getSeconds()).padStart(2, '0');
 
+        const exportedAtIso = new Date().toISOString();
         const backup = {
-            exportedAt: new Date().toISOString(),
-            exportedAtET: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
+            exportedAt: exportedAtIso,
+            exportedAtET: formatDateTimeET12(exportedAtIso) || `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
             players,
             waitlist,
             currentWeekData,
@@ -4638,12 +4701,15 @@ app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
         const summary = backupData.summary && typeof backupData.summary === 'object' ? backupData.summary : {};
         const appSettings = backupData.appSettings && typeof backupData.appSettings === 'object' ? backupData.appSettings : {};
 
+        const snapshotSavedAt = latest.snapshotSavedAt || backupData.savedAt || null;
         return res.json({
             success: true,
             snapshotFile: latest.file,
             snapshotSource: latest.source || 'local',
-            snapshotSavedAt: latest.snapshotSavedAt || backupData.savedAt || null,
+            snapshotSavedAt,
+            snapshotSavedAtEt: formatDateTimeET12(snapshotSavedAt),
             snapshotReason: latest.snapshotReason || null,
+            snapshotFingerprint: latest.snapshotFingerprint || buildSnapshotFingerprint(latest),
             snapshotPlayers: previewPlayers.length,
             snapshotWaitlist: previewWaitlist.length,
             livePlayers: Array.isArray(players) ? players.length : 0,
@@ -4666,9 +4732,20 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
     }
 
     try {
+        const requestedFingerprint = String(req.body?.snapshotFingerprint || '').trim();
         const latest = await getBestAvailableSnapshot();
         if (!latest || !latest.data) {
             return res.status(404).json({ error: "No server snapshot found to restore." });
+        }
+
+        const actualFingerprint = latest.snapshotFingerprint || buildSnapshotFingerprint(latest);
+        if (requestedFingerprint && requestedFingerprint !== actualFingerprint) {
+            return res.status(409).json({
+                error: 'Snapshot changed since preview. Please preview again before restoring.',
+                currentSnapshotFingerprint: actualFingerprint,
+                snapshotSavedAt: latest.snapshotSavedAt || latest.data?.savedAt || null,
+                snapshotSavedAtEt: formatDateTimeET12(latest.snapshotSavedAt || latest.data?.savedAt || null)
+            });
         }
 
         const backupData = latest.data;
@@ -4742,6 +4819,7 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
             console.error('Error auditing latest snapshot restore:', auditErr.message);
         }
 
+        const restoredSnapshotSavedAt = latest.snapshotSavedAt || backupData.savedAt || null;
         return res.json({
             success: true,
             mode: 'replace',
@@ -4749,8 +4827,10 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
             restoredWaitlist: waitlist.length,
             snapshotFile: latest.file,
             snapshotSource: latest.source || 'local',
-            snapshotSavedAt: latest.snapshotSavedAt || backupData.savedAt || null,
+            snapshotSavedAt: restoredSnapshotSavedAt,
+            snapshotSavedAtEt: formatDateTimeET12(restoredSnapshotSavedAt),
             snapshotReason: latest.snapshotReason || null,
+            snapshotFingerprint: actualFingerprint,
             message: 'Latest server snapshot restored successfully.'
         });
     } catch (err) {

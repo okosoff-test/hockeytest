@@ -2720,7 +2720,16 @@ button {
             if (!value) return '—';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
-            return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+            return new Intl.DateTimeFormat('en-US', {
+                timeZone: 'America/New_York',
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            }).format(d) + ' ET';
         }
 
         async function loadSessionInfo() {
@@ -4811,6 +4820,8 @@ button {
                     throw new Error((data && data.error) || 'Preview failed');
                 }
 
+                window.latestSnapshotPreview = data;
+
                 const snapshotPlayers = Number(data.snapshotPlayers || 0);
                 const snapshotWaitlist = Number(data.snapshotWaitlist || 0);
                 const livePlayers = Number(data.livePlayers || 0);
@@ -4822,7 +4833,9 @@ button {
                     'Latest durable snapshot preview',
                     '',
                     `Source: ${data.snapshotFile || 'durable snapshot'}`,
-                    `Saved: ${data.snapshotSavedAt || 'unknown'}`,
+                    `Saved: ${data.snapshotSavedAtEt || formatDateTime(data.snapshotSavedAt)}`,
+                    `Reason: ${data.snapshotReason || 'n/a'}`,
+                    `Fingerprint: ${data.snapshotFingerprint || 'n/a'}`,
                     '',
                     `Snapshot players: ${snapshotPlayers}`,
                     `Live players now: ${livePlayers}`,
@@ -4868,6 +4881,8 @@ button {
                     throw new Error((preview && preview.error) || 'Could not preview latest snapshot');
                 }
 
+                window.latestSnapshotPreview = preview;
+
                 const snapshotPlayers = Number(preview.snapshotPlayers || 0);
                 const snapshotWaitlist = Number(preview.snapshotWaitlist || 0);
                 const livePlayers = Number(preview.livePlayers || 0);
@@ -4875,7 +4890,8 @@ button {
 
                 const ok = confirm(
                     'Restore the latest durable snapshot?\n\n' +
-                    `Snapshot saved: ${preview.snapshotSavedAt || 'unknown'}\n` +
+                    `Snapshot saved: ${preview.snapshotSavedAtEt || formatDateTime(preview.snapshotSavedAt)}\n` +
+                    `Reason: ${preview.snapshotReason || 'n/a'}\n` +
                     `Snapshot players: ${snapshotPlayers} (live now: ${livePlayers})\n` +
                     `Snapshot waitlist: ${snapshotWaitlist} (live now: ${liveWaitlist})\n\n` +
                     'Press OK to continue.'
@@ -4885,7 +4901,10 @@ button {
                 const res = await fetch(`${API_URL}/api/admin/restore-latest-backup`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken })
+                    body: JSON.stringify({
+                        sessionToken,
+                        snapshotFingerprint: preview.snapshotFingerprint || null
+                    })
                 });
 
                 let data = {};
@@ -4900,7 +4919,8 @@ button {
                 alert(
                     `✅ Latest durable snapshot restored\n\n` +
                     `Source: ${data.snapshotFile || 'server snapshot'}\n` +
-                    `Saved: ${data.snapshotSavedAt || 'unknown'}\n` +
+                    `Saved: ${data.snapshotSavedAtEt || formatDateTime(data.snapshotSavedAt)}\n` +
+                    `Reason: ${data.snapshotReason || 'n/a'}\n` +
                     `Mode: ${(data.mode || 'replace').toUpperCase()}\n` +
                     `Players now: ${data.restoredPlayers}\n` +
                     `Waitlist now: ${data.restoredWaitlist}`
