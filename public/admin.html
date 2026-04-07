@@ -4819,9 +4819,9 @@ button {
                 const diffWaitlist = snapshotWaitlist - liveWaitlist;
 
                 const lines = [
-                    'Latest server snapshot preview',
+                    'Latest durable snapshot preview',
                     '',
-                    `Source: ${data.snapshotFile || 'server snapshot'}`,
+                    `Source: ${data.snapshotFile || 'durable snapshot'}`,
                     `Saved: ${data.snapshotSavedAt || 'unknown'}`,
                     '',
                     `Snapshot players: ${snapshotPlayers}`,
@@ -4874,7 +4874,7 @@ button {
                 const liveWaitlist = Number(preview.liveWaitlist || 0);
 
                 const ok = confirm(
-                    'Restore the latest server snapshot?\n\n' +
+                    'Restore the latest durable snapshot?\n\n' +
                     `Snapshot saved: ${preview.snapshotSavedAt || 'unknown'}\n` +
                     `Snapshot players: ${snapshotPlayers} (live now: ${livePlayers})\n` +
                     `Snapshot waitlist: ${snapshotWaitlist} (live now: ${liveWaitlist})\n\n` +
@@ -4898,7 +4898,7 @@ button {
                 }
 
                 alert(
-                    `✅ Latest server snapshot restored\n\n` +
+                    `✅ Latest durable snapshot restored\n\n` +
                     `Source: ${data.snapshotFile || 'server snapshot'}\n` +
                     `Saved: ${data.snapshotSavedAt || 'unknown'}\n` +
                     `Mode: ${(data.mode || 'replace').toUpperCase()}\n` +

@@ -1606,6 +1606,25 @@ async function initDatabase() {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
+
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS data_snapshots (
+                id SERIAL PRIMARY KEY,
+                snapshot_name VARCHAR(255),
+                snapshot_json JSONB NOT NULL,
+                snapshot_reason VARCHAR(100),
+                snapshot_version INTEGER DEFAULT 1,
+                players_count INTEGER DEFAULT 0,
+                waitlist_count INTEGER DEFAULT 0,
+                snapshot_saved_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        `);
+        await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS snapshot_reason VARCHAR(100)`);
+        await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS snapshot_version INTEGER DEFAULT 1`);
+        await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS players_count INTEGER DEFAULT 0`);
+        await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS waitlist_count INTEGER DEFAULT 0`);
+        await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS snapshot_saved_at TIMESTAMP`);
         
         await loadDataFromDB();
         await loadRecentDataAudit();
@@ -1769,6 +1788,8 @@ const DATA_FILE = './data.json';
 const SETTINGS_BACKUP_FILE = './app-settings.backup.json';
 const SNAPSHOT_DIR = './data-backups';
 const SNAPSHOT_RETENTION = Number(process.env.LOCAL_SNAPSHOT_RETENTION || 200);
+const DB_SNAPSHOT_RETENTION = Number(process.env.DB_SNAPSHOT_RETENTION || 500);
+const DB_SNAPSHOT_FORCE_ON_EVERY_SAVE = String(process.env.DB_SNAPSHOT_FORCE_ON_EVERY_SAVE || 'true').toLowerCase() !== 'false';
 const REQUEST_SNAPSHOT_ENABLED = String(process.env.REQUEST_SNAPSHOT_ENABLED || 'false').toLowerCase() === 'true';
 const REQUEST_SNAPSHOT_MIN_INTERVAL_MS = Number(process.env.REQUEST_SNAPSHOT_MIN_INTERVAL_MS || 60000);
 const REQUEST_SELF_HEAL_ENABLED = String(process.env.REQUEST_SELF_HEAL_ENABLED || 'false').toLowerCase() === 'true';
@@ -1812,8 +1833,116 @@ function updateLatestSnapshotMeta(snapshot, filePath, source = 'memory') {
         file: filePath,
         players: Array.isArray(snapshot?.players) ? snapshot.players.length : 0,
         waitlist: Array.isArray(snapshot?.waitlist) ? snapshot.waitlist.length : 0,
-        source
+        source,
+        sourceType: source === 'database' ? 'database' : 'local'
     };
+}
+
+function getSnapshotCounts(snapshot) {
+    return {
+        players: Array.isArray(snapshot?.players) ? snapshot.players.length : 0,
+        waitlist: Array.isArray(snapshot?.waitlist) ? snapshot.waitlist.length : 0
+    };
+}
+
+function buildSnapshotMetadata(snapshot, reason = 'saveData') {
+    const counts = getSnapshotCounts(snapshot);
+    return {
+        version: 2,
+        reason: String(reason || 'saveData'),
+        playersCount: counts.players,
+        waitlistCount: counts.waitlist,
+        rosterReleased: !!snapshot?.rosterReleased,
+        gameDate: snapshot?.gameDate || null,
+        gameTime: snapshot?.gameTime || null,
+        gameLocation: snapshot?.gameLocation || null,
+        savedAt: snapshot?.savedAt || new Date().toISOString()
+    };
+}
+
+async function pruneDatabaseSnapshotsIfNeeded(clientOrPool = pool) {
+    if (!clientOrPool || DB_SNAPSHOT_RETENTION <= 0) return;
+    await clientOrPool.query(
+        `DELETE FROM data_snapshots
+         WHERE id IN (
+             SELECT id FROM data_snapshots
+             ORDER BY id DESC
+             OFFSET $1
+         )`,
+        [DB_SNAPSHOT_RETENTION]
+    );
+}
+
+async function insertDatabaseSnapshot(snapshot, reason = 'saveData', clientOrPool = pool) {
+    if (!clientOrPool || !DB_SNAPSHOT_FORCE_ON_EVERY_SAVE) {
+        return { ok: !pool, skipped: true, reason: 'db-snapshot-disabled' };
+    }
+
+    const metadata = buildSnapshotMetadata(snapshot, reason);
+    const result = await clientOrPool.query(
+        `INSERT INTO data_snapshots (
+            snapshot_name,
+            snapshot_json,
+            snapshot_reason,
+            snapshot_version,
+            players_count,
+            waitlist_count,
+            snapshot_saved_at
+        ) VALUES ($1, $2::jsonb, $3, $4, $5, $6, $7)
+        RETURNING id, created_at`,
+        [
+            `snapshot-${safeIsoStamp(metadata.savedAt)}-${String(reason || 'save').replace(/[^a-z0-9_-]+/gi, '-').slice(0, 40)}`,
+            JSON.stringify(snapshot),
+            metadata.reason,
+            metadata.version,
+            metadata.playersCount,
+            metadata.waitlistCount,
+            metadata.savedAt
+        ]
+    );
+    await pruneDatabaseSnapshotsIfNeeded(clientOrPool);
+    const row = result.rows && result.rows[0] ? result.rows[0] : {};
+    return { ok: true, id: row.id || null, createdAt: row.created_at || null, metadata };
+}
+
+async function getLatestDatabaseSnapshot() {
+    if (!pool) return null;
+    try {
+        const result = await pool.query(
+            `SELECT id, snapshot_name, snapshot_json, snapshot_reason, snapshot_saved_at, created_at, players_count, waitlist_count
+             FROM data_snapshots
+             ORDER BY COALESCE(snapshot_saved_at, created_at) DESC, id DESC
+             LIMIT 1`
+        );
+        const row = result.rows && result.rows[0];
+        if (!row) return null;
+        const data = row.snapshot_json && typeof row.snapshot_json === 'object' ? row.snapshot_json : null;
+        if (!data) return null;
+        updateLatestSnapshotMeta(data, `db:data_snapshots:${row.id}`, 'database');
+        return {
+            file: `db:data_snapshots:${row.id}`,
+            data,
+            savedAtMs: Date.parse(row.snapshot_saved_at || row.created_at || data.savedAt || '') || Date.now(),
+            score: ((Number(row.players_count) || 0) * 1000000) + ((Number(row.waitlist_count) || 0) * 1000) + (Date.parse(row.snapshot_saved_at || row.created_at || data.savedAt || '') || 0),
+            source: 'database',
+            snapshotId: row.id,
+            snapshotSavedAt: row.snapshot_saved_at || row.created_at || data.savedAt || null,
+            snapshotReason: row.snapshot_reason || null
+        };
+    } catch (err) {
+        console.error('Error loading latest database snapshot:', err.message);
+        return null;
+    }
+}
+
+async function getBestAvailableSnapshot() {
+    const dbSnapshot = await getLatestDatabaseSnapshot();
+    if (dbSnapshot && dbSnapshot.data) return dbSnapshot;
+    const localSnapshot = getBestLocalSnapshot();
+    if (localSnapshot && localSnapshot.data) {
+        return { ...localSnapshot, source: 'local', snapshotSavedAt: localSnapshot.data?.savedAt || null, snapshotReason: 'local-file' };
+    }
+    return null;
 }
 
 function trimSnapshotBackups() {
@@ -1962,8 +2091,9 @@ function toNumericOrNull(value) {
     return Number.isFinite(num) ? num : null;
 }
 
-async function replaceDatabaseStateFromMemory(reason = 'saveData') {
+async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = null) {
     if (!pool) return { ok: true, mode: 'file' };
+    const payload = snapshot || buildFullDataSnapshot();
 
     const client = await pool.connect();
     try {
@@ -2060,8 +2190,9 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData') {
             );
         }
 
+        const dbSnapshotResult = await insertDatabaseSnapshot(payload, reason, client);
         await client.query('COMMIT');
-        return { ok: true, mode: 'postgres', players: players.length, waitlist: waitlist.length, reason };
+        return { ok: true, mode: 'postgres', players: players.length, waitlist: waitlist.length, reason, dbSnapshot: dbSnapshotResult };
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
         throw err;
@@ -2075,7 +2206,7 @@ async function saveData(reason = 'saveData') {
     saveQueue = saveQueue.then(async () => {
         let dbResult = null;
         try {
-            dbResult = await replaceDatabaseStateFromMemory(reason);
+            dbResult = await replaceDatabaseStateFromMemory(reason, snapshot);
             writeSettingsBackup(reason);
             const localResult = persistDataToFile(reason, snapshot);
             await appendDataAudit('save', 'success', { reason, database: dbResult, localSnapshot: localResult });
@@ -2107,8 +2238,8 @@ async function saveData(reason = 'saveData') {
 
 async function runDatabaseSelfHeal(reason = 'self-heal') {
     if (!pool) return { ok: false, skipped: true, reason: 'file-mode' };
-    const best = getBestLocalSnapshot();
-    if (!best || !best.data) return { ok: false, skipped: true, reason: 'no-local-snapshot' };
+    const best = await getBestAvailableSnapshot();
+    if (!best || !best.data) return { ok: false, skipped: true, reason: 'no-available-snapshot' };
 
     try {
         const dbPlayers = await pool.query('SELECT id, phone FROM players');
@@ -2173,7 +2304,9 @@ function maybeRunRequestSelfHeal(req) {
 
 
 function buildFullDataSnapshot() {
+    const savedAt = new Date().toISOString();
     return {
+        snapshotVersion: 2,
         playerSpots,
         players,
         waitlist,
@@ -2207,7 +2340,27 @@ function buildFullDataSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
-        savedAt: new Date().toISOString()
+        summary: {
+            gameLocation,
+            gameTime,
+            gameDate,
+            rosterReleased,
+            requirePlayerCode,
+            playerSignupCode
+        },
+        appSettings: {
+            maintenanceMode,
+            customTitle,
+            announcementEnabled,
+            announcementText,
+            announcementImages,
+            paymentEmail,
+            selectedDayTime: gameTime,
+            selectedArena: gameLocation,
+            requirePlayerCode,
+            playerSignupCode
+        },
+        savedAt
     };
 }
 
@@ -2215,7 +2368,7 @@ async function reconcileFromFileBackup() {
     if (!pool) return;
 
     try {
-        const best = getBestLocalSnapshot();
+        const best = await getBestAvailableSnapshot();
         if (!best || !best.data) return;
         const backup = best.data;
         const backupPlayers = Array.isArray(backup.players) ? backup.players : [];
@@ -4473,7 +4626,7 @@ app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
     }
 
     try {
-        const latest = getBestLocalSnapshot();
+        const latest = await getBestAvailableSnapshot();
         if (!latest || !latest.data) {
             return res.status(404).json({ error: "No server snapshot found to preview." });
         }
@@ -4488,7 +4641,9 @@ app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
         return res.json({
             success: true,
             snapshotFile: latest.file,
-            snapshotSavedAt: backupData.savedAt || null,
+            snapshotSource: latest.source || 'local',
+            snapshotSavedAt: latest.snapshotSavedAt || backupData.savedAt || null,
+            snapshotReason: latest.snapshotReason || null,
             snapshotPlayers: previewPlayers.length,
             snapshotWaitlist: previewWaitlist.length,
             livePlayers: Array.isArray(players) ? players.length : 0,
@@ -4511,7 +4666,7 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
     }
 
     try {
-        const latest = getBestLocalSnapshot();
+        const latest = await getBestAvailableSnapshot();
         if (!latest || !latest.data) {
             return res.status(404).json({ error: "No server snapshot found to restore." });
         }
@@ -4593,7 +4748,9 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
             restoredPlayers: players.length,
             restoredWaitlist: waitlist.length,
             snapshotFile: latest.file,
-            snapshotSavedAt: backupData.savedAt || null,
+            snapshotSource: latest.source || 'local',
+            snapshotSavedAt: latest.snapshotSavedAt || backupData.savedAt || null,
+            snapshotReason: latest.snapshotReason || null,
             message: 'Latest server snapshot restored successfully.'
         });
     } catch (err) {
