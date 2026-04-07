@@ -1732,6 +1732,14 @@ button {
                 <button class="control-btn" onclick="loadSystemStatus()" style="background:#7e57c2;">Refresh Data Integrity</button>
             </div>
         </div>
+
+        <div class="control-box" style="border-color:#5c6bc0;">
+            <h3>🗂️ Snapshot Restore History</h3>
+            <div id="snapshotHistoryBox" style="color:#cfcfcf; line-height:1.7;">Loading snapshots...</div>
+            <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+                <button class="control-btn" onclick="loadSnapshotHistory()" style="background:#5c6bc0;">Refresh Snapshots</button>
+            </div>
+        </div>
         
         <div class="success-message" id="releaseSuccess">
             ✅ Roster Released Successfully! Players can now see the teams.
@@ -2895,7 +2903,9 @@ button {
                     loadSessionInfo();
                     loadAuditLog();
                     loadSystemStatus();
+                    loadSnapshotHistory();
                     loadSystemStatus();
+                    loadSnapshotHistory();
                     setTimeout(loadHistoryList, 500);
                 } else {
                     clearStoredSessionToken();
@@ -4816,6 +4826,124 @@ button {
             if (sessionToken) loadSystemStatus();
         }, 60000);
     
+
+        async function loadSnapshotHistory() {
+            const el = document.getElementById('snapshotHistoryBox');
+            if (!el || !sessionToken) return;
+            el.innerHTML = 'Loading snapshots...';
+            try {
+                const res = await fetch(`${API_URL}/api/admin/snapshots`, {
+                    method: 'GET',
+                    headers: getAdminHeaders()
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Failed to load snapshots');
+
+                const snapshots = Array.isArray(data.snapshots) ? data.snapshots : [];
+                if (!snapshots.length) {
+                    el.innerHTML = 'No local snapshots found yet.';
+                    return;
+                }
+
+                el.innerHTML = snapshots.slice(0, 12).map((snap, index) => `
+                    <div style="display:flex; gap:10px; align-items:center; justify-content:space-between; flex-wrap:wrap; padding:10px 0; border-bottom:1px solid rgba(255,255,255,.08);">
+                        <div>
+                            <div style="font-weight:700; color:${index === 0 ? '#90caf9' : '#fff'};">${index === 0 ? 'Latest' : 'Snapshot'} • ${snap.name}</div>
+                            <div style="color:#bbb; font-size:.9rem;">Saved: ${formatDateTime(snap.savedAt)} • ${snap.players} players / ${snap.waitlist} waitlist</div>
+                        </div>
+                        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                            <button class="control-btn" style="background:#5c6bc0;" onclick='previewSnapshotByName(${JSON.stringify(snap.name)})'>Preview</button>
+                            <button class="control-btn" style="background:#3949ab;" onclick='restoreSnapshotByName(${JSON.stringify(snap.name)})'>Restore</button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (err) {
+                console.error('Load snapshots error:', err);
+                el.innerHTML = err.message || 'Unable to load snapshots.';
+            }
+        }
+
+        async function previewSnapshotByName(snapshotName) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/snapshots/${encodeURIComponent(snapshotName)}/preview`, {
+                    method: 'GET',
+                    headers: getAdminHeaders()
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Preview failed');
+
+                const lines = [
+                    'Snapshot preview',
+                    '',
+                    `Name: ${data.snapshotName || snapshotName}`,
+                    `Saved: ${data.snapshotSavedAt || 'unknown'}`,
+                    '',
+                    `Snapshot players: ${Number(data.snapshotPlayers || 0)}`,
+                    `Live players now: ${Number(data.livePlayers || 0)}`,
+                    '',
+                    `Snapshot waitlist: ${Number(data.snapshotWaitlist || 0)}`,
+                    `Live waitlist now: ${Number(data.liveWaitlist || 0)}`
+                ];
+                if (data.gameTime || data.gameDate || data.gameLocation) {
+                    lines.push('', 'Snapshot game info:');
+                    if (data.gameTime) lines.push(`Time: ${data.gameTime}`);
+                    if (data.gameDate) lines.push(`Date: ${data.gameDate}`);
+                    if (data.gameLocation) lines.push(`Location: ${data.gameLocation}`);
+                }
+                alert(lines.join('\n'));
+            } catch (err) {
+                console.error('Preview snapshot error:', err);
+                alert(err.message || 'Failed to preview snapshot');
+            }
+        }
+
+        async function restoreSnapshotByName(snapshotName) {
+            try {
+                const previewRes = await fetch(`${API_URL}/api/admin/snapshots/${encodeURIComponent(snapshotName)}/preview`, {
+                    method: 'GET',
+                    headers: getAdminHeaders()
+                });
+                const preview = await previewRes.json().catch(() => ({}));
+                if (!previewRes.ok) throw new Error(preview.error || 'Could not preview snapshot');
+
+                const ok = confirm(
+                    'Restore this snapshot?\n\n' +
+                    `Name: ${preview.snapshotName || snapshotName}\n` +
+                    `Saved: ${preview.snapshotSavedAt || 'unknown'}\n` +
+                    `Players: ${preview.snapshotPlayers} (live now: ${preview.livePlayers})\n` +
+                    `Waitlist: ${preview.snapshotWaitlist} (live now: ${preview.liveWaitlist})`
+                );
+                if (!ok) return;
+
+                const res = await fetch(`${API_URL}/api/admin/restore-snapshot`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, snapshotName })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok) throw new Error(data.error || 'Restore failed');
+
+                alert(
+                    `✅ Snapshot restored\n\n` +
+                    `Name: ${data.snapshotName || snapshotName}\n` +
+                    `Saved: ${data.snapshotSavedAt || 'unknown'}\n` +
+                    `Players now: ${data.restoredPlayers}\n` +
+                    `Waitlist now: ${data.restoredWaitlist}`
+                );
+
+                loadData();
+                loadSettings();
+                loadAppSettings();
+                loadPaymentReportSnapshots();
+                loadSnapshotHistory();
+                setTimeout(loadHistoryList, 500);
+                setTimeout(loadSystemStatus, 700);
+            } catch (err) {
+                console.error('Restore snapshot error:', err);
+                alert(err.message || 'Failed to restore snapshot');
+            }
+        }
+
 
 
         async function previewLatestServerBackup() {

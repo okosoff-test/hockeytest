@@ -1814,6 +1814,47 @@ function getBestLocalSnapshot() {
     return best;
 }
 
+
+function listLocalSnapshots(limit = 50) {
+    try {
+        const candidates = [];
+        if (fs.existsSync(SNAPSHOT_DIR)) {
+            for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
+                if (!/^snapshot-.*\.json$/i.test(name)) continue;
+                const full = path.join(SNAPSHOT_DIR, name);
+                try {
+                    const stat = fs.statSync(full);
+                    const data = readJsonFileSafe(full);
+                    const savedAt = data?.savedAt || (stat?.mtime ? stat.mtime.toISOString() : null);
+                    candidates.push({
+                        name,
+                        file: full,
+                        savedAt,
+                        players: Array.isArray(data?.players) ? data.players.length : 0,
+                        waitlist: Array.isArray(data?.waitlist) ? data.waitlist.length : 0,
+                        reason: String(name).replace(/^snapshot-[^-]+-/, '').replace(/\.json$/i, '')
+                    });
+                } catch (err) {}
+            }
+        }
+        return candidates
+            .sort((a, b) => (Date.parse(b.savedAt || '') || 0) - (Date.parse(a.savedAt || '') || 0))
+            .slice(0, Math.max(1, Number(limit) || 50));
+    } catch (err) {
+        console.error('Error listing local snapshots:', err.message);
+        return [];
+    }
+}
+
+function getLocalSnapshotByName(snapshotName) {
+    const safeName = path.basename(String(snapshotName || '').trim());
+    if (!safeName || safeName !== snapshotName || !/^snapshot-.*\.json$/i.test(safeName)) return null;
+    const full = path.join(SNAPSHOT_DIR, safeName);
+    const data = readJsonFileSafe(full);
+    if (!data) return null;
+    return { name: safeName, file: full, data };
+}
+
 async function appendDataAudit(eventType, status = 'info', details = {}) {
     const entry = {
         at: new Date().toISOString(),
@@ -3940,6 +3981,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
         await saveAppSetting('selectedDayTime', gameTime);
         await saveAppSetting('selectedArena', gameLocation);
         await saveAppSetting('gameDate', gameDate);
+        await saveData('update-app-settings');
         writeSettingsBackup('update-app-settings');
         console.log('[ADMIN] App settings updated');
 
@@ -4377,6 +4419,159 @@ app.post('/api/admin/download-backup', async (req, res) => {
 
 
 
+
+app.get('/api/admin/snapshots', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const snapshots = listLocalSnapshots(50);
+        return res.json({
+            success: true,
+            snapshots,
+            latest: snapshots[0] || null
+        });
+    } catch (err) {
+        console.error('Error listing snapshots:', err);
+        return res.status(500).json({ error: 'Failed to list snapshots' });
+    }
+});
+
+app.get('/api/admin/snapshots/:name/preview', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const found = getLocalSnapshotByName(req.params.name);
+        if (!found || !found.data) {
+            return res.status(404).json({ error: "Snapshot not found." });
+        }
+
+        const backupData = found.data;
+        const previewPlayers = Array.isArray(backupData.players) ? backupData.players.filter(item => item && typeof item === 'object') : [];
+        const previewWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist.filter(item => item && typeof item === 'object') : [];
+        const summary = backupData.summary && typeof backupData.summary === 'object' ? backupData.summary : {};
+        const appSettings = backupData.appSettings && typeof backupData.appSettings === 'object' ? backupData.appSettings : {};
+
+        return res.json({
+            success: true,
+            snapshotFile: found.file,
+            snapshotName: found.name,
+            snapshotSavedAt: backupData.savedAt || null,
+            snapshotPlayers: previewPlayers.length,
+            snapshotWaitlist: previewWaitlist.length,
+            livePlayers: Array.isArray(players) ? players.length : 0,
+            liveWaitlist: Array.isArray(waitlist) ? waitlist.length : 0,
+            rosterReleasedInSnapshot: typeof summary.rosterReleased === 'boolean' ? summary.rosterReleased : null,
+            gameLocation: typeof summary.gameLocation === 'string' ? summary.gameLocation : (typeof appSettings.selectedArena === 'string' ? appSettings.selectedArena : null),
+            gameTime: typeof summary.gameTime === 'string' ? summary.gameTime : (typeof appSettings.selectedDayTime === 'string' ? appSettings.selectedDayTime : null),
+            gameDate: typeof summary.gameDate === 'string' ? summary.gameDate : null
+        });
+    } catch (err) {
+        console.error('Error previewing snapshot:', err);
+        return res.status(500).json({ error: 'Failed to preview snapshot' });
+    }
+});
+
+app.post('/api/admin/restore-snapshot', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const snapshotName = String(req.body?.snapshotName || '').trim();
+        const found = getLocalSnapshotByName(snapshotName);
+        if (!found || !found.data) {
+            return res.status(404).json({ error: "Snapshot not found." });
+        }
+
+        const backupData = found.data;
+        const restoredPlayers = Array.isArray(backupData.players) ? backupData.players.filter(item => item && typeof item === 'object').map(hydratePlayerRatingProfile) : null;
+        const restoredWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist.filter(item => item && typeof item === 'object').map(hydratePlayerRatingProfile) : null;
+        if (!restoredPlayers || !restoredWaitlist) {
+            return res.status(400).json({ error: "Snapshot is missing players or waitlist." });
+        }
+
+        const beforeCounts = {
+            players: Array.isArray(players) ? players.length : 0,
+            waitlist: Array.isArray(waitlist) ? waitlist.length : 0
+        };
+
+        players = restoredPlayers;
+        waitlist = restoredWaitlist;
+
+        if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
+            currentWeekData = JSON.parse(JSON.stringify(backupData.currentWeekData));
+        }
+
+        if (backupData.summary && typeof backupData.summary === 'object') {
+            if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
+            if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
+            if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
+            if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
+            if (typeof backupData.summary.requirePlayerCode === 'boolean') requirePlayerCode = backupData.summary.requirePlayerCode;
+            if (typeof backupData.summary.playerSignupCode === 'string' && backupData.summary.playerSignupCode.trim()) {
+                playerSignupCode = backupData.summary.playerSignupCode.trim();
+            }
+        }
+
+        if (backupData.appSettings && typeof backupData.appSettings === 'object') {
+            const s = backupData.appSettings;
+            if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
+            if (typeof s.customTitle === 'string') customTitle = s.customTitle;
+            if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
+            if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+            if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
+            if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+            if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
+            if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
+        }
+
+        playerSpots = Math.max(0, 20 - players.filter(p => !(p && p.isGoalie)).length);
+        await saveData(`restore-snapshot-${found.name}`);
+
+        try {
+            if (typeof addAdminAuditEntry === 'function') {
+                addAdminAuditEntry('restore-snapshot', req, {
+                    snapshotFile: found.file,
+                    snapshotSavedAt: backupData.savedAt || null,
+                    beforePlayers: beforeCounts.players,
+                    beforeWaitlist: beforeCounts.waitlist,
+                    afterPlayers: players.length,
+                    afterWaitlist: waitlist.length
+                });
+            }
+            if (typeof appendDataAudit === 'function') {
+                await appendDataAudit('restore-snapshot', 'success', {
+                    snapshotFile: found.file,
+                    snapshotSavedAt: backupData.savedAt || null,
+                    beforePlayers: beforeCounts.players,
+                    beforeWaitlist: beforeCounts.waitlist,
+                    afterPlayers: players.length,
+                    afterWaitlist: waitlist.length
+                });
+            }
+        } catch (auditErr) {
+            console.error('Error auditing snapshot restore:', auditErr.message);
+        }
+
+        return res.json({
+            success: true,
+            snapshotFile: found.file,
+            snapshotName: found.name,
+            snapshotSavedAt: backupData.savedAt || null,
+            restoredPlayers: players.length,
+            restoredWaitlist: waitlist.length,
+            message: 'Snapshot restored successfully.'
+        });
+    } catch (err) {
+        console.error('Error restoring snapshot:', err);
+        return res.status(500).json({ error: 'Failed to restore snapshot' });
+    }
+});
+
 app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -4757,7 +4952,7 @@ app.post('/api/admin/settings', (req, res) => {
     });
 });
 
-app.post('/api/admin/update-details', (req, res) => {
+app.post('/api/admin/update-details', async (req, res) => {
     const { password, sessionToken, location, time, date } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
@@ -4773,7 +4968,7 @@ app.post('/api/admin/update-details', (req, res) => {
         gameDate = date.trim();
     }
     
-    saveData();
+    await saveData('admin-update-details');
     
     res.json({ 
         success: true, 
@@ -4784,7 +4979,7 @@ app.post('/api/admin/update-details', (req, res) => {
     });
 });
 
-app.post('/api/admin/update-code', (req, res) => {
+app.post('/api/admin/update-code', async (req, res) => {
     const { password, sessionToken, newCode } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -4797,7 +4992,7 @@ app.post('/api/admin/update-code', (req, res) => {
 
     customSignupCode = String(newCode).trim();
     playerSignupCode = getDynamicSignupCode();
-    saveData();
+    await saveData('admin-update-code');
 
     res.json({ 
         success: true, 
@@ -4808,14 +5003,14 @@ app.post('/api/admin/update-code', (req, res) => {
     });
 });
 
-app.post('/api/admin/clear-code-override', (req, res) => {
+app.post('/api/admin/clear-code-override', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized - invalid session" });
     }
 
     customSignupCode = '';
     playerSignupCode = getDynamicSignupCode();
-    saveData();
+    await saveData('admin-clear-code-override');
 
     res.json({
         success: true,
@@ -4878,7 +5073,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
     lastExactResetRunAt = resetGuard.occurrenceKey;
     lastExactResetMinuteKey = resetGuard.minuteKey;
 
-    await saveData();
+    await saveData('admin-update-schedules');
     writeSettingsBackup('update-schedules');
     console.log('[ADMIN] Schedules updated');
     const lockStatus = checkAutoLock();
@@ -4897,7 +5092,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
     });
 });
 
-app.post('/api/admin/toggle-code', (req, res) => {
+app.post('/api/admin/toggle-code', async (req, res) => {
     const { password, sessionToken } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
@@ -4909,7 +5104,7 @@ app.post('/api/admin/toggle-code', (req, res) => {
     manualOverride = true;
     manualOverrideState = newRequireCode ? 'locked' : 'open';
     
-    saveData();
+    await saveData('admin-toggle-code');
     
     res.json({ 
         success: true, 
@@ -4920,7 +5115,7 @@ app.post('/api/admin/toggle-code', (req, res) => {
     });
 });
 
-app.post('/api/admin/reset-schedule', (req, res) => {
+app.post('/api/admin/reset-schedule', async (req, res) => {
     const { password, sessionToken } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
@@ -4930,6 +5125,7 @@ app.post('/api/admin/reset-schedule', (req, res) => {
     manualOverrideState = null;
     
     const result = checkAutoLock();
+    await saveData('admin-reset-schedule');
     
     res.json({ 
         success: true, 
@@ -4981,7 +5177,7 @@ app.post('/api/admin/promote-waitlist', async (req, res) => {
             playerSpots--;
         }
         
-        await saveData();
+        await saveData('admin-promote-waitlist');
     } catch (err) {
         console.error('Error promoting player:', err);
         return res.status(500).json({ error: "Database error" });
@@ -5030,7 +5226,7 @@ app.post('/api/admin/remove-waitlist', async (req, res) => {
         console.error('Error removing from waitlist:', err);
     }
     
-    saveData();
+    await saveData('admin-remove-waitlist');
     res.json({ success: true });
 });
 
@@ -5089,7 +5285,7 @@ app.post('/api/admin/add-player', async (req, res) => {
             return res.status(500).json({ error: "Database error" });
         }
         
-        saveData();
+        await saveData('admin-add-player-waitlist');
         res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
     } else {
         if (isGoalieBool && !isGoalieSpotsAvailable()) {
@@ -5200,7 +5396,7 @@ app.post('/api/admin/remove-player', async (req, res) => {
     });
 });
 
-app.post('/api/admin/update-spots', (req, res) => {
+app.post('/api/admin/update-spots', async (req, res) => {
     const { password, sessionToken, newSpots } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
@@ -5212,7 +5408,7 @@ app.post('/api/admin/update-spots', (req, res) => {
     }
     
     playerSpots = spotCount;
-    saveData();
+    await saveData('admin-update-spots');
     res.json({ success: true, spots: playerSpots });
 });
 
@@ -5245,9 +5441,11 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
     player.paid = paid;
 
     try {
-        await pool.query('UPDATE players SET paid_amount = $1, paid = $2 WHERE id = $3', 
-            [paidAmount, paid, player.id]);
-        saveData();
+        if (pool) {
+            await pool.query('UPDATE players SET paid_amount = $1, paid = $2 WHERE id = $3', 
+                [paidAmount, paid, player.id]);
+        }
+        await saveData('admin-update-paid-amount');
         
         // Calculate new total
         const totalPaid = players.reduce((sum, p) => {
@@ -5301,7 +5499,7 @@ app.post('/api/admin/update-rating', async (req, res) => {
                 [ratingNum, player.finalRating, player.id]
             );
         }
-        saveData();
+        await saveData('admin-update-rating');
         res.json({ success: true, player: hydratePlayerRatingProfile(player), oldRating: oldRating, newRating: ratingNum });
     } catch (err) {
         console.error('Error updating rating:', err);
