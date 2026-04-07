@@ -1826,34 +1826,6 @@ function safeIsoStamp(date = new Date()) {
     return new Date(date).toISOString().replace(/[:.]/g, '-');
 }
 
-function formatDateTimeET12(value) {
-    if (!value) return null;
-    const d = new Date(value);
-    if (Number.isNaN(d.getTime())) return null;
-    return new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
-        year: 'numeric',
-        month: 'short',
-        day: 'numeric',
-        hour: 'numeric',
-        minute: '2-digit',
-        second: '2-digit',
-        hour12: true
-    }).format(d) + ' ET';
-}
-
-function buildSnapshotFingerprint(snapshotRef = {}) {
-    const raw = JSON.stringify({
-        file: snapshotRef.file || null,
-        source: snapshotRef.source || null,
-        savedAt: snapshotRef.snapshotSavedAt || snapshotRef.data?.savedAt || null,
-        reason: snapshotRef.snapshotReason || null,
-        players: Array.isArray(snapshotRef.data?.players) ? snapshotRef.data.players.length : null,
-        waitlist: Array.isArray(snapshotRef.data?.waitlist) ? snapshotRef.data.waitlist.length : null
-    });
-    return crypto.createHash('sha1').update(raw).digest('hex').slice(0, 16);
-}
-
 function updateLatestSnapshotMeta(snapshot, filePath, source = 'memory') {
     latestLocalSnapshotMeta = {
         exists: true,
@@ -1965,20 +1937,258 @@ async function getLatestDatabaseSnapshot() {
 
 async function getBestAvailableSnapshot() {
     const dbSnapshot = await getLatestDatabaseSnapshot();
-    if (dbSnapshot && dbSnapshot.data) {
-        return { ...dbSnapshot, snapshotFingerprint: buildSnapshotFingerprint(dbSnapshot) };
-    }
-    const localSnapshot = getLatestLocalSnapshot();
+    if (dbSnapshot && dbSnapshot.data) return dbSnapshot;
+    const localSnapshot = getBestLocalSnapshot();
     if (localSnapshot && localSnapshot.data) {
-        return {
-            ...localSnapshot,
-            source: 'local',
-            snapshotSavedAt: localSnapshot.snapshotSavedAt || localSnapshot.data?.savedAt || null,
-            snapshotReason: localSnapshot.snapshotReason || 'local-file',
-            snapshotFingerprint: buildSnapshotFingerprint(localSnapshot)
-        };
+        return { ...localSnapshot, source: 'local', snapshotSavedAt: localSnapshot.data?.savedAt || null, snapshotReason: 'local-file' };
     }
     return null;
+}
+
+function buildSnapshotFingerprint(snapshotRecord = {}) {
+    try {
+        const raw = [
+            snapshotRecord.source || '',
+            snapshotRecord.file || '',
+            snapshotRecord.snapshotId || '',
+            snapshotRecord.snapshotSavedAt || '',
+            snapshotRecord.snapshotReason || '',
+            Array.isArray(snapshotRecord.data?.players) ? snapshotRecord.data.players.length : 0,
+            Array.isArray(snapshotRecord.data?.waitlist) ? snapshotRecord.data.waitlist.length : 0
+        ].join('|');
+        return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 16);
+    } catch (err) {
+        return '';
+    }
+}
+
+function buildSnapshotListItem(record = {}) {
+    const data = record.data && typeof record.data === 'object' ? record.data : {};
+    const summary = data.summary && typeof data.summary === 'object' ? data.summary : {};
+    const appSettings = data.appSettings && typeof data.appSettings === 'object' ? data.appSettings : {};
+    const playersCount = Array.isArray(data.players) ? data.players.filter(item => item && typeof item === 'object').length : Number(record.playersCount || 0);
+    const waitlistCount = Array.isArray(data.waitlist) ? data.waitlist.filter(item => item && typeof item === 'object').length : Number(record.waitlistCount || 0);
+    return {
+        snapshotKey: record.snapshotId != null ? `db:${record.snapshotId}` : `file:${record.file || ''}`,
+        snapshotId: record.snapshotId != null ? String(record.snapshotId) : null,
+        source: record.source || 'local',
+        file: record.file || null,
+        fingerprint: buildSnapshotFingerprint(record),
+        savedAt: record.snapshotSavedAt || data.savedAt || null,
+        reason: record.snapshotReason || data.snapshotReason || null,
+        players: playersCount,
+        waitlist: waitlistCount,
+        rosterReleased: typeof summary.rosterReleased === 'boolean' ? summary.rosterReleased : null,
+        gameLocation: typeof summary.gameLocation === 'string' ? summary.gameLocation : (typeof appSettings.selectedArena === 'string' ? appSettings.selectedArena : null),
+        gameTime: typeof summary.gameTime === 'string' ? summary.gameTime : (typeof appSettings.selectedDayTime === 'string' ? appSettings.selectedDayTime : null),
+        gameDate: typeof summary.gameDate === 'string' ? summary.gameDate : null,
+        version: Number(data.snapshotVersion || 2),
+        data
+    };
+}
+
+async function listAvailableSnapshots(limit = 100) {
+    const snapshots = [];
+    if (pool) {
+        try {
+            const result = await pool.query(
+                `SELECT id, snapshot_name, snapshot_json, snapshot_reason, snapshot_saved_at, created_at, players_count, waitlist_count
+                 FROM data_snapshots
+                 ORDER BY COALESCE(snapshot_saved_at, created_at) DESC, id DESC
+                 LIMIT $1`,
+                [Math.max(1, Math.min(Number(limit) || 100, 300))]
+            );
+            for (const row of result.rows || []) {
+                const data = row.snapshot_json && typeof row.snapshot_json === 'object' ? row.snapshot_json : null;
+                if (!data) continue;
+                snapshots.push(buildSnapshotListItem({
+                    source: 'database',
+                    snapshotId: row.id,
+                    file: `db:data_snapshots:${row.id}`,
+                    snapshotSavedAt: row.snapshot_saved_at || row.created_at || data.savedAt || null,
+                    snapshotReason: row.snapshot_reason || null,
+                    playersCount: row.players_count,
+                    waitlistCount: row.waitlist_count,
+                    data
+                }));
+            }
+        } catch (err) {
+            console.error('Error listing database snapshots:', err.message);
+        }
+    }
+
+    try {
+        const localFiles = [];
+        if (fs.existsSync(DATA_FILE)) localFiles.push(DATA_FILE);
+        if (fs.existsSync(SNAPSHOT_DIR)) {
+            for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
+                if (!/^snapshot-.*\.json$/i.test(name)) continue;
+                localFiles.push(path.join(SNAPSHOT_DIR, name));
+            }
+        }
+        for (const full of localFiles) {
+            const data = readJsonFileSafe(full);
+            if (!data || typeof data !== 'object') continue;
+            const stat = fs.existsSync(full) ? fs.statSync(full) : null;
+            snapshots.push(buildSnapshotListItem({
+                source: 'local',
+                file: full,
+                snapshotSavedAt: data.savedAt || (stat ? stat.mtime.toISOString() : null),
+                snapshotReason: data.snapshotReason || 'local-file',
+                data
+            }));
+        }
+    } catch (err) {
+        console.error('Error listing local snapshots:', err.message);
+    }
+
+    const seen = new Set();
+    const deduped = [];
+    for (const item of snapshots) {
+        const key = `${item.source}|${item.snapshotId || ''}|${item.file || ''}|${item.savedAt || ''}|${item.fingerprint || ''}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        deduped.push(item);
+    }
+
+    deduped.sort((a, b) => {
+        const aTime = Date.parse(a.savedAt || '') || 0;
+        const bTime = Date.parse(b.savedAt || '') || 0;
+        if (bTime !== aTime) return bTime - aTime;
+        return String(b.snapshotKey || '').localeCompare(String(a.snapshotKey || ''));
+    });
+
+    return deduped.slice(0, Math.max(1, Math.min(Number(limit) || 100, 300)));
+}
+
+async function getSnapshotByLookup(snapshotKey, fingerprint = '') {
+    const list = await listAvailableSnapshots(300);
+    const match = list.find(item => String(item.snapshotKey) === String(snapshotKey));
+    if (!match) return null;
+    if (fingerprint && String(match.fingerprint) !== String(fingerprint)) {
+        return { stale: true, latest: match };
+    }
+    return match;
+}
+
+function buildSnapshotPreviewPayload(item) {
+    if (!item || !item.data) return null;
+    const previewPlayers = Array.isArray(item.data.players) ? item.data.players.filter(obj => obj && typeof obj === 'object') : [];
+    const previewWaitlist = Array.isArray(item.data.waitlist) ? item.data.waitlist.filter(obj => obj && typeof obj === 'object') : [];
+    return {
+        success: true,
+        snapshotKey: item.snapshotKey,
+        snapshotId: item.snapshotId,
+        fingerprint: item.fingerprint,
+        snapshotFile: item.file,
+        snapshotSource: item.source || 'local',
+        snapshotSavedAt: item.savedAt || null,
+        snapshotReason: item.reason || null,
+        snapshotPlayers: previewPlayers.length,
+        snapshotWaitlist: previewWaitlist.length,
+        livePlayers: Array.isArray(players) ? players.length : 0,
+        liveWaitlist: Array.isArray(waitlist) ? waitlist.length : 0,
+        rosterReleasedInSnapshot: item.rosterReleased,
+        gameLocation: item.gameLocation || null,
+        gameTime: item.gameTime || null,
+        gameDate: item.gameDate || null,
+        version: item.version || 2
+    };
+}
+
+async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-replace') {
+    const backupData = item.data;
+    const restoredPlayers = Array.isArray(backupData.players) ? backupData.players.filter(obj => obj && typeof obj === 'object') : null;
+    const restoredWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist.filter(obj => obj && typeof obj === 'object') : null;
+    if (!restoredPlayers || !restoredWaitlist) {
+        return { ok: false, status: 400, body: { error: 'Selected snapshot is missing players or waitlist.' } };
+    }
+
+    const beforeCounts = {
+        players: Array.isArray(players) ? players.length : 0,
+        waitlist: Array.isArray(waitlist) ? waitlist.length : 0
+    };
+
+    players = JSON.parse(JSON.stringify(restoredPlayers));
+    waitlist = JSON.parse(JSON.stringify(restoredWaitlist));
+
+    if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
+        currentWeekData = JSON.parse(JSON.stringify(backupData.currentWeekData));
+    }
+
+    if (backupData.summary && typeof backupData.summary === 'object') {
+        if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
+        if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
+        if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
+        if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
+        if (typeof backupData.summary.requirePlayerCode === 'boolean') requirePlayerCode = backupData.summary.requirePlayerCode;
+        if (typeof backupData.summary.playerSignupCode === 'string' && backupData.summary.playerSignupCode.trim()) {
+            playerSignupCode = backupData.summary.playerSignupCode.trim();
+        }
+    }
+
+    if (backupData.appSettings && typeof backupData.appSettings === 'object') {
+        const s = backupData.appSettings;
+        if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
+        if (typeof s.customTitle === 'string') customTitle = s.customTitle;
+        if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
+        if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+        if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
+        if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
+        if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
+    }
+
+    playerSpots = Math.max(0, 20 - players.filter(p => !(p && p.isGoalie)).length);
+    await saveData('restore-selected-snapshot');
+
+    try {
+        if (typeof addAdminAuditEntry === 'function') {
+            addAdminAuditEntry(auditAction, req, {
+                beforePlayers: beforeCounts.players,
+                beforeWaitlist: beforeCounts.waitlist,
+                afterPlayers: players.length,
+                afterWaitlist: waitlist.length,
+                snapshotFile: item.file,
+                snapshotSource: item.source || 'local',
+                snapshotSavedAt: item.savedAt || null,
+                snapshotKey: item.snapshotKey,
+                fingerprint: item.fingerprint
+            });
+        }
+        if (typeof appendDataAudit === 'function') {
+            await appendDataAudit(auditAction, 'success', {
+                beforePlayers: beforeCounts.players,
+                beforeWaitlist: beforeCounts.waitlist,
+                afterPlayers: players.length,
+                afterWaitlist: waitlist.length,
+                snapshotFile: item.file,
+                snapshotSource: item.source || 'local',
+                snapshotSavedAt: item.savedAt || null,
+                snapshotKey: item.snapshotKey,
+                fingerprint: item.fingerprint
+            });
+        }
+    } catch (auditErr) {
+        console.error('Error auditing selected snapshot restore:', auditErr.message);
+    }
+
+    return {
+        ok: true,
+        body: {
+            success: true,
+            mode: 'replace',
+            restoredPlayers: players.length,
+            restoredWaitlist: waitlist.length,
+            snapshotKey: item.snapshotKey,
+            snapshotFile: item.file,
+            snapshotSource: item.source || 'local',
+            snapshotSavedAt: item.savedAt || null,
+            snapshotReason: item.reason || null,
+            fingerprint: item.fingerprint,
+            message: 'Snapshot restored successfully.'
+        }
+    };
 }
 
 function trimSnapshotBackups() {
@@ -2025,12 +2235,10 @@ function readJsonFileSafe(filePath) {
 }
 
 
-function listLocalSnapshotCandidates() {
+function getBestLocalSnapshot() {
     const candidates = [];
     if (fs.existsSync(DATA_FILE)) {
-        try {
-            candidates.push({ file: DATA_FILE, stat: fs.statSync(DATA_FILE) });
-        } catch (err) {}
+        candidates.push({ file: DATA_FILE, stat: fs.statSync(DATA_FILE) });
     }
     if (fs.existsSync(SNAPSHOT_DIR)) {
         for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
@@ -2041,44 +2249,20 @@ function listLocalSnapshotCandidates() {
             } catch (err) {}
         }
     }
-    return candidates;
-}
 
-function normalizeSnapshotCandidate(candidate) {
-    if (!candidate || !candidate.file) return null;
-    const data = readJsonFileSafe(candidate.file);
-    if (!data) return null;
-    const playersCount = Array.isArray(data.players) ? data.players.length : 0;
-    const waitlistCount = Array.isArray(data.waitlist) ? data.waitlist.length : 0;
-    const savedAtMs = Date.parse(data.savedAt || '') || candidate.stat?.mtimeMs || 0;
-    return {
-        file: candidate.file,
-        data,
-        savedAtMs,
-        score: (playersCount * 1000000) + (waitlistCount * 1000) + savedAtMs,
-        source: 'local',
-        snapshotSavedAt: data.savedAt || (candidate.stat ? new Date(candidate.stat.mtimeMs).toISOString() : null),
-        snapshotReason: data?.meta?.reason || data?.snapshotReason || 'local-file'
-    };
-}
+    let best = null;
+    for (const candidate of candidates) {
+        const data = readJsonFileSafe(candidate.file);
+        if (!data) continue;
+        const savedAtMs = Date.parse(data.savedAt || '') || candidate.stat.mtimeMs || 0;
+        const score = ((Array.isArray(data.players) ? data.players.length : 0) * 1000000) +
+            ((Array.isArray(data.waitlist) ? data.waitlist.length : 0) * 1000) +
+            savedAtMs;
+        if (!best || score > best.score) {
+            best = { file: candidate.file, data, savedAtMs, score };
+        }
+    }
 
-function getLatestLocalSnapshot() {
-    const normalized = listLocalSnapshotCandidates()
-        .map(normalizeSnapshotCandidate)
-        .filter(Boolean)
-        .sort((a, b) => {
-            if (b.savedAtMs !== a.savedAtMs) return b.savedAtMs - a.savedAtMs;
-            return String(b.file).localeCompare(String(a.file));
-        });
-
-    const latest = normalized[0] || null;
-    if (latest) updateLatestSnapshotMeta(latest.data, latest.file, 'latest-local-snapshot');
-    return latest;
-}
-
-function getBestLocalSnapshot() {
-    const normalized = listLocalSnapshotCandidates().map(normalizeSnapshotCandidate).filter(Boolean);
-    const best = normalized.sort((a, b) => b.score - a.score)[0] || null;
     if (best) updateLatestSnapshotMeta(best.data, best.file, 'best-local-snapshot');
     return best;
 }
@@ -4640,10 +4824,9 @@ app.post('/api/admin/download-backup', async (req, res) => {
         const mi = String(etNow.getMinutes()).padStart(2, '0');
         const ss = String(etNow.getSeconds()).padStart(2, '0');
 
-        const exportedAtIso = new Date().toISOString();
         const backup = {
-            exportedAt: exportedAtIso,
-            exportedAtET: formatDateTimeET12(exportedAtIso) || `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
+            exportedAt: new Date().toISOString(),
+            exportedAtET: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
             players,
             waitlist,
             currentWeekData,
@@ -4683,6 +4866,83 @@ app.post('/api/admin/download-backup', async (req, res) => {
 
 
 
+app.get('/api/admin/snapshots', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const limit = Math.max(10, Math.min(Number(req.query.limit) || 100, 300));
+        const snapshots = await listAvailableSnapshots(limit);
+        return res.json({
+            success: true,
+            snapshots: snapshots.map(item => ({
+                snapshotKey: item.snapshotKey,
+                snapshotId: item.snapshotId,
+                fingerprint: item.fingerprint,
+                snapshotFile: item.file,
+                snapshotSource: item.source || 'local',
+                snapshotSavedAt: item.savedAt || null,
+                snapshotReason: item.reason || null,
+                snapshotPlayers: item.players || 0,
+                snapshotWaitlist: item.waitlist || 0,
+                rosterReleasedInSnapshot: item.rosterReleased,
+                gameLocation: item.gameLocation || null,
+                gameTime: item.gameTime || null,
+                gameDate: item.gameDate || null,
+                version: item.version || 2
+            })),
+            livePlayers: Array.isArray(players) ? players.length : 0,
+            liveWaitlist: Array.isArray(waitlist) ? waitlist.length : 0
+        });
+    } catch (err) {
+        console.error('Error listing snapshots:', err);
+        return res.status(500).json({ error: 'Failed to list snapshots' });
+    }
+});
+
+app.get('/api/admin/snapshots/preview', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const snapshotKey = String(req.query.snapshotKey || '').trim();
+        if (!snapshotKey) return res.status(400).json({ error: 'snapshotKey is required' });
+        const match = await getSnapshotByLookup(snapshotKey, String(req.query.fingerprint || '').trim());
+        if (!match) return res.status(404).json({ error: 'Snapshot not found' });
+        if (match.stale) {
+            return res.status(409).json({ error: 'Snapshot changed. Refresh the list and try again.', latest: buildSnapshotPreviewPayload(match.latest) });
+        }
+        return res.json(buildSnapshotPreviewPayload(match));
+    } catch (err) {
+        console.error('Error previewing snapshot:', err);
+        return res.status(500).json({ error: 'Failed to preview snapshot' });
+    }
+});
+
+app.post('/api/admin/snapshots/restore', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    try {
+        const snapshotKey = String(req.body?.snapshotKey || '').trim();
+        const fingerprint = String(req.body?.fingerprint || '').trim();
+        if (!snapshotKey) return res.status(400).json({ error: 'snapshotKey is required' });
+        const match = await getSnapshotByLookup(snapshotKey, fingerprint);
+        if (!match) return res.status(404).json({ error: 'Snapshot not found' });
+        if (match.stale) {
+            return res.status(409).json({ error: 'Snapshot changed since preview. Refresh the list and try again.', latest: buildSnapshotPreviewPayload(match.latest) });
+        }
+        const result = await restoreSnapshotItem(match, req, 'restore-selected-snapshot');
+        return res.status(result.status || 200).json(result.body);
+    } catch (err) {
+        console.error('Error restoring selected snapshot:', err);
+        return res.status(500).json({ error: 'Failed to restore selected snapshot' });
+    }
+});
+
 app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -4694,31 +4954,7 @@ app.get('/api/admin/restore-latest-backup-preview', async (req, res) => {
             return res.status(404).json({ error: "No server snapshot found to preview." });
         }
 
-        const backupData = latest.data;
-        const previewPlayers = Array.isArray(backupData.players) ? backupData.players.filter(item => item && typeof item === 'object') : [];
-        const previewWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist.filter(item => item && typeof item === 'object') : [];
-
-        const summary = backupData.summary && typeof backupData.summary === 'object' ? backupData.summary : {};
-        const appSettings = backupData.appSettings && typeof backupData.appSettings === 'object' ? backupData.appSettings : {};
-
-        const snapshotSavedAt = latest.snapshotSavedAt || backupData.savedAt || null;
-        return res.json({
-            success: true,
-            snapshotFile: latest.file,
-            snapshotSource: latest.source || 'local',
-            snapshotSavedAt,
-            snapshotSavedAtEt: formatDateTimeET12(snapshotSavedAt),
-            snapshotReason: latest.snapshotReason || null,
-            snapshotFingerprint: latest.snapshotFingerprint || buildSnapshotFingerprint(latest),
-            snapshotPlayers: previewPlayers.length,
-            snapshotWaitlist: previewWaitlist.length,
-            livePlayers: Array.isArray(players) ? players.length : 0,
-            liveWaitlist: Array.isArray(waitlist) ? waitlist.length : 0,
-            rosterReleasedInSnapshot: typeof summary.rosterReleased === 'boolean' ? summary.rosterReleased : null,
-            gameLocation: typeof summary.gameLocation === 'string' ? summary.gameLocation : (typeof appSettings.selectedArena === 'string' ? appSettings.selectedArena : null),
-            gameTime: typeof summary.gameTime === 'string' ? summary.gameTime : (typeof appSettings.selectedDayTime === 'string' ? appSettings.selectedDayTime : null),
-            gameDate: typeof summary.gameDate === 'string' ? summary.gameDate : null
-        });
+        return res.json(buildSnapshotPreviewPayload(buildSnapshotListItem(latest)));
     } catch (err) {
         console.error('Error previewing latest server snapshot:', err);
         return res.status(500).json({ error: 'Failed to preview latest server snapshot' });
@@ -4732,107 +4968,17 @@ app.post('/api/admin/restore-latest-backup', async (req, res) => {
     }
 
     try {
-        const requestedFingerprint = String(req.body?.snapshotFingerprint || '').trim();
         const latest = await getBestAvailableSnapshot();
         if (!latest || !latest.data) {
             return res.status(404).json({ error: "No server snapshot found to restore." });
         }
-
-        const actualFingerprint = latest.snapshotFingerprint || buildSnapshotFingerprint(latest);
-        if (requestedFingerprint && requestedFingerprint !== actualFingerprint) {
-            return res.status(409).json({
-                error: 'Snapshot changed since preview. Please preview again before restoring.',
-                currentSnapshotFingerprint: actualFingerprint,
-                snapshotSavedAt: latest.snapshotSavedAt || latest.data?.savedAt || null,
-                snapshotSavedAtEt: formatDateTimeET12(latest.snapshotSavedAt || latest.data?.savedAt || null)
-            });
+        const latestItem = buildSnapshotListItem(latest);
+        const providedFingerprint = String(req.body?.fingerprint || '').trim();
+        if (providedFingerprint && providedFingerprint !== latestItem.fingerprint) {
+            return res.status(409).json({ error: 'Latest snapshot changed since preview. Preview again before restoring.', latest: buildSnapshotPreviewPayload(latestItem) });
         }
-
-        const backupData = latest.data;
-        const restoredPlayers = Array.isArray(backupData.players) ? backupData.players.filter(item => item && typeof item === 'object') : null;
-        const restoredWaitlist = Array.isArray(backupData.waitlist) ? backupData.waitlist.filter(item => item && typeof item === 'object') : null;
-
-        if (!restoredPlayers || !restoredWaitlist) {
-            return res.status(400).json({ error: "Latest server snapshot is missing players or waitlist." });
-        }
-
-        const beforeCounts = {
-            players: Array.isArray(players) ? players.length : 0,
-            waitlist: Array.isArray(waitlist) ? waitlist.length : 0
-        };
-
-        players = JSON.parse(JSON.stringify(restoredPlayers));
-        waitlist = JSON.parse(JSON.stringify(restoredWaitlist));
-
-        if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
-            currentWeekData = JSON.parse(JSON.stringify(backupData.currentWeekData));
-        }
-
-        if (backupData.summary && typeof backupData.summary === 'object') {
-            if (typeof backupData.summary.gameLocation === 'string') gameLocation = backupData.summary.gameLocation;
-            if (typeof backupData.summary.gameTime === 'string') gameTime = backupData.summary.gameTime;
-            if (typeof backupData.summary.gameDate === 'string') gameDate = backupData.summary.gameDate;
-            if (typeof backupData.summary.rosterReleased === 'boolean') rosterReleased = backupData.summary.rosterReleased;
-            if (typeof backupData.summary.requirePlayerCode === 'boolean') requirePlayerCode = backupData.summary.requirePlayerCode;
-            if (typeof backupData.summary.playerSignupCode === 'string' && backupData.summary.playerSignupCode.trim()) {
-                playerSignupCode = backupData.summary.playerSignupCode.trim();
-            }
-        }
-
-        if (backupData.appSettings && typeof backupData.appSettings === 'object') {
-            const s = backupData.appSettings;
-            if (typeof s.maintenanceMode === 'boolean') maintenanceMode = s.maintenanceMode;
-            if (typeof s.customTitle === 'string') customTitle = s.customTitle;
-            if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
-            if (typeof s.announcementText === 'string') announcementText = s.announcementText;
-            if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
-            if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
-            if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
-            if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
-        }
-
-        playerSpots = Math.max(0, 20 - players.filter(p => !(p && p.isGoalie)).length);
-        await saveData();
-
-        try {
-            if (typeof addAdminAuditEntry === 'function') {
-                addAdminAuditEntry('restore-latest-backup-replace', req, {
-                    beforePlayers: beforeCounts.players,
-                    beforeWaitlist: beforeCounts.waitlist,
-                    afterPlayers: players.length,
-                    afterWaitlist: waitlist.length,
-                    snapshotFile: latest.file,
-                    snapshotSavedAt: backupData.savedAt || null
-                });
-            }
-            if (typeof appendDataAudit === 'function') {
-                await appendDataAudit('restore-latest-backup', 'success', {
-                    beforePlayers: beforeCounts.players,
-                    beforeWaitlist: beforeCounts.waitlist,
-                    afterPlayers: players.length,
-                    afterWaitlist: waitlist.length,
-                    snapshotFile: latest.file,
-                    snapshotSavedAt: backupData.savedAt || null
-                });
-            }
-        } catch (auditErr) {
-            console.error('Error auditing latest snapshot restore:', auditErr.message);
-        }
-
-        const restoredSnapshotSavedAt = latest.snapshotSavedAt || backupData.savedAt || null;
-        return res.json({
-            success: true,
-            mode: 'replace',
-            restoredPlayers: players.length,
-            restoredWaitlist: waitlist.length,
-            snapshotFile: latest.file,
-            snapshotSource: latest.source || 'local',
-            snapshotSavedAt: restoredSnapshotSavedAt,
-            snapshotSavedAtEt: formatDateTimeET12(restoredSnapshotSavedAt),
-            snapshotReason: latest.snapshotReason || null,
-            snapshotFingerprint: actualFingerprint,
-            message: 'Latest server snapshot restored successfully.'
-        });
+        const result = await restoreSnapshotItem(latestItem, req, 'restore-latest-backup-replace');
+        return res.status(result.status || 200).json(result.body);
     } catch (err) {
         console.error('Error restoring latest server snapshot:', err);
         return res.status(500).json({ error: 'Failed to restore latest server snapshot' });
