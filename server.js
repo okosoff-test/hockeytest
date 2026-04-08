@@ -1,3 +1,27 @@
+
+// === CUSTOM BACKUP NAME FORMAT ===
+function getFormattedBackupName() {
+    const now = new Date();
+    const etString = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const et = new Date(etString);
+
+    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+    const dayName = days[et.getDay()];
+
+    const month = String(et.getMonth() + 1).padStart(2, '0');
+    const day = String(et.getDate()).padStart(2, '0');
+    const year = String(et.getFullYear()).slice(-2);
+
+    let hours = et.getHours();
+    const minutes = String(et.getMinutes()).padStart(2, '0');
+
+    const ampm = hours >= 12 ? "PM" : "AM";
+    hours = hours % 12;
+    if (hours === 0) hours = 12;
+
+    return `${dayName}-${month}${day}${year}-${hours}${minutes}${ampm}`;
+}
+
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
