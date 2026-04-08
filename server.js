@@ -1895,9 +1895,10 @@ function buildBackupFileName(options = {}) {
 
 
 function getGameDayBackupDownloadName(ext = 'json') {
+    const configuredDay = getGameDayName();
     const parts = getEtDateParts(new Date());
     const safeExt = String(ext || 'json').replace(/^\./, '') || 'json';
-    return `${parts.dayName}-${parts.mmddyy}-${parts.hour12}${parts.ampm}.${safeExt}`;
+    return `${configuredDay}-${parts.mmddyy}-${parts.hour12}${parts.ampm}.${safeExt}`;
 }
 
 function isSnapshotBackupFilename(name = '') {
