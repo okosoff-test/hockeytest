@@ -3181,7 +3181,7 @@ button {
                     window.announcementImageData = firstImage || '';
                 }
 
-                updateTitlePreview();
+                updateGameSetupPreview();
             } catch (err) {
                 console.error("Error loading app settings:", err);
             }
@@ -3256,12 +3256,18 @@ button {
             }
         }
 
-        // Update title preview based on selection
-        function updateTitlePreview() {
+        // Update combined game setup preview
+        function updateGameSetupPreview() {
             const parts = getEnhancedControlParts('titleDayTime');
-            if (!parts) return;
+            const arena = document.getElementById('arenaSelect')?.value || '--';
+            if (!parts) {
+                document.getElementById('currentArenaDisplay').innerText = arena;
+                return;
+            }
             const newTitle = `Phan's ${parts.weekday} Hockey`;
             document.getElementById('dynamicTitlePreview').innerText = newTitle;
+            document.getElementById('currentArenaDisplay').innerText = arena;
+            document.getElementById('gameSetupEtPreview').innerText = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
 
             const wrapper = document.querySelector('.enhanced-datetime[data-target="titleDayTime"]');
             const summary = wrapper?.querySelector('.picker-summary');
@@ -3275,9 +3281,13 @@ button {
             }
         }
 
-        // Update title and time
-        async function updateTitle() {
-            const button = document.getElementById('updateTitleBtn');
+        function updateTitlePreview() {
+            updateGameSetupPreview();
+        }
+
+        // Update title, time, and arena together
+        async function updateGameSetup() {
+            const button = document.getElementById('updateGameSetupBtn');
             return withBusyButton(button, 'Saving...', async () => {
                 const parts = getEnhancedControlParts('titleDayTime');
                 if (!parts) {
@@ -3285,6 +3295,7 @@ button {
                     return;
                 }
 
+                const arena = document.getElementById('arenaSelect').value;
                 const newTitle = `Phan's ${parts.weekday} Hockey`;
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
@@ -3302,57 +3313,37 @@ button {
                             sessionToken: sessionToken,
                             customTitle: newTitle,
                             selectedDayTime: dayTime,
-                            gameDate: selectedGameDate
-                        })
-                    });
-
-                    const result = await res.json().catch(() => ({}));
-                    if (res.ok) {
-                        document.getElementById('titlePreview').innerText = newTitle;
-                        document.getElementById('timeInput').value = dayTime;
-                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nWeekly auto-schedule was rebuilt from this game time.`);
-                        await loadSettings();
-                    } else {
-                        alert(result.error || 'Failed to update title');
-                    }
-                } catch (err) {
-                    console.error("Error updating title:", err);
-                    alert('Error updating title');
-                }
-            });
-        }
-
-        // Update arena
-        async function updateArena() {
-            const button = document.getElementById('updateArenaBtn');
-            return withBusyButton(button, 'Saving...', async () => {
-                const arena = document.getElementById('arenaSelect').value;
-
-                try {
-                    const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
-                        method: 'POST',
-                        headers: getAdminHeaders(),
-                        body: JSON.stringify({ 
-                            sessionToken: sessionToken,
+                            gameDate: selectedGameDate,
                             selectedArena: arena
                         })
                     });
 
                     const result = await res.json().catch(() => ({}));
                     if (res.ok) {
+                        document.getElementById('titlePreview').innerText = newTitle;
                         document.getElementById('currentArenaDisplay').innerText = arena;
+                        document.getElementById('timeInput').value = dayTime;
                         document.getElementById('locationInput').value = arena;
-                        alert(`✅ Arena updated to: ${arena}`);
+                        alert(`✅ Game setup updated
+Title: ${newTitle}
+Time: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}
+Date: ${selectedGameDate}
+Arena: ${arena}
+
+Weekly auto-schedule was rebuilt from this game time.`);
                         await loadSettings();
                     } else {
-                        alert(result.error || 'Failed to update arena');
+                        alert(result.error || 'Failed to update game setup');
                     }
                 } catch (err) {
-                    console.error("Error updating arena:", err);
-                    alert('Error updating arena');
+                    console.error("Error updating game setup:", err);
+                    alert('Error updating game setup');
                 }
             });
         }
+
+        async function updateTitle() { return updateGameSetup(); }
+        async function updateArena() { return updateGameSetup(); }
 
         // Add backup goalie (substitute)
         async function addBackupGoalie() {
