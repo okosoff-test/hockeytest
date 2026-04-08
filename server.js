@@ -1895,19 +1895,9 @@ function buildBackupFileName(options = {}) {
 
 
 function getGameDayBackupDownloadName(ext = 'json') {
-    const parsed = parseGameTimeString(gameTime);
-    const dayName = parsed && parsed.dayName ? parsed.dayName : getGameDayName();
-    const safeDate = String(gameDate || calculateNextGameDate());
-    const parts = safeDate.split('-');
-    const year = parts[0] || '';
-    const month = String(parts[1] || '').padStart(2, '0');
-    const day = String(parts[2] || '').padStart(2, '0');
-    let hour24 = Number(parsed && Number.isFinite(parsed.hour24) ? parsed.hour24 : 0);
-    let hour12 = hour24 % 12;
-    if (hour12 === 0) hour12 = 12;
-    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    const parts = getEtDateParts(new Date());
     const safeExt = String(ext || 'json').replace(/^\./, '') || 'json';
-    return `${dayName}-${month}${day}${String(year).slice(-2)}-${hour12}${ampm}.${safeExt}`;
+    return `${parts.dayName}-${parts.mmddyy}-${parts.hour12}${parts.ampm}.${safeExt}`;
 }
 
 function isSnapshotBackupFilename(name = '') {
