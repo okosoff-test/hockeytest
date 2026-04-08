@@ -1,27 +1,3 @@
-
-// === CUSTOM BACKUP NAME FORMAT ===
-function getFormattedBackupName() {
-    const now = new Date();
-    const etString = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-    const et = new Date(etString);
-
-    const days = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
-    const dayName = days[et.getDay()];
-
-    const month = String(et.getMonth() + 1).padStart(2, '0');
-    const day = String(et.getDate()).padStart(2, '0');
-    const year = String(et.getFullYear()).slice(-2);
-
-    let hours = et.getHours();
-    const minutes = String(et.getMinutes()).padStart(2, '0');
-
-    const ampm = hours >= 12 ? "PM" : "AM";
-    hours = hours % 12;
-    if (hours === 0) hours = 12;
-
-    return `${dayName}-${month}${day}${year}-${hours}${minutes}${ampm}`;
-}
-
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -1872,6 +1848,65 @@ function safeIsoStamp(date = new Date()) {
     return new Date(date).toISOString().replace(/[:.]/g, '-');
 }
 
+
+function sanitizeFileSegment(value, fallback = 'backup') {
+    const cleaned = String(value == null ? '' : value)
+        .trim()
+        .replace(/[^a-z0-9_-]+/gi, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '');
+    return cleaned || fallback;
+}
+
+function getEtDateParts(date = new Date()) {
+    const etDate = date instanceof Date ? new Date(date.getTime()) : new Date(date);
+    const year = etDate.getFullYear();
+    const month = String(etDate.getMonth() + 1).padStart(2, '0');
+    const day = String(etDate.getDate()).padStart(2, '0');
+    let hour24 = etDate.getHours();
+    const minute = String(etDate.getMinutes()).padStart(2, '0');
+    const second = String(etDate.getSeconds()).padStart(2, '0');
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    let hour12 = hour24 % 12;
+    if (hour12 === 0) hour12 = 12;
+    const dayName = INDEX_TO_DAY_NAME[etDate.getDay()] || 'Backup';
+    return {
+        dayName,
+        mmddyy: `${month}${day}${String(year).slice(-2)}`,
+        hour12,
+        minute,
+        second,
+        ampm
+    };
+}
+
+function getFormattedBackupBaseName(date = new Date(), options = {}) {
+    const includeSeconds = !!options.includeSeconds;
+    const parts = getEtDateParts(date);
+    const timeCore = `${parts.hour12}${parts.minute}${parts.ampm}`;
+    const timeValue = includeSeconds ? `${timeCore}${parts.second}` : timeCore;
+    return `${parts.dayName}-${parts.mmddyy}-${timeValue}`;
+}
+
+function buildBackupFileName(options = {}) {
+    const {
+        date = new Date(),
+        reason = '',
+        ext = 'json',
+        includeSeconds = false
+    } = options || {};
+    const base = getFormattedBackupBaseName(date, { includeSeconds });
+    const suffix = reason ? `-${sanitizeFileSegment(reason, 'backup')}` : '';
+    const safeExt = String(ext || 'json').replace(/^\./, '') || 'json';
+    return `${base}${suffix}.${safeExt}`;
+}
+
+function isSnapshotBackupFilename(name = '') {
+    const value = String(name || '');
+    return /^snapshot-.*\.json$/i.test(value) || /^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)-\d{6}-\d{3,8}(AM|PM)(-[a-z0-9_-]+)?\.json$/i.test(value);
+}
+
+
 function updateLatestSnapshotMeta(snapshot, filePath, source = 'memory') {
     latestLocalSnapshotMeta = {
         exists: true,
@@ -1937,7 +1972,7 @@ async function insertDatabaseSnapshot(snapshot, reason = 'saveData', clientOrPoo
         ) VALUES ($1, $2::jsonb, $3, $4, $5, $6, $7)
         RETURNING id, created_at`,
         [
-            `snapshot-${safeIsoStamp(metadata.savedAt)}-${String(reason || 'save').replace(/[^a-z0-9_-]+/gi, '-').slice(0, 40)}`,
+            buildBackupFileName({ date: new Date(metadata.savedAt || new Date()), reason: metadata.reason || 'snapshot', ext: 'json', includeSeconds: true }).replace(/\.json$/i, ''),
             JSON.stringify(snapshot),
             metadata.reason,
             metadata.version,
@@ -2067,7 +2102,7 @@ async function listAvailableSnapshots(limit = 100) {
         const localFiles = [];
         if (fs.existsSync(SNAPSHOT_DIR)) {
             for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
-                if (!/^snapshot-.*\.json$/i.test(name)) continue;
+                if (!isSnapshotBackupFilename(name)) continue;
                 localFiles.push(path.join(SNAPSHOT_DIR, name));
             }
         }
@@ -2283,7 +2318,7 @@ function trimSnapshotBackups() {
     try {
         ensureDirSync(SNAPSHOT_DIR);
         const files = fs.readdirSync(SNAPSHOT_DIR)
-            .filter(name => /^snapshot-.*\.json$/i.test(name))
+            .filter(name => isSnapshotBackupFilename(name))
             .map(name => ({ name, full: path.join(SNAPSHOT_DIR, name), mtime: fs.statSync(path.join(SNAPSHOT_DIR, name)).mtimeMs }))
             .sort((a, b) => b.mtime - a.mtime);
         files.slice(SNAPSHOT_RETENTION).forEach(file => {
@@ -2303,7 +2338,7 @@ function persistDataToFile(reason = 'saveData', snapshot = null) {
         let snapshotFile = null;
         if (shouldCreateDurableSnapshot(reason)) {
             ensureDirSync(SNAPSHOT_DIR);
-            snapshotFile = path.join(SNAPSHOT_DIR, `snapshot-${safeIsoStamp(payload.savedAt || new Date())}-${String(reason || 'save').replace(/[^a-z0-9_-]+/gi, '-').slice(0,40)}.json`);
+            snapshotFile = path.join(SNAPSHOT_DIR, buildBackupFileName({ date: new Date(payload.savedAt || new Date()), reason: String(reason || 'save').slice(0, 40), ext: 'json', includeSeconds: true }));
             atomicWriteTextFile(snapshotFile, text);
             trimSnapshotBackups();
             updateLatestSnapshotMeta(payload, snapshotFile, reason);
@@ -2330,7 +2365,7 @@ function getBestLocalSnapshot() {
     const candidates = [];
     if (fs.existsSync(SNAPSHOT_DIR)) {
         for (const name of fs.readdirSync(SNAPSHOT_DIR)) {
-            if (!/^snapshot-.*\.json$/i.test(name)) continue;
+            if (!isSnapshotBackupFilename(name)) continue;
             const full = path.join(SNAPSHOT_DIR, name);
             try {
                 candidates.push({ file: full, stat: fs.statSync(full) });
@@ -3387,7 +3422,7 @@ async function savePaymentReportSnapshot(triggerSource = 'manual') {
         const activeWeek = currentWeekData && currentWeekData.weekNumber ? currentWeekData.weekNumber : weekInfo.week;
         const activeYear = currentWeekData && currentWeekData.year ? currentWeekData.year : weekInfo.year;
         const safeGameDate = gameDate || etTime.toISOString().split('T')[0];
-        const reportName = `payment-report-${safeGameDate}-week-${activeWeek}-${Date.now()}.csv`;
+        const reportName = buildBackupFileName({ date: etTime, reason: `payment-report-week-${activeWeek}`, ext: 'csv', includeSeconds: true });
         const csvContent = buildPaymentReportCsv();
 
         const result = await pool.query(
@@ -4941,8 +4976,7 @@ app.post('/api/admin/download-backup', async (req, res) => {
             }
         };
 
-        const gameDaySlug = String(getGameDayName() || 'GameDay').trim().replace(/\s+/g, '-');
-        const filename = `GameDay-${gameDaySlug}-${yyyy}${mm}${dd}-${hh}${mi}${ss}-ET.json`;
+        const filename = buildBackupFileName({ date: etNow, ext: 'json' });
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
         return res.status(200).send(JSON.stringify(backup, null, 2));
