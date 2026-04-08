@@ -868,6 +868,81 @@
             font-weight: bold;
         }
 
+        /* Combined Game Setup */
+        .game-setup-section {
+            background: linear-gradient(135deg, #2a1a3a, #1d2d46);
+            border: 2px solid #e91e63;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .game-setup-section h3 {
+            margin: 0 0 15px 0;
+            color: #ff8a00;
+            font-size: 1.15rem;
+        }
+
+        .game-setup-title-preview {
+            background: #1a1a1a;
+            padding: 15px;
+            border-radius: 6px;
+            text-align: center;
+            font-size: 1.35rem;
+            color: var(--accent);
+            margin-bottom: 15px;
+            border: 1px solid #444;
+        }
+
+        .game-setup-grid {
+            display: grid;
+            grid-template-columns: minmax(0, 1.35fr) minmax(240px, 0.9fr);
+            gap: 18px;
+            align-items: start;
+        }
+
+        .game-setup-main,
+        .game-setup-side {
+            display: grid;
+            gap: 14px;
+        }
+
+        .game-setup-side {
+            background: rgba(0,0,0,0.15);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 10px;
+            padding: 14px;
+            min-height: 100%;
+        }
+
+        .game-setup-side-label,
+        .game-setup-section label {
+            color: #c9c9c9;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+            display: block;
+        }
+
+        .game-setup-preview-text {
+            color: #fff;
+            font-size: 1.05rem;
+            line-height: 1.4;
+        }
+
+        .game-setup-help {
+            color: #aaa;
+            font-size: 0.85rem;
+            margin-top: 6px;
+            line-height: 1.45;
+        }
+
+        .game-setup-et-preview {
+            color: #ffb366;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 4px;
+        }
+
         /* Released Roster Preview */
         .released-roster-preview {
             background: linear-gradient(135deg, #1a3a1a, #2d4d2d);
@@ -1053,7 +1128,8 @@
             .payment-stats { grid-template-columns: 1fr; }
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
-            .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
+            .game-setup-section, .title-editor-section, .backup-goalies-section, .add-goalie-fly-section { padding: 15px; }
+            .game-setup-grid { grid-template-columns: 1fr; }
         }
     
         .schedule-editor { margin-top: 12px; padding-top: 12px; border-top: 1px solid #444; }
@@ -1889,46 +1965,46 @@ button {
 
         <div id="legacyRegularSkatersSection" style="display:none;"></div>
 
-        <!-- TITLE EDITOR -->
-        <div class="title-editor-section">
-            <h3>🏷️ Title Editor</h3>
-            <div class="title-preview" id="titlePreview">Phan's Friday Hockey</div>
-            <div class="title-controls">
-                <div class="title-control-group">
-                    <label for="titleDayTime">Select day and time:</label>
-                    <input type="datetime-local" id="titleDayTime" class="control-input" onchange="updateTitlePreview()">
-                    <div style="color:#888; font-size:0.85rem; margin-top:6px;">
-                        Pick a weekday/time in ET. V51 auto-schedule will rebuild the weekly lock, roster release, and reset times from this selection.
-                    </div>
-                </div>
-                <div class="title-control-group">
-                    <label>Preview:</label>
-                    <div id="dynamicTitlePreview" style="color:#aaa; font-size:1rem; padding:10px 0;">
-                        Phan's Friday Hockey
-                    </div>
-                </div>
-            </div>
-            <button id="updateTitleBtn" class="update-title-btn" onclick="updateTitle()">Update Title & Time</button>
-        </div>
+        <!-- GAME SETUP -->
+        <div class="game-setup-section">
+            <h3>🏒 Game Setup</h3>
+            <div class="game-setup-title-preview" id="titlePreview">Phan's Friday Hockey</div>
 
-        <!-- ARENA SELECTOR -->
-        <div class="arena-section">
-            <h3>🏟️ Arena Selection</h3>
-            <div class="arena-select-group">
-                <select id="arenaSelect">
-                    <option value="WFCU Bowl">WFCU Bowl</option>
-                    <option value="WFCU Greenshield">WFCU Greenshield</option>
-                    <option value="WFCU Grenon">WFCU Grenon</option>
-                    <option value="WFCU AM800">WFCU AM800</option>
-                    <option value="Capri Recreation Complex">Capri Recreation Complex</option>
-                    <option value="Vollmer Lasalle Arena">Vollmer Lasalle Arena</option>
-                    <option value="Atlas Tube Lakeshore">Atlas Tube Lakeshore</option>
-                </select>
-                <button id="updateArenaBtn" class="update-arena-btn" onclick="updateArena()">Update Arena</button>
+            <div class="game-setup-grid">
+                <div class="game-setup-main">
+                    <div class="title-control-group">
+                        <label for="titleDayTime">Select day and time:</label>
+                        <input type="datetime-local" id="titleDayTime" class="control-input" onchange="updateTitlePreview()">
+                        <div class="game-setup-help">
+                            Pick a weekday/time in ET. V51 auto-schedule will rebuild the weekly lock, roster release, and reset times from this selection.
+                        </div>
+                        <div class="game-setup-et-preview" id="gameSetupEtPreview">--</div>
+                    </div>
+
+                    <div class="title-control-group">
+                        <label for="arenaSelect">Arena:</label>
+                        <select id="arenaSelect" onchange="updateTitlePreview()">
+                            <option value="WFCU Bowl">WFCU Bowl</option>
+                            <option value="WFCU Greenshield">WFCU Greenshield</option>
+                            <option value="WFCU Grenon">WFCU Grenon</option>
+                            <option value="WFCU AM800">WFCU AM800</option>
+                            <option value="Capri Recreation Complex">Capri Recreation Complex</option>
+                            <option value="Vollmer Lasalle Arena">Vollmer Lasalle Arena</option>
+                            <option value="Atlas Tube Lakeshore">Atlas Tube Lakeshore</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="game-setup-side">
+                    <div class="game-setup-side-label">Preview</div>
+                    <div id="dynamicTitlePreview" class="game-setup-preview-text">Phan's Friday Hockey</div>
+                    <div class="current-arena-display">
+                        Arena: <span id="currentArenaDisplay">--</span>
+                    </div>
+                </div>
             </div>
-            <div class="current-arena-display">
-                Current Arena: <span id="currentArenaDisplay">--</span>
-            </div>
+
+            <button id="updateGameSetupBtn" class="update-title-btn" onclick="updateGameSetup()">Update Game Setup</button>
         </div>
 
         <!-- GAME DETAILS -->
@@ -3181,7 +3257,7 @@ button {
                     window.announcementImageData = firstImage || '';
                 }
 
-                updateGameSetupPreview();
+                updateTitlePreview();
             } catch (err) {
                 console.error("Error loading app settings:", err);
             }
@@ -3256,18 +3332,12 @@ button {
             }
         }
 
-        // Update combined game setup preview
-        function updateGameSetupPreview() {
+        // Update title preview based on selection
+        function updateTitlePreview() {
             const parts = getEnhancedControlParts('titleDayTime');
-            const arena = document.getElementById('arenaSelect')?.value || '--';
-            if (!parts) {
-                document.getElementById('currentArenaDisplay').innerText = arena;
-                return;
-            }
+            if (!parts) return;
             const newTitle = `Phan's ${parts.weekday} Hockey`;
             document.getElementById('dynamicTitlePreview').innerText = newTitle;
-            document.getElementById('currentArenaDisplay').innerText = arena;
-            document.getElementById('gameSetupEtPreview').innerText = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
 
             const wrapper = document.querySelector('.enhanced-datetime[data-target="titleDayTime"]');
             const summary = wrapper?.querySelector('.picker-summary');
@@ -3281,13 +3351,9 @@ button {
             }
         }
 
-        function updateTitlePreview() {
-            updateGameSetupPreview();
-        }
-
-        // Update title, time, and arena together
-        async function updateGameSetup() {
-            const button = document.getElementById('updateGameSetupBtn');
+        // Update title and time
+        async function updateTitle() {
+            const button = document.getElementById('updateTitleBtn');
             return withBusyButton(button, 'Saving...', async () => {
                 const parts = getEnhancedControlParts('titleDayTime');
                 if (!parts) {
@@ -3295,7 +3361,6 @@ button {
                     return;
                 }
 
-                const arena = document.getElementById('arenaSelect').value;
                 const newTitle = `Phan's ${parts.weekday} Hockey`;
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
@@ -3313,37 +3378,57 @@ button {
                             sessionToken: sessionToken,
                             customTitle: newTitle,
                             selectedDayTime: dayTime,
-                            gameDate: selectedGameDate,
-                            selectedArena: arena
+                            gameDate: selectedGameDate
                         })
                     });
 
                     const result = await res.json().catch(() => ({}));
                     if (res.ok) {
                         document.getElementById('titlePreview').innerText = newTitle;
-                        document.getElementById('currentArenaDisplay').innerText = arena;
                         document.getElementById('timeInput').value = dayTime;
-                        document.getElementById('locationInput').value = arena;
-                        alert(`✅ Game setup updated
-Title: ${newTitle}
-Time: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}
-Date: ${selectedGameDate}
-Arena: ${arena}
-
-Weekly auto-schedule was rebuilt from this game time.`);
+                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nWeekly auto-schedule was rebuilt from this game time.`);
                         await loadSettings();
                     } else {
-                        alert(result.error || 'Failed to update game setup');
+                        alert(result.error || 'Failed to update title');
                     }
                 } catch (err) {
-                    console.error("Error updating game setup:", err);
-                    alert('Error updating game setup');
+                    console.error("Error updating title:", err);
+                    alert('Error updating title');
                 }
             });
         }
 
-        async function updateTitle() { return updateGameSetup(); }
-        async function updateArena() { return updateGameSetup(); }
+        // Update arena
+        async function updateArena() {
+            const button = document.getElementById('updateArenaBtn');
+            return withBusyButton(button, 'Saving...', async () => {
+                const arena = document.getElementById('arenaSelect').value;
+
+                try {
+                    const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                        method: 'POST',
+                        headers: getAdminHeaders(),
+                        body: JSON.stringify({ 
+                            sessionToken: sessionToken,
+                            selectedArena: arena
+                        })
+                    });
+
+                    const result = await res.json().catch(() => ({}));
+                    if (res.ok) {
+                        document.getElementById('currentArenaDisplay').innerText = arena;
+                        document.getElementById('locationInput').value = arena;
+                        alert(`✅ Arena updated to: ${arena}`);
+                        await loadSettings();
+                    } else {
+                        alert(result.error || 'Failed to update arena');
+                    }
+                } catch (err) {
+                    console.error("Error updating arena:", err);
+                    alert('Error updating arena');
+                }
+            });
+        }
 
         // Add backup goalie (substitute)
         async function addBackupGoalie() {
