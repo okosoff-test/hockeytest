@@ -1803,59 +1803,21 @@ button {
 @media (max-width: 640px) {
   .snapshot-stats, .snapshot-preview-grid, .snapshot-meta-grid { grid-template-columns:1fr; }
 }
+</style>
 
-.compact-snapshot-section {
-    padding: 16px;
-}
-.compact-snapshot-section h3 {
-    margin-bottom: 6px;
-}
-.compact-snapshot-section .snapshot-pro-subtitle {
-    margin-bottom: 12px;
-    font-size: 0.9rem;
-}
-.compact-snapshot-toolbar {
-    margin-bottom: 10px;
-    gap: 8px;
-}
-.compact-snapshot-toolbar select {
-    font-weight: 700;
-}
-.compact-snapshot-btn {
-    min-width: 0;
-    white-space: nowrap;
-}
-.compact-snapshot-restore-btn {
-    box-shadow: 0 0 0 1px rgba(255,255,255,0.12) inset;
-}
-.compact-snapshot-card {
-    margin-top: 8px;
-}
-.compact-snapshot-hidden {
+
+<style id="ultra-clean-mode-hide-copy">
+.snapshot-pro-subtitle,
+.game-setup-help,
+.schedule-hint,
+.schedule-info,
+.manual-override-warning,
+.security-notice,
+.current-arena-display,
+.regular-summary-note,
+.goalie-helper {
     display: none !important;
 }
-.snapshot-restore-hint {
-    color: #9eb6cf;
-    font-size: 0.82rem;
-    margin: 0 0 8px 0;
-}
-.compact-snapshot-card .snapshot-badges {
-    margin-top: 6px;
-}
-.compact-snapshot-card .snapshot-compact-grid {
-    margin-top: 10px;
-}
-@media (max-width: 700px) {
-    .compact-snapshot-toolbar {
-        flex-direction: column;
-        align-items: stretch;
-    }
-    .compact-snapshot-toolbar .control-btn,
-    .compact-snapshot-toolbar select {
-        width: 100%;
-    }
-}
-
 </style>
 
 </head>
@@ -1900,19 +1862,15 @@ button {
 
         
 
-        
-        <div class="snapshot-pro-section compact-snapshot-section">
-            <h3>🧠 Quick Restore</h3>
-            <div class="snapshot-pro-subtitle">Latest snapshot stays selected so you can restore fast if something goes wrong.</div>
-
-            <div class="snapshot-stats" style="display:none;">
+        <div class="snapshot-pro-section">
+            <h3>🧠 Snapshot Center</h3>
+            <div class="snapshot-stats">
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Snapshots Loaded</div><div class="snapshot-stat-value" id="snapshotStatCount">--</div></div>
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Database Snapshots</div><div class="snapshot-stat-value" id="snapshotStatDb">--</div></div>
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Local Snapshots</div><div class="snapshot-stat-value" id="snapshotStatLocal">--</div></div>
                 <div class="snapshot-stat-card"><div class="snapshot-stat-label">Selected Snapshot</div><div class="snapshot-stat-value" id="snapshotStatSelected">None</div></div>
             </div>
-
-            <div class="snapshot-toolbar compact-snapshot-hidden">
+            <div class="snapshot-toolbar">
                 <input class="grow" type="text" id="snapshotSearch" placeholder="Search reason, source, file, date, game info..." oninput="renderSnapshotList()">
                 <select id="snapshotSourceFilter" onchange="renderSnapshotList()">
                     <option value="all">All sources</option>
@@ -1920,22 +1878,18 @@ button {
                     <option value="local">Local only</option>
                 </select>
             </div>
-
-            <div class="snapshot-toolbar snapshot-picker-toolbar compact-snapshot-toolbar">
+            <div class="snapshot-toolbar snapshot-picker-toolbar">
                 <select id="snapshotPicker" class="grow" onchange="handleSnapshotPickerChange()">
                     <option value="">Loading snapshots...</option>
                 </select>
-                <button class="control-btn compact-snapshot-btn" onclick="loadSnapshotCatalog(false)" style="background:#1e88e5;">↻ Refresh</button>
-                <button class="control-btn compact-snapshot-btn" onclick="createManualSnapshot()" style="background:#8e24aa;">＋ Create Snapshot</button>
-                <button class="control-btn compact-snapshot-btn compact-snapshot-restore-btn" onclick="restoreSelectedSnapshot()" style="background:#2e7d32;">♻ Restore Latest</button>
-                <button class="control-btn compact-snapshot-hidden" onclick="previewSelectedSnapshot()" style="background:#546e7a;">👁 Preview</button>
+                <button class="control-btn" onclick="loadSnapshotCatalog()" style="background:#1e88e5;">↻ Refresh</button>
+                <button class="control-btn" onclick="createManualSnapshot()" style="background:#8e24aa;">＋ Create Snapshot</button>
+                <button class="control-btn" onclick="previewSelectedSnapshot()" style="background:#546e7a;">👁 Preview</button>
+                <button class="control-btn" onclick="restoreSelectedSnapshot()" style="background:#2e7d32;">♻ Restore</button>
             </div>
-
-            <div class="snapshot-restore-hint">Use the newest snapshot at the top of the list. Restore is one tap.</div>
-
-            <div id="snapshotCompactCard" class="snapshot-compact-card compact-snapshot-card" style="display:none;"></div>
-            <div id="snapshotList" class="snapshot-list compact-snapshot-hidden" style="display:none;"><div class="snapshot-empty">Loading snapshots...</div></div>
-            <div id="snapshotPreviewPanel" class="snapshot-preview-panel compact-snapshot-hidden" style="display:none;">
+            <div id="snapshotCompactCard" class="snapshot-compact-card" style="display:none;"></div>
+            <div id="snapshotList" class="snapshot-list" style="display:none;"><div class="snapshot-empty">Loading snapshots...</div></div>
+            <div id="snapshotPreviewPanel" class="snapshot-preview-panel" style="display:none;">
                 <div class="snapshot-preview-title" id="snapshotPreviewTitle">Snapshot Preview</div>
                 <div class="snapshot-preview-grid">
                     <div class="snapshot-preview-box"><div class="k">Snapshot players</div><div class="v" id="previewPlayers">--</div></div>
@@ -1954,8 +1908,7 @@ button {
         </div>
 
 
-
-<div class="success-message" id="releaseSuccess">
+        <div class="success-message" id="releaseSuccess">
             ✅ Roster Released Successfully! Players can now see the teams.
         </div>
 
@@ -1971,9 +1924,7 @@ button {
                 <label for="maintenanceCheckbox" class="maintenance-label">Enable Maintenance Mode</label>
                 <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
             </div>
-            <p style="color:#888; font-size:0.85rem; margin-top:10px;">
-                When enabled, a flashing alert will appear on all pages warning users that the portal is down for maintenance.
-            </p>
+            <p style="color:#888; font-size:0.85rem; margin-top:10px;"></p>
 
         </div>
 
@@ -2036,9 +1987,6 @@ button {
                 <div class="title-control-group">
                     <label for="titleDayTime">Day and time</label>
                     <input type="datetime-local" id="titleDayTime" class="control-input" onchange="updateTitlePreview()">
-                    <div class="game-setup-help" id="gameSetupTimeHint">
-                        Pick a weekday/time in ET. Weekly lock, roster release, and reset rebuild automatically from this selection.
-                    </div>
                 </div>
                 <div class="title-control-group">
                     <label for="arenaSelect">Arena</label>
@@ -2053,7 +2001,6 @@ button {
                             <option value="Atlas Tube Lakeshore">Atlas Tube Lakeshore</option>
                         </select>
                     </div>
-                    <div class="game-setup-help">One save updates the title, game time, date, and arena together.</div>
                 </div>
             </div>
             <div class="game-setup-preview-line">
@@ -2143,8 +2090,6 @@ button {
                                 <input type="datetime-local" id="signupLockEnd" class="control-input">
                             </div>
                         </div>
-
-                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -2160,8 +2105,6 @@ button {
                                 <input type="datetime-local" id="rosterReleaseAt" class="control-input">
                             </div>
                         </div>
-
-                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -2177,8 +2120,6 @@ button {
                                 <input type="datetime-local" id="resetWeekAt" class="control-input">
                             </div>
                         </div>
-
-                        <div class="schedule-hint">This clears players and waitlist, then auto-adds the default players at the exact ET date and time selected above.</div>
                     </div>
                 </div>
 
@@ -2341,7 +2282,6 @@ button {
                     <input type="checkbox" id="newIsGoalie" onchange="toggleManualGoalieMode()">
                     Goalie (always free)
                 </label>
-                <span class="goalie-helper">When checked, payment is auto-set to FREE.</span>
             </div>
 
             <div id="goalieQuickSelectWrap">
@@ -2412,9 +2352,6 @@ button {
                 </div>
                 <small id="paymentReportSnapshotStatus">Reports are auto-saved to the database before scheduled and manual weekly reset.</small>
             </div>
-            <p class="security-notice">
-                ⚠️ Payment and rating data is hidden from public view. Only admins can see this information.
-            </p>
         </div>
 
 
@@ -2474,7 +2411,6 @@ button {
 
         <div class="regular-summary-section">
             <h3>⭐ Regular Players</h3>
-            <p class="regular-summary-note">Use the one-click Regular button in the player list above. Active regulars are highlighted green.</p>
             <div class="regular-summary-list" id="regularSkatersList"></div>
         </div>
     </div>
@@ -5185,21 +5121,22 @@ Date: ${selectedGameDate}`);
                 cardEl.innerHTML = '';
                 return;
             }
-            const sourceBadge = `<span class="snapshot-badge ${item.snapshotSource === 'database' ? 'db' : 'local'}">${item.snapshotSource === 'database' ? 'DB' : 'LOCAL'}</span>`;
-            const latestBadge = index === 0 ? '<span class="snapshot-badge latest">LATEST</span>' : '';
-            const statusBadge = item.rosterReleasedInSnapshot === true
-                ? '<span class="snapshot-badge release-yes">ROSTER RELEASED</span>'
-                : (item.rosterReleasedInSnapshot === false ? '<span class="snapshot-badge release-no">ROSTER PENDING</span>' : '');
+            const badges = [
+                `<span class="snapshot-badge ${item.snapshotSource === 'database' ? 'db' : 'local'}">${item.snapshotSource === 'database' ? 'DB' : 'LOCAL'}</span>`,
+                index === 0 ? '<span class="snapshot-badge latest">LATEST IN VIEW</span>' : '',
+                item.rosterReleasedInSnapshot === true ? '<span class="snapshot-badge release-yes">ROSTER RELEASED</span>' : '',
+                item.rosterReleasedInSnapshot === false ? '<span class="snapshot-badge release-no">ROSTER PENDING</span>' : ''
+            ].join('');
             cardEl.style.display = 'block';
             cardEl.innerHTML = `
                 <div class="snapshot-compact-head">
                     <div>
-                        <div class="snapshot-compact-title">Latest snapshot ready to restore</div>
-                        <div class="snapshot-compact-sub">${escapeHtml(formatSnapshotDateTime(item.snapshotSavedAt))}</div>
+                        <div class="snapshot-compact-title">${escapeHtml(formatSnapshotDateTime(item.snapshotSavedAt))}</div>
+                        <div class="snapshot-compact-sub">${escapeHtml(item.snapshotReason || 'No reason saved')} • ${escapeHtml(item.snapshotFile || item.snapshotKey || '')}</div>
                     </div>
                     <div class="snapshot-compact-fingerprint">${escapeHtml(item.fingerprint || '').slice(0, 16)}</div>
                 </div>
-                <div class="snapshot-badges">${sourceBadge}${latestBadge}${statusBadge}</div>
+                <div class="snapshot-badges">${badges}</div>
                 <div class="snapshot-compact-grid">
                     <div class="snapshot-compact-item"><strong>Players:</strong> ${Number(item.snapshotPlayers || 0)}</div>
                     <div class="snapshot-compact-item"><strong>Waitlist:</strong> ${Number(item.snapshotWaitlist || 0)}</div>
@@ -5262,7 +5199,7 @@ Date: ${selectedGameDate}`);
             updateSnapshotStats();
         }
 
-        async function loadSnapshotCatalog(autoPreview = false) {
+        async function loadSnapshotCatalog(autoPreview = true) {
             try {
                 const res = await fetch(`${API_URL}/api/admin/snapshots?limit=150`, {
                     method: 'GET',

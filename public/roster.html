@@ -246,7 +246,7 @@
             </div>
 
             <div class="check-back-message" id="checkBackMessage" style="display:none;">
-                <strong id="checkBackStrong">📅 Check back at the scheduled roster release time for team rosters</strong><br>
+                <strong id="checkBackStrong">📅 Check back for team rosters</strong><br>
                 <span id="checkBackDetail">Countdown will appear once a roster release time is scheduled.</span>
             </div>
 
@@ -273,10 +273,6 @@
 
         <div class="back-link">
             <a href="/">← Back to Signup</a>
-        </div>
-
-        <div class="refresh-info">
-            Auto-refreshes every 60 seconds
         </div>
     </div>
 
@@ -333,7 +329,7 @@
                 const detailEl = document.getElementById('checkBackDetail');
 
                 if (status.rosterReleaseMessage || status.rosterReleaseLine) {
-                    if (strongEl) strongEl.textContent = status.rosterReleaseMessage || status.rosterReleaseHeadline || '📅 Check back at the scheduled roster release time for team rosters';
+                    if (strongEl) strongEl.textContent = status.rosterReleaseMessage || status.rosterReleaseHeadline || '📅 Check back for team rosters';
                     rosterReleaseAtIso = status.rosterReleaseAtIso || null;
                     startCountdown();
                 }
