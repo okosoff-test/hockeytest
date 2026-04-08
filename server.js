@@ -887,27 +887,24 @@ function minutesSinceLatestWeeklyOccurrence(scheduleAt, etDate = getCurrentETTim
 }
 
 function canSafelyRunWeeklyReset(etTime = getCurrentETTime()) {
-    const activeSignupCount = players.filter(p => !(p && p.isGoalie && p.paidAmount === 0 && p.paymentMethod === 'FREE')).length + waitlist.length;
+    const registeredPlayerCount = Array.isArray(players) ? players.length : 0;
+    const waitlistCount = Array.isArray(waitlist) ? waitlist.length : 0;
 
-    if (activeSignupCount === 0) {
-        return { ok: true, reason: 'No active signups to protect.' };
+    if (registeredPlayerCount > 0) {
+        return {
+            ok: false,
+            reason: `Blocked weekly reset because ${registeredPlayerCount} registered player${registeredPlayerCount === 1 ? '' : 's'} still exist.`
+        };
     }
 
-    if (rosterReleased) {
-        return { ok: true, reason: 'Roster already released.' };
+    if (waitlistCount > 0) {
+        return {
+            ok: false,
+            reason: `Blocked weekly reset because ${waitlistCount} waitlist player${waitlistCount === 1 ? '' : 's'} still exist.`
+        };
     }
 
-    if (rosterReleaseSchedule && rosterReleaseSchedule.enabled && rosterReleaseSchedule.at) {
-        const minutesSinceReleaseWindow = minutesSinceLatestWeeklyOccurrence(rosterReleaseSchedule.at, etTime);
-        if (minutesSinceReleaseWindow !== null && minutesSinceReleaseWindow <= (18 * 60)) {
-            return { ok: true, reason: 'Roster release window passed recently this cycle.' };
-        }
-    }
-
-    return {
-        ok: false,
-        reason: 'Blocked weekly reset because roster was not released and the configured roster-release time has not passed recently.'
-    };
+    return { ok: true, reason: 'No registered players or waitlist entries to reset.' };
 }
 
 function getNextOccurrenceEtParts(scheduleAt, etDate = getCurrentETTime()) {
@@ -1046,24 +1043,36 @@ function formatScheduleDowTime(scheduleAt) {
     return `${dayName} ${hour12}:${String(minute).padStart(2, '0')} ${ampm} ET`;
 }
 
+function shouldAutoBuildMissingSchedules(scheduleSettings = {}) {
+    if (!AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) return false;
+    const hasStoredSignupLockSchedule = !!scheduleSettings.signupLockSchedule;
+    const hasStoredRosterReleaseSchedule = !!scheduleSettings.rosterReleaseSchedule;
+    const hasStoredResetWeekSchedule = !!scheduleSettings.resetWeekSchedule;
+    return !hasStoredSignupLockSchedule && !hasStoredRosterReleaseSchedule && !hasStoredResetWeekSchedule;
+}
+
 function buildAutoSchedulesFromGameTime(selectedGameTime = gameTime, anchorDate = gameDate) {
     const parsed = parseGameTimeString(selectedGameTime);
     const gameDow = parsed.dayIndex;
     const resetDow = (gameDow + 1) % 7;
 
+    const previousSignupLockEnabled = !!(signupLockSchedule && signupLockSchedule.enabled);
+    const previousRosterReleaseEnabled = !!(rosterReleaseSchedule && rosterReleaseSchedule.enabled);
+    const previousResetWeekEnabled = !!(resetWeekSchedule && resetWeekSchedule.enabled);
+
     signupLockSchedule = {
-        enabled: true,
+        enabled: previousSignupLockEnabled,
         start: { dow: gameDow, hour: AUTO_SCHEDULE_LOCK_HOUR, minute: AUTO_SCHEDULE_LOCK_MINUTE },
         end: { dow: resetDow, hour: AUTO_SCHEDULE_RESET_HOUR, minute: AUTO_SCHEDULE_RESET_MINUTE }
     };
 
     rosterReleaseSchedule = {
-        enabled: true,
+        enabled: previousRosterReleaseEnabled,
         at: { dow: gameDow, hour: AUTO_SCHEDULE_LOCK_HOUR, minute: AUTO_SCHEDULE_LOCK_MINUTE }
     };
 
     resetWeekSchedule = {
-        enabled: true,
+        enabled: previousResetWeekEnabled,
         at: { dow: resetDow, hour: AUTO_SCHEDULE_RESET_HOUR, minute: AUTO_SCHEDULE_RESET_MINUTE }
     };
 
@@ -1669,7 +1678,7 @@ async function loadDataFromDB() {
         if (settings.signupLockSchedule) signupLockSchedule = settings.signupLockSchedule;
         if (settings.rosterReleaseSchedule) rosterReleaseSchedule = settings.rosterReleaseSchedule;
         if (settings.resetWeekSchedule) resetWeekSchedule = settings.resetWeekSchedule;
-        if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && (!signupLockSchedule.start || !signupLockSchedule.end || !rosterReleaseSchedule.at || !resetWeekSchedule.at)) {
+        if (shouldAutoBuildMissingSchedules(settings)) {
             buildAutoSchedulesFromGameTime(gameTime, gameDate);
         }
         refreshDynamicSignupCode();
@@ -2831,7 +2840,7 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
-            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && (!signupLockSchedule.start || !signupLockSchedule.end || !rosterReleaseSchedule.at || !resetWeekSchedule.at)) {
+            if (shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
             refreshDynamicSignupCode();
