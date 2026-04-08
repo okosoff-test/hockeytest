@@ -492,6 +492,7 @@ saveAdminSessionState();
 // Weekly reset tracking
 let lastResetWeek = null;
 let rosterReleased = false;
+let resetArmed = false;
 let currentWeekData = {
     weekNumber: null,
     year: null,
@@ -890,6 +891,13 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime()) {
     const registeredPlayerCount = Array.isArray(players) ? players.length : 0;
     const waitlistCount = Array.isArray(waitlist) ? waitlist.length : 0;
 
+    if (!resetArmed) {
+        return {
+            ok: false,
+            reason: 'Blocked weekly reset because reset arm is OFF.'
+        };
+    }
+
     if (registeredPlayerCount > 0) {
         return {
             ok: false,
@@ -904,7 +912,7 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime()) {
         };
     }
 
-    return { ok: true, reason: 'No registered players or waitlist entries to reset.' };
+    return { ok: true, reason: 'Reset arm is ON and there are no registered players or waitlist entries to reset.' };
 }
 
 function getNextOccurrenceEtParts(scheduleAt, etDate = getCurrentETTime()) {
@@ -1123,22 +1131,6 @@ function checkAutoLock() {
     refreshDynamicSignupCode();
     const etTime = getCurrentETTime();
 
-    if (rosterReleased) {
-        if (!requirePlayerCode || manualOverrideState !== 'locked' || !manualOverride) {
-            requirePlayerCode = true;
-            manualOverride = true;
-            manualOverrideState = 'locked';
-            saveData();
-        }
-        return {
-            requirePlayerCode: true,
-            manualOverride: true,
-            manualOverrideState: 'locked',
-            isLockedWindow: true,
-            rosterReleased: true
-        };
-    }
-
     const shouldLock = shouldBeLocked();
 
     if (manualOverride && manualOverrideState) {
@@ -1214,9 +1206,7 @@ async function autoReleaseRoster() {
         const teams = generateFairTeams();
 
         rosterReleased = true;
-        requirePlayerCode = true;
-        manualOverride = true;
-        manualOverrideState = 'locked';
+        resetArmed = true;
 
         announcementEnabled = true;
         announcementText = buildRosterReleasePaymentAnnouncement();
@@ -1392,6 +1382,7 @@ async function checkWeeklyReset() {
     players = [];
     waitlist = [];
     rosterReleased = false;
+    resetArmed = false;
     lastResetWeek = currentWeek;
     gameDate = calculateNextGameDate();
 
@@ -1664,6 +1655,7 @@ async function loadDataFromDB() {
         if (settings.manualOverrideState !== undefined) manualOverrideState = settings.manualOverrideState;
         if (settings.lastResetWeek) lastResetWeek = settings.lastResetWeek;
         if (settings.rosterReleased !== undefined) rosterReleased = settings.rosterReleased;
+        if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
@@ -2479,6 +2471,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['manualOverrideState', manualOverrideState],
             ['lastResetWeek', lastResetWeek],
             ['rosterReleased', rosterReleased],
+            ['resetArmed', resetArmed],
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
@@ -2691,6 +2684,7 @@ function buildFullDataSnapshot() {
         manualOverrideState,
         lastResetWeek,
         rosterReleased,
+        resetArmed,
         currentWeekData,
         signupLockStartAt,
         signupLockEndAt,
@@ -2798,6 +2792,7 @@ function getSettingsSnapshot() {
         manualOverride,
         manualOverrideState,
         rosterReleased,
+        resetArmed,
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
@@ -2872,6 +2867,7 @@ function loadDataFromFile() {
             manualOverrideState = data.manualOverrideState ?? null;
             lastResetWeek = data.lastResetWeek ?? null;
             rosterReleased = data.rosterReleased ?? false;
+            resetArmed = !!data.resetArmed;
             signupLockStartAt = data.signupLockStartAt ?? '';
             signupLockEndAt = data.signupLockEndAt ?? '';
             rosterReleaseAt = data.rosterReleaseAt ?? '';
@@ -3784,6 +3780,7 @@ app.get('/api/status', (req, res) => {
         date: gameDate,
         formattedDate: formatGameDate(gameDate),
         rosterReleased: rosterReleased,
+        resetArmed: resetArmed,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         rosterReleaseTime: currentWeekData.rosterReleaseTime,
         currentWeek: week,
@@ -5356,6 +5353,7 @@ app.post('/api/admin/settings', (req, res) => {
         time: gameTime,
         date: gameDate,
         rosterReleased,
+        resetArmed,
         signupLockSchedule,
         rosterReleaseSchedule,
         resetWeekSchedule,
@@ -5510,6 +5508,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
         signupLockEndAt,
         rosterReleaseAt,
         resetWeekAt,
+        resetArmed,
         requireCode: requirePlayerCode,
         isLockedWindow: lockStatus.isLockedWindow
     });
@@ -5945,9 +5944,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         const teams = generateFairTeams();
         
         rosterReleased = true;
-        requirePlayerCode = true;
-        manualOverride = true;  // Keep locked after manual release
-        manualOverrideState = 'locked';  // Force locked state
+        resetArmed = true;
 
         // Auto-enable payment reminder when roster is released
         announcementEnabled = true;
@@ -5981,7 +5978,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         
         res.json({ 
             success: true, 
-            message: "Roster released successfully. Signup is now LOCKED until Monday 6pm.",
+            message: "Roster released successfully. Reset arm is now ON.",
             whiteTeam: teams.whiteTeam,
             darkTeam: teams.darkTeam,
             whiteRating: teams.whiteRating.toFixed(1),
