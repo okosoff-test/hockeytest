@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roster History</title>
+    <title>Team Roster - Phan's Sunday Hockey</title>
     <style>
         :root {
             --bg-color: #1a1a1a;
@@ -12,6 +12,8 @@
             --accent: #ff6b00;
             --white-team: #ffffff;
             --dark-team: #666666;
+            --success: #4CAF50;
+            --warning: #ff9800;
         }
 
         * { 
@@ -53,31 +55,57 @@
             font-size: 1.1rem;
             color: #888;
             margin-top: 0;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
         }
 
-        .week-selector {
-            background: linear-gradient(135deg, #2a2a2a, #333);
-            border: 2px solid var(--accent);
+        .game-info {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 20px;
+            font-size: 1rem;
+        }
+
+        .game-date {
+            font-weight: bold;
+            color: #fff;
+            font-size: 1.2rem;
+            margin-bottom: 5px;
+        }
+
+        .pending-notice {
+            background: linear-gradient(135deg, #3a2a1a, #4d3d2d);
+            border: 2px solid #ff9800;
+            border-radius: 10px;
+            padding: 30px;
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .pending-notice h3 {
+            color: #ff9800;
+            margin: 0 0 10px 0;
+            font-size: 1.5rem;
+        }
+
+        .pending-notice p {
+            color: #ccc;
+            margin: 0;
+            font-size: 1.1rem;
+        }
+
+        .check-back-message {
+            background: linear-gradient(135deg, #1a3a1a, #2d4d2d);
+            border: 2px solid var(--success);
             border-radius: 10px;
             padding: 20px;
-            margin-bottom: 25px;
+            margin: 20px 0;
+            text-align: center;
+            color: var(--success);
         }
 
-        .week-selector label {
-            display: block;
-            margin-bottom: 10px;
-            color: #aaa;
-        }
-
-        select {
-            width: 100%;
-            padding: 12px;
-            background: #3d3d3d;
-            border: 1px solid #555;
-            color: white;
-            border-radius: 5px;
-            font-size: 1rem;
+        .check-back-message strong {
+            color: #fff;
+            font-size: 1.2rem;
         }
 
         .teams-container {
@@ -170,24 +198,6 @@
             font-weight: bold;
         }
 
-        .game-info {
-            text-align: center;
-            color: #aaa;
-            margin-bottom: 20px;
-            font-size: 1rem;
-        }
-
-        .empty-state {
-            text-align: center;
-            padding: 40px;
-            color: #666;
-        }
-
-        .empty-state-icon {
-            font-size: 4rem;
-            margin-bottom: 15px;
-        }
-
         .back-link {
             text-align: center;
             margin-top: 30px;
@@ -205,6 +215,13 @@
             text-decoration: underline;
         }
 
+        .refresh-info {
+            text-align: center;
+            color: #666;
+            font-size: 0.85rem;
+            margin-top: 15px;
+        }
+
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .teams-container { grid-template-columns: 1fr; }
@@ -214,27 +231,26 @@
 <body>
 
     <div class="container">
-        <h1 id="pageTitle">Loading...</h1>
-        <h2>Roster History</h2>
+        <h1 id="pageTitle">Phan's Hockey</h1>
+        <h2>Team Roster</h2>
         
-        <div class="week-selector">
-            <label for="weekSelect">Select Week:</label>
-            <select id="weekSelect" onchange="loadWeek()">
-                <option value="">-- Select a week --</option>
-            </select>
+        <div class="game-info" id="gameInfo">
+            <div class="game-date" id="gameDate">Loading...</div>
+            <div id="gameLocationTime">Loading...</div>
         </div>
 
         <div id="contentArea">
-            <div class="empty-state" id="emptyState">
-                <div class="empty-state-icon">📅</div>
-                <p>Select a week to view historical roster</p>
+            <div class="pending-notice" id="pendingNotice">
+                <h3>⏳ Roster Not Yet Released</h3>
+                <p>Teams will be posted here after admin releases the roster</p>
             </div>
 
-            <div id="weekDisplay" style="display:none;">
-                <div class="game-info" id="gameInfo">
-                    Loading...
-                </div>
+            <div class="check-back-message" id="checkBackMessage" style="display:none;">
+                <strong id="checkBackStrong">📅 Check back at the scheduled roster release time for team rosters</strong><br>
+                <span id="checkBackDetail">Countdown will appear once a roster release time is scheduled.</span>
+            </div>
 
+            <div id="teamsDisplay" style="display:none;">
                 <div class="teams-container">
                     <div class="team-box team-white">
                         <div class="team-header">
@@ -256,111 +272,140 @@
         </div>
 
         <div class="back-link">
-            <a href="/">← Back to Signup</a> | <a href="/">Current Roster →</a>
+            <a href="/">← Back to Signup</a>
+        </div>
+
+        <div class="refresh-info">
+            Auto-refreshes every 60 seconds
         </div>
     </div>
 
     <script>
         const API_URL = window.location.origin;
-        let historyList = [];
 
-        async function loadHistoryList() {
-            try {
-                const statusRes = await fetch(`${API_URL}/api/status`);
-                const statusData = await statusRes.json();
-                if (statusData.customTitle) {
-                    document.getElementById('pageTitle').innerText = statusData.customTitle;
-                    document.title = statusData.customTitle + ' - History';
-                }
-            } catch (e) { /* ignore */ }
+        let scheduleInfo = null;
+        let rosterReleaseAtIso = null;
+        let countdownInterval = null;
 
-            try {
-                const res = await fetch(`${API_URL}/api/history`);
-                const data = await res.json();
-                historyList = data.history;
-                
-                const select = document.getElementById('weekSelect');
-                select.innerHTML = '<option value="">-- Select a week --</option>';
-                
-                historyList.forEach(week => {
-                    const option = document.createElement('option');
-                    option.value = `${week.year}-${week.weekNumber}`;
-                    const date = new Date(week.created);
-                    option.text = `Week ${week.weekNumber}, ${week.year} (${date.toLocaleDateString()})`;
-                    select.appendChild(option);
-                });
-                
-                if (historyList.length === 0) {
-                    const option = document.createElement('option');
-                    option.text = "No history available yet";
-                    option.disabled = true;
-                    select.appendChild(option);
+        function formatCountdown(msRemaining) {
+            if (!Number.isFinite(msRemaining) || msRemaining <= 0) return 'Roster release time has arrived.';
+            const totalSeconds = Math.floor(msRemaining / 1000);
+            const days = Math.floor(totalSeconds / 86400);
+            const hours = Math.floor((totalSeconds % 86400) / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            const seconds = totalSeconds % 60;
+            const parts = [];
+            if (days > 0) parts.push(`${days}d`);
+            if (hours > 0 || days > 0) parts.push(`${hours}h`);
+            parts.push(`${minutes}m`);
+            if (days === 0) parts.push(`${seconds}s`);
+            return `Roster release in: ${parts.join(' ')}`;
+        }
+
+        function startCountdown() {
+            if (countdownInterval) clearInterval(countdownInterval);
+            const detailEl = document.getElementById('checkBackDetail');
+            if (!detailEl) return;
+            const tick = () => {
+                if (!rosterReleaseAtIso) {
+                    detailEl.textContent = 'Countdown will appear once a roster release time is scheduled.';
+                    return;
                 }
-            } catch (err) {
-                console.error("Error loading history list", err);
+                const remaining = new Date(rosterReleaseAtIso).getTime() - Date.now();
+                detailEl.textContent = formatCountdown(remaining);
+            };
+            tick();
+            countdownInterval = setInterval(tick, 1000);
+        }
+
+        async function loadScheduleInfo() {
+            try {
+                const res = await fetch(`${API_URL}/api/status`);
+                const status = await res.json();
+                scheduleInfo = status;
+
+                // Page title
+                const titleEl = document.getElementById('pageTitle');
+                if (titleEl && status.customTitle) titleEl.textContent = status.customTitle;
+
+                // "Check back" message
+                const strongEl = document.getElementById('checkBackStrong');
+                const detailEl = document.getElementById('checkBackDetail');
+
+                if (status.rosterReleaseMessage || status.rosterReleaseLine) {
+                    if (strongEl) strongEl.textContent = status.rosterReleaseMessage || status.rosterReleaseHeadline || '📅 Check back at the scheduled roster release time for team rosters';
+                    rosterReleaseAtIso = status.rosterReleaseAtIso || null;
+                    startCountdown();
+                }
+            } catch (e) {
+                // Non-fatal: keep defaults
+                console.warn('Could not load schedule info', e);
             }
         }
 
-        async function loadWeek() {
-            const select = document.getElementById('weekSelect');
-            const value = select.value;
-            
-            if (!value) {
-                document.getElementById('emptyState').style.display = 'block';
-                document.getElementById('weekDisplay').style.display = 'none';
-                return;
-            }
-            
-            const [year, week] = value.split('-');
-            
+        loadScheduleInfo();
+
+        async function loadRoster() {
             try {
-                const res = await fetch(`${API_URL}/api/history/${year}/${week}`);
+                const res = await fetch(`${API_URL}/api/roster`);
                 const data = await res.json();
-                
-                document.getElementById('emptyState').style.display = 'none';
-                document.getElementById('weekDisplay').style.display = 'block';
-                
-                const releaseDate = new Date(data.releaseDate);
-                document.getElementById('gameInfo').innerHTML = `
-                    <strong>Week ${data.weekNumber}, ${data.year}</strong><br>
-                    ${data.gameLocation} | ${data.gameTime}<br>
-                    <small>Released: ${releaseDate.toLocaleString()}</small>
-                `;
-                
+
+                if (data.location && data.time) {
+                    document.getElementById('gameDate').innerText = data.formattedDate || data.date;
+                    document.getElementById('gameLocationTime').innerText = `${data.location} | ${data.time}`;
+                }
+
+                if (!data.released) {
+                    document.getElementById('pendingNotice').style.display = 'block';
+                    document.getElementById('checkBackMessage').style.display = 'block';
+                    document.getElementById('teamsDisplay').style.display = 'none';
+                    return;
+                }
+
+                document.getElementById('pendingNotice').style.display = 'none';
+                document.getElementById('checkBackMessage').style.display = 'none';
+                document.getElementById('teamsDisplay').style.display = 'block';
+
                 document.getElementById('whiteCount').innerText = data.whiteTeam.length;
                 document.getElementById('darkCount').innerText = data.darkTeam.length;
-                
+
+                // White Team
                 const whiteList = document.getElementById('whiteTeamList');
                 whiteList.innerHTML = '';
                 data.whiteTeam.forEach(player => {
                     const li = document.createElement('li');
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
+                    
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    
                     li.innerHTML = `
                         <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
                     `;
                     whiteList.appendChild(li);
                 });
-                
+
+                // Dark Team
                 const darkList = document.getElementById('darkTeamList');
                 darkList.innerHTML = '';
                 data.darkTeam.forEach(player => {
                     const li = document.createElement('li');
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
+                    
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    
                     li.innerHTML = `
                         <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
                     `;
                     darkList.appendChild(li);
                 });
-                
+
             } catch (err) {
-                console.error("Error loading week", err);
-                alert("Error loading week data");
+                console.error("Error loading roster", err);
             }
         }
 
-        loadHistoryList();
+        loadRoster();
+        setInterval(loadRoster, 60000);
     </script>
 
 </body>

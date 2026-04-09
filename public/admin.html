@@ -1676,67 +1676,23 @@ button {
 
 
 <style>
-.rating-wrap,
-.paid-wrap{
-    display:flex;
+.compact-pay{
+    display:inline-flex;
     align-items:center;
     justify-content:center;
-    width:100%;
-    gap:0 !important;
-}
-
-.compact-rating,
-.compact-pay{
-    width:100%;
-    max-width:74px;
-    min-width:74px;
-    min-height:48px;
-    display:grid;
-    grid-template-columns: 1fr 18px;
-    align-items:stretch;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
+    width:auto;
+    max-width:100%;
     vertical-align:middle;
 }
-
-.compact-rating{
-    background:#3d3d3d;
-    border:1px solid #666;
-}
-
 .compact-pay.is-unpaid{
     background:#c62828;
 }
 .compact-pay.is-paid{
     background:#2e7d32;
 }
-
-.compact-rating-main,
-.compact-pay-main{
-    border:none;
-    background:transparent;
-    color:#fff;
-    margin:0 !important;
-    cursor:pointer;
-    line-height:1;
-    font-weight:700;
-    padding:0 4px !important;
-    min-width:0;
-    font-size:1rem !important;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-}
-
-.compact-rating-side,
-.compact-pay-side{
-    display:grid;
-    grid-template-rows:1fr 1fr;
-    border-left:1px solid rgba(255,255,255,0.18);
-}
-
-.compact-rating-btn,
 .compact-pay-btn{
     border:none;
     background:transparent;
@@ -1745,60 +1701,29 @@ button {
     cursor:pointer;
     line-height:1;
     font-weight:700;
-    padding:0 !important;
-    width:18px;
-    min-width:18px;
-    font-size:1rem !important;
+}
+.compact-pay-minus,
+.compact-pay-plus{
+    padding:4px 5px !important;
+    min-width:20px;
+    font-size:0.78rem !important;
+}
+.compact-pay-main{
+    padding:4px 8px !important;
+    min-width:34px;
+    font-size:0.78rem !important;
+}
+.compact-pay-btn:hover{
+    background:rgba(255,255,255,0.12);
+}
+.paid-wrap{
     display:flex;
     align-items:center;
     justify-content:center;
-}
-
-.compact-rating-plus,
-.compact-pay-plus{
-    border-bottom:1px solid rgba(255,255,255,0.18);
-}
-
-.compact-rating-btn:hover,
-.compact-pay-btn:hover,
-.compact-rating-main:hover,
-.compact-pay-main:hover{
-    background:rgba(255,255,255,0.10);
-}
-
-.player-name-cell{ font-size:1rem; }
-</style>
-
-<style id="registered-players-uniform-font-fix">
-/* Registered Players table: keep all text/control sizes uniform for mobile readability */
-#playerList td,
-#playerList .player-name-cell,
-#playerList .compact-rating-main,
-#playerList .compact-pay-main,
-#playerList .compact-rating-btn,
-#playerList .compact-pay-btn,
-#playerList .remove-btn,
-#playerList .regular-toggle-btn {
-    font-size: 1rem !important;
-}
-
-#playerList td:nth-child(2) {
-    font-size: 1rem !important;
-    color: #ffffff !important;
-    width: auto !important;
-}
-
-#playerList .player-name-cell span {
-    font-size: 1rem !important;
-    color: inherit !important;
-}
-
-#playerList .compact-rating,
-#playerList .compact-pay {
-    max-width: 74px;
-    min-width: 74px;
+    gap:0 !important;
 }
 </style>
+
 
 <style id="safe-ui-hide-unused-admin-panels">
 .regular-summary-section,
@@ -2496,7 +2421,7 @@ button {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Paid ($)</th>
+                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
                     <th>Payment</th>
                     <th>Regular</th>
                     <th>Action</th>
@@ -4452,7 +4377,7 @@ Date: ${selectedGameDate}`);
                 document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
                 document.getElementById('waitlistCount').innerText = data.waitlist.length;
                 
-                const totalPaidEl = document.getElementById('totalPaidDisplay'); if (totalPaidEl) totalPaidEl.innerText = `($${currentTotalPaid.toFixed(2)})`; 
+                document.getElementById('totalPaidDisplay').innerText = `($${currentTotalPaid.toFixed(2)})`;
                 
                 if (data.playerSignupCode) {
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
@@ -4488,13 +4413,11 @@ Date: ${selectedGameDate}`);
                                 : 15;
                             paidInput = `
                                 <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
                                     <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
-                                    <div class="compact-pay-side">
-                                        <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                        <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    </div>
+                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
                                 </div>
                             `;
                         }
@@ -4504,16 +4427,13 @@ Date: ${selectedGameDate}`);
                             <td>${p.phone}</td>
                             <td>
                                 <div class="rating-wrap">
-                                    <div class="compact-rating" data-player-id="${p.id}">
-                                        <button class="compact-rating-main" title="Tap to save this rating" onclick="compactRatingCommit(${p.id})" data-rating="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}">${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}</button>
-                                        <div class="compact-rating-side">
-                                            <button class="compact-rating-btn compact-rating-minus" onclick="event.stopPropagation(); compactRatingAdjust(${p.id}, -0.1)">−</button>
-                                            <button class="compact-rating-btn compact-rating-plus" onclick="event.stopPropagation(); compactRatingAdjust(${p.id}, 0.1)">+</button>
-                                        </div>
-                                    </div>
+                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
+                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        onchange="updateRating(${p.id}, this.value)">
+                                    
                                 </div>
                             </td>
-                            <td><div class="paid-wrap">${paidInput}</div></td>
+                            <td>${paidInput}</td>
                             <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
                             <td>
                                 <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
@@ -4686,7 +4606,7 @@ Date: ${selectedGameDate}`);
 
                 if (res.ok) {
                     const data = await res.json();
-                    const totalPaidEl = document.getElementById('totalPaidDisplay'); if (totalPaidEl) totalPaidEl.innerText = `($${data.totalPaid})`; 
+                    document.getElementById('totalPaidDisplay').innerText = `($${data.totalPaid})`;
                     console.log(`Updated paid amount for player ${playerId}: $${amount}, Total: $${data.totalPaid}`);
                 } else {
                     const err = await res.json();
@@ -5886,33 +5806,6 @@ function compactPayToggle(playerId){
         updatePaidAmount(playerId, amount);
     }
     setTimeout(loadData, 150);
-}
-</script>
-
-
-<script>
-function compactRatingFind(playerId){
-    return document.querySelector('.compact-rating[data-player-id="' + playerId + '"]');
-}
-function compactRatingMain(playerId){
-    const wrap = compactRatingFind(playerId);
-    return wrap ? wrap.querySelector('.compact-rating-main') : null;
-}
-function compactRatingAdjust(playerId, delta){
-    const main = compactRatingMain(playerId);
-    if(!main) return;
-    let rating = parseFloat(main.dataset.rating || main.textContent || '5');
-    if(!Number.isFinite(rating)) rating = 5;
-    rating = Math.max(1, Math.min(10, Math.round((rating + delta) * 10) / 10));
-    main.dataset.rating = rating.toFixed(1);
-    main.textContent = rating.toFixed(1);
-}
-function compactRatingCommit(playerId){
-    const main = compactRatingMain(playerId);
-    if(!main) return;
-    const rating = parseFloat(main.dataset.rating || main.textContent || '5');
-    if(!Number.isFinite(rating)) return;
-    updateRating(playerId, rating);
 }
 </script>
 
