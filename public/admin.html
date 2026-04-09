@@ -1699,6 +1699,7 @@ button {
     background:#2e7d32;
 }
 .compact-pay-btn{
+    transition: transform 0.08s ease, background 0.08s ease;
     border:none;
     background:transparent;
     color:#fff;
@@ -5847,3 +5848,25 @@ async function compactPayToggle(playerId){
 
 </body>
 </html>
+
+<style>
+.compact-pay-btn:active{
+    transform: scale(0.92);
+    background: rgba(255,255,255,0.18);
+}
+.compact-pay-btn:hover{
+    background: rgba(255,255,255,0.12);
+}
+.free-pill{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:66px;
+    height:24px;
+    margin:0 auto;
+    border-radius:8px;
+    background:#555;
+    color:#fff;
+    font-size:0.8rem;
+}
+</style>
