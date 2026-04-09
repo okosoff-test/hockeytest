@@ -1678,18 +1678,18 @@ button {
 <style>
 .compact-pay{
     display:inline-grid;
-    grid-template-columns: 1fr 15px;
+    grid-template-columns: 1fr 17px;
     grid-template-areas:
         "main plus"
         "main minus";
     align-items:stretch;
     justify-items:stretch;
-    border-radius:6px;
+    border-radius:7px;
     overflow:hidden;
     white-space:nowrap;
-    width:58px;
+    width:66px;
     max-width:100%;
-    min-height:18px;
+    min-height:24px;
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1710,23 +1710,23 @@ button {
 }
 .compact-pay-main{
     grid-area:main;
-    padding:0 5px !important;
+    padding:0 6px !important;
     min-width:0;
     min-height:24px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.82rem !important;
+    font-size:0.94rem !important;
 }
 .compact-pay-plus,
 .compact-pay-minus{
-    min-width:15px;
-    width:15px;
+    min-width:17px;
+    width:17px;
     padding:0 !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.72rem !important;
+    font-size:0.85rem !important;
     border-left:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-plus{
@@ -3050,6 +3050,9 @@ button {
         let selectedSnapshotKey = null;
         let selectedSnapshotFingerprint = "";
         let latestSnapshotKey = null;
+        let currentRegularSkatersByDay = normalizeRegularDayBucketMap({});
+        let adminPlayersById = {};
+
 
         // Pre-defined goalie data
         const PREDEFINED_GOALIES = [
@@ -4359,19 +4362,47 @@ Date: ${selectedGameDate}`);
 
         async function togglePlayerRegular(playerId) {
             try {
-                const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken, playerId })
-                });
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok || !data.success) {
-                    throw new Error(data.error || 'Failed to update regular player');
+                const player = adminPlayersById[String(playerId)];
+                if (!player) {
+                    throw new Error('Player not found');
                 }
 
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-                renderRegularSkatersList();
+                const phoneDigits = normalizePhoneDigitsClient(player.phone);
+                const first = String(player.firstName || '').trim().toLowerCase();
+                const last = String(player.lastName || '').trim().toLowerCase();
+
+                const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
+                const buckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+                let wasRegular = false;
+                for (const bucket of buckets) {
+                    const list = Array.isArray(map[bucket]) ? map[bucket] : [];
+                    const filtered = list.filter(existing => {
+                        const existingPhone = normalizePhoneDigitsClient(existing.phone);
+                        const samePhone = phoneDigits && existingPhone && existingPhone === phoneDigits;
+                        const sameName = String(existing.firstName || '').trim().toLowerCase() === first &&
+                                         String(existing.lastName || '').trim().toLowerCase() === last;
+                        const keep = !(samePhone || sameName);
+                        if (!keep) wasRegular = true;
+                        return keep;
+                    });
+                    map[bucket] = filtered;
+                }
+
+                if (!wasRegular) {
+                    map.everyday.push({
+                        firstName: player.firstName,
+                        lastName: player.lastName,
+                        phone: player.phone,
+                        rating: player.finalRating ?? player.rating ?? 5,
+                        paymentMethod: player.paymentMethod || 'Cash',
+                        isFree: !!player.isFree,
+                        protected: !!player.protected
+                    });
+                }
+
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(map);
+                await saveRegularSkatersSettings();
                 await loadData();
             } catch (err) {
                 console.error('Toggle regular error:', err);
@@ -4398,6 +4429,7 @@ Date: ${selectedGameDate}`);
                 
                 const data = await res.json();
 
+                adminPlayersById = Object.fromEntries((data.players || []).map(p => [String(p.id), p]));
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay || {});
                 renderRegularSkatersList();
 
@@ -4443,7 +4475,7 @@ Date: ${selectedGameDate}`);
                         const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
                         const regularInfo = getPlayerRegularInfo(p);
-                        const regularLabel = regularInfo.active ? 'Regular ✓' : 'Regular';
+                        const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
                         let paidInput = '';

@@ -8,7 +8,7 @@ body{margin:0;background:#111;color:#fff;font-family:Arial}
   display:flex;
   align-items:center;
   border-bottom:1px solid #333;
-  padding:4px 8px;
+  padding:6px 10px;
 }
 
 /* HEADER */
@@ -21,26 +21,26 @@ body{margin:0;background:#111;color:#fff;font-family:Arial}
 .status-free{
   color:#4caf50;
   font-weight:bold;
-  font-size:11px;
+  font-size:13px;
 }
 
 /* PILL (smaller) */
 .pill-paid{
   display:inline-flex;
   align-items:center;
-  padding:2px 5px;
-  font-size:8px;
-  border-radius:9px;
+  padding:3px 7px;
+  font-size:10px;
+  border-radius:12px;
   background:#e53935;
   color:#fff;
-  min-height:16px;
+  min-height:20px;
 }
 
 /* AMOUNT (bigger) */
 .pill-paid .amount{
   font-size:13px;
   font-weight:bold;
-  margin-right:4px;
+  margin-right:6px;
 }
 
 /* BUTTONS */
