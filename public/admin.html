@@ -1676,15 +1676,44 @@ button {
 
 
 <style>
-.compact-pay{
-    display:inline-flex;
+:root {
+    --rating-paid-col-width: 68px;
+}
+.admin-layout-option-1 table th:nth-child(3),
+.admin-layout-option-1 table td:nth-child(3),
+.admin-layout-option-1 table th:nth-child(4),
+.admin-layout-option-1 table td:nth-child(4) {
+    width: var(--rating-paid-col-width);
+    min-width: var(--rating-paid-col-width);
+    max-width: var(--rating-paid-col-width);
+}
+.rating-wrap,
+.paid-wrap {
+    width: var(--rating-paid-col-width);
+    min-width: var(--rating-paid-col-width);
+    display:flex;
     align-items:center;
     justify-content:center;
+    margin:0 auto;
+    gap:0 !important;
+}
+.rating-wrap input[type="number"] {
+    width: 54px !important;
+    min-width: 54px;
+    margin: 0 auto !important;
+    text-align: center;
+}
+.compact-pay{
+    display:grid;
+    grid-template-columns: 1fr 14px;
+    align-items:stretch;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:auto;
-    max-width:100%;
+    width:54px;
+    min-width:54px;
+    max-width:54px;
+    height:34px;
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1692,6 +1721,25 @@ button {
 }
 .compact-pay.is-paid{
     background:#2e7d32;
+}
+.compact-pay-main{
+    border:none;
+    background:transparent;
+    color:#fff;
+    margin:0 !important;
+    cursor:pointer;
+    line-height:1;
+    font-weight:700;
+    padding:4px 2px !important;
+    min-width:0;
+    font-size:0.78rem !important;
+    grid-column:1;
+    grid-row:1 / span 2;
+}
+.compact-pay-side{
+    display:grid;
+    grid-template-rows:1fr 1fr;
+    border-left:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-btn{
     border:none;
@@ -1701,26 +1749,39 @@ button {
     cursor:pointer;
     line-height:1;
     font-weight:700;
+    padding:0 !important;
+    width:14px;
+    min-width:14px;
+    font-size:0.62rem !important;
 }
-.compact-pay-minus,
 .compact-pay-plus{
-    padding:4px 5px !important;
-    min-width:20px;
-    font-size:0.78rem !important;
+    border-bottom:1px solid rgba(255,255,255,0.22);
 }
-.compact-pay-main{
-    padding:4px 8px !important;
-    min-width:34px;
-    font-size:0.78rem !important;
-}
-.compact-pay-btn:hover{
+.compact-pay-btn:hover,
+.compact-pay-main:hover{
     background:rgba(255,255,255,0.12);
 }
-.paid-wrap{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    gap:0 !important;
+@media (max-width: 600px) {
+    :root {
+        --rating-paid-col-width: 62px;
+    }
+    .rating-wrap input[type="number"] {
+        width: 50px !important;
+        min-width: 50px;
+        font-size: 0.82rem !important;
+    }
+    .compact-pay{
+        width:50px;
+        min-width:50px;
+        max-width:50px;
+        height:32px;
+        grid-template-columns: 1fr 12px;
+    }
+    .compact-pay-btn{
+        width:12px;
+        min-width:12px;
+        font-size:0.58rem !important;
+    }
 }
 </style>
 
@@ -2421,7 +2482,7 @@ button {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Paid ($)</th>
                     <th>Payment</th>
                     <th>Regular</th>
                     <th>Action</th>
@@ -4412,12 +4473,16 @@ Date: ${selectedGameDate}`);
                                 ? parseFloat(p.paidAmount)
                                 : 15;
                             paidInput = `
-                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
-                                        $${compactAmount}
-                                    </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                <div class="paid-wrap">
+                                    <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                        <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                            $${compactAmount}
+                                        </button>
+                                        <div class="compact-pay-side">
+                                            <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                            <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                        </div>
+                                    </div>
                                 </div>
                             `;
                         }
@@ -4428,9 +4493,8 @@ Date: ${selectedGameDate}`);
                             <td>
                                 <div class="rating-wrap">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        style="padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
-                                    
                                 </div>
                             </td>
                             <td>${paidInput}</td>
