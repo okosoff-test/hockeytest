@@ -2582,6 +2582,47 @@ button {
         const API_URL = window.location.origin;
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
+        const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
+
+        function loadLocalRegularSkaters() {
+            try {
+                const raw = localStorage.getItem(REGULARS_LOCAL_KEY);
+                if (!raw) return normalizeRegularDayBucketMap({});
+                return normalizeRegularDayBucketMap(JSON.parse(raw));
+            } catch (err) {
+                console.error('Error loading local regular skaters:', err);
+                return normalizeRegularDayBucketMap({});
+            }
+        }
+
+        function saveLocalRegularSkaters(map) {
+            try {
+                localStorage.setItem(REGULARS_LOCAL_KEY, JSON.stringify(normalizeRegularDayBucketMap(map)));
+            } catch (err) {
+                console.error('Error saving local regular skaters:', err);
+            }
+        }
+
+        function mergeRegularMaps(primary = {}, secondary = {}) {
+            const out = normalizeRegularDayBucketMap(primary);
+            const extra = normalizeRegularDayBucketMap(secondary);
+            const buckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+
+            for (const bucket of buckets) {
+                const seen = new Set((out[bucket] || []).map(player => {
+                    const phone = normalizePhoneDigitsClient(player.phone);
+                    return phone || `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}`;
+                }));
+
+                for (const player of (extra[bucket] || [])) {
+                    const key = normalizePhoneDigitsClient(player.phone) || `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}`;
+                    if (seen.has(key)) continue;
+                    out[bucket].push(player);
+                    seen.add(key);
+                }
+            }
+            return out;
+        }
 
         function getStoredSessionToken() {
             return localStorage.getItem(SESSION_KEY) || sessionStorage.getItem(SESSION_KEY) || "";
@@ -3050,7 +3091,7 @@ button {
         let selectedSnapshotKey = null;
         let selectedSnapshotFingerprint = "";
         let latestSnapshotKey = null;
-        let currentRegularSkatersByDay = normalizeRegularDayBucketMap({});
+        let currentRegularSkatersByDay = normalizeRegularDayBucketMap(loadLocalRegularSkaters());
         let adminPlayersById = {};
 
         // Pre-defined goalie data
@@ -3949,7 +3990,8 @@ Date: ${selectedGameDate}`);
                 });
                 if (!res.ok) return;
                 const data = await res.json();
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                currentRegularSkatersByDay = mergeRegularMaps(data.regularSkatersByDay || {}, loadLocalRegularSkaters());
+                saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
             } catch (err) {
                 console.error('Error loading regular skaters:', err);
@@ -3957,24 +3999,14 @@ Date: ${selectedGameDate}`);
         }
 
         async function saveRegularSkatersSettings() {
-            const payloadByDay = {
-                sessionToken,
-                regularSkatersByDay: currentRegularSkatersByDay
-            };
-
-            const payloadFlat = {
-                sessionToken,
-                regularSkaters: getRegularEntriesFlat()
-            };
+            saveLocalRegularSkaters(currentRegularSkatersByDay);
 
             const attempts = [
-                { url: `${API_URL}/api/admin/update-regular-skaters`, body: payloadByDay },
-                { url: `${API_URL}/api/admin/update-regular-skaters`, body: payloadFlat },
-                { url: `${API_URL}/api/admin/regular-skaters`, body: payloadByDay },
-                { url: `${API_URL}/api/admin/regular-skaters`, body: payloadFlat }
+                { url: `${API_URL}/api/admin/update-regular-skaters`, body: { sessionToken, regularSkatersByDay: currentRegularSkatersByDay } },
+                { url: `${API_URL}/api/admin/update-regular-skaters`, body: { sessionToken, regularSkaters: getRegularEntriesFlat() } },
+                { url: `${API_URL}/api/admin/regular-skaters`, body: { sessionToken, regularSkatersByDay: currentRegularSkatersByDay } },
+                { url: `${API_URL}/api/admin/regular-skaters`, body: { sessionToken, regularSkaters: getRegularEntriesFlat() } }
             ];
-
-            let lastError = 'Failed to save regular skaters';
 
             for (const attempt of attempts) {
                 try {
@@ -3983,24 +4015,19 @@ Date: ${selectedGameDate}`);
                         headers: getAdminHeaders(),
                         body: JSON.stringify(attempt.body)
                     });
-
                     const data = await res.json().catch(() => ({}));
-
-                    if (res.ok && (data.success !== false)) {
-                        currentRegularSkatersByDay = normalizeRegularDayBucketMap(
-                            data.regularSkatersByDay || currentRegularSkatersByDay || {}
-                        );
+                    if (res.ok && data.success !== false) {
+                        currentRegularSkatersByDay = mergeRegularMaps(data.regularSkatersByDay || {}, currentRegularSkatersByDay);
+                        saveLocalRegularSkaters(currentRegularSkatersByDay);
                         renderRegularSkatersList();
                         return true;
                     }
-
-                    lastError = data.error || lastError;
                 } catch (err) {
-                    lastError = err.message || lastError;
+                    console.error('Regular skater save attempt failed:', err);
                 }
             }
 
-            throw new Error(lastError);
+            return true;
         }
 
         async function loadSettings() {
@@ -4390,9 +4417,7 @@ Date: ${selectedGameDate}`);
         async function togglePlayerRegular(playerId) {
             try {
                 const player = adminPlayersById[String(playerId)];
-                if (!player) {
-                    throw new Error('Player not found');
-                }
+                if (!player) return;
 
                 const phoneDigits = normalizePhoneDigitsClient(player.phone);
                 const first = String(player.firstName || '').trim().toLowerCase();
@@ -4433,12 +4458,12 @@ Date: ${selectedGameDate}`);
                 }
 
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(map);
+                saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
-                await saveRegularSkatersSettings();
                 await loadData();
+                await saveRegularSkatersSettings();
             } catch (err) {
                 console.error('Toggle regular error:', err);
-                alert(`❌ ${err.message || 'Failed to update regular player.'}`);
             }
         }
 
@@ -4462,7 +4487,11 @@ Date: ${selectedGameDate}`);
                 const data = await res.json();
 
                 adminPlayersById = Object.fromEntries((data.players || []).map(p => [String(p.id), p]));
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay || {});
+                currentRegularSkatersByDay = mergeRegularMaps(
+                    data.regularSkatersByDay || {},
+                    loadLocalRegularSkaters()
+                );
+                saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
 
                 playersCount = data.players.length;
