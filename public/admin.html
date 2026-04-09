@@ -1678,18 +1678,18 @@ button {
 <style>
 .compact-pay{
     display:inline-grid;
-    grid-template-columns: 1fr 17px;
+    grid-template-columns: 1fr 20px;
     grid-template-areas:
         "main plus"
         "main minus";
     align-items:stretch;
     justify-items:stretch;
-    border-radius:7px;
+    border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:66px;
+    width:78px;
     max-width:100%;
-    min-height:24px;
+    min-height:28px;
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1710,23 +1710,23 @@ button {
 }
 .compact-pay-main{
     grid-area:main;
-    padding:0 6px !important;
+    padding:0 8px !important;
     min-width:0;
-    min-height:24px;
+    min-height:28px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.94rem !important;
+    font-size:0.82rem !important;
 }
 .compact-pay-plus,
 .compact-pay-minus{
-    min-width:17px;
-    width:17px;
+    min-width:20px;
+    width:20px;
     padding:0 !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.85rem !important;
+    font-size:0.74rem !important;
     border-left:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-plus{
@@ -3053,7 +3053,6 @@ button {
         let currentRegularSkatersByDay = normalizeRegularDayBucketMap({});
         let adminPlayersById = {};
 
-
         // Pre-defined goalie data
         const PREDEFINED_GOALIES = [
             { id: 'goalieCraig', name: 'Craig Scolack', phone: '(519) 982-6311', defaultRating: 9 },
@@ -3958,22 +3957,50 @@ Date: ${selectedGameDate}`);
         }
 
         async function saveRegularSkatersSettings() {
-            try {
-                const res = await fetch(`${API_URL}/api/admin/update-regular-skaters`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken, regularSkatersByDay: currentRegularSkatersByDay })
-                });
-                const data = await res.json();
-                if (!res.ok || !data.success) {
-                    throw new Error(data.error || 'Failed to save regular skaters');
+            const payloadByDay = {
+                sessionToken,
+                regularSkatersByDay: currentRegularSkatersByDay
+            };
+
+            const payloadFlat = {
+                sessionToken,
+                regularSkaters: getRegularEntriesFlat()
+            };
+
+            const attempts = [
+                { url: `${API_URL}/api/admin/update-regular-skaters`, body: payloadByDay },
+                { url: `${API_URL}/api/admin/update-regular-skaters`, body: payloadFlat },
+                { url: `${API_URL}/api/admin/regular-skaters`, body: payloadByDay },
+                { url: `${API_URL}/api/admin/regular-skaters`, body: payloadFlat }
+            ];
+
+            let lastError = 'Failed to save regular skaters';
+
+            for (const attempt of attempts) {
+                try {
+                    const res = await fetch(attempt.url, {
+                        method: 'POST',
+                        headers: getAdminHeaders(),
+                        body: JSON.stringify(attempt.body)
+                    });
+
+                    const data = await res.json().catch(() => ({}));
+
+                    if (res.ok && (data.success !== false)) {
+                        currentRegularSkatersByDay = normalizeRegularDayBucketMap(
+                            data.regularSkatersByDay || currentRegularSkatersByDay || {}
+                        );
+                        renderRegularSkatersList();
+                        return true;
+                    }
+
+                    lastError = data.error || lastError;
+                } catch (err) {
+                    lastError = err.message || lastError;
                 }
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-                renderRegularSkatersList();
-            } catch (err) {
-                console.error('Error saving regular skaters:', err);
-                alert(`❌ ${err.message || 'Failed to save regular skaters.'}`);
             }
+
+            throw new Error(lastError);
         }
 
         async function loadSettings() {
@@ -4375,18 +4402,22 @@ Date: ${selectedGameDate}`);
                 const buckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
 
                 let wasRegular = false;
+
                 for (const bucket of buckets) {
                     const list = Array.isArray(map[bucket]) ? map[bucket] : [];
-                    const filtered = list.filter(existing => {
+                    map[bucket] = list.filter(existing => {
                         const existingPhone = normalizePhoneDigitsClient(existing.phone);
                         const samePhone = phoneDigits && existingPhone && existingPhone === phoneDigits;
-                        const sameName = String(existing.firstName || '').trim().toLowerCase() === first &&
-                                         String(existing.lastName || '').trim().toLowerCase() === last;
-                        const keep = !(samePhone || sameName);
-                        if (!keep) wasRegular = true;
-                        return keep;
+                        const sameName =
+                            String(existing.firstName || '').trim().toLowerCase() === first &&
+                            String(existing.lastName || '').trim().toLowerCase() === last;
+
+                        if (samePhone || sameName) {
+                            wasRegular = true;
+                            return false;
+                        }
+                        return true;
                     });
-                    map[bucket] = filtered;
                 }
 
                 if (!wasRegular) {
@@ -4402,6 +4433,7 @@ Date: ${selectedGameDate}`);
                 }
 
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(map);
+                renderRegularSkatersList();
                 await saveRegularSkatersSettings();
                 await loadData();
             } catch (err) {
