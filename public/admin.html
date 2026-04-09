@@ -1676,45 +1676,17 @@ button {
 
 
 <style>
-:root {
-    --rating-paid-col-width: 68px;
-}
-.admin-layout-option-1 table th:nth-child(3),
-.admin-layout-option-1 table td:nth-child(3),
-.admin-layout-option-1 table th:nth-child(4),
-.admin-layout-option-1 table td:nth-child(4) {
-    width: var(--rating-paid-col-width);
-    min-width: var(--rating-paid-col-width);
-    max-width: var(--rating-paid-col-width);
-}
-.rating-wrap,
-.paid-wrap {
-    width: var(--rating-paid-col-width);
-    min-width: var(--rating-paid-col-width);
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    margin:0 auto;
-    gap:0 !important;
-}
-.rating-wrap input[type="number"] {
-    width: 54px !important;
-    min-width: 54px;
-    margin: 0 auto !important;
-    text-align: center;
-}
 .compact-pay{
-    display:grid;
-    grid-template-columns: 1fr 14px;
-    align-items:stretch;
+    display:inline-flex;
+    align-items:center;
+    justify-content:space-between;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:54px;
-    min-width:54px;
-    max-width:54px;
-    height:34px;
+    width:72px;
+    height:42px;
     vertical-align:middle;
+    padding:0 4px 0 8px;
 }
 .compact-pay.is-unpaid{
     background:#c62828;
@@ -1723,23 +1695,25 @@ button {
     background:#2e7d32;
 }
 .compact-pay-main{
-    border:none;
-    background:transparent;
-    color:#fff;
-    margin:0 !important;
-    cursor:pointer;
-    line-height:1;
-    font-weight:700;
-    padding:4px 2px !important;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     min-width:0;
-    font-size:0.78rem !important;
-    grid-column:1;
-    grid-row:1 / span 2;
+    font-size:1.05rem !important;
+    font-weight:800;
+    color:#fff;
+    line-height:1;
+    padding:0 !important;
+    background:transparent;
+    border:none;
+    cursor:pointer;
 }
 .compact-pay-side{
-    display:grid;
-    grid-template-rows:1fr 1fr;
-    border-left:1px solid rgba(255,255,255,0.22);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    margin-left:6px;
 }
 .compact-pay-btn{
     border:none;
@@ -1748,39 +1722,102 @@ button {
     margin:0 !important;
     cursor:pointer;
     line-height:1;
-    font-weight:700;
+    font-weight:800;
+    width:18px;
+    height:18px;
     padding:0 !important;
-    width:14px;
-    min-width:14px;
-    font-size:0.62rem !important;
+    font-size:0.95rem !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
 }
 .compact-pay-plus{
-    border-bottom:1px solid rgba(255,255,255,0.22);
+    border-bottom:1px solid rgba(255,255,255,0.38);
+}
+.compact-pay-minus{
+    border-top:1px solid rgba(0,0,0,0.28);
 }
 .compact-pay-btn:hover,
 .compact-pay-main:hover{
     background:rgba(255,255,255,0.12);
 }
-@media (max-width: 600px) {
-    :root {
-        --rating-paid-col-width: 62px;
+.rating-control{
+    display:inline-flex;
+    align-items:center;
+    justify-content:space-between;
+    background:#3d3d3d;
+    border:1px solid #555;
+    border-radius:6px;
+    width:72px;
+    height:42px;
+    vertical-align:middle;
+    padding:0 4px 0 8px;
+}
+.rating-main{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    min-width:0;
+    font-size:1.05rem;
+    font-weight:800;
+    color:#fff;
+    line-height:1;
+}
+.rating-side{
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    margin-left:6px;
+}
+.rating-btn{
+    border:none;
+    background:transparent;
+    color:#fff;
+    margin:0 !important;
+    cursor:pointer;
+    line-height:1;
+    font-weight:800;
+    width:18px;
+    height:18px;
+    padding:0 !important;
+    font-size:0.95rem !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+}
+.rating-btn.minus{
+    border-bottom:1px solid rgba(255,255,255,0.38);
+}
+.rating-btn.plus{
+    border-top:1px solid rgba(0,0,0,0.28);
+}
+.rating-btn:hover{
+    background:rgba(255,255,255,0.12);
+}
+.paid-wrap,
+.rating-wrap,
+.waitlist-rating-wrap{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    gap:0 !important;
+}
+@media (max-width: 600px){
+    .compact-pay,
+    .rating-control{
+        width:74px;
+        height:44px;
     }
-    .rating-wrap input[type="number"] {
-        width: 50px !important;
-        min-width: 50px;
-        font-size: 0.82rem !important;
+    .compact-pay-main,
+    .rating-main{
+        font-size:1.1rem !important;
     }
-    .compact-pay{
-        width:50px;
-        min-width:50px;
-        max-width:50px;
-        height:32px;
-        grid-template-columns: 1fr 12px;
-    }
-    .compact-pay-btn{
-        width:12px;
-        min-width:12px;
-        font-size:0.58rem !important;
+    .compact-pay-btn,
+    .rating-btn{
+        width:19px;
+        height:19px;
+        font-size:1rem !important;
     }
 }
 </style>
@@ -4438,8 +4475,8 @@ Date: ${selectedGameDate}`);
                 document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
                 document.getElementById('waitlistCount').innerText = data.waitlist.length;
                 
-                const totalPaidDisplayEl = document.getElementById('totalPaidDisplay');
-                if (totalPaidDisplayEl) totalPaidDisplayEl.innerText = `($${currentTotalPaid.toFixed(2)})`;
+                const totalPaidDisplay = document.getElementById('totalPaidDisplay');
+                if (totalPaidDisplay) totalPaidDisplay.innerText = `($${currentTotalPaid.toFixed(2)})`;
                 
                 if (data.playerSignupCode) {
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
@@ -4474,15 +4511,13 @@ Date: ${selectedGameDate}`);
                                 ? parseFloat(p.paidAmount)
                                 : 15;
                             paidInput = `
-                                <div class="paid-wrap">
-                                    <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                        <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
-                                            $${compactAmount}
-                                        </button>
-                                        <div class="compact-pay-side">
-                                            <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                            <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                        </div>
+                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                    <button class="compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                        $${compactAmount}
+                                    </button>
+                                    <div class="compact-pay-side">
+                                        <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                        <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
                                     </div>
                                 </div>
                             `;
@@ -4493,9 +4528,7 @@ Date: ${selectedGameDate}`);
                             <td>${p.phone}</td>
                             <td>
                                 <div class="rating-wrap">
-                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
+                                    ${buildCompactRatingControl(p.id, Number(p.finalRating ?? p.rating ?? 5).toFixed(1))}
                                 </div>
                             </td>
                             <td>${paidInput}</td>
@@ -4526,10 +4559,7 @@ Date: ${selectedGameDate}`);
                             <td>${p.phone}</td>
                             <td>
                                 <div class="waitlist-rating-wrap">
-                                    <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
-                                        onchange="updateRating(${p.id}, this.value)">
-                                    
+                                    ${buildCompactRatingControl(p.id, Number(p.finalRating ?? p.rating ?? 5).toFixed(1))}
                                 </div>
                             </td>
                             <td>
@@ -4671,8 +4701,8 @@ Date: ${selectedGameDate}`);
 
                 if (res.ok) {
                     const data = await res.json();
-                    const totalPaidDisplayEl = document.getElementById('totalPaidDisplay');
-                    if (totalPaidDisplayEl) totalPaidDisplayEl.innerText = `($${data.totalPaid})`;
+                    const totalPaidDisplay = document.getElementById('totalPaidDisplay');
+                    if (totalPaidDisplay) totalPaidDisplay.innerText = `($${data.totalPaid})`;
                     console.log(`Updated paid amount for player ${playerId}: $${amount}, Total: $${data.totalPaid}`);
                 } else {
                     const err = await res.json();
@@ -5835,6 +5865,38 @@ This backup has fewer records than live data.
 
 
 <script>
+function buildCompactRatingControl(playerId, value){
+    const safeValue = Number.parseFloat(value);
+    const displayValue = Number.isFinite(safeValue) ? safeValue.toFixed(1) : '5.0';
+    return `
+        <div class="rating-control" data-player-id="${playerId}">
+            <div class="rating-main" data-value="${displayValue}">${displayValue}</div>
+            <div class="rating-side">
+                <button class="rating-btn minus" onclick="event.stopPropagation(); compactRatingAdjust(${playerId}, -0.1)">−</button>
+                <button class="rating-btn plus" onclick="event.stopPropagation(); compactRatingAdjust(${playerId}, 0.1)">+</button>
+            </div>
+        </div>
+    `;
+}
+function compactRatingFind(playerId){
+    return document.querySelector('.rating-control[data-player-id="' + playerId + '"]');
+}
+function compactRatingMain(playerId){
+    const wrap = compactRatingFind(playerId);
+    return wrap ? wrap.querySelector('.rating-main') : null;
+}
+function compactRatingAdjust(playerId, delta){
+    const main = compactRatingMain(playerId);
+    if(!main) return;
+    let value = parseFloat(main.dataset.value || main.textContent || '5');
+    if(!Number.isFinite(value)) value = 5;
+    value = Math.round((value + delta) * 10) / 10;
+    value = Math.max(1, Math.min(10, value));
+    const display = value.toFixed(1);
+    main.dataset.value = display;
+    main.textContent = display;
+    updateRating(playerId, display);
+}
 function compactPayFind(playerId){
     return document.querySelector('.compact-pay[data-player-id="' + playerId + '"]');
 }
