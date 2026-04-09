@@ -4438,7 +4438,8 @@ Date: ${selectedGameDate}`);
                 document.getElementById('goalieCountDisplay').innerText = data.goalieCount;
                 document.getElementById('waitlistCount').innerText = data.waitlist.length;
                 
-                document.getElementById('totalPaidDisplay').innerText = `($${currentTotalPaid.toFixed(2)})`;
+                const totalPaidDisplayEl = document.getElementById('totalPaidDisplay');
+                if (totalPaidDisplayEl) totalPaidDisplayEl.innerText = `($${currentTotalPaid.toFixed(2)})`;
                 
                 if (data.playerSignupCode) {
                     document.getElementById('currentCodeDisplay').innerText = data.playerSignupCode;
@@ -4670,7 +4671,8 @@ Date: ${selectedGameDate}`);
 
                 if (res.ok) {
                     const data = await res.json();
-                    document.getElementById('totalPaidDisplay').innerText = `($${data.totalPaid})`;
+                    const totalPaidDisplayEl = document.getElementById('totalPaidDisplay');
+                    if (totalPaidDisplayEl) totalPaidDisplayEl.innerText = `($${data.totalPaid})`;
                     console.log(`Updated paid amount for player ${playerId}: $${amount}, Total: $${data.totalPaid}`);
                 } else {
                     const err = await res.json();
