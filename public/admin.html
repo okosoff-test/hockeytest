@@ -1677,15 +1677,19 @@ button {
 
 <style>
 .compact-pay{
-    display:inline-flex;
+    display:flex;
+    flex-direction:column;
     align-items:center;
     justify-content:center;
-    border-radius:8px;
+    width:76px;
+    min-width:76px;
+    max-width:76px;
+    border-radius:10px;
     overflow:hidden;
-    white-space:nowrap;
-    width:auto;
-    max-width:100%;
+    white-space:normal;
     vertical-align:middle;
+    padding:4px 0;
+    margin:0 auto;
 }
 .compact-pay.is-unpaid{
     background:#c62828;
@@ -1701,18 +1705,26 @@ button {
     cursor:pointer;
     line-height:1;
     font-weight:700;
+    width:100%;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    text-align:center;
+}
+.compact-pay-main{
+    order:1;
+    padding:3px 0 5px !important;
+    min-width:0;
+    font-size:0.9rem !important;
 }
 .compact-pay-minus,
 .compact-pay-plus{
-    padding:4px 5px !important;
-    min-width:20px;
-    font-size:0.78rem !important;
+    padding:2px 0 !important;
+    min-width:0;
+    font-size:0.82rem !important;
 }
-.compact-pay-main{
-    padding:4px 8px !important;
-    min-width:34px;
-    font-size:0.78rem !important;
-}
+.compact-pay-minus{ order:2; }
+.compact-pay-plus{ order:3; }
 .compact-pay-btn:hover{
     background:rgba(255,255,255,0.12);
 }
@@ -1721,6 +1733,7 @@ button {
     align-items:center;
     justify-content:center;
     gap:0 !important;
+    width:100%;
 }
 </style>
 
