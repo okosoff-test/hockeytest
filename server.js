@@ -1816,7 +1816,7 @@ const DURABLE_SNAPSHOT_REASONS = new Set([
 function shouldCreateDurableSnapshot(reason = '') {
     const normalized = String(reason || '').trim().toLowerCase();
     if (!normalized) return !!DB_SNAPSHOT_FORCE_ON_EVERY_SAVE;
-    return DURABLE_SNAPSHOT_REASONS.has(normalized) || normalized.startsWith('pre-') || normalized.includes('pre-mutation') || DB_SNAPSHOT_FORCE_ON_EVERY_SAVE;
+    return DURABLE_SNAPSHOT_REASONS.has(normalized) || DB_SNAPSHOT_FORCE_ON_EVERY_SAVE;
 }
 
 
@@ -2234,84 +2234,6 @@ async function createManualSnapshot(reason = 'manual-create-snapshot', req = nul
         databaseSnapshot: database,
         localSnapshot
     };
-}
-
-function applySnapshotToMemory(snapshot) {
-    if (!snapshot || typeof snapshot !== 'object') return;
-
-    playerSpots = snapshot.playerSpots ?? 20;
-    players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile) : [];
-    waitlist = Array.isArray(snapshot.waitlist) ? snapshot.waitlist.map(hydratePlayerRatingProfile) : [];
-    gameLocation = snapshot.gameLocation ?? gameLocation;
-    gameTime = snapshot.gameTime ?? gameTime;
-    gameDate = snapshot.gameDate ?? calculateNextGameDate();
-    playerSignupCode = snapshot.playerSignupCode ?? playerSignupCode;
-    requirePlayerCode = snapshot.requirePlayerCode ?? requirePlayerCode;
-    manualOverride = snapshot.manualOverride ?? manualOverride;
-    manualOverrideState = snapshot.manualOverrideState ?? manualOverrideState;
-    lastResetWeek = snapshot.lastResetWeek ?? lastResetWeek;
-    rosterReleased = snapshot.rosterReleased ?? rosterReleased;
-    resetArmed = snapshot.resetArmed ?? resetArmed;
-    signupLockStartAt = snapshot.signupLockStartAt ?? signupLockStartAt;
-    signupLockEndAt = snapshot.signupLockEndAt ?? signupLockEndAt;
-    rosterReleaseAt = snapshot.rosterReleaseAt ?? rosterReleaseAt;
-    resetWeekAt = snapshot.resetWeekAt ?? resetWeekAt;
-    lastExactResetRunAt = snapshot.lastExactResetRunAt ?? lastExactResetRunAt;
-    lastExactRosterReleaseRunAt = snapshot.lastExactRosterReleaseRunAt ?? lastExactRosterReleaseRunAt;
-    lastExactResetMinuteKey = snapshot.lastExactResetMinuteKey ?? lastExactResetMinuteKey;
-    lastExactRosterReleaseMinuteKey = snapshot.lastExactRosterReleaseMinuteKey ?? lastExactRosterReleaseMinuteKey;
-    signupLockSchedule = snapshot.signupLockSchedule ?? signupLockSchedule;
-    rosterReleaseSchedule = snapshot.rosterReleaseSchedule ?? rosterReleaseSchedule;
-    resetWeekSchedule = snapshot.resetWeekSchedule ?? resetWeekSchedule;
-    cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
-    regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
-    customSignupCode = String(snapshot.customSignupCode || '').trim();
-    currentWeekData = snapshot.currentWeekData ?? {
-        weekNumber: null,
-        year: null,
-        releaseDate: null,
-        whiteTeam: [],
-        darkTeam: []
-    };
-    maintenanceMode = snapshot.maintenanceMode ?? maintenanceMode;
-    customTitle = snapshot.customTitle ?? customTitle;
-    announcementEnabled = snapshot.announcementEnabled ?? announcementEnabled;
-    announcementText = snapshot.announcementText ?? announcementText;
-    announcementImages = Array.isArray(snapshot.announcementImages) ? snapshot.announcementImages : [];
-    paymentEmail = typeof snapshot.paymentEmail === 'string' ? snapshot.paymentEmail : paymentEmail;
-    refreshDynamicSignupCode();
-}
-
-async function runProtectedMutation(reason, req, mutateFn, extras = {}) {
-    const normalizedReason = String(reason || 'mutation').trim() || 'mutation';
-    const beforeSnapshot = buildFullDataSnapshot();
-    const preMutationSnapshot = await createManualSnapshot(`pre-${normalizedReason}`, req, extras);
-
-    try {
-        await mutateFn();
-        const saveResult = await saveData(normalizedReason);
-        if (!saveResult || !saveResult.ok) {
-            throw new Error(saveResult?.error || 'Durable save failed');
-        }
-        return { ok: true, preMutationSnapshot, saveResult };
-    } catch (err) {
-        try {
-            applySnapshotToMemory(beforeSnapshot);
-            persistDataToFile(`rollback-${normalizedReason}`, beforeSnapshot);
-        } catch (rollbackErr) {
-            console.error('Rollback memory restore failed:', rollbackErr.message);
-        }
-        try {
-            await appendDataAudit(normalizedReason, 'rollback', {
-                error: err.message,
-                preMutationSnapshot,
-                ...extras
-            });
-        } catch (auditErr) {
-            console.error('Error auditing rollback:', auditErr.message);
-        }
-        throw err;
-    }
 }
 
 async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-replace') {
@@ -4265,18 +4187,29 @@ app.post('/api/register-final', async (req, res) => {
         rulesAgreed: true
     });
 
-    try {
-        await runProtectedMutation('player-signup', req, async () => {
-            players.push(newPlayer);
-            playerSpots = Math.max(0, playerSpots - 1);
-        }, {
-            playerId: newPlayer.id,
-            firstName: newPlayer.firstName,
-            lastName: newPlayer.lastName
-        });
-    } catch (err) {
-        console.error('Error saving player registration:', err.message);
-        return res.status(500).json({ error: "Registration could not be saved safely. Please try again." });
+    players.push(newPlayer);
+    playerSpots = Math.max(0, playerSpots - 1);
+    await saveData('player-signup');
+
+    if (pool) {
+        try {
+            await pool.query(
+                `INSERT INTO players (
+                    id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
+                    level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
+                    admin_rating, admin_adjustment, final_rating, is_goalie, team, rules_agreed
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24)`,
+                [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
+                 newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
+                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating, newPlayer.effortRating,
+                 newPlayer.levelPlayed, newPlayer.peerComparison, newPlayer.confidenceLevel, newPlayer.selfRatingRaw,
+                 newPlayer.derivedRating, newPlayer.adminRating, newPlayer.adminAdjustment, newPlayer.finalRating, false, null, true]
+            );
+        } catch (err) {
+            console.error('Error saving player to database, preserved in local backup:', err.message);
+        }
     }
 
     res.json({ 
@@ -4338,29 +4271,21 @@ app.post('/api/cancel-registration', async (req, res) => {
         );
 
         if (!alreadyLoggedLateAttempt) {
-            try {
-                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
-                    appendCancellationLog({
-                        id: foundPlayer.id,
-                        firstName: foundPlayer.firstName,
-                        lastName: foundPlayer.lastName,
-                        phone: foundPlayer.phone,
-                        rating: foundPlayer.rating,
-                        isGoalie: foundPlayer.isGoalie,
-                        paymentMethod: foundPlayer.paymentMethod,
-                        source: foundSource || 'players',
-                        action: 'late_cancel_no_show_owed',
-                        cancelledBy: 'player',
-                        cancelledAt: new Date().toISOString(),
-                        notes: NO_SHOW_POLICY_TEXT
-                    });
-                }, {
-                    playerId: foundPlayer.id,
-                    source: foundSource || 'players'
-                });
-            } catch (err) {
-                console.error('Error logging late cancel attempt:', err.message);
-            }
+            appendCancellationLog({
+                id: foundPlayer.id,
+                firstName: foundPlayer.firstName,
+                lastName: foundPlayer.lastName,
+                phone: foundPlayer.phone,
+                rating: foundPlayer.rating,
+                isGoalie: foundPlayer.isGoalie,
+                paymentMethod: foundPlayer.paymentMethod,
+                source: foundSource || 'players',
+                action: 'late_cancel_no_show_owed',
+                cancelledBy: 'player',
+                cancelledAt: new Date().toISOString(),
+                notes: NO_SHOW_POLICY_TEXT
+            });
+            await saveData();
         }
 
         return res.status(403).json({
@@ -4372,67 +4297,71 @@ app.post('/api/cancel-registration', async (req, res) => {
 
     if (playerIndex !== -1) {
         const player = players[playerIndex];
-        let promotedPlayer = null;
+
+        appendCancellationLog({
+            id: player.id,
+            firstName: player.firstName,
+            lastName: player.lastName,
+            phone: player.phone,
+            rating: player.rating,
+            isGoalie: player.isGoalie,
+            paymentMethod: player.paymentMethod,
+            source: 'players',
+            action: 'cancelled',
+            cancelledBy: 'player',
+            cancelledAt: new Date().toISOString()
+        });
 
         try {
-            await runProtectedMutation('player-cancel', req, async () => {
-                appendCancellationLog({
-                    id: player.id,
-                    firstName: player.firstName,
-                    lastName: player.lastName,
-                    phone: player.phone,
-                    rating: player.rating,
-                    isGoalie: player.isGoalie,
-                    paymentMethod: player.paymentMethod,
-                    source: 'players',
-                    action: 'cancelled',
-                    cancelledBy: 'player',
-                    cancelledAt: new Date().toISOString()
-                });
-
-                players.splice(playerIndex, 1);
-                playerSpots++;
-
-                if (waitlist.length > 0) {
-                    const waitlistPlayer = waitlist.shift();
-
-                    promotedPlayer = hydratePlayerRatingProfile({
-                        id: waitlistPlayer.id,
-                        firstName: waitlistPlayer.firstName,
-                        lastName: waitlistPlayer.lastName,
-                        phone: waitlistPlayer.phone,
-                        paymentMethod: waitlistPlayer.paymentMethod,
-                        paid: false,
-                        paidAmount: null,
-                        rating: parseInt(waitlistPlayer.rating) || 5,
-                        skatingRating: waitlistPlayer.skatingRating,
-                        puckSkillsRating: waitlistPlayer.puckSkillsRating,
-                        hockeySenseRating: waitlistPlayer.hockeySenseRating,
-                        conditioningRating: waitlistPlayer.conditioningRating,
-                        effortRating: waitlistPlayer.effortRating,
-                        levelPlayed: waitlistPlayer.levelPlayed,
-                        peerComparison: waitlistPlayer.peerComparison,
-                        confidenceLevel: waitlistPlayer.confidenceLevel,
-                        selfRatingRaw: waitlistPlayer.selfRatingRaw,
-                        derivedRating: waitlistPlayer.derivedRating,
-                        finalRating: waitlistPlayer.finalRating,
-                        isGoalie: waitlistPlayer.isGoalie,
-                        team: null,
-                        registeredAt: new Date().toISOString(),
-                        rulesAgreed: true
-                    });
-
-                    players.push(promotedPlayer);
-                    playerSpots--;
-                }
-            }, {
-                playerId: player.id,
-                waitlistPromotion: !!promotedPlayer
-            });
+            if (pool) {
+                await pool.query('DELETE FROM players WHERE id = $1', [player.id]);
+            }
         } catch (err) {
-            console.error('Error cancelling registration:', err.message);
-            return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
+            console.error('Error removing from players database:', err);
         }
+
+        players.splice(playerIndex, 1);
+        playerSpots++;
+
+        let promotedPlayer = null;
+
+        if (waitlist.length > 0) {
+            const waitlistPlayer = waitlist.shift();
+
+            promotedPlayer = {
+                id: waitlistPlayer.id,
+                firstName: waitlistPlayer.firstName,
+                lastName: waitlistPlayer.lastName,
+                phone: waitlistPlayer.phone,
+                paymentMethod: waitlistPlayer.paymentMethod,
+                paid: false,
+                paidAmount: null,
+                rating: parseInt(waitlistPlayer.rating) || 5,
+                isGoalie: waitlistPlayer.isGoalie,
+                team: null,
+                registeredAt: new Date().toISOString(),
+                rulesAgreed: true
+            };
+
+            players.push(promotedPlayer);
+            playerSpots--;
+
+            try {
+                if (pool) {
+                    await pool.query('DELETE FROM waitlist WHERE id = $1', [waitlistPlayer.id]);
+                    await pool.query(
+                        `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, rules_agreed)
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+                        [promotedPlayer.id, promotedPlayer.firstName, promotedPlayer.lastName, promotedPlayer.phone,
+                         promotedPlayer.paymentMethod, promotedPlayer.paid, promotedPlayer.paidAmount, promotedPlayer.rating, promotedPlayer.isGoalie, null, true]
+                    );
+                }
+            } catch (err) {
+                console.error('Error promoting waitlist player:', err);
+            }
+        }
+
+        await saveData();
 
         return res.json({
             success: true,
@@ -4448,31 +4377,30 @@ app.post('/api/cancel-registration', async (req, res) => {
     if (waitlistIndex !== -1) {
         const waitlistPlayer = waitlist[waitlistIndex];
 
-        try {
-            await runProtectedMutation('waitlist-cancel', req, async () => {
-                appendCancellationLog({
-                    id: waitlistPlayer.id,
-                    firstName: waitlistPlayer.firstName,
-                    lastName: waitlistPlayer.lastName,
-                    phone: waitlistPlayer.phone,
-                    rating: waitlistPlayer.rating,
-                    isGoalie: waitlistPlayer.isGoalie,
-                    paymentMethod: waitlistPlayer.paymentMethod,
-                    source: 'waitlist',
-                    action: 'cancelled',
-                    cancelledBy: 'player',
-                    cancelledAt: new Date().toISOString()
-                });
+        appendCancellationLog({
+            id: waitlistPlayer.id,
+            firstName: waitlistPlayer.firstName,
+            lastName: waitlistPlayer.lastName,
+            phone: waitlistPlayer.phone,
+            rating: waitlistPlayer.rating,
+            isGoalie: waitlistPlayer.isGoalie,
+            paymentMethod: waitlistPlayer.paymentMethod,
+            source: 'waitlist',
+            action: 'cancelled',
+            cancelledBy: 'player',
+            cancelledAt: new Date().toISOString()
+        });
 
-                waitlist.splice(waitlistIndex, 1);
-            }, {
-                playerId: waitlistPlayer.id,
-                source: 'waitlist'
-            });
+        try {
+            if (pool) {
+                await pool.query('DELETE FROM waitlist WHERE id = $1', [waitlistPlayer.id]);
+            }
         } catch (err) {
-            console.error('Error cancelling waitlist registration:', err.message);
-            return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
+            console.error('Error removing from waitlist database:', err);
         }
+
+        waitlist.splice(waitlistIndex, 1);
+        await saveData();
 
         return res.json({
             success: true,
@@ -4609,40 +4537,50 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
     }
 
     try {
-        await runProtectedMutation('update-app-settings', req, async () => {
-            if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
-            if (newTitle !== undefined) customTitle = String(newTitle || '').trim() || customTitle;
-            if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
-            if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
-            if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
-            if (newAnnouncementImages !== undefined) {
-                announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
+        if (newMaintenance !== undefined) maintenanceMode = !!newMaintenance;
+        if (newTitle !== undefined) customTitle = String(newTitle || '').trim() || customTitle;
+        if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
+        if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
+        if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
+        if (newAnnouncementImages !== undefined) {
+            announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
+        }
+        if (newRegularSkatersByDay !== undefined) {
+            regularSkatersByDay = normalizeRegularSkatersByDayMap(newRegularSkatersByDay);
+        }
+        if (selectedDayTime) {
+            gameTime = selectedDayTime;
+            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                gameDate = newGameDate || calculateNextGameDate();
+                buildAutoSchedulesFromGameTime(gameTime, gameDate);
+                const guardTime = getCurrentETTime();
+                const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
+                const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
+                lastExactResetRunAt = resetGuard.occurrenceKey;
+                lastExactResetMinuteKey = resetGuard.minuteKey;
+                lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
+                lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
             }
-            if (newRegularSkatersByDay !== undefined) {
-                regularSkatersByDay = normalizeRegularSkatersByDayMap(newRegularSkatersByDay);
+        }
+        if (selectedArena) gameLocation = selectedArena;
+        if (newGameDate) {
+            gameDate = newGameDate;
+            if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
-            if (selectedDayTime) {
-                gameTime = selectedDayTime;
-                if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
-                    gameDate = newGameDate || calculateNextGameDate();
-                    buildAutoSchedulesFromGameTime(gameTime, gameDate);
-                    const guardTime = getCurrentETTime();
-                    const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
-                    const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
-                    lastExactResetRunAt = resetGuard.occurrenceKey;
-                    lastExactResetMinuteKey = resetGuard.minuteKey;
-                    lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
-                    lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
-                }
-            }
-            if (selectedArena) gameLocation = selectedArena;
-            if (newGameDate) {
-                gameDate = newGameDate;
-                if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
-                    buildAutoSchedulesFromGameTime(gameTime, gameDate);
-                }
-            }
-        }, { selectedDayTime, selectedArena, gameDate: newGameDate || gameDate });
+        }
+
+        await saveAppSetting('maintenanceMode', maintenanceMode.toString());
+        await saveAppSetting('customTitle', customTitle);
+        await saveAppSetting('announcementEnabled', announcementEnabled.toString());
+        await saveAppSetting('announcementText', announcementText);
+        await saveAppSetting('announcementImages', JSON.stringify(announcementImages));
+        await saveAppSetting('paymentEmail', paymentEmail);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveAppSetting('selectedDayTime', gameTime);
+        await saveAppSetting('selectedArena', gameLocation);
+        await saveAppSetting('gameDate', gameDate);
+        writeSettingsBackup('update-app-settings');
         console.log('[ADMIN] App settings updated');
 
         res.json({
@@ -4718,23 +4656,41 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
         const bucketRaw = String(req.body.bucket || '').trim().toLowerCase();
         const allowedBuckets = new Set(['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday']);
 
-        if (!Number.isFinite(playerId)) return res.status(400).json({ error: 'Invalid player id' });
-        if (!allowedBuckets.has(bucketRaw)) return res.status(400).json({ error: 'Invalid regular-player bucket' });
+        if (!Number.isFinite(playerId)) {
+            return res.status(400).json({ error: 'Invalid player id' });
+        }
+        if (!allowedBuckets.has(bucketRaw)) {
+            return res.status(400).json({ error: 'Invalid regular-player bucket' });
+        }
 
         const player = players.find(p => Number(p.id) === playerId);
-        if (!player) return res.status(404).json({ error: 'Player not found in registered players' });
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found in registered players' });
+        }
 
         regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
         regularSkatersByDay[bucketRaw] = Array.isArray(regularSkatersByDay[bucketRaw]) ? regularSkatersByDay[bucketRaw] : [];
 
         const normalizedPhone = normalizePhoneDigits(player.phone);
-        const alreadyExists = regularSkatersByDay[bucketRaw].some(existing => (
-            String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
-            String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase()
-        ) || (normalizedPhone && normalizePhoneDigits(existing.phone) === normalizedPhone));
+        const alreadyExists = regularSkatersByDay[bucketRaw].some(existing =>
+            (
+                String(existing.firstName || '').trim().toLowerCase() === String(player.firstName || '').trim().toLowerCase() &&
+                String(existing.lastName || '').trim().toLowerCase() === String(player.lastName || '').trim().toLowerCase()
+            ) ||
+            (
+                normalizedPhone &&
+                normalizePhoneDigits(existing.phone) === normalizedPhone
+            )
+        );
 
         if (alreadyExists) {
-            return res.json({ success: true, alreadyExists: true, bucket: bucketRaw, regularSkatersByDay, message: `${player.firstName} ${player.lastName} is already a regular in ${bucketRaw}.` });
+            return res.json({
+                success: true,
+                alreadyExists: true,
+                bucket: bucketRaw,
+                regularSkatersByDay,
+                message: `${player.firstName} ${player.lastName} is already a regular in ${bucketRaw}.`
+            });
         }
 
         const promotedRegular = normalizeRegularSkaterEntry({
@@ -4747,13 +4703,19 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
             protected: !!player.protected
         });
 
-        await runProtectedMutation('promote-player-to-regular', req, async () => {
-            regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
-            regularSkatersByDay[bucketRaw] = Array.isArray(regularSkatersByDay[bucketRaw]) ? regularSkatersByDay[bucketRaw] : [];
-            regularSkatersByDay[bucketRaw].push(promotedRegular);
-        }, { bucket: bucketRaw, playerId });
+        regularSkatersByDay[bucketRaw].push(promotedRegular);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('promote-player-to-regular');
 
-        return res.json({ success: true, bucket: bucketRaw, regularSkatersByDay, promotedPlayer: { firstName: promotedRegular.firstName, lastName: promotedRegular.lastName } });
+        return res.json({
+            success: true,
+            bucket: bucketRaw,
+            regularSkatersByDay,
+            promotedPlayer: {
+                firstName: promotedRegular.firstName,
+                lastName: promotedRegular.lastName
+            }
+        });
     } catch (err) {
         console.error('Error promoting player to regular:', err);
         return res.status(500).json({ error: 'Failed to promote player to regular' });
@@ -4763,30 +4725,57 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
 
 
 app.post('/api/admin/toggle-player-regular', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     try {
         const playerId = Number(req.body.playerId);
-        if (!Number.isFinite(playerId)) return res.status(400).json({ error: 'Invalid player id' });
+        if (!Number.isFinite(playerId)) {
+            return res.status(400).json({ error: 'Invalid player id' });
+        }
+
         const player = players.find(p => Number(p.id) === playerId);
-        if (!player) return res.status(404).json({ error: 'Player not found in registered players' });
+        if (!player) {
+            return res.status(404).json({ error: 'Player not found in registered players' });
+        }
+
         const existingBucket = findRegularBucketForPlayer(player);
         if (existingBucket) {
-            await runProtectedMutation('toggle-player-regular-remove', req, async () => {
-                removeRegularPlayerByPhone(player.phone);
-            }, { playerId, removedFrom: existingBucket });
-            return res.json({ success: true, active: false, removedFrom: existingBucket, regularSkatersByDay });
+            removeRegularPlayerByPhone(player.phone);
+            await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+            await saveData('toggle-player-regular-remove');
+            return res.json({
+                success: true,
+                active: false,
+                removedFrom: existingBucket,
+                regularSkatersByDay
+            });
         }
+
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
+        regularSkatersByDay.everyday = Array.isArray(regularSkatersByDay.everyday) ? regularSkatersByDay.everyday : [];
+
         const promotedRegular = normalizeRegularSkaterEntry({
-            firstName: player.firstName, lastName: player.lastName, phone: player.phone,
-            rating: Number(player.finalRating ?? player.rating ?? 5), paymentMethod: player.paymentMethod || 'N/A',
-            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'), protected: !!player.protected
+            firstName: player.firstName,
+            lastName: player.lastName,
+            phone: player.phone,
+            rating: Number(player.finalRating ?? player.rating ?? 5),
+            paymentMethod: player.paymentMethod || 'N/A',
+            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'),
+            protected: !!player.protected
         });
-        await runProtectedMutation('toggle-player-regular-add', req, async () => {
-            regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});
-            regularSkatersByDay.everyday = Array.isArray(regularSkatersByDay.everyday) ? regularSkatersByDay.everyday : [];
-            regularSkatersByDay.everyday.push(promotedRegular);
-        }, { playerId, bucket: 'everyday' });
-        return res.json({ success: true, active: true, bucket: 'everyday', regularSkatersByDay });
+
+        regularSkatersByDay.everyday.push(promotedRegular);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('toggle-player-regular-add');
+
+        return res.json({
+            success: true,
+            active: true,
+            bucket: 'everyday',
+            regularSkatersByDay
+        });
     } catch (err) {
         console.error('Error toggling player regular status:', err);
         return res.status(500).json({ error: 'Failed to update regular player' });
@@ -4794,15 +4783,25 @@ app.post('/api/admin/toggle-player-regular', async (req, res) => {
 });
 
 app.post('/api/admin/remove-regular-player', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     try {
         const phone = String(req.body.phone || '').trim();
-        if (!phone) return res.status(400).json({ error: 'Phone is required' });
-        let removed = false;
-        await runProtectedMutation('remove-regular-player', req, async () => {
-            removed = removeRegularPlayerByPhone(phone);
-        }, { phone });
-        return res.json({ success: true, removed, regularSkatersByDay });
+        if (!phone) {
+            return res.status(400).json({ error: 'Phone is required' });
+        }
+
+        const removed = removeRegularPlayerByPhone(phone);
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('remove-regular-player');
+
+        return res.json({
+            success: true,
+            removed,
+            regularSkatersByDay
+        });
     } catch (err) {
         console.error('Error removing regular player:', err);
         return res.status(500).json({ error: 'Failed to remove regular player' });
@@ -4820,11 +4819,14 @@ app.post('/api/admin/regular-skaters', (req, res) => {
 });
 
 app.post('/api/admin/update-regular-skaters', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
     try {
-        await runProtectedMutation('update-regular-skaters', req, async () => {
-            regularSkatersByDay = normalizeRegularSkatersByDayMap(req.body.regularSkatersByDay || {});
-        });
+        regularSkatersByDay = normalizeRegularSkatersByDayMap(req.body.regularSkatersByDay || {});
+        await saveAppSetting('regularSkatersByDay', JSON.stringify(regularSkatersByDay));
+        await saveData('update-regular-skaters');
         res.json({ success: true, regularSkatersByDay });
     } catch (err) {
         console.error('Error saving regular skaters:', err);
@@ -4835,19 +4837,58 @@ app.post('/api/admin/update-regular-skaters', async (req, res) => {
 // Add backup goalie to roster
 app.post('/api/admin/add-backup-goalie', async (req, res) => {
     const { sessionToken, goalieIndex } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (goalieIndex < 0 || goalieIndex >= BACKUP_GOALIES.length) return res.status(400).json({ error: "Invalid goalie selection" });
+    
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    if (goalieIndex < 0 || goalieIndex >= BACKUP_GOALIES.length) {
+        return res.status(400).json({ error: "Invalid goalie selection" });
+    }
+    
     const backupGoalie = BACKUP_GOALIES[goalieIndex];
+    
+    // Check if already exists
     const normalizedPhone = backupGoalie.phone.replace(/\D/g, '');
     const exists = players.find(p => p.phone.replace(/\D/g, '') === normalizedPhone);
-    if (exists) return res.status(400).json({ error: "This goalie is already registered" });
-    const newGoalie = { id: Date.now(), firstName: backupGoalie.firstName, lastName: backupGoalie.lastName, phone: backupGoalie.phone, paymentMethod: "N/A", paid: true, paidAmount: 0, rating: backupGoalie.rating, isGoalie: true, team: null, registeredAt: new Date().toISOString(), rulesAgreed: true };
+    
+    if (exists) {
+        return res.status(400).json({ error: "This goalie is already registered" });
+    }
+    
+    const newGoalie = {
+        id: Date.now(),
+        firstName: backupGoalie.firstName,
+        lastName: backupGoalie.lastName,
+        phone: backupGoalie.phone,
+        paymentMethod: "N/A",
+        paid: true,
+        paidAmount: 0,
+        rating: backupGoalie.rating,
+        isGoalie: true,
+        team: null,
+        registeredAt: new Date().toISOString(),
+        rulesAgreed: true
+    };
+    
     try {
-        await runProtectedMutation('add-backup-goalie', req, async () => { players.push(newGoalie); }, { goalieIndex, playerId: newGoalie.id });
-        res.json({ success: true, goalie: newGoalie, message: `${backupGoalie.firstName} ${backupGoalie.lastName} added as substitute goalie` });
+        await pool.query(
+            `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, rules_agreed)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
+            [newGoalie.id, newGoalie.firstName, newGoalie.lastName, newGoalie.phone,
+             newGoalie.paymentMethod, newGoalie.paid, newGoalie.paidAmount, newGoalie.rating, true, null, true]
+        );
+        players.push(newGoalie);
+        await saveData();
+        
+        res.json({
+            success: true,
+            goalie: newGoalie,
+            message: `${backupGoalie.firstName} ${backupGoalie.lastName} added as substitute goalie`
+        });
     } catch (err) {
         console.error('Error adding backup goalie:', err);
-        res.status(500).json({ error: "Failed to add backup goalie safely" });
+        res.status(500).json({ error: "Database error" });
     }
 });
 
@@ -4905,13 +4946,17 @@ app.post('/api/admin/players-full', (req, res) => {
 
 // ADMIN ONLY: Download live signup backup JSON
 app.post('/api/admin/clear-cancellations', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
-    try {
-        await runProtectedMutation('clear-cancellations', req, async () => { cancelledRegistrations = []; });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to clear cancellations safely' });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
     }
-    res.json({ success: true, cancellations: cancelledRegistrations });
+
+    cancelledRegistrations = [];
+    await saveData();
+
+    res.json({
+        success: true,
+        cancellations: cancelledRegistrations
+    });
 });
 
 app.post('/api/admin/download-backup', async (req, res) => {
@@ -5359,22 +5404,34 @@ app.post('/api/admin/settings', (req, res) => {
     });
 });
 
-app.post('/api/admin/update-details', async (req, res) => {
+app.post('/api/admin/update-details', (req, res) => {
     const { password, sessionToken, location, time, date } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
-    try {
-        await runProtectedMutation('update-details', req, async () => {
-            if (location && location.trim().length > 0) gameLocation = location.trim();
-            if (time && time.trim().length > 0) gameTime = time.trim();
-            if (date && date.trim().length > 0) gameDate = date.trim();
-        }, { location, time, date });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to save game details safely' });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
     }
-    res.json({ success: true, location: gameLocation, time: gameTime, date: gameDate, formattedDate: formatGameDate(gameDate) });
+    
+    if (location && location.trim().length > 0) {
+        gameLocation = location.trim();
+    }
+    if (time && time.trim().length > 0) {
+        gameTime = time.trim();
+    }
+    if (date && date.trim().length > 0) {
+        gameDate = date.trim();
+    }
+    
+    saveData();
+    
+    res.json({ 
+        success: true, 
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        formattedDate: formatGameDate(gameDate)
+    });
 });
 
-app.post('/api/admin/update-code', async (req, res) => {
+app.post('/api/admin/update-code', (req, res) => {
     const { password, sessionToken, newCode } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -5385,14 +5442,9 @@ app.post('/api/admin/update-code', async (req, res) => {
         return res.status(400).json({ error: "Code must be exactly 4 digits" });
     }
 
-    try {
-        await runProtectedMutation('update-code', req, async () => {
-            customSignupCode = String(newCode).trim();
-            playerSignupCode = getDynamicSignupCode();
-        }, { newCode: String(newCode).trim() });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to save signup code safely' });
-    }
+    customSignupCode = String(newCode).trim();
+    playerSignupCode = getDynamicSignupCode();
+    saveData();
 
     res.json({ 
         success: true, 
@@ -5403,19 +5455,14 @@ app.post('/api/admin/update-code', async (req, res) => {
     });
 });
 
-app.post('/api/admin/clear-code-override', async (req, res) => {
+app.post('/api/admin/clear-code-override', (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized - invalid session" });
     }
 
-    try {
-        await runProtectedMutation('clear-code-override', req, async () => {
-            customSignupCode = '';
-            playerSignupCode = getDynamicSignupCode();
-        });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to clear signup code override safely' });
-    }
+    customSignupCode = '';
+    playerSignupCode = getDynamicSignupCode();
+    saveData();
 
     res.json({
         success: true,
@@ -5433,6 +5480,16 @@ app.post('/api/admin/update-schedules', async (req, res) => {
         return res.status(401).send("Unauthorized");
     }
 
+    if (typeof signupLockEnabled === 'boolean') {
+        signupLockSchedule.enabled = signupLockEnabled;
+    }
+    if (typeof rosterReleaseEnabled === 'boolean') {
+        rosterReleaseSchedule.enabled = rosterReleaseEnabled;
+    }
+    if (typeof resetWeekEnabled === 'boolean') {
+        resetWeekSchedule.enabled = resetWeekEnabled;
+    }
+
     const validationError = validateScheduleInputs({
         signupLockEnabled: !!signupLockEnabled,
         signupLockStart,
@@ -5446,34 +5503,31 @@ app.post('/api/admin/update-schedules', async (req, res) => {
         return res.status(400).json({ error: validationError });
     }
 
-    try {
-        await runProtectedMutation('update-schedules', req, async () => {
-            signupLockStartAt = signupLockStart || '';
-            signupLockEndAt = signupLockEnd || '';
-            rosterReleaseAt = rosterReleaseAtInput || '';
-            resetWeekAt = resetWeekAtInput || '';
+    signupLockStartAt = signupLockStart || '';
+    signupLockEndAt = signupLockEnd || '';
+    rosterReleaseAt = rosterReleaseAtInput || '';
+    resetWeekAt = resetWeekAtInput || '';
 
-            signupLockSchedule.enabled = !!signupLockEnabled;
-            rosterReleaseSchedule.enabled = !!rosterReleaseEnabled;
-            resetWeekSchedule.enabled = !!resetWeekEnabled;
+    signupLockSchedule.enabled = !!signupLockEnabled;
+    rosterReleaseSchedule.enabled = !!rosterReleaseEnabled;
+    resetWeekSchedule.enabled = !!resetWeekEnabled;
 
-            signupLockSchedule.start = signupLockStartAt ? parseDatetimeLocalToDowTime(signupLockStartAt) : null;
-            signupLockSchedule.end = signupLockEndAt ? parseDatetimeLocalToDowTime(signupLockEndAt) : null;
-            rosterReleaseSchedule.at = rosterReleaseAt ? parseDatetimeLocalToDowTime(rosterReleaseAt) : null;
-            resetWeekSchedule.at = resetWeekAt ? parseDatetimeLocalToDowTime(resetWeekAt) : null;
+    signupLockSchedule.start = signupLockStartAt ? parseDatetimeLocalToDowTime(signupLockStartAt) : null;
+    signupLockSchedule.end = signupLockEndAt ? parseDatetimeLocalToDowTime(signupLockEndAt) : null;
+    rosterReleaseSchedule.at = rosterReleaseAt ? parseDatetimeLocalToDowTime(rosterReleaseAt) : null;
+    resetWeekSchedule.at = resetWeekAt ? parseDatetimeLocalToDowTime(resetWeekAt) : null;
 
-            const guardTime = getCurrentETTime();
-            const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
-            const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
-            lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
-            lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
-            lastExactResetRunAt = resetGuard.occurrenceKey;
-            lastExactResetMinuteKey = resetGuard.minuteKey;
-        }, { signupLockEnabled, rosterReleaseEnabled, resetWeekEnabled });
-        console.log('[ADMIN] Schedules updated');
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to save schedules safely' });
-    }
+    const guardTime = getCurrentETTime();
+    const rosterGuard = armScheduleGuardForCurrentWeek(rosterReleaseSchedule.at, guardTime);
+    const resetGuard = armScheduleGuardForCurrentWeek(resetWeekSchedule.at, guardTime);
+    lastExactRosterReleaseRunAt = rosterGuard.occurrenceKey;
+    lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
+    lastExactResetRunAt = resetGuard.occurrenceKey;
+    lastExactResetMinuteKey = resetGuard.minuteKey;
+
+    await saveData();
+    writeSettingsBackup('update-schedules');
+    console.log('[ADMIN] Schedules updated');
     const lockStatus = checkAutoLock();
 
     res.json({
@@ -5491,22 +5545,19 @@ app.post('/api/admin/update-schedules', async (req, res) => {
     });
 });
 
-app.post('/api/admin/toggle-code', async (req, res) => {
+app.post('/api/admin/toggle-code', (req, res) => {
     const { password, sessionToken } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
     }
     
-    try {
-        await runProtectedMutation('toggle-code', req, async () => {
-            const newRequireCode = !requirePlayerCode;
-            requirePlayerCode = newRequireCode;
-            manualOverride = true;
-            manualOverrideState = newRequireCode ? 'locked' : 'open';
-        });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to toggle code safely' });
-    }
+    const newRequireCode = !requirePlayerCode;
+    
+    requirePlayerCode = newRequireCode;
+    manualOverride = true;
+    manualOverrideState = newRequireCode ? 'locked' : 'open';
+    
+    saveData();
     
     res.json({ 
         success: true, 
@@ -5517,21 +5568,16 @@ app.post('/api/admin/toggle-code', async (req, res) => {
     });
 });
 
-app.post('/api/admin/reset-schedule', async (req, res) => {
+app.post('/api/admin/reset-schedule', (req, res) => {
     const { password, sessionToken } = req.body;
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).send("Unauthorized");
     }
     
-    try {
-        await runProtectedMutation('reset-schedule', req, async () => {
-            manualOverride = false;
-            manualOverrideState = null;
-            checkAutoLock();
-        });
-    } catch (err) {
-        return res.status(500).json({ error: 'Failed to restore auto schedule safely' });
-    }
+    manualOverride = false;
+    manualOverrideState = null;
+    
+    const result = checkAutoLock();
     
     res.json({ 
         success: true, 
@@ -5544,167 +5590,433 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
 
 app.post('/api/admin/promote-waitlist', async (req, res) => {
     const { password, sessionToken, waitlistId } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
     const index = waitlist.findIndex(p => String(p.id) === String(waitlistId));
-    if (index === -1) return res.status(404).json({ error: "Player not found in waitlist" });
-    const player = waitlist[index];
-    const newPlayer = hydratePlayerRatingProfile({
-        id: player.id, firstName: player.firstName, lastName: player.lastName, phone: player.phone,
-        paymentMethod: player.paymentMethod, paid: false, paidAmount: null,
-        rating: parseInt(player.rating) || 5, skatingRating: player.skatingRating, puckSkillsRating: player.puckSkillsRating,
-        hockeySenseRating: player.hockeySenseRating, conditioningRating: player.conditioningRating, effortRating: player.effortRating,
-        levelPlayed: player.levelPlayed, peerComparison: player.peerComparison, confidenceLevel: player.confidenceLevel,
-        selfRatingRaw: player.selfRatingRaw, derivedRating: player.derivedRating, finalRating: player.finalRating,
-        isGoalie: player.isGoalie, team: null, rulesAgreed: true
-    });
+    if (index === -1) {
+        return res.status(404).json({ error: "Player not found in waitlist" });
+    }
+
+    const player = waitlist.splice(index, 1)[0];
+    
+    const newPlayer = {
+        id: player.id,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        phone: player.phone,
+        paymentMethod: player.paymentMethod,
+        paid: false,
+        paidAmount: null,
+        rating: parseInt(player.rating) || 5,
+        isGoalie: player.isGoalie,
+        team: null
+    };
+    
     try {
-        await runProtectedMutation('promote-waitlist', req, async () => {
-            waitlist.splice(index, 1);
-            players.push(newPlayer);
-            if (!player.isGoalie && playerSpots > 0) playerSpots--;
-        }, { waitlistId, promotedPlayerId: newPlayer.id });
+        if (pool) {
+            await pool.query(
+                `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
+                 newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating, newPlayer.isGoalie, null]
+            );
+        }
+        players.push(newPlayer);
+        
+        if (!player.isGoalie && playerSpots > 0) {
+            playerSpots--;
+        }
+        
+        await saveData();
     } catch (err) {
         console.error('Error promoting player:', err);
-        return res.status(500).json({ error: "Failed to promote waitlist player safely" });
+        return res.status(500).json({ error: "Database error" });
     }
-    res.json({ success: true, player: newPlayer, spots: playerSpots, override: playerSpots <= 0 && !player.isGoalie });
+
+    res.json({ 
+        success: true, 
+        player: newPlayer,
+        spots: playerSpots,
+        override: playerSpots <= 0 && !player.isGoalie
+    });
 });
 
 app.post('/api/admin/remove-waitlist', async (req, res) => {
     const { password, sessionToken, waitlistId } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
     const index = waitlist.findIndex(p => String(p.id) === String(waitlistId));
-    if (index === -1) return res.status(404).json({ error: "Player not found in waitlist" });
-    const player = waitlist[index];
+    if (index === -1) {
+        return res.status(404).json({ error: "Player not found in waitlist" });
+    }
+
+    const player = waitlist.splice(index, 1)[0];
+
+    appendCancellationLog({
+        id: player.id,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        phone: player.phone,
+        rating: player.rating,
+        isGoalie: player.isGoalie,
+        paymentMethod: player.paymentMethod,
+        source: 'waitlist',
+        action: 'removed',
+        cancelledBy: 'admin',
+        cancelledAt: new Date().toISOString()
+    });
+    
     try {
-        await runProtectedMutation('remove-waitlist', req, async () => {
-            appendCancellationLog({ id: player.id, firstName: player.firstName, lastName: player.lastName, phone: player.phone, rating: player.rating, isGoalie: player.isGoalie, paymentMethod: player.paymentMethod, source: 'waitlist', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
-            waitlist.splice(index, 1);
-        }, { waitlistId });
+        if (pool) {
+            await pool.query('DELETE FROM waitlist WHERE id = $1', [player.id]);
+        }
     } catch (err) {
         console.error('Error removing from waitlist:', err);
-        return res.status(500).json({ error: "Failed to remove waitlist player safely" });
     }
+    
+    saveData();
     res.json({ success: true });
 });
 
 app.post('/api/admin/add-player', async (req, res) => {
     const { password, sessionToken, firstName, lastName, phone, paymentMethod, rating, isGoalie, toWaitlist } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
-    if (!firstName || !lastName || !phone || !rating) return res.status(400).json({ error: "First name, last name, phone, and rating required" });
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
+    if (!firstName || !lastName || !phone || !rating) {
+        return res.status(400).json({ error: "First name, last name, phone, and rating required" });
+    }
+
     const cleanFirstName = capitalizeFullName(firstName);
     const cleanLastName = capitalizeFullName(lastName);
-    if (!validatePhoneNumber(phone)) return res.status(400).json({ error: "Invalid phone number format" });
+    if (!validatePhoneNumber(phone)) {
+        return res.status(400).json({ error: "Invalid phone number format" });
+    }
+
     const formattedPhone = formatPhoneNumber(phone);
     const ratingNum = roundRating(parseFloat(rating) || 5);
     const isGoalieBool = isGoalie || false;
+
     if (toWaitlist) {
-        const waitlistPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, joinedAt: new Date() });
-        try { await runProtectedMutation('admin-add-waitlist-player', req, async () => { waitlist.push(waitlistPlayer); }, { playerId: waitlistPlayer.id }); }
-        catch (err) { console.error('Error adding to waitlist:', err); return res.status(500).json({ error: "Failed to add waitlist player safely" }); }
-        return res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
+        const waitlistPlayer = hydratePlayerRatingProfile({
+            id: Date.now(),
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
+            phone: formattedPhone,
+            paymentMethod: paymentMethod || 'Cash',
+            rating: ratingNum,
+            derivedRating: ratingNum,
+            finalRating: ratingNum,
+            selfRatingRaw: ratingNum,
+            isGoalie: isGoalieBool,
+            joinedAt: new Date()
+        });
+        
+        try {
+            await pool.query(
+                `INSERT INTO waitlist (
+                    id, first_name, last_name, phone, payment_method, rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                    level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                [waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
+                 waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
+                 waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating,
+                 waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
+                 waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, isGoalieBool]
+            );
+            waitlist.push(waitlistPlayer);
+        } catch (err) {
+            console.error('Error adding to waitlist:', err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        
+        saveData();
+        res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
+    } else {
+        if (isGoalieBool && !isGoalieSpotsAvailable()) {
+            return res.status(400).json({ error: "Goalie spots are full (maximum 2)." });
+        }
+        
+        const newPlayer = hydratePlayerRatingProfile({
+            id: Date.now(),
+            firstName: cleanFirstName,
+            lastName: cleanLastName,
+            phone: formattedPhone,
+            paymentMethod: paymentMethod || 'Cash',
+            paid: isGoalieBool ? true : false,
+            paidAmount: isGoalieBool ? 0 : null,
+            rating: ratingNum,
+            derivedRating: ratingNum,
+            finalRating: ratingNum,
+            selfRatingRaw: ratingNum,
+            isGoalie: isGoalieBool,
+            team: null
+        });
+        
+        try {
+            await pool.query(
+                `INSERT INTO players (
+                    id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
+                    skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating,
+                    level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
+                    admin_rating, admin_adjustment, final_rating, is_goalie, team
+                )
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)`,
+                [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
+                 newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
+                 newPlayer.skatingRating, newPlayer.puckSkillsRating, newPlayer.hockeySenseRating, newPlayer.conditioningRating,
+                 newPlayer.levelPlayed, newPlayer.peerComparison, newPlayer.confidenceLevel, newPlayer.selfRatingRaw,
+                 newPlayer.derivedRating, newPlayer.adminRating, newPlayer.adminAdjustment, newPlayer.finalRating, isGoalieBool, null]
+            );
+            players.push(newPlayer);
+            
+            if (!isGoalieBool && playerSpots > 0) {
+                playerSpots--;
+            }
+            
+            await saveData();
+        } catch (err) {
+            console.error('Error adding player:', err);
+            return res.status(500).json({ error: "Database error" });
+        }
+        
+        res.json({ success: true, player: newPlayer, inWaitlist: false });
     }
-    if (isGoalieBool && !isGoalieSpotsAvailable()) return res.status(400).json({ error: "Goalie spots are full (maximum 2)." });
-    const newPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', paid: isGoalieBool ? true : false, paidAmount: isGoalieBool ? 0 : null, rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, team: null });
-    try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; }, { playerId: newPlayer.id }); }
-    catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
-    res.json({ success: true, player: newPlayer, inWaitlist: false });
 });
 
 // ADMIN REMOVE PLAYER - WORKS ON ANY PLAYER AT ANY TIME (NO RESTRICTIONS)
 app.post('/api/admin/remove-player', async (req, res) => {
     const { password, sessionToken, playerId } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+    
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
     const idToRemove = parseInt(playerId);
-    if (isNaN(idToRemove)) return res.status(400).json({ error: "Invalid player ID" });
+    if (isNaN(idToRemove)) {
+        return res.status(400).json({ error: "Invalid player ID" });
+    }
+
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
-    if (index === -1) return res.status(404).json({ error: "Player not found" });
-    const player = players[index];
+    
+    if (index === -1) {
+        return res.status(404).json({ error: "Player not found" });
+    }
+
+    const wasGoalie = players[index].isGoalie;
+    const player = players.splice(index, 1)[0];
+
+    appendCancellationLog({
+        id: player.id,
+        firstName: player.firstName,
+        lastName: player.lastName,
+        phone: player.phone,
+        rating: player.rating,
+        isGoalie: player.isGoalie,
+        paymentMethod: player.paymentMethod,
+        source: 'players',
+        action: 'removed',
+        cancelledBy: 'admin',
+        cancelledAt: new Date().toISOString()
+    });
+    
     try {
-        await runProtectedMutation('remove-player', req, async () => {
-            const removedPlayer = players.splice(index, 1)[0];
-            appendCancellationLog({ id: removedPlayer.id, firstName: removedPlayer.firstName, lastName: removedPlayer.lastName, phone: removedPlayer.phone, rating: removedPlayer.rating, isGoalie: removedPlayer.isGoalie, paymentMethod: removedPlayer.paymentMethod, source: 'players', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
-            if (!removedPlayer.isGoalie) playerSpots++;
-        }, { playerId: idToRemove });
+        if (pool) await pool.query('DELETE FROM players WHERE id = $1', [player.id]);
+        
+        if (!wasGoalie) {
+            playerSpots++;
+        }
+        
+        await saveData();
     } catch (err) {
         console.error('Error removing player:', err);
-        return res.status(500).json({ error: "Failed to remove player safely" });
+        return res.status(500).json({ error: "Database error" });
     }
-    res.json({ success: true, spots: playerSpots, removedPlayer: player });
+
+    // Return the removed player info for confirmation message
+    res.json({ 
+        success: true, 
+        spots: playerSpots, 
+        removedPlayer: player 
+    });
 });
 
-app.post('/api/admin/update-spots', async (req, res) => {
+app.post('/api/admin/update-spots', (req, res) => {
     const { password, sessionToken, newSpots } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+    
     const spotCount = parseInt(newSpots);
-    if (isNaN(spotCount) || spotCount < 0 || spotCount > 30) return res.status(400).json({ error: "Invalid spot count (0-30 allowed)" });
-    try { await runProtectedMutation('update-spots', req, async () => { playerSpots = spotCount; }, { spotCount }); }
-    catch (err) { return res.status(500).json({ error: 'Failed to update spots safely' }); }
+    if (isNaN(spotCount) || spotCount < 0 || spotCount > 30) {
+        return res.status(400).json({ error: "Invalid spot count (0-30 allowed)" });
+    }
+    
+    playerSpots = spotCount;
+    saveData();
     res.json({ success: true, spots: playerSpots });
 });
 
 // Update paid amount endpoint
 app.post('/api/admin/update-paid-amount', async (req, res) => {
     const { password, sessionToken, playerId, amount } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+    
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
     const player = players.find(p => p.id === playerId);
-    if (!player) return res.status(404).json({ error: "Player not found" });
-    let paidAmount = null, paid = false;
+    if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+    }
+
+    // Parse amount - allow empty/null for unpaid
+    let paidAmount = null;
+    let paid = false;
+    
     if (amount !== '' && amount !== null && amount !== undefined) {
         const parsed = parseFloat(amount);
-        if (!isNaN(parsed) && parsed >= 0) { paidAmount = parsed; paid = parsed > 0; }
+        if (!isNaN(parsed) && parsed >= 0) {
+            paidAmount = parsed;
+            paid = parsed > 0;
+        }
     }
+
+    player.paidAmount = paidAmount;
+    player.paid = paid;
+
     try {
-        await runProtectedMutation('update-paid-amount', req, async () => { player.paidAmount = paidAmount; player.paid = paid; }, { playerId, paidAmount, paid });
-        const totalPaid = players.reduce((sum, p) => sum + (p.paidAmount && !isNaN(parseFloat(p.paidAmount)) ? parseFloat(p.paidAmount) : 0), 0);
+        await pool.query('UPDATE players SET paid_amount = $1, paid = $2 WHERE id = $3', 
+            [paidAmount, paid, player.id]);
+        saveData();
+        
+        // Calculate new total
+        const totalPaid = players.reduce((sum, p) => {
+            if (p.paidAmount && !isNaN(parseFloat(p.paidAmount))) {
+                return sum + parseFloat(p.paidAmount);
+            }
+            return sum;
+        }, 0);
+        
         res.json({ success: true, player, totalPaid: totalPaid.toFixed(2) });
     } catch (err) {
         console.error('Error updating paid amount:', err);
-        res.status(500).json({ error: "Failed to update payment safely" });
+        res.status(500).json({ error: "Database error" });
     }
 });
 
 // Admin override for final player rating
 app.post('/api/admin/update-rating', async (req, res) => {
     const { password, sessionToken, playerId, newRating } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
+    }
+
     const ratingNum = roundRating(parseFloat(newRating));
-    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) return res.status(400).json({ error: "Rating must be a number between 1 and 10" });
+    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+        return res.status(400).json({ error: "Rating must be a number between 1 and 10" });
+    }
+
     const player = players.find(p => p.id === parseInt(playerId)) || waitlist.find(p => p.id === parseInt(playerId));
-    if (!player) return res.status(404).json({ error: "Player not found" });
+    if (!player) {
+        return res.status(404).json({ error: "Player not found" });
+    }
+
     const oldRating = roundRating(player.finalRating ?? player.rating ?? 5);
     const derivedRating = roundRating(player.derivedRating ?? oldRating);
+    player.adminRating = ratingNum;
+    player.adminAdjustment = roundRating(ratingNum - derivedRating);
+    player.finalRating = ratingNum;
+    player.rating = ratingNum;
+
     try {
-        await runProtectedMutation('update-rating', req, async () => {
-            player.adminRating = ratingNum;
-            player.adminAdjustment = roundRating(ratingNum - derivedRating);
-            player.finalRating = ratingNum;
-            player.rating = ratingNum;
-        }, { playerId, oldRating, newRating: ratingNum });
-        res.json({ success: true, player: hydratePlayerRatingProfile(player), oldRating, newRating: ratingNum });
+        if (players.some(p => p.id === player.id)) {
+            await pool.query(
+                'UPDATE players SET rating = $1, admin_rating = $2, admin_adjustment = $3, final_rating = $4 WHERE id = $5',
+                [ratingNum, player.adminRating, player.adminAdjustment, player.finalRating, player.id]
+            );
+        } else if (waitlist.some(p => p.id === player.id)) {
+            await pool.query(
+                'UPDATE waitlist SET rating = $1, final_rating = $2 WHERE id = $3',
+                [ratingNum, player.finalRating, player.id]
+            );
+        }
+        saveData();
+        res.json({ success: true, player: hydratePlayerRatingProfile(player), oldRating: oldRating, newRating: ratingNum });
     } catch (err) {
         console.error('Error updating rating:', err);
-        res.status(500).json({ error: "Failed to update rating safely" });
+        res.status(500).json({ error: "Database error" });
     }
 });
 
 app.post('/api/admin/release-roster', async (req, res) => {
     const { password, sessionToken } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
-    if (players.length === 0) return res.status(400).json({ error: "No players registered yet" });
+    
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    if (players.length === 0) {
+        return res.status(400).json({ error: "No players registered yet" });
+    }
+    
     try {
         const etTime = getCurrentETTime();
         const { week, year } = getWeekNumber(etTime);
+        
         const teams = generateFairTeams();
-        await runProtectedMutation('release-roster', req, async () => {
-            rosterReleased = true;
-            resetArmed = true;
-            announcementEnabled = true;
-            announcementText = buildRosterReleasePaymentAnnouncement();
-            currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
-        }, { week, year });
+        
+        rosterReleased = true;
+        resetArmed = true;
+
+        // Auto-enable payment reminder when roster is released
+        announcementEnabled = true;
+        announcementText = buildRosterReleasePaymentAnnouncement();
+        
+        currentWeekData = {
+            weekNumber: week,
+            year: year,
+            releaseDate: new Date().toISOString(),
+            rosterReleaseTime: Date.now(),
+            whiteTeam: teams.whiteTeam,
+            darkTeam: teams.darkTeam
+        };
+        
+        for (const player of players) {
+            await pool.query('UPDATE players SET team = $1 WHERE id = $2', [player.team, player.id]);
+        }
+        
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
+
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementEnabled', announcementEnabled.toString()]
+        );
+        await pool.query(
+            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
+            ['announcementText', announcementText]
+        );
+
+        await saveData();
+        
+        res.json({ 
+            success: true, 
+            message: "Roster released successfully. Reset arm is now ON.",
+            whiteTeam: teams.whiteTeam,
+            darkTeam: teams.darkTeam,
+            whiteRating: teams.whiteRating.toFixed(1),
+            darkRating: teams.darkRating.toFixed(1),
+            signupLocked: true,
+            rosterReleased: true
+        });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });
@@ -5713,24 +6025,58 @@ app.post('/api/admin/release-roster', async (req, res) => {
 
 app.post('/api/admin/manual-reset', async (req, res) => {
     const { password, sessionToken } = req.body;
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
-    await savePaymentReportSnapshot('manual_reset');
-    if (rosterReleased && currentWeekData.weekNumber) {
-        await saveWeekHistory(currentWeekData.year, currentWeekData.weekNumber, currentWeekData.whiteTeam, currentWeekData.darkTeam);
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send("Unauthorized");
     }
+    
+    await savePaymentReportSnapshot('manual_reset');
+
+    if (rosterReleased && currentWeekData.weekNumber) {
+        await saveWeekHistory(
+            currentWeekData.year,
+            currentWeekData.weekNumber,
+            currentWeekData.whiteTeam,
+            currentWeekData.darkTeam
+        );
+    }
+    
     const etTime = getCurrentETTime();
     const { week, year } = getWeekNumber(etTime);
+    
+    playerSpots = 20;
+    players = [];
+    waitlist = [];
+    rosterReleased = false;
+    lastResetWeek = week;
+    gameDate = calculateNextGameDate();
+    
+    currentWeekData = {
+        weekNumber: week,
+        year: year,
+        releaseDate: null,
+        whiteTeam: [],
+        darkTeam: []
+    };
+    
+    manualOverride = false;
+    manualOverrideState = null;
+    requirePlayerCode = true;
+    lastExactResetRunAt = '';
+    lastExactRosterReleaseRunAt = '';
+    clearAnnouncementState();
+
     try {
-        await runProtectedMutation('manual-reset', req, async () => {
-            playerSpots = 20; players = []; waitlist = []; rosterReleased = false; lastResetWeek = week; gameDate = calculateNextGameDate();
-            currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            manualOverride = false; manualOverrideState = null; requirePlayerCode = true; lastExactResetRunAt = ''; lastExactRosterReleaseRunAt = ''; clearAnnouncementState();
-            await addAutoPlayers();
-        }, { week, year });
+        if (pool) {
+            await pool.query('DELETE FROM players');
+            await pool.query('DELETE FROM waitlist');
+        }
+
+        await addAutoPlayers();
+        await saveData();
     } catch (err) {
         console.error('Error resetting:', err);
-        return res.status(500).json({ error: 'Manual reset could not be saved safely' });
     }
+    
     res.json({ success: true, message: "Manual reset completed", code: playerSignupCode });
 });
 
