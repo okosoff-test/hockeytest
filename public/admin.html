@@ -1677,8 +1677,10 @@ button {
 
 <style>
 .compact-pay{
-    display:inline-flex;
-    align-items:center;
+    display:grid;
+    grid-template-columns:minmax(34px,auto) 16px;
+    grid-template-rows:16px 16px;
+    align-items:stretch;
     justify-content:center;
     border-radius:8px;
     overflow:hidden;
@@ -1702,16 +1704,37 @@ button {
     line-height:1;
     font-weight:700;
 }
-.compact-pay-minus,
-.compact-pay-plus{
-    padding:4px 5px !important;
-    min-width:20px;
+.compact-pay-main{
+    grid-column:1;
+    grid-row:1 / span 2;
+    padding:0 8px !important;
+    min-width:34px;
+    height:32px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
     font-size:0.78rem !important;
 }
-.compact-pay-main{
-    padding:4px 8px !important;
-    min-width:34px;
-    font-size:0.78rem !important;
+.compact-pay-minus,
+.compact-pay-plus{
+    grid-column:2;
+    min-width:16px;
+    width:16px;
+    height:16px;
+    padding:0 !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.62rem !important;
+}
+.compact-pay-plus{
+    grid-row:1;
+    border-left:1px solid rgba(255,255,255,0.18);
+    border-bottom:1px solid rgba(255,255,255,0.18);
+}
+.compact-pay-minus{
+    grid-row:2;
+    border-left:1px solid rgba(255,255,255,0.18);
 }
 .compact-pay-btn:hover{
     background:rgba(255,255,255,0.12);
@@ -1721,6 +1744,25 @@ button {
     align-items:center;
     justify-content:center;
     gap:0 !important;
+}
+@media (max-width:600px){
+    .compact-pay{
+        grid-template-columns:minmax(32px,auto) 14px;
+        grid-template-rows:14px 14px;
+    }
+    .compact-pay-main{
+        min-width:32px;
+        height:28px;
+        padding:0 7px !important;
+        font-size:0.74rem !important;
+    }
+    .compact-pay-minus,
+    .compact-pay-plus{
+        width:14px;
+        min-width:14px;
+        height:14px;
+        font-size:0.56rem !important;
+    }
 }
 </style>
 
@@ -4413,11 +4455,11 @@ Date: ${selectedGameDate}`);
                                 : 15;
                             paidInput = `
                                 <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
                                     <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                    <button class="compact-pay-btn compact-pay-plus" title="Increase amount" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                    <button class="compact-pay-btn compact-pay-minus" title="Decrease amount" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
                                 </div>
                             `;
                         }
