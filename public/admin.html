@@ -1676,17 +1676,38 @@ button {
 
 
 <style>
-.compact-pay{
-    display:grid;
-    grid-template-columns:minmax(34px,auto) 16px;
-    grid-template-rows:16px 16px;
-    align-items:stretch;
+:root{
+    --admin-compact-cell-width: 58px;
+    --admin-compact-cell-height: 34px;
+}
+.rating-wrap,
+.paid-wrap,
+.waitlist-rating-wrap{
+    display:flex;
+    align-items:center;
     justify-content:center;
+    width:var(--admin-compact-cell-width);
+    margin:0 auto;
+}
+.rating-wrap input[type="number"],
+.waitlist-rating-wrap input[type="number"]{
+    width:var(--admin-compact-cell-width) !important;
+    min-width:var(--admin-compact-cell-width) !important;
+    padding:3px 4px !important;
+    text-align:center;
+}
+.compact-pay{
+    display:inline-grid;
+    grid-template-columns: 1fr 14px;
+    grid-template-rows: 1fr 1fr;
+    align-items:stretch;
+    justify-items:stretch;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:auto;
-    max-width:100%;
+    width:var(--admin-compact-cell-width);
+    height:var(--admin-compact-cell-height);
+    max-width:var(--admin-compact-cell-width);
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1703,65 +1724,61 @@ button {
     cursor:pointer;
     line-height:1;
     font-weight:700;
+    border-radius:0 !important;
 }
 .compact-pay-main{
     grid-column:1;
     grid-row:1 / span 2;
-    padding:0 8px !important;
-    min-width:34px;
-    height:32px;
+    padding:0 4px !important;
+    width:100%;
+    height:100%;
+    font-size:0.82rem !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.78rem !important;
 }
-.compact-pay-minus,
-.compact-pay-plus{
+.compact-pay-plus,
+.compact-pay-minus{
     grid-column:2;
-    min-width:16px;
-    width:16px;
-    height:16px;
+    width:14px;
+    min-width:14px;
     padding:0 !important;
+    font-size:0.68rem !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.62rem !important;
 }
 .compact-pay-plus{
     grid-row:1;
-    border-left:1px solid rgba(255,255,255,0.18);
-    border-bottom:1px solid rgba(255,255,255,0.18);
+    border-left:1px solid rgba(255,255,255,0.28);
+    border-bottom:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-minus{
     grid-row:2;
-    border-left:1px solid rgba(255,255,255,0.18);
+    border-left:1px solid rgba(255,255,255,0.28);
 }
 .compact-pay-btn:hover{
     background:rgba(255,255,255,0.12);
 }
 .paid-wrap{
-    display:flex;
-    align-items:center;
-    justify-content:center;
     gap:0 !important;
 }
-@media (max-width:600px){
+@media (max-width: 600px){
+    :root{
+        --admin-compact-cell-width: 54px;
+        --admin-compact-cell-height: 32px;
+    }
     .compact-pay{
-        grid-template-columns:minmax(32px,auto) 14px;
-        grid-template-rows:14px 14px;
+        grid-template-columns: 1fr 13px;
+    }
+    .compact-pay-plus,
+    .compact-pay-minus{
+        width:13px;
+        min-width:13px;
+        font-size:0.62rem !important;
     }
     .compact-pay-main{
-        min-width:32px;
-        height:28px;
-        padding:0 7px !important;
-        font-size:0.74rem !important;
-    }
-    .compact-pay-minus,
-    .compact-pay-plus{
-        width:14px;
-        min-width:14px;
-        height:14px;
-        font-size:0.56rem !important;
+        font-size:0.78rem !important;
     }
 }
 </style>
@@ -2463,7 +2480,7 @@ button {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display">($0.00)</span></th>
+                    <th>Paid ($)</th>
                     <th>Payment</th>
                     <th>Regular</th>
                     <th>Action</th>
@@ -4458,8 +4475,8 @@ Date: ${selectedGameDate}`);
                                     <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
-                                    <button class="compact-pay-btn compact-pay-plus" title="Increase amount" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                    <button class="compact-pay-btn compact-pay-minus" title="Decrease amount" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
                                 </div>
                             `;
                         }
@@ -4470,7 +4487,7 @@ Date: ${selectedGameDate}`);
                             <td>
                                 <div class="rating-wrap">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        style="background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     
                                 </div>
@@ -4504,7 +4521,7 @@ Date: ${selectedGameDate}`);
                             <td>
                                 <div class="waitlist-rating-wrap">
                                     <input type="number" id="rating-${p.id}" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1" 
-                                        style="width:48px;padding:3px 4px;background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
+                                        style="background:#3d3d3d;border:1px solid #555;color:white;border-radius:3px;text-align:center;"
                                         onchange="updateRating(${p.id}, this.value)">
                                     
                                 </div>
