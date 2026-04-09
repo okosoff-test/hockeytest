@@ -5799,10 +5799,10 @@ function compactPayMain(playerId){
     const wrap = compactPayFind(playerId);
     return wrap ? wrap.querySelector('.compact-pay-main') : null;
 }
-async function compactPayAdjust(playerId, delta){
+function compactPayAdjust(playerId, delta){
     const main = compactPayMain(playerId);
     const wrap = compactPayFind(playerId);
-    if(!main || !wrap || wrap.dataset.busy === '1') return;
+    if(!main || !wrap) return;
 
     let amount = parseFloat(main.dataset.amount || '15');
     if(!Number.isFinite(amount) || amount <= 0) amount = 15;
@@ -5812,33 +5812,23 @@ async function compactPayAdjust(playerId, delta){
     main.textContent = '$' + amount;
 
     if(wrap.classList.contains('is-paid')){
-        wrap.dataset.busy = '1';
-        try {
-            await updatePaidAmount(playerId, amount);
-            await loadData();
-        } finally {
-            delete wrap.dataset.busy;
-        }
+        updatePaidAmount(playerId, amount);
+        setTimeout(loadData, 150);
     }
 }
-async function compactPayToggle(playerId){
+function compactPayToggle(playerId){
     const main = compactPayMain(playerId);
     const wrap = compactPayFind(playerId);
-    if(!main || !wrap || wrap.dataset.busy === '1') return;
+    if(!main || !wrap) return;
 
     const amount = parseFloat(main.dataset.amount || '15') || 15;
-    wrap.dataset.busy = '1';
 
-    try {
-        if(wrap.classList.contains('is-paid')){
-            await updatePaidAmount(playerId, 0);
-        } else {
-            await updatePaidAmount(playerId, amount);
-        }
-        await loadData();
-    } finally {
-        delete wrap.dataset.busy;
+    if(wrap.classList.contains('is-paid')){
+        updatePaidAmount(playerId, 0);
+    } else {
+        updatePaidAmount(playerId, amount);
     }
+    setTimeout(loadData, 150);
 }
 </script>
 
