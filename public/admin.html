@@ -1677,19 +1677,20 @@ button {
 
 <style>
 .compact-pay{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    width:76px;
-    min-width:76px;
-    max-width:76px;
-    border-radius:10px;
+    display:inline-grid;
+    grid-template-columns: 1fr 20px;
+    grid-template-areas:
+        "main plus"
+        "main minus";
+    align-items:stretch;
+    justify-items:stretch;
+    border-radius:8px;
     overflow:hidden;
-    white-space:normal;
+    white-space:nowrap;
+    width:78px;
+    max-width:100%;
+    min-height:28px;
     vertical-align:middle;
-    padding:4px 0;
-    margin:0 auto;
 }
 .compact-pay.is-unpaid{
     background:#c62828;
@@ -1705,35 +1706,44 @@ button {
     cursor:pointer;
     line-height:1;
     font-weight:700;
-    width:100%;
+    border-radius:0 !important;
+}
+.compact-pay-main{
+    grid-area:main;
+    padding:0 8px !important;
+    min-width:0;
+    min-height:28px;
     display:flex;
     align-items:center;
     justify-content:center;
-    text-align:center;
-}
-.compact-pay-main{
-    order:1;
-    padding:3px 0 5px !important;
-    min-width:0;
-    font-size:0.9rem !important;
-}
-.compact-pay-minus,
-.compact-pay-plus{
-    padding:2px 0 !important;
-    min-width:0;
     font-size:0.82rem !important;
 }
-.compact-pay-minus{ order:2; }
-.compact-pay-plus{ order:3; }
+.compact-pay-plus,
+.compact-pay-minus{
+    min-width:20px;
+    width:20px;
+    padding:0 !important;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:0.74rem !important;
+    border-left:1px solid rgba(255,255,255,0.22);
+}
+.compact-pay-plus{
+    grid-area:plus;
+    border-bottom:1px solid rgba(255,255,255,0.22);
+}
+.compact-pay-minus{
+    grid-area:minus;
+}
 .compact-pay-btn:hover{
-    background:rgba(255,255,255,0.12);
+    background:rgba(255,255,255,0.08);
 }
 .paid-wrap{
     display:flex;
     align-items:center;
     justify-content:center;
     gap:0 !important;
-    width:100%;
 }
 </style>
 
