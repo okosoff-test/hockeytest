@@ -4455,7 +4455,7 @@ Date: ${selectedGameDate}`);
                             const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
 
-                            const compactAmount = (p.paidAmount !== null && p.paidAmount !== undefined && p.paidAmount !== '')
+                            const compactAmount = isPaid
                                 ? parseFloat(p.paidAmount)
                                 : 15;
                             paidInput = `
@@ -5849,7 +5849,7 @@ async function compactPayToggle(playerId){
     const wrap = compactPayFind(playerId);
     if(!main || !wrap || wrap.dataset.busy === '1') return;
 
-    const amount = parseFloat(main.dataset.amount || '15') || 15;
+    const amount = 15;
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
 
