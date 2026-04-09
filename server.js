@@ -5647,16 +5647,39 @@ app.post('/api/admin/update-spots', async (req, res) => {
 app.post('/api/admin/update-paid-amount', async (req, res) => {
     const { password, sessionToken, playerId, amount } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
-    const player = players.find(p => p.id === playerId);
+
+    const normalizedPlayerId = parseInt(playerId, 10);
+    const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId);
     if (!player) return res.status(404).json({ error: "Player not found" });
-    let paidAmount = null, paid = false;
+
+    let paidAmount = null;
+    let paid = false;
     if (amount !== '' && amount !== null && amount !== undefined) {
         const parsed = parseFloat(amount);
-        if (!isNaN(parsed) && parsed >= 0) { paidAmount = parsed; paid = parsed > 0; }
+        if (!isNaN(parsed) && parsed >= 0) {
+            paidAmount = parsed;
+            paid = parsed > 0;
+        }
     }
+
     try {
-        await runProtectedMutation('update-paid-amount', req, async () => { player.paidAmount = paidAmount; player.paid = paid; }, { playerId, paidAmount, paid });
-        const totalPaid = players.reduce((sum, p) => sum + (p.paidAmount && !isNaN(parseFloat(p.paidAmount)) ? parseFloat(p.paidAmount) : 0), 0);
+        player.paidAmount = paidAmount;
+        player.paid = paid;
+
+        if (pool) {
+            await pool.query(
+                'UPDATE players SET paid = $1, paid_amount = $2 WHERE id = $3',
+                [paid, paidAmount, normalizedPlayerId]
+            );
+        }
+
+        await saveData();
+
+        const totalPaid = players.reduce((sum, p) => {
+            const value = parseFloat(p && p.paidAmount);
+            return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+
         res.json({ success: true, player, totalPaid: totalPaid.toFixed(2) });
     } catch (err) {
         console.error('Error updating paid amount:', err);
