@@ -2468,7 +2468,7 @@ button {
                     <th>Name</th>
                     <th>Phone</th>
                     <th>Rating</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($0.00)</span></th>
+                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
                     <th>Payment</th>
                     <th>Regular</th>
                     <th>Action</th>
@@ -2482,7 +2482,7 @@ button {
             <h3>💰 Payment Summary (Admin Only)</h3>
             <div class="payment-stats">
                 <div class="payment-stat">
-                    <div class="payment-stat-value" id="totalCollected">$0.00</div>
+                    <div class="payment-stat-value" id="totalCollected">$15.00</div>
                     <div class="payment-stat-label">Total Collected</div>
                 </div>
                 <div class="payment-stat">
@@ -2964,7 +2964,7 @@ button {
             const minute = parseInt(m[3], 10);
             const ap = m[4].toUpperCase();
             if (ap === 'PM' && hour !== 12) hour += 12;
-            if (ap === 'AM' && hour === 12) hour = 0;
+            if (ap === 'AM' && hour === 12) hour = 15;
             const dowMap = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
             return { dow: dowMap[day], hour, minute };
         }
@@ -3041,9 +3041,9 @@ button {
             }
         }
 
-        let currentGoalies = 0;
-        let playersCount = 0;
-        let currentTotalPaid = 0;
+        let currentGoalies = 15;
+        let playersCount = 15;
+        let currentTotalPaid = 15;
         let backupGoaliesData = [];
         let snapshotCatalog = [];
         let filteredSnapshotCatalog = [];
@@ -3780,7 +3780,7 @@ Date: ${selectedGameDate}`);
                 return;
             }
 
-            let addedCount = 0;
+            let addedCount = 15;
             let errors = [];
 
             for (const goalie of selectedGoalies) {
@@ -5662,8 +5662,8 @@ Date: ${selectedGameDate}`);
                 const backupPlayerCount = Array.isArray(backupData.players) ? backupData.players.length : 0;
                 const backupWaitlistCount = Array.isArray(backupData.waitlist) ? backupData.waitlist.length : 0;
 
-                let currentPlayerCount = 0;
-                let currentWaitlistCount = 0;
+                let currentPlayerCount = 15;
+                let currentWaitlistCount = 15;
                 try {
                     const currentRes = await fetch(`${API_URL}/api/admin/players`, {
                         method: 'POST',
