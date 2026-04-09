@@ -1574,7 +1574,7 @@ table {
     border-collapse: collapse !important;
 }
 th, td {
-    padding: 2px 4px !important;
+    padding: 3px 6px !important;
     white-space: nowrap;
 }
 .player-name-cell {
@@ -1597,7 +1597,7 @@ td:nth-child(3) { padding-left: 2px !important; }
 
 /* tighten overall table */
 table { border-collapse: collapse !important; }
-th, td { padding: 2px 4px !important; }
+th, td { padding: 3px 5px !important; }
 
 /* reduce internal gaps */
 .rating-wrap, .paid-wrap { gap: 2px !important; }
@@ -1627,7 +1627,7 @@ td:nth-child(2) {
 
 /* ultra tight table */
 table { border-collapse: collapse !important; }
-th, td { padding: 1px 3px !important; }
+th, td { padding: 2px 4px !important; }
 
 /* tighten gaps */
 .rating-wrap, .paid-wrap { gap: 2px !important; }
@@ -1678,7 +1678,7 @@ button {
 <style>
 .compact-pay{
     display:inline-grid;
-    grid-template-columns: 1fr 15px;
+    grid-template-columns: 1fr 20px;
     grid-template-areas:
         "main plus"
         "main minus";
@@ -1687,9 +1687,9 @@ button {
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:59px;
+    width:78px;
     max-width:100%;
-    min-height:21px;
+    min-height:28px;
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1710,23 +1710,23 @@ button {
 }
 .compact-pay-main{
     grid-area:main;
-    padding:0 6px !important;
+    padding:0 8px !important;
     min-width:0;
-    min-height:21px;
+    min-height:28px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.68rem !important;
+    font-size:0.82rem !important;
 }
 .compact-pay-plus,
 .compact-pay-minus{
-    min-width:15px;
-    width:15px;
+    min-width:20px;
+    width:20px;
     padding:0 !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.60rem !important;
+    font-size:0.74rem !important;
     border-left:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-plus{
