@@ -1769,6 +1769,36 @@ button {
 .player-name-cell{ font-size:1rem; }
 </style>
 
+<style id="registered-players-uniform-font-fix">
+/* Registered Players table: keep all text/control sizes uniform for mobile readability */
+#playerList td,
+#playerList .player-name-cell,
+#playerList .compact-rating-main,
+#playerList .compact-pay-main,
+#playerList .compact-rating-btn,
+#playerList .compact-pay-btn,
+#playerList .remove-btn,
+#playerList .regular-toggle-btn {
+    font-size: 1rem !important;
+}
+
+#playerList td:nth-child(2) {
+    font-size: 1rem !important;
+    color: #ffffff !important;
+    width: auto !important;
+}
+
+#playerList .player-name-cell span {
+    font-size: 1rem !important;
+    color: inherit !important;
+}
+
+#playerList .compact-rating,
+#playerList .compact-pay {
+    max-width: 74px;
+    min-width: 74px;
+}
+</style>
 
 <style id="safe-ui-hide-unused-admin-panels">
 .regular-summary-section,
