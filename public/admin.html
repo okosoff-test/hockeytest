@@ -739,55 +739,25 @@
 
         /* Maintenance Control */
         .maintenance-control {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            padding: 10px 0 12px;
             margin: -6px 0 14px;
+            padding: 0;
             border: none;
-            border-bottom: 1px solid rgba(255,255,255,0.08);
             background: transparent;
         }
 
-        .maintenance-inline {
+        .maintenance-toggle-btn {
+            width: 100%;
             display: flex;
             align-items: center;
             justify-content: space-between;
             gap: 12px;
-            width: 100%;
-            flex-wrap: wrap;
-        }
-
-        .maintenance-copy {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 0;
-        }
-
-        .maintenance-title {
-            color: #ff5a5a;
-            font-size: 1rem;
-            font-weight: 800;
-            line-height: 1.1;
-        }
-
-        .maintenance-subtitle {
-            color: #aaa;
-            font-size: 0.82rem;
-            line-height: 1.1;
-        }
-
-        .maintenance-toggle-btn {
             border: none;
             border-radius: 999px;
-            padding: 10px 16px !important;
-            min-width: 150px;
-            font-size: 0.85rem !important;
+            padding: 12px 18px !important;
+            min-height: 52px;
+            font-size: 0.92rem !important;
             font-weight: 800;
             letter-spacing: .02em;
-            white-space: nowrap;
             margin: 0 !important;
             cursor: pointer;
             transition: transform 0.12s ease, opacity 0.12s ease;
@@ -797,15 +767,51 @@
             transform: translateY(-1px);
         }
 
+        .maintenance-pill-label,
+        .maintenance-pill-state {
+            display: inline-flex;
+            align-items: center;
+            line-height: 1;
+            white-space: nowrap;
+        }
+
+        .maintenance-pill-label {
+            font-size: 1rem;
+        }
+
+        .maintenance-pill-state {
+            border-radius: 999px;
+            padding: 8px 14px;
+            font-size: 0.82rem;
+            background: rgba(255,255,255,0.16);
+        }
+
         .maintenance-toggle-btn.active {
-            background: #ff4444;
+            background: linear-gradient(135deg, #8b1e1e, #c73232);
             color: white;
             animation: pulse 1s infinite;
         }
 
         .maintenance-toggle-btn.inactive {
-            background: #4CAF50;
+            background: linear-gradient(135deg, #1f4f22, #4CAF50);
             color: white;
+        }
+
+        @media (max-width: 640px) {
+            .maintenance-toggle-btn {
+                padding: 11px 14px !important;
+                min-height: 48px;
+                gap: 10px;
+            }
+
+            .maintenance-pill-label {
+                font-size: 0.92rem;
+            }
+
+            .maintenance-pill-state {
+                padding: 7px 12px;
+                font-size: 0.76rem;
+            }
         }
 
         @keyframes pulse {
@@ -2241,13 +2247,10 @@ th, td{padding:2px 3px !important;}
 
         <!-- MAINTENANCE MODE CONTROL -->
         <div class="maintenance-control">
-            <div class="maintenance-inline">
-                <div class="maintenance-copy">
-                    <div class="maintenance-title">Maintenance Mode</div>
-                    <div class="maintenance-subtitle">1 tap to enable or disable portal maintenance</div>
-                </div>
-                <button type="button" id="maintenanceToggleBtn" class="maintenance-toggle-btn inactive" onclick="toggleMaintenance()">PORTAL ACTIVE</button>
-            </div>
+            <button type="button" id="maintenanceToggleBtn" class="maintenance-toggle-btn inactive" onclick="toggleMaintenance()" aria-pressed="false">
+                <span class="maintenance-pill-label">Maintenance Mode</span>
+                <span class="maintenance-pill-state" id="maintenanceToggleState">PORTAL ACTIVE</span>
+            </button>
         </div>
 
         <div class="snapshot-pro-section">
@@ -3614,15 +3617,18 @@ th, td{padding:2px 3px !important;}
                 
                 // Update maintenance mode UI
                 const maintenanceToggleBtn = document.getElementById('maintenanceToggleBtn');
+                const maintenanceToggleState = document.getElementById('maintenanceToggleState');
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 
                 if (maintenanceToggleBtn) {
-                    maintenanceToggleBtn.innerText = data.maintenanceMode ? 'MAINTENANCE ON' : 'PORTAL ACTIVE';
                     maintenanceToggleBtn.className = 'maintenance-toggle-btn ' + (data.maintenanceMode ? 'active' : 'inactive');
                     maintenanceToggleBtn.setAttribute('aria-pressed', data.maintenanceMode ? 'true' : 'false');
                     maintenanceToggleBtn.title = data.maintenanceMode
                         ? 'Tap to disable maintenance mode'
                         : 'Tap to enable maintenance mode';
+                }
+                if (maintenanceToggleState) {
+                    maintenanceToggleState.innerText = data.maintenanceMode ? 'MAINTENANCE ON' : 'PORTAL ACTIVE';
                 }
                 if (data.maintenanceMode) {
                     maintenanceBulletin.classList.add('active');
@@ -3734,6 +3740,7 @@ th, td{padding:2px 3px !important;}
         // Toggle maintenance mode
         async function toggleMaintenance() {
             const button = document.getElementById('maintenanceToggleBtn');
+            const state = document.getElementById('maintenanceToggleState');
             if (!button) return;
 
             const currentlyActive = button.classList.contains('active');
@@ -3742,7 +3749,7 @@ th, td{padding:2px 3px !important;}
             try {
                 button.disabled = true;
                 button.style.opacity = '0.7';
-                button.innerText = newState ? 'ENABLING...' : 'DISABLING...';
+                if (state) state.innerText = newState ? 'ENABLING...' : 'DISABLING...';
 
                 const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
                     method: 'POST',
