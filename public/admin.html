@@ -1975,184 +1975,69 @@ button {
 </style>
 
 
-<style id="admin-name-phone-stack-fix">
+<style id="admin-safe-mobile-patch-v10">
+#playerList .protected-badge,
+#playerList .goalie-badge{display:none !important;}
 #playerList .player-name-cell{
     display:flex !important;
     flex-direction:column !important;
     align-items:flex-start !important;
     justify-content:center !important;
-    gap:4px !important;
-    line-height:1.15 !important;
     text-align:left !important;
-    min-width:150px;
+    gap:2px !important;
+    line-height:1.05 !important;
+    min-width:0 !important;
 }
 #playerList .player-name-main{
     display:block;
     color:#fff;
-    font-size:1rem;
-    font-weight:600;
-    line-height:1.1;
-}
-#playerList .player-phone-sub{
-    display:block;
-    color:#b9b9b9;
-    font-size:0.9rem;
-    font-weight:400;
-    line-height:1.1;
-}
-#playerList tr td{
-    vertical-align:middle !important;
-}
-#playerList .protected-badge,
-#playerList .goalie-badge{
-    display:none !important;
-}
-th.phone-col-hidden,
-#playerList td.phone-col-hidden{
-    display:none !important;
-}
-</style>
-
-
-<style id="admin-pill-shrink-v3">
-/* shrink Regular and Remove buttons by 20% */
-.control-btn, .remove-btn{
-    font-size: 0.8em !important;
-    padding: 6px 10px !important;
-    border-radius: 8px !important;
-}
-/* keep alignment tight */
-.control-btn{ margin-right: 4px; }
-</style>
-
-
-
-<style id="admin-android-tight-v7">
-/* Android width optimization: tighter rows, flexible columns, less wasted space */
-table{
-    width:100% !important;
-    table-layout:auto !important;
-}
-th, td{
-    padding:2px 3px !important;
-}
-#playerList tr td{
-    padding-top:3px !important;
-    padding-bottom:3px !important;
-    vertical-align:middle !important;
-}
-#playerList .player-name-cell{
-    min-width:0 !important;
-    width:1% !important;
-    gap:2px !important;
-    line-height:1.05 !important;
-}
-#playerList .player-name-main{
-    font-size:0.95rem !important;
+    font-size:0.92rem !important;
     font-weight:600 !important;
     line-height:1.05 !important;
     white-space:normal !important;
 }
 #playerList .player-phone-sub{
-    font-size:0.74rem !important;
-    opacity:0.78 !important;
-    line-height:1.0 !important;
-}
-#playerList .rating-wrap,
-#playerList .paid-wrap{
-    gap:0 !important;
-}
-.rating-pill-input{
-    width:36px !important;
-    height:22px !important;
-    font-size:0.82rem !important;
-    line-height:22px !important;
-    padding:0 4px !important;
-    border-radius:7px !important;
-}
-.compact-pay{
-    width:50px !important;
-    min-height:20px !important;
-    border-radius:6px !important;
-    grid-template-columns:1fr 14px !important;
-}
-.compact-pay-main{
-    min-height:20px !important;
-    padding:0 3px !important;
+    display:block;
+    color:#b9b9b9;
     font-size:0.72rem !important;
+    line-height:1 !important;
 }
-.compact-pay-plus,
-.compact-pay-minus{
-    width:14px !important;
-    min-width:14px !important;
-    font-size:0.88rem !important;
-    padding:0 !important;
+#playerList .player-time-sub{
+    display:block;
+    color:#8f8f8f;
+    font-size:0.62rem !important;
+    line-height:1 !important;
 }
-.control-btn,
-.remove-btn{
-    padding:4px 6px !important;
-    font-size:0.66rem !important;
-    border-radius:7px !important;
-    margin:0 !important;
-    white-space:nowrap !important;
+table thead tr th.phone-col-hidden,
+#playerList td.phone-col-hidden{display:none !important;}
+table{width:100% !important; table-layout:auto !important;}
+th, td{padding:2px 3px !important;}
+#playerList tr td{padding-top:3px !important; padding-bottom:3px !important; vertical-align:middle !important;}
+#playerList .rating-wrap, #playerList .paid-wrap{gap:0 !important;}
+.rating-pill-input{
+    width:36px !important; height:22px !important; font-size:0.82rem !important;
+    line-height:22px !important; padding:0 4px !important; border-radius:7px !important;
 }
-#playerList .phone-col-hidden{
-    display:none !important;
-}
-@media (max-width: 600px){
-    .container{
-        padding:12px !important;
-    }
-    th, td{
-        padding:2px 2px !important;
-    }
-    #playerList .player-name-main{
-        font-size:0.9rem !important;
-    }
-    #playerList .player-phone-sub{
-        font-size:0.7rem !important;
-    }
-    .rating-pill-input{
-        width:34px !important;
-    }
-    .compact-pay{
-        width:47px !important;
-        grid-template-columns:1fr 13px !important;
-    }
-    .compact-pay-plus,
-    .compact-pay-minus{
-        width:13px !important;
-        min-width:13px !important;
-        font-size:0.82rem !important;
-    }
-    .control-btn,
-    .remove-btn{
-        font-size:0.62rem !important;
-        padding:3px 5px !important;
-    }
-}
-</style>
-
-
-<style id="admin-paid-pill-v8">
-/* increase paid red pill size */
 .compact-pay{
-    transform: scale(1.2) !important;
+    width:56px !important; min-height:22px !important; border-radius:6px !important;
+    grid-template-columns:1fr 16px !important;
 }
-
-/* increase +/- buttons inside */
-.compact-pay-plus,
-.compact-pay-minus{
-    font-size: 1.2em !important;
+.compact-pay-main{min-height:22px !important; padding:0 4px !important; font-size:0.76rem !important; font-weight:700 !important;}
+.compact-pay-plus, .compact-pay-minus{width:16px !important; min-width:16px !important; font-size:0.98rem !important; padding:0 !important;}
+.control-btn, .remove-btn{
+    padding:4px 6px !important; font-size:0.66rem !important; border-radius:7px !important;
+    margin:0 !important; white-space:nowrap !important;
 }
-</style>
-
-
-<style id="admin-timestamp-v9">
-.player-timestamp{
-    font-size:0.65rem;
-    color:#888;
-    line-height:1.0;
+@media (max-width:600px){
+    .container{padding:12px !important;}
+    th, td{padding:2px 2px !important;}
+    #playerList .player-name-main{font-size:0.88rem !important;}
+    #playerList .player-phone-sub{font-size:0.68rem !important;}
+    #playerList .player-time-sub{font-size:0.58rem !important;}
+    .rating-pill-input{width:34px !important;}
+    .compact-pay{width:54px !important; grid-template-columns:1fr 15px !important;}
+    .compact-pay-plus, .compact-pay-minus{width:15px !important; min-width:15px !important; font-size:0.92rem !important;}
+    .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
 }
 </style>
 
@@ -2612,7 +2497,7 @@ th, td{
                 <input type="number" id="newRating" placeholder="Rating (1-10)" min="1" max="10">
                 <select id="newPayment">
                     <option value="Cash">Cash</option>
-                    <option value="ET">ET</option>
+                    <option value="E-Transfer">E-Transfer</option>
                     <option value="PIA">PIA (Pay In Advance)</option>
                 </select>
             </div>
@@ -4712,22 +4597,17 @@ Date: ${selectedGameDate}`);
                 if (data.players.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
-                    data.
-// SORT: Phan first, then goalies, then others
-players.sort((a, b) => {
-    const aName = (a.firstName + ' ' + a.lastName).toLowerCase();
-    const bName = (b.firstName + ' ' + b.lastName).toLowerCase();
+                    const sortedPlayers = [...data.players].sort((a, b) => {
+                        const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
+                        const bIsPhan = String(b.firstName || '').trim().toLowerCase() === 'phan';
+                        if (aIsPhan && !bIsPhan) return -1;
+                        if (!aIsPhan && bIsPhan) return 1;
+                        if (a.isGoalie && !b.isGoalie) return -1;
+                        if (!a.isGoalie && b.isGoalie) return 1;
+                        return 0;
+                    });
 
-    if (aName.includes('phan')) return -1;
-    if (bName.includes('phan')) return 1;
-
-    if (a.isGoalie && !b.isGoalie) return -1;
-    if (!a.isGoalie && b.isGoalie) return 1;
-
-    return 0;
-});
-
-players.forEach(p => {
+                    sortedPlayers.forEach(p => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
@@ -4763,8 +4643,7 @@ players.forEach(p => {
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
-<span class="player-timestamp">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
-
+                                ${p.registeredAt ? `<span class="player-time-sub">${new Date(p.registeredAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
                             <td>
@@ -4782,7 +4661,7 @@ players.forEach(p => {
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
-                        `
+                        `;
                         tbody.appendChild(tr);
                     });
                 }
