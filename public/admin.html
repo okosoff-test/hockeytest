@@ -4627,7 +4627,7 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${p.isGoalie ? 'N/A' : p.paymentMethod}</td>
+                            <td>${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
                             <td>
                                 <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
                             </td>
