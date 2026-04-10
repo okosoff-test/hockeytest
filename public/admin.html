@@ -2049,6 +2049,491 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-panel-unify-v17">
+/* Make remaining admin tables/panels visually match the Registered Players table */
+.waitlist-section table,
+.cancellations-section table{
+    width:100% !important;
+    border-collapse:collapse !important;
+    table-layout:auto !important;
+}
+
+.waitlist-section thead tr,
+.cancellations-section thead tr{
+    border-bottom:1px solid rgba(255,255,255,0.12) !important;
+}
+
+.waitlist-section tbody tr,
+.cancellations-section tbody tr{
+    border-bottom:1px solid rgba(255,255,255,0.12) !important;
+}
+
+.waitlist-section th,
+.waitlist-section td,
+.cancellations-section th,
+.cancellations-section td{
+    padding:3px 4px !important;
+    border-bottom:none !important;
+    vertical-align:middle !important;
+    white-space:nowrap !important;
+}
+
+.waitlist-section .player-name-cell,
+.cancellations-section .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+    text-align:left !important;
+}
+
+.waitlist-section .goalie-badge,
+.cancellations-section .goalie-badge,
+.cancellations-section .cancelled-badge{
+    margin-left:0 !important;
+}
+
+.waitlist-section .waitlist-rating-wrap,
+.waitlist-section .waitlist-action-wrap{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:4px !important;
+    flex-wrap:nowrap !important;
+}
+
+.waitlist-section .promote-btn,
+.waitlist-section .remove-btn,
+.cancellations-section .control-btn{
+    padding:4px 6px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+}
+
+.history-delete-box .control-row,
+.payment-summary-box .message-box .control-row{
+    align-items:center !important;
+    gap:8px !important;
+}
+
+.history-delete-box select,
+.payment-summary-box select{
+    margin:0 !important;
+    min-height:34px !important;
+}
+
+.payment-summary-box .payment-stats{
+    gap:10px !important;
+}
+
+.payment-summary-box .payment-stat{
+    padding:12px !important;
+    border-radius:10px !important;
+}
+
+.payment-summary-box .payment-stat-value{
+    font-size:1.5rem !important;
+}
+
+.payment-summary-box .export-btn,
+.payment-summary-box .control-btn,
+.history-delete-box .control-btn{
+    border-radius:8px !important;
+}
+
+.control-box,
+.roster-status,
+.payment-summary-box,
+.waitlist-section,
+.cancellations-section,
+.history-delete-box,
+.add-player-form{
+    border-radius:12px !important;
+}
+
+@media (max-width:600px){
+    .waitlist-section th,
+    .waitlist-section td,
+    .cancellations-section th,
+    .cancellations-section td{
+        padding:2px 3px !important;
+        font-size:0.74rem !important;
+    }
+
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn,
+    .cancellations-section .control-btn{
+        font-size:0.62rem !important;
+        padding:3px 5px !important;
+    }
+
+    .payment-summary-box .payment-stat-value{
+        font-size:1.3rem !important;
+    }
+
+    .payment-summary-box .message-actions{
+        gap:8px !important;
+    }
+}
+</style>
+
+
+<style id="admin-payment-summary-compress-v18">
+/* Compress payment summary further for Android */
+.payment-summary-box{
+    padding:10px !important;
+    margin-bottom:14px !important;
+}
+.payment-summary-box h3{
+    margin:0 0 8px 0 !important;
+    font-size:0.96rem !important;
+}
+.payment-summary-box .payment-stats{
+    gap:8px !important;
+    margin-bottom:10px !important;
+}
+.payment-summary-box .payment-stat{
+    padding:8px !important;
+    border-radius:8px !important;
+}
+.payment-summary-box .payment-stat-value{
+    font-size:1.18rem !important;
+    line-height:1.05 !important;
+}
+.payment-summary-box .payment-stat-label{
+    font-size:0.72rem !important;
+    margin-top:3px !important;
+}
+.payment-summary-box .export-btn{
+    margin-top:6px !important;
+    padding:8px 10px !important;
+    font-size:0.78rem !important;
+}
+.payment-summary-box .message-actions{
+    gap:6px !important;
+    margin-top:8px !important;
+}
+.payment-summary-box .message-actions .control-btn{
+    padding:6px 8px !important;
+    font-size:0.68rem !important;
+}
+.payment-summary-box .message-box{
+    margin-top:8px !important;
+    padding:8px !important;
+    border-radius:8px !important;
+}
+.payment-summary-box .message-box label{
+    margin-bottom:3px !important;
+    font-size:0.82rem !important;
+}
+.payment-summary-box select{
+    min-height:30px !important;
+    font-size:0.74rem !important;
+    padding:3px 6px !important;
+}
+.payment-summary-box .message-box .control-row{
+    gap:6px !important;
+}
+.payment-summary-box .security-notice{
+    margin-top:8px !important;
+    font-size:0.68rem !important;
+}
+@media (max-width:600px){
+    .payment-summary-box{
+        padding:8px !important;
+    }
+    .payment-summary-box h3{
+        font-size:0.9rem !important;
+        margin-bottom:6px !important;
+    }
+    .payment-summary-box .payment-stats{
+        gap:6px !important;
+        margin-bottom:8px !important;
+    }
+    .payment-summary-box .payment-stat{
+        padding:7px !important;
+    }
+    .payment-summary-box .payment-stat-value{
+        font-size:1.05rem !important;
+    }
+    .payment-summary-box .payment-stat-label{
+        font-size:0.66rem !important;
+    }
+    .payment-summary-box .export-btn{
+        padding:7px 8px !important;
+        font-size:0.72rem !important;
+    }
+    .payment-summary-box .message-actions{
+        gap:5px !important;
+        margin-top:6px !important;
+    }
+    .payment-summary-box .message-actions .control-btn{
+        padding:5px 7px !important;
+        font-size:0.62rem !important;
+    }
+    .payment-summary-box .message-box{
+        padding:7px !important;
+        margin-top:6px !important;
+    }
+    .payment-summary-box .message-box label{
+        font-size:0.76rem !important;
+    }
+    .payment-summary-box select{
+        min-height:28px !important;
+        font-size:0.68rem !important;
+    }
+    .payment-summary-box .security-notice{
+        font-size:0.62rem !important;
+        margin-top:6px !important;
+    }
+}
+</style>
+
+
+<style id="admin-maintenance-compress-v19">
+/* Reduce Admin Dashboard title */
+h1, .admin-title{font-size:1.5em !important; margin-bottom:6px !important; line-height:1.1 !important;}
+
+/* Compress maintenance box */
+.history-delete-box,
+.control-box,
+.add-player-form{
+    padding:8px !important;
+    margin-bottom:10px !important;
+    border-radius:10px !important;
+}
+
+.history-delete-box h3,
+.control-box h3,
+.add-player-form h3{
+    font-size:0.9rem !important;
+    margin-bottom:6px !important;
+}
+
+.history-delete-box .control-row,
+.control-box .control-row,
+.add-player-form .form-row{
+    gap:6px !important;
+}
+
+.history-delete-box select,
+.control-box select,
+.add-player-form input,
+.add-player-form select{
+    min-height:28px !important;
+    font-size:0.72rem !important;
+    padding:4px 6px !important;
+}
+
+.history-delete-box .control-btn,
+.control-box .control-btn,
+.add-player-form .control-btn{
+    padding:6px 8px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+}
+
+@media (max-width:600px){
+    h1, .admin-title{
+        font-size:0.45em !important;
+    }
+
+    .history-delete-box,
+    .control-box,
+    .add-player-form{
+        padding:6px !important;
+        margin-bottom:8px !important;
+    }
+
+    .history-delete-box h3,
+    .control-box h3,
+    .add-player-form h3{
+        font-size:0.82rem !important;
+    }
+
+    .history-delete-box select,
+    .control-box select,
+    .add-player-form input,
+    .add-player-form select{
+        font-size:0.68rem !important;
+        min-height:26px !important;
+    }
+
+    .history-delete-box .control-btn,
+    .control-box .control-btn,
+    .add-player-form .control-btn{
+        font-size:0.62rem !important;
+        padding:5px 7px !important;
+    }
+}
+</style>
+
+
+<style id="admin-payment-tight-v20">
+.payment-summary-box{
+    padding:6px !important;
+}
+.payment-summary-box h3{
+    margin:0 0 4px 0 !important;
+}
+.payment-summary-box .payment-stats{
+    gap:6px !important;
+    margin-bottom:6px !important;
+}
+.payment-summary-box .payment-stat{
+    padding:6px !important;
+}
+.payment-summary-box .payment-stat-value{
+    line-height:1 !important;
+}
+.payment-summary-box .payment-stat-label{
+    margin-top:2px !important;
+}
+.payment-summary-box .export-btn{
+    margin-top:4px !important;
+}
+.payment-summary-box .message-actions{
+    margin-top:4px !important;
+}
+.payment-summary-box .message-box{
+    margin-top:5px !important;
+    padding:6px !important;
+}
+.payment-summary-box .message-box label{
+    margin-bottom:2px !important;
+}
+.payment-summary-box .security-notice{
+    margin-top:4px !important;
+}
+</style>
+
+
+<style id="admin-payment-one-line-v21">
+/* Payment summary: force stats into one compact horizontal row */
+.payment-summary-box .payment-stats{
+    display:grid !important;
+    grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+    gap:4px !important;
+    margin-bottom:6px !important;
+}
+.payment-summary-box .payment-stat{
+    padding:6px 4px !important;
+    border-radius:8px !important;
+}
+.payment-summary-box .payment-stat-value{
+    font-size:0.98rem !important;
+    line-height:1 !important;
+    margin:0 !important;
+}
+.payment-summary-box .payment-stat-label{
+    font-size:0.6rem !important;
+    margin-top:2px !important;
+    line-height:1 !important;
+}
+@media (max-width: 600px){
+    .payment-summary-box .payment-stats{
+        display:grid !important;
+        grid-template-columns:repeat(3, minmax(0, 1fr)) !important;
+        gap:4px !important;
+        margin-bottom:6px !important;
+    }
+    .payment-summary-box .payment-stat{
+        padding:5px 3px !important;
+    }
+    .payment-summary-box .payment-stat-value{
+        font-size:0.9rem !important;
+    }
+    .payment-summary-box .payment-stat-label{
+        font-size:0.56rem !important;
+    }
+}
+</style>
+
+
+<style id="admin-cancel-mobile-v22">
+.cancellations-section .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+}
+.cancellations-section .player-name-main{
+    font-weight:600 !important;
+    color:#fff !important;
+}
+.cancellations-section .player-phone-sub{
+    font-size:0.72rem !important;
+    color:#b9b9b9 !important;
+}
+.cancellations-section .phone-col-hidden{
+    display:none !important;
+}
+</style>
+
+
+<style id="admin-cancel-mobile-v24">
+.cancellations-section .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+}
+.cancellations-section .player-name-main{
+    font-weight:700 !important;
+    color:#ffffff !important;
+}
+.cancellations-section .player-phone-sub{
+    font-size:0.72rem !important;
+    color:#b9b9b9 !important;
+}
+.cancellations-section .phone-col-hidden{
+    display:none !important;
+}
+</style>
+
+
+<style id="admin-type-phone-v25">
+.player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    gap:2px !important;
+}
+.player-name-main{
+    font-weight:700 !important;
+    color:#fff !important;
+}
+.player-phone-sub{
+    font-size:0.72rem !important;
+    color:#b9b9b9 !important;
+}
+.phone-col-hidden{display:none !important;}
+</style>
+
+
+<style id="admin-title-3x-mobile-v26">
+@media (max-width:600px){
+  h1, .admin-title{font-size:1.5em !important; line-height:1.1 !important;}
+}
+</style>
+
+
+<style id="payment-summary-oneline-v27">
+.payment-summary, .summary-row {
+  display:flex !important;
+  flex-wrap:nowrap !important;
+  white-space:nowrap !important;
+  justify-content:space-between !important;
+  gap:8px !important;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -2618,7 +3103,7 @@ th, td{padding:2px 3px !important;}
                     <tr>
                         <th>#</th>
                         <th>Name</th>
-                        <th>Phone</th>
+                        <th class="phone-col-hidden">Phone</th>
                         <th>Rating</th>
                         <th>Action</th>
                     </tr>
@@ -2636,8 +3121,8 @@ th, td{padding:2px 3px !important;}
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Source</th>
-                        <th>Type</th>
+                        
+                        
                         <th>Phone</th>
                         <th>Cancelled</th>
                     </tr>
@@ -4660,9 +5145,7 @@ Date: ${selectedGameDate}`);
                                         onchange="updateRating(${p.id}, this.value)">
 
                                 </div>
-                            </td>
-                            <td>${paidInput}</td>
-                            <td>${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
+                            <span class="player-phone-sub">${paidInput}<span class="player-phone-sub">${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
                             <td>
                                 <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
                             </td>
@@ -4685,8 +5168,7 @@ Date: ${selectedGameDate}`);
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         tr.innerHTML = `
                             <td>${index + 1}</td>
-                            <td class="player-name-cell">${p.firstName} ${p.lastName} ${goalieBadge}</td>
-                            <td>${p.phone}</td>
+                            <td class="player-name-cell"><span class="player-name-main">${p.firstName} ${p.lastName}</span> ${goalieBadge}<span class="player-phone-sub">${p.phone}</td>
                             <td>
                                 <div class="waitlist-rating-wrap">
                                     <input type="number" id="rating-${p.id}" class="rating-pill-input" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
@@ -4724,11 +5206,9 @@ Date: ${selectedGameDate}`);
                                 : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
                         const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
                         tr.innerHTML = `
-                            <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td>
-                            <td>${item.source || '--'}</td>
-                            <td>${typeBadge}</td>
-                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.95rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
-                            <td>${when}</td>
+                            <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}<span class="player-phone-sub">${item.source || '--'}</td>
+                            
+                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.95rem; margin-top:4px;">${item.notes}</div>` : ''}<span class="player-phone-sub">${when}</td>
                         `;
                         cancellationBody.appendChild(tr);
                     });
