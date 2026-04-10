@@ -2182,6 +2182,70 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-maintenance-under-title-v18">
+#adminPanel > .maintenance-control{
+    margin-top:-8px !important;
+    margin-bottom:12px !important;
+    padding:10px 12px !important;
+    border-radius:10px !important;
+}
+#adminPanel > .maintenance-control h3{
+    margin:0 0 8px 0 !important;
+    font-size:0.98rem !important;
+    line-height:1.1 !important;
+}
+#adminPanel > .maintenance-control .maintenance-toggle{
+    padding:8px 10px !important;
+    gap:10px !important;
+    border-radius:9px !important;
+}
+#adminPanel > .maintenance-control .maintenance-checkbox{
+    width:24px !important;
+    height:24px !important;
+    border-width:2px !important;
+}
+#adminPanel > .maintenance-control .maintenance-checkbox:checked::after{
+    font-size:16px !important;
+}
+#adminPanel > .maintenance-control .maintenance-label{
+    font-size:1rem !important;
+    line-height:1.1 !important;
+}
+#adminPanel > .maintenance-control .maintenance-status{
+    padding:6px 12px !important;
+    font-size:0.8rem !important;
+    min-width:auto !important;
+    white-space:nowrap !important;
+}
+@media (max-width:700px){
+    #adminPanel > .maintenance-control{
+        margin-top:-10px !important;
+        margin-bottom:10px !important;
+        padding:8px 10px !important;
+    }
+    #adminPanel > .maintenance-control h3{
+        font-size:0.92rem !important;
+        margin-bottom:6px !important;
+    }
+    #adminPanel > .maintenance-control .maintenance-toggle{
+        padding:7px 8px !important;
+        gap:8px !important;
+    }
+    #adminPanel > .maintenance-control .maintenance-checkbox{
+        width:22px !important;
+        height:22px !important;
+    }
+    #adminPanel > .maintenance-control .maintenance-label{
+        font-size:0.92rem !important;
+    }
+    #adminPanel > .maintenance-control .maintenance-status{
+        padding:5px 10px !important;
+        font-size:0.72rem !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -2207,7 +2271,7 @@ th, td{padding:2px 3px !important;}
 
     <div class="container admin-panel" id="adminPanel">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
-            <h1 style="margin:0; font-size:92%;">Admin Dashboard</h1>
+            <h1 style="margin:0;">Admin Dashboard</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
                 <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
                 <button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
@@ -2223,6 +2287,16 @@ th, td{padding:2px 3px !important;}
 
 
         
+
+        <!-- MAINTENANCE MODE CONTROL -->
+        <div class="maintenance-control">
+            <h3>🔧 Maintenance</h3>
+            <div class="maintenance-toggle">
+                <input type="checkbox" id="maintenanceCheckbox" class="maintenance-checkbox" onchange="toggleMaintenance()">
+                <label for="maintenanceCheckbox" class="maintenance-label">Enable Maintenance Mode</label>
+                <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
+            </div>
+</div>
 
         <div class="snapshot-pro-section">
             <h3>🧠 Quick Restore</h3>
@@ -2279,15 +2353,6 @@ th, td{padding:2px 3px !important;}
             ❌ Error releasing roster. Check console for details.
         </div>
 
-        <!-- MAINTENANCE MODE CONTROL -->
-        <div class="maintenance-control">
-            <h3>🔧 Maintenance</h3>
-            <div class="maintenance-toggle">
-                <input type="checkbox" id="maintenanceCheckbox" class="maintenance-checkbox" onchange="toggleMaintenance()">
-                <label for="maintenanceCheckbox" class="maintenance-label">Enable Maintenance Mode</label>
-                <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
-            </div>
-</div>
         <!-- ANNOUNCEMENT -->
         <div class="announcement-control compact-announcement-control">
             <div class="announcement-topbar">
