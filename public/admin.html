@@ -2049,6 +2049,139 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-panel-unify-v17">
+/* Make remaining admin tables/panels visually match the Registered Players table */
+.waitlist-section table,
+.cancellations-section table{
+    width:100% !important;
+    border-collapse:collapse !important;
+    table-layout:auto !important;
+}
+
+.waitlist-section thead tr,
+.cancellations-section thead tr{
+    border-bottom:1px solid rgba(255,255,255,0.12) !important;
+}
+
+.waitlist-section tbody tr,
+.cancellations-section tbody tr{
+    border-bottom:1px solid rgba(255,255,255,0.12) !important;
+}
+
+.waitlist-section th,
+.waitlist-section td,
+.cancellations-section th,
+.cancellations-section td{
+    padding:3px 4px !important;
+    border-bottom:none !important;
+    vertical-align:middle !important;
+    white-space:nowrap !important;
+}
+
+.waitlist-section .player-name-cell,
+.cancellations-section .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+    text-align:left !important;
+}
+
+.waitlist-section .goalie-badge,
+.cancellations-section .goalie-badge,
+.cancellations-section .cancelled-badge{
+    margin-left:0 !important;
+}
+
+.waitlist-section .waitlist-rating-wrap,
+.waitlist-section .waitlist-action-wrap{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:4px !important;
+    flex-wrap:nowrap !important;
+}
+
+.waitlist-section .promote-btn,
+.waitlist-section .remove-btn,
+.cancellations-section .control-btn{
+    padding:4px 6px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+}
+
+.history-delete-box .control-row,
+.payment-summary-box .message-box .control-row{
+    align-items:center !important;
+    gap:8px !important;
+}
+
+.history-delete-box select,
+.payment-summary-box select{
+    margin:0 !important;
+    min-height:34px !important;
+}
+
+.payment-summary-box .payment-stats{
+    gap:10px !important;
+}
+
+.payment-summary-box .payment-stat{
+    padding:12px !important;
+    border-radius:10px !important;
+}
+
+.payment-summary-box .payment-stat-value{
+    font-size:1.5rem !important;
+}
+
+.payment-summary-box .export-btn,
+.payment-summary-box .control-btn,
+.history-delete-box .control-btn{
+    border-radius:8px !important;
+}
+
+.control-box,
+.roster-status,
+.payment-summary-box,
+.waitlist-section,
+.cancellations-section,
+.history-delete-box,
+.add-player-form{
+    border-radius:12px !important;
+}
+
+@media (max-width:600px){
+    .waitlist-section th,
+    .waitlist-section td,
+    .cancellations-section th,
+    .cancellations-section td{
+        padding:2px 3px !important;
+        font-size:0.74rem !important;
+    }
+
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn,
+    .cancellations-section .control-btn{
+        font-size:0.62rem !important;
+        padding:3px 5px !important;
+    }
+
+    .payment-summary-box .payment-stat-value{
+        font-size:1.3rem !important;
+    }
+
+    .payment-summary-box .message-actions{
+        gap:8px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
