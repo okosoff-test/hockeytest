@@ -2013,6 +2013,18 @@ th.phone-col-hidden,
 }
 </style>
 
+
+<style id="admin-pill-shrink-v3">
+/* shrink Regular and Remove buttons by 20% */
+.control-btn, .remove-btn{
+    font-size: 0.8em !important;
+    padding: 6px 10px !important;
+    border-radius: 8px !important;
+}
+/* keep alignment tight */
+.control-btn{ margin-right: 4px; }
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -2469,7 +2481,7 @@ th.phone-col-hidden,
                 <input type="number" id="newRating" placeholder="Rating (1-10)" min="1" max="10">
                 <select id="newPayment">
                     <option value="Cash">Cash</option>
-                    <option value="E-Transfer">E-Transfer</option>
+                    <option value="ET">ET</option>
                     <option value="PIA">PIA (Pay In Advance)</option>
                 </select>
             </div>
