@@ -2219,71 +2219,6 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
-
-<style id="admin-maintenance-pill-align-v19">
-#adminPanel > .maintenance-control{
-    background:transparent !important;
-    border:none !important;
-    padding:0 !important;
-    margin:-6px 0 12px 0 !important;
-    display:flex !important;
-    justify-content:flex-start !important;
-}
-#adminPanel > .maintenance-control .maintenance-toggle{
-    position:relative !important;
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:auto !important;
-    min-width:0 !important;
-    padding:10px 18px !important;
-    border-radius:999px !important;
-    gap:0 !important;
-    background:linear-gradient(135deg,#2e7d32,#388e3c) !important;
-    box-shadow:0 3px 10px rgba(0,0,0,.22) !important;
-}
-#adminPanel > .maintenance-control .maintenance-toggle.maintenance-pill-on{
-    background:linear-gradient(135deg,#c62828,#e53935) !important;
-}
-#adminPanel > .maintenance-control .maintenance-checkbox{
-    position:absolute !important;
-    inset:0 !important;
-    width:100% !important;
-    height:100% !important;
-    opacity:0 !important;
-    margin:0 !important;
-    cursor:pointer !important;
-    z-index:2 !important;
-}
-#adminPanel > .maintenance-control .maintenance-label{
-    margin:0 !important;
-    font-size:1rem !important;
-    line-height:1 !important;
-    color:#fff !important;
-    font-weight:800 !important;
-    cursor:pointer !important;
-    letter-spacing:.01em !important;
-    white-space:nowrap !important;
-}
-#adminPanel > .maintenance-control .maintenance-label.active{
-    color:#fff !important;
-}
-#adminPanel > .maintenance-control .maintenance-status{
-    display:none !important;
-}
-@media (max-width:700px){
-    #adminPanel > .maintenance-control{
-        margin:-4px 0 10px 0 !important;
-    }
-    #adminPanel > .maintenance-control .maintenance-toggle{
-        padding:9px 15px !important;
-    }
-    #adminPanel > .maintenance-control .maintenance-label{
-        font-size:0.9rem !important;
-    }
-}
-</style>
-
 </head>
 <body class="admin-layout-option-1">
 
@@ -2328,9 +2263,10 @@ th, td{padding:2px 3px !important;}
 
         <!-- MAINTENANCE MODE CONTROL -->
         <div class="maintenance-control">
-            <div class="maintenance-toggle maintenance-pill-off" id="maintenanceTogglePill">
+            <div class="maintenance-toggle">
                 <input type="checkbox" id="maintenanceCheckbox" class="maintenance-checkbox" onchange="toggleMaintenance()">
                 <label for="maintenanceCheckbox" class="maintenance-label" id="maintenanceLabel">Maintenance Mode Off</label>
+                <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
             </div>
 </div>
 
@@ -3698,29 +3634,25 @@ th, td{padding:2px 3px !important;}
                 
                 // Update maintenance mode UI
                 const maintenanceCheckbox = document.getElementById('maintenanceCheckbox');
+                const maintenanceStatus = document.getElementById('maintenanceStatus');
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 const maintenanceLabel = document.getElementById('maintenanceLabel');
-                const maintenanceTogglePill = document.getElementById('maintenanceTogglePill');
                 
                 maintenanceCheckbox.checked = data.maintenanceMode;
                 if (data.maintenanceMode) {
+                    maintenanceStatus.innerText = 'MAINTENANCE MODE ACTIVE';
+                    maintenanceStatus.className = 'maintenance-status active';
                     if (maintenanceLabel) {
                         maintenanceLabel.innerText = 'Maintenance Mode ON';
                         maintenanceLabel.classList.add('active');
                     }
-                    if (maintenanceTogglePill) {
-                        maintenanceTogglePill.classList.add('maintenance-pill-on');
-                        maintenanceTogglePill.classList.remove('maintenance-pill-off');
-                    }
                     maintenanceBulletin.classList.add('active');
                 } else {
+                    maintenanceStatus.innerText = 'PORTAL ACTIVE';
+                    maintenanceStatus.className = 'maintenance-status inactive';
                     if (maintenanceLabel) {
                         maintenanceLabel.innerText = 'Maintenance Mode Off';
                         maintenanceLabel.classList.remove('active');
-                    }
-                    if (maintenanceTogglePill) {
-                        maintenanceTogglePill.classList.add('maintenance-pill-off');
-                        maintenanceTogglePill.classList.remove('maintenance-pill-on');
                     }
                     maintenanceBulletin.classList.remove('active');
                 }
