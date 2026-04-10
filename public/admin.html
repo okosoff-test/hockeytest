@@ -739,81 +739,54 @@
 
         /* Maintenance Control */
         .maintenance-control {
-            background: linear-gradient(135deg, #3a1a1a, #4d2d2d);
-            border: 2px solid #ff4444;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
+            margin-bottom: 18px;
         }
-
-        .maintenance-control h3 {
-            margin: 0 0 15px 0;
-            color: #ff4444;
-            font-size: 1.1rem;
-        }
-
 
         .maintenance-toggle {
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            padding: 15px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
+            position: relative;
+            display: block;
         }
 
         .maintenance-checkbox {
-            width: 30px !important;
-            height: 30px !important;
-            cursor: pointer;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background: #333;
-            border: 3px solid #ff4444;
-            border-radius: 5px;
-            position: relative;
-        }
-
-        .maintenance-checkbox:checked {
-            background: #ff4444;
-        }
-
-        .maintenance-checkbox:checked::after {
-            content: '✓';
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
             position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
+            opacity: 0;
+            pointer-events: none;
         }
 
         .maintenance-label {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #ff4444;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            min-width: 260px;
+            padding: 14px 22px;
+            border-radius: 999px;
+            font-size: 1.15rem;
+            font-weight: 800;
+            color: #ffffff;
             cursor: pointer;
+            user-select: none;
+            background: linear-gradient(135deg, #2e7d32, #3fae46);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.25);
+            transition: background 0.2s ease, transform 0.15s ease, box-shadow 0.2s ease;
         }
 
-        .maintenance-status {
-            margin-left: auto;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
+        .maintenance-label:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 10px 24px rgba(0,0,0,0.3);
         }
 
-        .maintenance-status.active {
-            background: #ff4444;
-            color: white;
+        .maintenance-label:active {
+            transform: translateY(0);
+        }
+
+        .maintenance-label.active {
+            background: linear-gradient(135deg, #c62828, #ef5350);
             animation: pulse 1s infinite;
         }
 
-        .maintenance-status.inactive {
-            background: #4CAF50;
-            color: white;
+        .maintenance-status {
+            display: none !important;
         }
 
         @keyframes pulse {
@@ -2290,10 +2263,9 @@ th, td{padding:2px 3px !important;}
 
         <!-- MAINTENANCE MODE CONTROL -->
         <div class="maintenance-control">
-            <h3>🔧 Maintenance</h3>
             <div class="maintenance-toggle">
                 <input type="checkbox" id="maintenanceCheckbox" class="maintenance-checkbox" onchange="toggleMaintenance()">
-                <label for="maintenanceCheckbox" class="maintenance-label">Enable Maintenance Mode</label>
+                <label for="maintenanceCheckbox" class="maintenance-label" id="maintenanceLabel">Maintenance Mode Off</label>
                 <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
             </div>
 </div>
@@ -3664,15 +3636,24 @@ th, td{padding:2px 3px !important;}
                 const maintenanceCheckbox = document.getElementById('maintenanceCheckbox');
                 const maintenanceStatus = document.getElementById('maintenanceStatus');
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
+                const maintenanceLabel = document.getElementById('maintenanceLabel');
                 
                 maintenanceCheckbox.checked = data.maintenanceMode;
                 if (data.maintenanceMode) {
                     maintenanceStatus.innerText = 'MAINTENANCE MODE ACTIVE';
                     maintenanceStatus.className = 'maintenance-status active';
+                    if (maintenanceLabel) {
+                        maintenanceLabel.innerText = 'Maintenance Mode ON';
+                        maintenanceLabel.classList.add('active');
+                    }
                     maintenanceBulletin.classList.add('active');
                 } else {
                     maintenanceStatus.innerText = 'PORTAL ACTIVE';
                     maintenanceStatus.className = 'maintenance-status inactive';
+                    if (maintenanceLabel) {
+                        maintenanceLabel.innerText = 'Maintenance Mode Off';
+                        maintenanceLabel.classList.remove('active');
+                    }
                     maintenanceBulletin.classList.remove('active');
                 }
                 
@@ -3796,7 +3777,7 @@ th, td{padding:2px 3px !important;}
                 const result = await res.json().catch(() => ({}));
                 if (res.ok) {
                     await loadAppSettings();
-                    alert(newState ? '🔧 Maintenance Mode ACTIVATED - Portal is now down' : '✅ Portal is now ACTIVE');
+                    alert(newState ? '🔧 Maintenance Mode ON' : '✅ Maintenance Mode Off');
                 } else {
                     checkbox.checked = !newState;
                     alert(result.error || 'Failed to update maintenance mode');
