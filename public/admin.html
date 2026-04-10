@@ -2294,6 +2294,88 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-maintenance-compress-v19">
+/* Reduce Admin Dashboard title */
+h1, .admin-title{
+    font-size: 0.5em !important; /* ~50% smaller */
+    margin-bottom: 8px !important;
+}
+
+/* Compress maintenance box */
+.history-delete-box,
+.control-box,
+.add-player-form{
+    padding:8px !important;
+    margin-bottom:10px !important;
+    border-radius:10px !important;
+}
+
+.history-delete-box h3,
+.control-box h3,
+.add-player-form h3{
+    font-size:0.9rem !important;
+    margin-bottom:6px !important;
+}
+
+.history-delete-box .control-row,
+.control-box .control-row,
+.add-player-form .form-row{
+    gap:6px !important;
+}
+
+.history-delete-box select,
+.control-box select,
+.add-player-form input,
+.add-player-form select{
+    min-height:28px !important;
+    font-size:0.72rem !important;
+    padding:4px 6px !important;
+}
+
+.history-delete-box .control-btn,
+.control-box .control-btn,
+.add-player-form .control-btn{
+    padding:6px 8px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+}
+
+@media (max-width:600px){
+    h1, .admin-title{
+        font-size:0.45em !important;
+    }
+
+    .history-delete-box,
+    .control-box,
+    .add-player-form{
+        padding:6px !important;
+        margin-bottom:8px !important;
+    }
+
+    .history-delete-box h3,
+    .control-box h3,
+    .add-player-form h3{
+        font-size:0.82rem !important;
+    }
+
+    .history-delete-box select,
+    .control-box select,
+    .add-player-form input,
+    .add-player-form select{
+        font-size:0.68rem !important;
+        min-height:26px !important;
+    }
+
+    .history-delete-box .control-btn,
+    .control-box .control-btn,
+    .add-player-form .control-btn{
+        font-size:0.62rem !important;
+        padding:5px 7px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
