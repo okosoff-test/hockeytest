@@ -2026,23 +2026,110 @@ th.phone-col-hidden,
 </style>
 
 
-<style id="admin-row-spacing-v6">
-/* tighten row spacing */
+
+<style id="admin-android-tight-v7">
+/* Android width optimization: tighter rows, flexible columns, less wasted space */
+table{
+    width:100% !important;
+    table-layout:auto !important;
+}
+th, td{
+    padding:2px 3px !important;
+}
 #playerList tr td{
-    padding-top: 6px !important;
-    padding-bottom: 6px !important;
+    padding-top:3px !important;
+    padding-bottom:3px !important;
+    vertical-align:middle !important;
 }
-
-/* slightly larger player name */
-.player-name-main{
-    font-size: 1.1em !important;
-    font-weight: 600;
+#playerList .player-name-cell{
+    min-width:0 !important;
+    width:1% !important;
+    gap:2px !important;
+    line-height:1.05 !important;
 }
-
-/* keep phone subtle */
-.player-phone-sub{
-    font-size: 0.85em !important;
-    opacity: 0.75;
+#playerList .player-name-main{
+    font-size:0.95rem !important;
+    font-weight:600 !important;
+    line-height:1.05 !important;
+    white-space:normal !important;
+}
+#playerList .player-phone-sub{
+    font-size:0.74rem !important;
+    opacity:0.78 !important;
+    line-height:1.0 !important;
+}
+#playerList .rating-wrap,
+#playerList .paid-wrap{
+    gap:0 !important;
+}
+.rating-pill-input{
+    width:36px !important;
+    height:22px !important;
+    font-size:0.82rem !important;
+    line-height:22px !important;
+    padding:0 4px !important;
+    border-radius:7px !important;
+}
+.compact-pay{
+    width:50px !important;
+    min-height:20px !important;
+    border-radius:6px !important;
+    grid-template-columns:1fr 14px !important;
+}
+.compact-pay-main{
+    min-height:20px !important;
+    padding:0 3px !important;
+    font-size:0.72rem !important;
+}
+.compact-pay-plus,
+.compact-pay-minus{
+    width:14px !important;
+    min-width:14px !important;
+    font-size:0.88rem !important;
+    padding:0 !important;
+}
+.control-btn,
+.remove-btn{
+    padding:4px 6px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+}
+#playerList .phone-col-hidden{
+    display:none !important;
+}
+@media (max-width: 600px){
+    .container{
+        padding:12px !important;
+    }
+    th, td{
+        padding:2px 2px !important;
+    }
+    #playerList .player-name-main{
+        font-size:0.9rem !important;
+    }
+    #playerList .player-phone-sub{
+        font-size:0.7rem !important;
+    }
+    .rating-pill-input{
+        width:34px !important;
+    }
+    .compact-pay{
+        width:47px !important;
+        grid-template-columns:1fr 13px !important;
+    }
+    .compact-pay-plus,
+    .compact-pay-minus{
+        width:13px !important;
+        min-width:13px !important;
+        font-size:0.82rem !important;
+    }
+    .control-btn,
+    .remove-btn{
+        font-size:0.62rem !important;
+        padding:3px 5px !important;
+    }
 }
 </style>
 
