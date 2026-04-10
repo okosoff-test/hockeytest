@@ -2297,7 +2297,7 @@ th, td{padding:2px 3px !important;}
 
 <style id="admin-maintenance-compress-v19">
 /* Reduce Admin Dashboard title */
-h1, .admin-title{font-size:0.625em !important; margin-bottom:6px !important;}
+h1, .admin-title{font-size:0.94em !important; margin-bottom:6px !important;}
 
 /* Compress maintenance box */
 .history-delete-box,
@@ -2451,6 +2451,28 @@ h1, .admin-title{font-size:0.625em !important; margin-bottom:6px !important;}
     .payment-summary-box .payment-stat-label{
         font-size:0.56rem !important;
     }
+}
+</style>
+
+
+<style id="admin-cancel-mobile-v22">
+.cancellations-section .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+}
+.cancellations-section .player-name-main{
+    font-weight:600 !important;
+    color:#fff !important;
+}
+.cancellations-section .player-phone-sub{
+    font-size:0.72rem !important;
+    color:#b9b9b9 !important;
+}
+.cancellations-section .phone-col-hidden{
+    display:none !important;
 }
 </style>
 
@@ -3023,7 +3045,7 @@ h1, .admin-title{font-size:0.625em !important; margin-bottom:6px !important;}
                     <tr>
                         <th>#</th>
                         <th>Name</th>
-                        <th>Phone</th>
+                        <th class="phone-col-hidden">Phone</th>
                         <th>Rating</th>
                         <th>Action</th>
                     </tr>
