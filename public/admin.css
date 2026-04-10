@@ -1,66 +1,59 @@
-body{
-  margin:0;
-  background:#111;
-  color:#fff;
-  font-family:Arial;
+body{margin:0;background:#111;color:#fff;font-family:Arial}
+
+/* TABLE */
+.admin-table{width:100%}
+
+/* ROWS */
+.admin-row{
+  display:flex;
+  align-items:center;
+  border-bottom:1px solid #333;
+  padding:6px 10px;
 }
 
 /* HEADER */
-.admin-header{
-  display:flex;
-  flex-direction:column;
-  gap:4px;
-  padding:8px 10px;
-}
-
-/* TITLE */
-.admin-title{
-  font-size:1.84rem;
-  margin:0;
+.admin-row.header{
+  font-weight:bold;
   color:orange;
 }
 
-/* RED PILL MAINTENANCE */
-.maintenance-pill{
+/* FREE */
+.status-free{
+  color:#4caf50;
+  font-weight:bold;
+  font-size:13px;
+}
+
+/* PILL (smaller) */
+.pill-paid{
   display:inline-flex;
   align-items:center;
-  justify-content:space-between;
-  gap:8px;
-
-  background:#e53935;
-  padding:4px 8px;
-  border-radius:14px;
-
-  font-size:11px;
-  width:fit-content;
-}
-
-.pill-toggle{
-  background:#2e7d32;
-  border:none;
-  color:#fff;
-  padding:2px 6px;
+  padding:3px 7px;
   font-size:10px;
-  border-radius:10px;
-}
-
-/* ACTION BUTTONS */
-.admin-actions{
-  display:flex;
-  flex-wrap:wrap;
-  gap:6px;
-}
-
-button{
-  border:none;
-  padding:6px 10px;
-  border-radius:6px;
+  border-radius:12px;
+  background:#e53935;
   color:#fff;
-  font-size:12px;
+  min-height:20px;
 }
 
-.btn-green{background:#2e7d32;}
-.btn-blue{background:#3f51b5;}
-.btn-purple{background:#8e24aa;}
-.btn-brown{background:#6d4c41;}
-.btn-gray{background:#555;}
+/* AMOUNT (bigger) */
+.pill-paid .amount{
+  font-size:13px;
+  font-weight:bold;
+  margin-right:6px;
+}
+
+/* BUTTONS */
+.controls{display:flex;flex-direction:column}
+
+.btn{
+  width:15px;
+  height:15px;
+  font-size:9px;
+  border:none;
+  background:transparent;
+  color:#fff;
+  cursor:pointer;
+}
+
+.btn + .btn{margin-top:1px}

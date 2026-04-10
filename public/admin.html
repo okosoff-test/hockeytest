@@ -739,79 +739,71 @@
 
         /* Maintenance Control */
         .maintenance-control {
-            background: linear-gradient(135deg, #3a1a1a, #4d2d2d);
-            border: 2px solid #ff4444;
-            border-radius: 10px;
-            padding: 20px;
-            margin-bottom: 25px;
-        }
-
-        .maintenance-control h3 {
-            margin: 0 0 15px 0;
-            color: #ff4444;
-            font-size: 1.1rem;
-        }
-
-
-        .maintenance-toggle {
             display: flex;
             align-items: center;
-            gap: 15px;
-            padding: 15px;
-            background: rgba(0,0,0,0.2);
-            border-radius: 8px;
+            justify-content: space-between;
+            gap: 12px;
+            padding: 10px 0 12px;
+            margin: -6px 0 14px;
+            border: none;
+            border-bottom: 1px solid rgba(255,255,255,0.08);
+            background: transparent;
         }
 
-        .maintenance-checkbox {
-            width: 30px !important;
-            height: 30px !important;
+        .maintenance-inline {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            width: 100%;
+            flex-wrap: wrap;
+        }
+
+        .maintenance-copy {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .maintenance-title {
+            color: #ff5a5a;
+            font-size: 1rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+
+        .maintenance-subtitle {
+            color: #aaa;
+            font-size: 0.82rem;
+            line-height: 1.1;
+        }
+
+        .maintenance-toggle-btn {
+            border: none;
+            border-radius: 999px;
+            padding: 10px 16px !important;
+            min-width: 150px;
+            font-size: 0.85rem !important;
+            font-weight: 800;
+            letter-spacing: .02em;
+            white-space: nowrap;
+            margin: 0 !important;
             cursor: pointer;
-            -webkit-appearance: none;
-            -moz-appearance: none;
-            appearance: none;
-            background: #333;
-            border: 3px solid #ff4444;
-            border-radius: 5px;
-            position: relative;
+            transition: transform 0.12s ease, opacity 0.12s ease;
         }
 
-        .maintenance-checkbox:checked {
-            background: #ff4444;
+        .maintenance-toggle-btn:hover {
+            transform: translateY(-1px);
         }
 
-        .maintenance-checkbox:checked::after {
-            content: '✓';
-            color: white;
-            font-size: 20px;
-            font-weight: bold;
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-        }
-
-        .maintenance-label {
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #ff4444;
-            cursor: pointer;
-        }
-
-        .maintenance-status {
-            margin-left: auto;
-            padding: 8px 15px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 0.9rem;
-        }
-
-        .maintenance-status.active {
+        .maintenance-toggle-btn.active {
             background: #ff4444;
             color: white;
             animation: pulse 1s infinite;
         }
 
-        .maintenance-status.inactive {
+        .maintenance-toggle-btn.inactive {
             background: #4CAF50;
             color: white;
         }
@@ -2185,63 +2177,22 @@ th, td{padding:2px 3px !important;}
 
 <style id="admin-maintenance-under-title-v18">
 #adminPanel > .maintenance-control{
-    margin-top:-8px !important;
+    margin-top:-6px !important;
     margin-bottom:12px !important;
-    padding:10px 12px !important;
-    border-radius:10px !important;
-}
-#adminPanel > .maintenance-control h3{
-    margin:0 0 8px 0 !important;
-    font-size:0.98rem !important;
-    line-height:1.1 !important;
-}
-#adminPanel > .maintenance-control .maintenance-toggle{
-    padding:8px 10px !important;
-    gap:10px !important;
-    border-radius:9px !important;
-}
-#adminPanel > .maintenance-control .maintenance-checkbox{
-    width:24px !important;
-    height:24px !important;
-    border-width:2px !important;
-}
-#adminPanel > .maintenance-control .maintenance-checkbox:checked::after{
-    font-size:16px !important;
-}
-#adminPanel > .maintenance-control .maintenance-label{
-    font-size:1rem !important;
-    line-height:1.1 !important;
-}
-#adminPanel > .maintenance-control .maintenance-status{
-    padding:6px 12px !important;
-    font-size:0.8rem !important;
-    min-width:auto !important;
-    white-space:nowrap !important;
+    padding:0 0 12px 0 !important;
+    border-radius:0 !important;
 }
 @media (max-width:700px){
     #adminPanel > .maintenance-control{
-        margin-top:-10px !important;
+        margin-top:-8px !important;
         margin-bottom:10px !important;
-        padding:8px 10px !important;
     }
-    #adminPanel > .maintenance-control h3{
-        font-size:0.92rem !important;
-        margin-bottom:6px !important;
+    .maintenance-inline{
+        align-items:flex-start !important;
     }
-    #adminPanel > .maintenance-control .maintenance-toggle{
-        padding:7px 8px !important;
-        gap:8px !important;
-    }
-    #adminPanel > .maintenance-control .maintenance-checkbox{
-        width:22px !important;
-        height:22px !important;
-    }
-    #adminPanel > .maintenance-control .maintenance-label{
-        font-size:0.92rem !important;
-    }
-    #adminPanel > .maintenance-control .maintenance-status{
-        padding:5px 10px !important;
-        font-size:0.72rem !important;
+    .maintenance-toggle-btn{
+        width:100%;
+        min-width:0;
     }
 }
 </style>
@@ -2290,13 +2241,14 @@ th, td{padding:2px 3px !important;}
 
         <!-- MAINTENANCE MODE CONTROL -->
         <div class="maintenance-control">
-            <h3>🔧 Maintenance</h3>
-            <div class="maintenance-toggle">
-                <input type="checkbox" id="maintenanceCheckbox" class="maintenance-checkbox" onchange="toggleMaintenance()">
-                <label for="maintenanceCheckbox" class="maintenance-label">Enable Maintenance Mode</label>
-                <div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
+            <div class="maintenance-inline">
+                <div class="maintenance-copy">
+                    <div class="maintenance-title">Maintenance Mode</div>
+                    <div class="maintenance-subtitle">1 tap to enable or disable portal maintenance</div>
+                </div>
+                <button type="button" id="maintenanceToggleBtn" class="maintenance-toggle-btn inactive" onclick="toggleMaintenance()">PORTAL ACTIVE</button>
             </div>
-</div>
+        </div>
 
         <div class="snapshot-pro-section">
             <h3>🧠 Quick Restore</h3>
@@ -3661,18 +3613,20 @@ th, td{padding:2px 3px !important;}
                 const data = await res.json();
                 
                 // Update maintenance mode UI
-                const maintenanceCheckbox = document.getElementById('maintenanceCheckbox');
-                const maintenanceStatus = document.getElementById('maintenanceStatus');
+                const maintenanceToggleBtn = document.getElementById('maintenanceToggleBtn');
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
                 
-                maintenanceCheckbox.checked = data.maintenanceMode;
+                if (maintenanceToggleBtn) {
+                    maintenanceToggleBtn.innerText = data.maintenanceMode ? 'MAINTENANCE ON' : 'PORTAL ACTIVE';
+                    maintenanceToggleBtn.className = 'maintenance-toggle-btn ' + (data.maintenanceMode ? 'active' : 'inactive');
+                    maintenanceToggleBtn.setAttribute('aria-pressed', data.maintenanceMode ? 'true' : 'false');
+                    maintenanceToggleBtn.title = data.maintenanceMode
+                        ? 'Tap to disable maintenance mode'
+                        : 'Tap to enable maintenance mode';
+                }
                 if (data.maintenanceMode) {
-                    maintenanceStatus.innerText = 'MAINTENANCE MODE ACTIVE';
-                    maintenanceStatus.className = 'maintenance-status active';
                     maintenanceBulletin.classList.add('active');
                 } else {
-                    maintenanceStatus.innerText = 'PORTAL ACTIVE';
-                    maintenanceStatus.className = 'maintenance-status inactive';
                     maintenanceBulletin.classList.remove('active');
                 }
                 
@@ -3779,11 +3733,17 @@ th, td{padding:2px 3px !important;}
 
         // Toggle maintenance mode
         async function toggleMaintenance() {
-            const checkbox = document.getElementById('maintenanceCheckbox');
-            const newState = checkbox.checked;
+            const button = document.getElementById('maintenanceToggleBtn');
+            if (!button) return;
+
+            const currentlyActive = button.classList.contains('active');
+            const newState = !currentlyActive;
 
             try {
-                checkbox.disabled = true;
+                button.disabled = true;
+                button.style.opacity = '0.7';
+                button.innerText = newState ? 'ENABLING...' : 'DISABLING...';
+
                 const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
@@ -3798,14 +3758,15 @@ th, td{padding:2px 3px !important;}
                     await loadAppSettings();
                     alert(newState ? '🔧 Maintenance Mode ACTIVATED - Portal is now down' : '✅ Portal is now ACTIVE');
                 } else {
-                    checkbox.checked = !newState;
+                    await loadAppSettings();
                     alert(result.error || 'Failed to update maintenance mode');
                 }
             } catch (err) {
                 console.error("Error toggling maintenance:", err);
-                checkbox.checked = !newState;
+                await loadAppSettings();
             } finally {
-                checkbox.disabled = false;
+                button.disabled = false;
+                button.style.opacity = '1';
             }
         }
 
