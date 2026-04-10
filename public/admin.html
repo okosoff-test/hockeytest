@@ -2147,6 +2147,15 @@ th, td{
 }
 </style>
 
+
+<style id="admin-timestamp-v9">
+.player-timestamp{
+    font-size:0.65rem;
+    color:#888;
+    line-height:1.0;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -4703,7 +4712,22 @@ Date: ${selectedGameDate}`);
                 if (data.players.length === 0) {
                     tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
-                    data.players.forEach(p => {
+                    data.
+// SORT: Phan first, then goalies, then others
+players.sort((a, b) => {
+    const aName = (a.firstName + ' ' + a.lastName).toLowerCase();
+    const bName = (b.firstName + ' ' + b.lastName).toLowerCase();
+
+    if (aName.includes('phan')) return -1;
+    if (bName.includes('phan')) return 1;
+
+    if (a.isGoalie && !b.isGoalie) return -1;
+    if (!a.isGoalie && b.isGoalie) return 1;
+
+    return 0;
+});
+
+players.forEach(p => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
@@ -4739,6 +4763,8 @@ Date: ${selectedGameDate}`);
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
+<span class="player-timestamp">${p.timestamp ? new Date(p.timestamp).toLocaleString() : ''}</span>
+
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
                             <td>
