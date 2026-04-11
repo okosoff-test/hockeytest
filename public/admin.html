@@ -744,7 +744,10 @@
 
         .maintenance-toggle {
             position: relative;
-            display: block;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            width: 100%;
         }
 
         .maintenance-checkbox {
@@ -754,11 +757,13 @@
         }
 
         .maintenance-label {
-            display: flex;
+            display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: fit-content;
+            width: auto;
             min-width: 260px;
+            max-width: 100%;
+            margin: 0 auto;
             padding: 14px 22px;
             border-radius: 999px;
             font-size: 1.15rem;
@@ -2169,6 +2174,10 @@ th, td{padding:2px 3px !important;}
     line-height:1.1 !important;
 }
 #adminPanel > .maintenance-control .maintenance-toggle{
+    display:flex !important;
+    justify-content:center !important;
+    align-items:center !important;
+    width:100% !important;
     padding:8px 10px !important;
     gap:10px !important;
     border-radius:9px !important;
@@ -2182,6 +2191,10 @@ th, td{padding:2px 3px !important;}
     font-size:16px !important;
 }
 #adminPanel > .maintenance-control .maintenance-label{
+    display:inline-flex !important;
+    width:auto !important;
+    max-width:100% !important;
+    margin:0 auto !important;
     font-size:1rem !important;
     line-height:1.1 !important;
 }
@@ -2202,6 +2215,10 @@ th, td{padding:2px 3px !important;}
         margin-bottom:6px !important;
     }
     #adminPanel > .maintenance-control .maintenance-toggle{
+        display:flex !important;
+        justify-content:center !important;
+        align-items:center !important;
+        width:100% !important;
         padding:7px 8px !important;
         gap:8px !important;
     }
@@ -2210,11 +2227,46 @@ th, td{padding:2px 3px !important;}
         height:22px !important;
     }
     #adminPanel > .maintenance-control .maintenance-label{
+        display:inline-flex !important;
+        width:auto !important;
+        max-width:100% !important;
+        margin:0 auto !important;
         font-size:0.92rem !important;
     }
     #adminPanel > .maintenance-control .maintenance-status{
         padding:5px 10px !important;
         font-size:0.72rem !important;
+    }
+}
+</style>
+
+
+
+<style id="maintenance-pill-left-fix-vfinal">
+#adminPanel > .maintenance-control{
+    width: 100% !important;
+}
+#adminPanel > .maintenance-control .maintenance-toggle{
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 100% !important;
+}
+#adminPanel > .maintenance-control .maintenance-label{
+    display: inline-flex !important;
+    width: auto !important;
+    min-width: 260px !important;
+    max-width: 100% !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+@media (max-width:700px){
+    #adminPanel > .maintenance-control .maintenance-toggle{
+        justify-content: flex-start !important;
+    }
+    #adminPanel > .maintenance-control .maintenance-label{
+        margin-left: 0 !important;
+        margin-right: 0 !important;
     }
 }
 </style>
@@ -4160,6 +4212,28 @@ Date: ${selectedGameDate}`);
             return entries;
         }
 
+        function countRegularEntries(map) {
+            return getRegularEntriesFlatFromMap(map).length;
+        }
+
+        function getRegularEntriesFlatFromMap(inputMap) {
+            const map = normalizeRegularDayBucketMap(inputMap);
+            const order = ['everyday','friday','sunday','wednesday','saturday','monday','tuesday','thursday'];
+            const entries = [];
+            const seen = new Set();
+
+            order.forEach(day => {
+                (map[day] || []).forEach(player => {
+                    const key = normalizePhoneDigitsClient(player.phone) || `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}|${day}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    entries.push({ ...player, bucket: day });
+                });
+            });
+
+            return entries;
+        }
+
         function getPlayerRegularInfo(player) {
             const playerPhone = normalizePhoneDigitsClient(player && player.phone);
             const first = String(player && player.firstName || '').trim().toLowerCase();
@@ -4670,54 +4744,24 @@ Date: ${selectedGameDate}`);
 
         async function togglePlayerRegular(playerId) {
             try {
-                const player = adminPlayersById[String(playerId)];
-                if (!player) return;
+                const res = await fetch(`${API_URL}/api/admin/toggle-player-regular`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, playerId })
+                });
 
-                const phoneDigits = normalizePhoneDigitsClient(player.phone);
-                const first = String(player.firstName || '').trim().toLowerCase();
-                const last = String(player.lastName || '').trim().toLowerCase();
-
-                const map = normalizeRegularDayBucketMap(currentRegularSkatersByDay);
-                const buckets = ['everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-
-                let wasRegular = false;
-
-                for (const bucket of buckets) {
-                    const list = Array.isArray(map[bucket]) ? map[bucket] : [];
-                    map[bucket] = list.filter(existing => {
-                        const existingPhone = normalizePhoneDigitsClient(existing.phone);
-                        const samePhone = phoneDigits && existingPhone && existingPhone === phoneDigits;
-                        const sameName =
-                            String(existing.firstName || '').trim().toLowerCase() === first &&
-                            String(existing.lastName || '').trim().toLowerCase() === last;
-
-                        if (samePhone || sameName) {
-                            wasRegular = true;
-                            return false;
-                        }
-                        return true;
-                    });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) {
+                    throw new Error(data.error || 'Failed to update regular player');
                 }
 
-                if (!wasRegular) {
-                    map.everyday.push({
-                        firstName: player.firstName,
-                        lastName: player.lastName,
-                        phone: player.phone,
-                        rating: player.finalRating ?? player.rating ?? 5,
-                        paymentMethod: player.paymentMethod || 'Cash',
-                        isFree: !!player.isFree,
-                        protected: !!player.protected
-                    });
-                }
-
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(map);
+                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
                 saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
                 await loadData();
-                await saveRegularSkatersSettings();
             } catch (err) {
                 console.error('Toggle regular error:', err);
+                alert(`❌ ${err.message || 'Failed to update regular player.'}`);
             }
         }
 
@@ -4741,12 +4785,25 @@ Date: ${selectedGameDate}`);
                 const data = await res.json();
 
                 adminPlayersById = Object.fromEntries((data.players || []).map(p => [String(p.id), p]));
-                currentRegularSkatersByDay = mergeRegularMaps(
-                    data.regularSkatersByDay || {},
-                    loadLocalRegularSkaters()
-                );
-                saveLocalRegularSkaters(currentRegularSkatersByDay);
-                renderRegularSkatersList();
+                const serverRegularMap = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                const localRegularMap = normalizeRegularDayBucketMap(loadLocalRegularSkaters());
+                const serverRegularCount = getRegularEntriesFlatFromMap(serverRegularMap).length;
+                const localRegularCount = getRegularEntriesFlatFromMap(localRegularMap).length;
+
+                if (serverRegularCount === 0 && localRegularCount > 0) {
+                    currentRegularSkatersByDay = localRegularMap;
+                    saveLocalRegularSkaters(currentRegularSkatersByDay);
+                    renderRegularSkatersList();
+                    try {
+                        await saveRegularSkatersSettings();
+                    } catch (syncErr) {
+                        console.error('Regular skater sync error:', syncErr);
+                    }
+                } else {
+                    currentRegularSkatersByDay = serverRegularMap;
+                    saveLocalRegularSkaters(currentRegularSkatersByDay);
+                    renderRegularSkatersList();
+                }
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
