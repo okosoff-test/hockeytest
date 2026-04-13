@@ -3252,8 +3252,26 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="admin-minus-symbol-fix-v1">
-/* Fix only the missing minus symbol in Paid pill */
+<style id="admin-payment-font-minus-fix-v1">
+/* Make payment method text under Paid match the paid pill text size */
+#playerList td:nth-child(4),
+#playerList .payment-method,
+#playerList .payment-method-text {
+    font-size: 0.76rem !important;
+    font-weight: 500 !important;
+    line-height: 1 !important;
+    color: #ffffff !important;
+}
+
+@media (min-width: 601px) {
+    #playerList td:nth-child(4),
+    #playerList .payment-method,
+    #playerList .payment-method-text {
+        font-size: 0.78rem !important;
+    }
+}
+
+/* Put the minus back in the paid pill without changing anything else */
 #playerList .compact-pay-minus {
     position: relative !important;
     color: transparent !important;
