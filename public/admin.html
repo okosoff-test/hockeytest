@@ -3121,90 +3121,49 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     </script>
 
 
-<style id="admin-pill-alignment-v1">
-/* Align Paid / Regular / Action pills perfectly in Registered Players only */
-#playerList td:nth-child(3),
-#playerList td:nth-child(4),
-#playerList td:nth-child(5) {
+<style id="admin-pill-alignment-v2">
+/* Keep existing red Paid pill untouched. Only align Regular + Action to it. */
+#playerList td:nth-child(6),
+#playerList td:nth-child(7) {
     vertical-align: middle !important;
+    text-align: center !important;
 }
 
-#playerList .paid-wrap,
-#playerList .regular-wrap,
-#playerList .action-wrap {
+#playerList td:nth-child(6) .control-btn,
+#playerList td:nth-child(7) .remove-btn {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-height: 24px !important;
-    width: 100% !important;
-    gap: 6px !important;
-}
-
-#playerList .paid-wrap {
-    gap: 0 !important;
-}
-
-#playerList .compact-pay {
     margin: 0 auto !important;
-}
-
-#playerList .regular-toggle-btn,
-#playerList .promote-btn,
-#playerList .remove-btn,
-#playerList .control-btn {
-    min-height: 24px !important;
-    height: 24px !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    margin: 0 !important;
-    padding: 0 8px !important;
     line-height: 1 !important;
-    border-radius: 7px !important;
     vertical-align: middle !important;
 }
 
-#playerList .regular-toggle-btn {
-    min-width: 58px !important;
-    background: #2e7d32 !important;
-    font-size: 0.72rem !important;
+#playerList td:nth-child(6) .regular-toggle-btn,
+#playerList td:nth-child(7) .remove-btn {
+    height: 16px !important;
+    min-height: 16px !important;
+    padding: 0 6px !important;
+    border-radius: 5px !important;
+    font-size: 0.60rem !important;
     font-weight: 700 !important;
+    white-space: nowrap !important;
 }
 
-#playerList .remove-btn,
-#playerList .control-btn {
-    min-width: 58px !important;
-    font-size: 0.72rem !important;
-    font-weight: 700 !important;
+#playerList td:nth-child(6) .regular-toggle-btn,
+#playerList td:nth-child(7) .remove-btn {
+    min-width: 42px !important;
 }
 
 @media (max-width: 600px) {
-    #playerList .paid-wrap,
-    #playerList .regular-wrap,
-    #playerList .action-wrap {
-        min-height: 22px !important;
-        gap: 4px !important;
-    }
-
-    #playerList .paid-wrap {
-        gap: 0 !important;
-    }
-
-    #playerList .regular-toggle-btn,
-    #playerList .promote-btn,
-    #playerList .remove-btn,
-    #playerList .control-btn {
-        min-height: 22px !important;
-        height: 22px !important;
-        padding: 0 7px !important;
-        border-radius: 6px !important;
-        font-size: 0.66rem !important;
-    }
-
-    #playerList .regular-toggle-btn,
-    #playerList .remove-btn,
-    #playerList .control-btn {
-        min-width: 54px !important;
+    #playerList td:nth-child(6) .regular-toggle-btn,
+    #playerList td:nth-child(7) .remove-btn {
+        height: 15px !important;
+        min-height: 15px !important;
+        padding: 0 5px !important;
+        border-radius: 5px !important;
+        font-size: 0.56rem !important;
+        min-width: 40px !important;
     }
 }
 </style>
