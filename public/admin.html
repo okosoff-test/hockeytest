@@ -3209,20 +3209,18 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="admin-rating-font-match-v1">
-/* Match rating font to paid ($15) */
-#playerList td:nth-child(2),
-#playerList .rating,
-#playerList .player-rating {
+<style id="admin-rating-font-match-v2">
+/* Target the ACTUAL rating box text */
+#playerList .rating-box,
+#playerList .rating-value {
     font-size: 0.76rem !important;
     font-weight: 700 !important;
     line-height: 1 !important;
 }
 
 @media (min-width: 601px){
-    #playerList td:nth-child(2),
-    #playerList .rating,
-    #playerList .player-rating {
+    #playerList .rating-box,
+    #playerList .rating-value {
         font-size: 0.78rem !important;
     }
 }
