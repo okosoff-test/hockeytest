@@ -7282,6 +7282,32 @@ async function compactPayToggle(playerId){
     }
 })();
 </script>
+<style>
+/* ANDROID SCHEDULE TABLE FIX */
+@media (max-width: 600px){
+
+    table input[type="checkbox"]{
+        width:16px !important;
+        height:16px !important;
+        transform: scale(0.85);
+        margin:0 !important;
+    }
+
+    .checkbox-container{
+        gap:6px !important;
+    }
+
+    .checkbox-container label{
+        font-size:0.8rem !important;
+        line-height:1.1 !important;
+    }
+
+    table th,
+    table td{
+        font-size:0.78rem !important;
+    }
+}
+</style>
 
 </body>
 </html>
