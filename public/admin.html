@@ -2799,6 +2799,70 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="android-mobile-collapsible-sections-v3">
+@media (max-width: 700px) {
+    .mobile-collapsible {
+        overflow: hidden;
+    }
+
+    .mobile-collapse-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        margin: 0 !important;
+        padding: 2px 0 !important;
+    }
+
+    .mobile-collapse-header h3,
+    .mobile-collapse-header .section-header,
+    .mobile-collapse-header .mobile-collapse-title {
+        margin: 0 !important;
+    }
+
+    .mobile-collapse-chevron {
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        font-size: 0.82rem;
+        line-height: 1;
+        transition: transform 0.18s ease;
+    }
+
+    .mobile-collapsible.is-collapsed .mobile-collapse-chevron {
+        transform: rotate(-90deg);
+    }
+
+    .mobile-collapse-body {
+        margin-top: 8px;
+    }
+
+    .mobile-collapsible.is-collapsed .mobile-collapse-body {
+        display: none !important;
+    }
+
+    .mobile-collapse-summary {
+        display: none;
+        margin-top: 6px;
+        color: #bfc8d4;
+        font-size: 0.66rem;
+        line-height: 1.25;
+    }
+
+    .mobile-collapsible.is-collapsed .mobile-collapse-summary {
+        display: block;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -6811,6 +6875,152 @@ async function compactPayToggle(playerId){
         wrap.style.opacity = '';
     }
 }
+</script>
+
+
+<script id="android-mobile-collapsible-sections-script-v3">
+(function() {
+    const MOBILE_BREAKPOINT = 700;
+
+    function isMobileViewport() {
+        return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function makeCollapsible(section, opts = {}) {
+        if (!section || section.dataset.mobileCollapseReady === '1') return;
+
+        const titleEl = section.querySelector('h3');
+        if (!titleEl) return;
+
+        const originalTitleHtml = titleEl.innerHTML;
+        const summaryText = opts.summary || '';
+        const collapsedByDefault = !!opts.collapsedByDefault;
+
+        const header = document.createElement('div');
+        header.className = 'mobile-collapse-header';
+        header.setAttribute('role', 'button');
+        header.setAttribute('tabindex', '0');
+        header.setAttribute('aria-expanded', collapsedByDefault ? 'false' : 'true');
+
+        const titleWrap = document.createElement('div');
+        titleWrap.className = 'mobile-collapse-title';
+        titleWrap.innerHTML = originalTitleHtml;
+
+        const chevron = document.createElement('span');
+        chevron.className = 'mobile-collapse-chevron';
+        chevron.innerHTML = '&#9662;';
+
+        header.appendChild(titleWrap);
+        header.appendChild(chevron);
+
+        const body = document.createElement('div');
+        body.className = 'mobile-collapse-body';
+
+        const children = Array.from(section.children);
+        children.forEach((child) => {
+            if (child === titleEl) return;
+            body.appendChild(child);
+        });
+
+        titleEl.remove();
+
+        const summary = document.createElement('div');
+        summary.className = 'mobile-collapse-summary';
+        summary.textContent = summaryText;
+
+        section.insertBefore(header, section.firstChild);
+        section.appendChild(body);
+        section.appendChild(summary);
+
+        section.classList.add('mobile-collapsible');
+        section.dataset.mobileCollapseReady = '1';
+
+        function applyState(collapsed) {
+            if (isMobileViewport() && collapsed) {
+                section.classList.add('is-collapsed');
+                header.setAttribute('aria-expanded', 'false');
+            } else {
+                section.classList.remove('is-collapsed');
+                header.setAttribute('aria-expanded', 'true');
+            }
+        }
+
+        function toggle() {
+            if (!isMobileViewport()) return;
+            const collapsed = !section.classList.contains('is-collapsed');
+            applyState(collapsed);
+        }
+
+        header.addEventListener('click', toggle);
+        header.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                toggle();
+            }
+        });
+
+        applyState(collapsedByDefault);
+        window.addEventListener('resize', () => applyState(section.classList.contains('is-collapsed')));
+    }
+
+    function initMobileCollapsibles() {
+        makeCollapsible(document.querySelector('.payment-summary-box'), {
+            collapsedByDefault: true,
+            summary: 'Payment totals hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.cancellations-section'), {
+            collapsedByDefault: true,
+            summary: 'Cancelled players hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.history-delete-box'), {
+            collapsedByDefault: true,
+            summary: 'History tools hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.snapshot-pro-section'), {
+            collapsedByDefault: true,
+            summary: 'Snapshots hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.waitlist-section'), {
+            collapsedByDefault: false,
+            summary: 'Waitlist hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.roster-status'), {
+            collapsedByDefault: false,
+            summary: 'Roster tools hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.add-player-form'), {
+            collapsedByDefault: true,
+            summary: 'Add player form hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.game-setup-section'), {
+            collapsedByDefault: true,
+            summary: 'Game setup hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.maintenance-control'), {
+            collapsedByDefault: false,
+            summary: 'Maintenance controls hidden. Tap to expand.'
+        });
+
+        makeCollapsible(document.querySelector('.compact-announcement-control, .announcement-control'), {
+            collapsedByDefault: true,
+            summary: 'Announcement tools hidden. Tap to expand.'
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initMobileCollapsibles);
+    } else {
+        initMobileCollapsibles();
+    }
+})();
 </script>
 
 </body>
