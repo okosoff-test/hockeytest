@@ -1656,7 +1656,7 @@ button {
 <style>
 .compact-pay{
     display:inline-grid;
-    grid-template-columns: 1fr 15px;
+    grid-template-columns: 1fr 20px;
     grid-template-areas:
         "main plus"
         "main minus";
@@ -1665,9 +1665,9 @@ button {
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
-    width:59px;
+    width:78px;
     max-width:100%;
-    min-height:21px;
+    min-height:28px;
     vertical-align:middle;
 }
 .compact-pay.is-unpaid{
@@ -1690,21 +1690,21 @@ button {
     grid-area:main;
     padding:0 8px !important;
     min-width:0;
-    min-height:21px;
+    min-height:28px;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.7rem !important;
+    font-size:0.82rem !important;
 }
 .compact-pay-plus,
 .compact-pay-minus{
-    min-width:15px;
-    width:15px;
+    min-width:20px;
+    width:20px;
     padding:0 !important;
     display:flex;
     align-items:center;
     justify-content:center;
-    font-size:0.56rem !important;
+    font-size:0.74rem !important;
     border-left:1px solid rgba(255,255,255,0.22);
 }
 .compact-pay-plus{
@@ -1970,7 +1970,7 @@ button {
 #playerList .player-phone-sub{
     display:block;
     color:#b9b9b9;
-    font-size:0.54rem !important;
+    font-size:0.72rem !important;
     line-height:1 !important;
 }
 #playerList .player-time-sub{
@@ -1986,15 +1986,15 @@ th, td{padding:2px 3px !important;}
 #playerList tr td{padding-top:3px !important; padding-bottom:3px !important; vertical-align:middle !important;}
 #playerList .rating-wrap, #playerList .paid-wrap{gap:0 !important;}
 .rating-pill-input{
-    width:36px !important; height:22px !important; font-size:0.7rem !important;
+    width:36px !important; height:22px !important; font-size:0.82rem !important;
     line-height:22px !important; padding:0 4px !important; border-radius:7px !important;
 }
 .compact-pay{
-    width:42px !important; min-height:17px !important; border-radius:6px !important;
-    grid-template-columns:1fr 12px !important;
+    width:56px !important; min-height:22px !important; border-radius:6px !important;
+    grid-template-columns:1fr 16px !important;
 }
-.compact-pay-main{min-height:17px !important; padding:0 4px !important; font-size:0.76rem !important; font-weight:700 !important;}
-.compact-pay-plus, .compact-pay-minus{width:9px !important; min-width:9px !important; font-size:0.74rem !important; padding:0 !important;}
+.compact-pay-main{min-height:22px !important; padding:0 4px !important; font-size:0.76rem !important; font-weight:700 !important;}
+.compact-pay-plus, .compact-pay-minus{width:16px !important; min-width:16px !important; font-size:0.98rem !important; padding:0 !important;}
 .control-btn, .remove-btn{
     padding:4px 6px !important; font-size:0.66rem !important; border-radius:7px !important;
     margin:0 !important; white-space:nowrap !important;
@@ -2003,11 +2003,11 @@ th, td{padding:2px 3px !important;}
     .container{padding:12px !important;}
     th, td{padding:2px 2px !important;}
     #playerList .player-name-main{font-size:0.88rem !important;}
-    #playerList .player-phone-sub{font-size:0.56rem !important;}
+    #playerList .player-phone-sub{font-size:0.68rem !important;}
     #playerList .player-time-sub{font-size:0.58rem !important;}
     .rating-pill-input{width:34px !important;}
-    .compact-pay{width:41px !important; grid-template-columns:1fr 11px !important;}
-    .compact-pay-plus, .compact-pay-minus{width:11px !important; min-width:11px !important; font-size:0.69rem !important;}
+    .compact-pay{width:54px !important; grid-template-columns:1fr 15px !important;}
+    .compact-pay-plus, .compact-pay-minus{width:15px !important; min-width:15px !important; font-size:0.92rem !important;}
     .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
 }
 </style>
@@ -2140,7 +2140,7 @@ th, td{padding:2px 3px !important;}
     .cancellations-section th,
     .cancellations-section td{
         padding:2px 3px !important;
-        font-size:0.56rem !important;
+        font-size:0.74rem !important;
     }
 
     .waitlist-section .promote-btn,
@@ -2170,7 +2170,7 @@ th, td{padding:2px 3px !important;}
 }
 #adminPanel > .maintenance-control h3{
     margin:0 0 8px 0 !important;
-    font-size:0.74rem !important;
+    font-size:0.98rem !important;
     line-height:1.1 !important;
 }
 #adminPanel > .maintenance-control .maintenance-toggle{
@@ -2211,7 +2211,7 @@ th, td{padding:2px 3px !important;}
         padding:8px 10px !important;
     }
     #adminPanel > .maintenance-control h3{
-        font-size:0.69rem !important;
+        font-size:0.92rem !important;
         margin-bottom:6px !important;
     }
     #adminPanel > .maintenance-control .maintenance-toggle{
@@ -2231,11 +2231,11 @@ th, td{padding:2px 3px !important;}
         width:auto !important;
         max-width:100% !important;
         margin:0 auto !important;
-        font-size:0.69rem !important;
+        font-size:0.92rem !important;
     }
     #adminPanel > .maintenance-control .maintenance-status{
         padding:5px 10px !important;
-        font-size:0.54rem !important;
+        font-size:0.72rem !important;
     }
 }
 </style>
@@ -2454,7 +2454,7 @@ th, td{padding:2px 3px !important;}
     .compact-pay {
         width: 50px !important;
         min-height: 21px !important;
-        grid-template-columns: 1fr 11px !important;
+        grid-template-columns: 1fr 14px !important;
         border-radius: 6px !important;
     }
 
@@ -2726,7 +2726,7 @@ th, td{padding:2px 3px !important;}
     .compact-pay {
         width: 44px !important;
         min-height: 19px !important;
-        grid-template-columns: 1fr 9px !important;
+        grid-template-columns: 1fr 12px !important;
         border-radius: 5px !important;
     }
 
@@ -2863,6 +2863,46 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-final-fixes-v30">
+#playerList .compact-pay {
+    width: 42px !important;
+    min-height: 16px !important;
+    grid-template-columns: 1fr 12px !important;
+    border-radius: 5px !important;
+}
+#playerList .compact-pay-main {
+    min-height: 16px !important;
+    padding: 0 2px !important;
+    font-size: 0.62rem !important;
+    line-height: 1 !important;
+}
+#playerList .compact-pay-plus,
+#playerList .compact-pay-minus {
+    width: 12px !important;
+    min-width: 12px !important;
+    font-size: 0.72rem !important;
+    line-height: 1 !important;
+}
+@media (max-width: 600px) {
+    #playerList .compact-pay {
+        width: 40px !important;
+        min-height: 15px !important;
+        grid-template-columns: 1fr 11px !important;
+    }
+    #playerList .compact-pay-main {
+        min-height: 15px !important;
+        font-size: 0.58rem !important;
+        padding: 0 2px !important;
+    }
+    #playerList .compact-pay-plus,
+    #playerList .compact-pay-minus {
+        width: 11px !important;
+        min-width: 11px !important;
+        font-size: 0.68rem !important;
+    }
+}
+</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -5452,15 +5492,12 @@ Date: ${selectedGameDate}`);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
-                        let paidInput = '';
-                        if (p.isGoalie) {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else {
-                            const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
-                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
+                        const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
+                        const hideAdminPaymentUi = !!p.isGoalie || isPhan;
 
+                        let paidInput = '';
+                        if (!hideAdminPaymentUi) {
+                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
                             const compactAmount = isPaid
                                 ? parseFloat(p.paidAmount)
                                 : 15;
@@ -5474,6 +5511,14 @@ Date: ${selectedGameDate}`);
                                 </div>
                             `;
                         }
+
+                        const paymentText = hideAdminPaymentUi
+                            ? ''
+                            : (p.paymentMethod === 'E-Transfer' ? 'ET' : (p.paymentMethod || ''));
+
+                        const regularCell = hideAdminPaymentUi
+                            ? ''
+                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
                         tr.innerHTML = `
                             <td class="player-name-cell">
@@ -5490,10 +5535,8 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
-                            <td>
-                                <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
-                            </td>
+                            <td>${paymentText}</td>
+                            <td>${regularCell}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
