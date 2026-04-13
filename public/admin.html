@@ -3121,35 +3121,94 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     </script>
 
 
-<style id="android-redpill-hotfix-v2">
-@media (max-width: 700px) {
-  #playerList .compact-pay{
-    width: 36px !important;
-    min-height: 18px !important;
-    height: 18px !important;
-    grid-template-columns: 1fr 10px !important;
-    border-radius: 5px !important;
-  }
-  #playerList .compact-pay-main{
-    min-height: 18px !important;
-    height: 18px !important;
-    padding: 0 1px !important;
-    font-size: 0.56rem !important;
-    line-height: 18px !important;
-    font-weight: 800 !important;
-  }
-  #playerList .compact-pay-plus,
-  #playerList .compact-pay-minus{
-    width: 10px !important;
-    min-width: 10px !important;
-    height: 9px !important;
-    min-height: 9px !important;
-    padding: 0 !important;
-    font-size: 0.56rem !important;
+<style id="admin-pill-alignment-v1">
+/* Align Paid / Regular / Action pills perfectly in Registered Players only */
+#playerList td:nth-child(3),
+#playerList td:nth-child(4),
+#playerList td:nth-child(5) {
+    vertical-align: middle !important;
+}
+
+#playerList .paid-wrap,
+#playerList .regular-wrap,
+#playerList .action-wrap {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    min-height: 24px !important;
+    width: 100% !important;
+    gap: 6px !important;
+}
+
+#playerList .paid-wrap {
+    gap: 0 !important;
+}
+
+#playerList .compact-pay {
+    margin: 0 auto !important;
+}
+
+#playerList .regular-toggle-btn,
+#playerList .promote-btn,
+#playerList .remove-btn,
+#playerList .control-btn {
+    min-height: 24px !important;
+    height: 24px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    margin: 0 !important;
+    padding: 0 8px !important;
     line-height: 1 !important;
-  }
+    border-radius: 7px !important;
+    vertical-align: middle !important;
+}
+
+#playerList .regular-toggle-btn {
+    min-width: 58px !important;
+    background: #2e7d32 !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+}
+
+#playerList .remove-btn,
+#playerList .control-btn {
+    min-width: 58px !important;
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+}
+
+@media (max-width: 600px) {
+    #playerList .paid-wrap,
+    #playerList .regular-wrap,
+    #playerList .action-wrap {
+        min-height: 22px !important;
+        gap: 4px !important;
+    }
+
+    #playerList .paid-wrap {
+        gap: 0 !important;
+    }
+
+    #playerList .regular-toggle-btn,
+    #playerList .promote-btn,
+    #playerList .remove-btn,
+    #playerList .control-btn {
+        min-height: 22px !important;
+        height: 22px !important;
+        padding: 0 7px !important;
+        border-radius: 6px !important;
+        font-size: 0.66rem !important;
+    }
+
+    #playerList .regular-toggle-btn,
+    #playerList .remove-btn,
+    #playerList .control-btn {
+        min-width: 54px !important;
+    }
 }
 </style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -7312,82 +7371,6 @@ async function compactPayToggle(playerId){
     }
 })();
 </script>
-
-
-<style id="red-pill-fix-v1">
-/* tighten Paid pill to match reference */
-#playerList .paid-wrap{
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    gap:0 !important;
-}
-#playerList .compact-pay{
-    display:inline-grid !important;
-    grid-template-columns: 1fr 16px !important;
-    grid-template-areas:
-        "main plus"
-        "main minus" !important;
-    width: 58px !important;
-    min-height: 24px !important;
-    border-radius: 8px !important;
-    overflow: hidden !important;
-    background:#c62828 !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
-}
-#playerList .compact-pay-main{
-    grid-area:main !important;
-    min-height:24px !important;
-    padding:0 6px !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    font-size:0.76rem !important;
-    font-weight:800 !important;
-    line-height:1 !important;
-}
-#playerList .compact-pay-plus,
-#playerList .compact-pay-minus{
-    width:16px !important;
-    min-width:16px !important;
-    padding:0 !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    font-size:0.78rem !important;
-    font-weight:800 !important;
-    line-height:1 !important;
-    border-left:1px solid rgba(255,255,255,0.18) !important;
-}
-#playerList .compact-pay-plus{
-    grid-area:plus !important;
-    border-bottom:1px solid rgba(255,255,255,0.18) !important;
-}
-#playerList .compact-pay-minus{
-    grid-area:minus !important;
-}
-#playerList .compact-pay-btn:hover{
-    background:rgba(255,255,255,0.08) !important;
-}
-@media (max-width: 600px){
-    #playerList .compact-pay{
-        width:56px !important;
-        min-height:23px !important;
-        grid-template-columns:1fr 15px !important;
-    }
-    #playerList .compact-pay-main{
-        min-height:23px !important;
-        padding:0 5px !important;
-        font-size:0.74rem !important;
-    }
-    #playerList .compact-pay-plus,
-    #playerList .compact-pay-minus{
-        width:15px !important;
-        min-width:15px !important;
-        font-size:0.74rem !important;
-    }
-}
-</style>
 
 </body>
 </html>
