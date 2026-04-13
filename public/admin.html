@@ -2863,6 +2863,35 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="registered-players-vip-goalie-display-v1">
+.vip-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 0.7rem;
+    font-weight: 700;
+    white-space: nowrap;
+    background: linear-gradient(135deg, #8e24aa, #ba68c8);
+    color: #fff;
+    margin-left: 6px;
+}
+
+.blank-cell-text {
+    color: transparent !important;
+}
+
+@media (max-width: 700px) {
+    .vip-badge {
+        font-size: 0.62rem !important;
+        padding: 3px 6px !important;
+        margin-left: 0 !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -4870,7 +4899,7 @@ Date: ${selectedGameDate}`);
                 return `
                     <div class="regular-skater-card">
                         <div>
-                            <strong>${player.firstName} ${player.lastName}</strong>
+                            <strong>${player.firstName} ${player.lastName}${((String(player.firstName||'').toLowerCase()==='phan' && String(player.lastName||'').toLowerCase()==='ly') ? ' <span class=\"vip-badge\">VIP</span>' : '')}</strong>
                             ${bucketLabel}
                             <div class="regular-skater-meta">${player.phone || ''}<br>${tags}</div>
                         </div>
@@ -5089,7 +5118,7 @@ Date: ${selectedGameDate}`);
                         const li = document.createElement('li');
                         const goalieTag = player.isGoalie ? ' (G)' : '';
                         li.innerHTML = `
-                            <span>${player.firstName} ${player.lastName}${goalieTag}</span>
+                            <span>${player.firstName} ${player.lastName}${((String(player.firstName||'').toLowerCase()==='phan' && String(player.lastName||'').toLowerCase()==='ly') ? ' <span class=\"vip-badge\">VIP</span>' : '')}${goalieTag}</span>
                             <span>Rating Hidden</span>
                         `;
                         whiteList.appendChild(li);
@@ -5103,7 +5132,7 @@ Date: ${selectedGameDate}`);
                         const li = document.createElement('li');
                         const goalieTag = player.isGoalie ? ' (G)' : '';
                         li.innerHTML = `
-                            <span>${player.firstName} ${player.lastName}${goalieTag}</span>
+                            <span>${player.firstName} ${player.lastName}${((String(player.firstName||'').toLowerCase()==='phan' && String(player.lastName||'').toLowerCase()==='ly') ? ' <span class=\"vip-badge\">VIP</span>' : '')}${goalieTag}</span>
                             <span>Rating Hidden</span>
                         `;
                         darkList.appendChild(li);
@@ -7020,6 +7049,146 @@ async function compactPayToggle(playerId){
     } else {
         initMobileCollapsibles();
     }
+})();
+</script>
+
+
+<script id="registered-players-vip-goalie-display-script-v1">
+(function() {
+    function normalizeName(v) {
+        return String(v || '').trim().toLowerCase();
+    }
+
+    function isPhanPlayer(player) {
+        return normalizeName(player && player.firstName) === 'phan' && normalizeName(player && player.lastName) === 'ly';
+    }
+
+    function isSpecialPlayer(player) {
+        return !!(player && (player.isGoalie || isPhanPlayer(player)));
+    }
+
+    function renderSpecialName(nameHtml, player) {
+        const bits = [];
+        if (isPhanPlayer(player)) {
+            bits.push('<span class="vip-badge">VIP</span>');
+        }
+        return `${nameHtml || ''}${bits.join('')}`;
+    }
+
+    function patchRegisteredPlayersRenderer() {
+        const targetNames = [
+            'renderPlayers',
+            'renderPlayerList',
+            'loadPlayers',
+            'refreshPlayers'
+        ];
+
+        for (const fnName of targetNames) {
+            const original = window[fnName];
+            if (typeof original !== 'function' || original.__specialPatched) continue;
+
+            window[fnName] = async function(...args) {
+                const result = await original.apply(this, args);
+                try {
+                    applyRegisteredPlayersSpecialDisplay();
+                } catch (e) {
+                    console.warn('applyRegisteredPlayersSpecialDisplay failed:', e);
+                }
+                return result;
+            };
+            window[fnName].__specialPatched = true;
+        }
+    }
+
+    function applyRegisteredPlayersSpecialDisplay() {
+        const grid = document.getElementById('playerList') || document.querySelector('#playerList') || document.querySelector('tbody#playerList');
+        if (!grid) return;
+
+        const rows = Array.from(grid.querySelectorAll('tr'));
+        rows.forEach((row) => {
+            const cells = row.querySelectorAll('td');
+            if (!cells || cells.length < 6) return;
+
+            const nameCell = cells[0];
+            const paidCell = cells[2];
+            const paymentCell = cells[3];
+            const regularCell = cells[4];
+
+            const nameText = (nameCell.innerText || '').toLowerCase();
+            const isPhan = nameText.includes('phan') && nameText.includes('ly');
+            const isGoalie = !!nameCell.querySelector('.goalie-badge') || nameText.includes('goalie');
+
+            if (!(isPhan || isGoalie)) return;
+
+            if (isPhan && !nameCell.querySelector('.vip-badge')) {
+                const vip = document.createElement('span');
+                vip.className = 'vip-badge';
+                vip.textContent = 'VIP';
+                const nameMain = nameCell.querySelector('.player-name-main') || nameCell;
+                nameMain.appendChild(vip);
+            }
+
+            if (paidCell) {
+                paidCell.innerHTML = '';
+                paidCell.classList.add('blank-cell-text');
+            }
+
+            if (paymentCell) {
+                paymentCell.innerHTML = '';
+                paymentCell.classList.add('blank-cell-text');
+            }
+
+            if (regularCell) {
+                regularCell.innerHTML = '';
+                regularCell.classList.add('blank-cell-text');
+            }
+        });
+    }
+
+    function patchGoalieFreeOnClientPayload() {
+        const originalFetch = window.fetch;
+        if (!originalFetch || originalFetch.__goalieFreePatched) return;
+
+        window.fetch = async function(input, init) {
+            const response = await originalFetch.apply(this, arguments);
+            try {
+                const url = typeof input === 'string' ? input : (input && input.url) || '';
+                if (!/\/api\/(admin\/players|admin\/players-full|status|roster)/.test(url)) {
+                    return response;
+                }
+            } catch (_) {
+                return response;
+            }
+            return response;
+        };
+        window.fetch.__goalieFreePatched = true;
+    }
+
+    function runSpecialPatchLoop() {
+        patchRegisteredPlayersRenderer();
+        applyRegisteredPlayersSpecialDisplay();
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function() {
+            runSpecialPatchLoop();
+            setTimeout(runSpecialPatchLoop, 500);
+            setTimeout(runSpecialPatchLoop, 1500);
+        });
+    } else {
+        runSpecialPatchLoop();
+        setTimeout(runSpecialPatchLoop, 500);
+        setTimeout(runSpecialPatchLoop, 1500);
+    }
+
+    const observer = new MutationObserver(function() {
+        applyRegisteredPlayersSpecialDisplay();
+    });
+    window.addEventListener('load', function() {
+        const playerList = document.getElementById('playerList');
+        if (playerList) observer.observe(playerList, { childList: true, subtree: true });
+        applyRegisteredPlayersSpecialDisplay();
+    });
 })();
 </script>
 
