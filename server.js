@@ -546,8 +546,8 @@ const REGULAR_GOALIES_BY_DAY = {
             phone: "(519) 982-6311",
             rating: 9,
             isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
+            isFree: true,
+            paymentMethod: "FREE"
         },
         {
             firstName: "Hao",
@@ -555,8 +555,8 @@ const REGULAR_GOALIES_BY_DAY = {
             phone: "(519) 995-9884",
             rating: 8,
             isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
+            isFree: true,
+            paymentMethod: "FREE"
         }
     ],
     sunday: [
@@ -566,8 +566,8 @@ const REGULAR_GOALIES_BY_DAY = {
             phone: "(519) 982-6311",
             rating: 9,
             isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
+            isFree: true,
+            paymentMethod: "FREE"
         },
         {
             firstName: "Mat",
@@ -575,8 +575,8 @@ const REGULAR_GOALIES_BY_DAY = {
             phone: "(226) 350-0217",
             rating: 7,
             isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
+            isFree: true,
+            paymentMethod: "FREE"
         }
     ]
 };
@@ -1041,40 +1041,6 @@ function shouldRunScheduledAction(scheduleAt, lastRunOccurrenceKey, etDate = get
     };
 }
 
-
-
-function shouldRunScheduledActionExactMinuteOnly(scheduleAt, lastRunOccurrenceKey, etDate = getCurrentETTime()) {
-    if (!scheduleAt) {
-        return { shouldRun: false, reason: 'missing_schedule', occurrenceKey: '', minuteKey: '', lagMinutes: null };
-    }
-
-    if (!isNowAtSchedule(scheduleAt, etDate)) {
-        return { shouldRun: false, reason: 'not_exact_minute', occurrenceKey: '', minuteKey: String(nowETMinuteKey(etDate)), lagMinutes: null };
-    }
-
-    const occurrenceParts = {
-        year: etDate.getFullYear(),
-        month: etDate.getMonth() + 1,
-        day: etDate.getDate(),
-        hour: etDate.getHours(),
-        minute: etDate.getMinutes()
-    };
-    const occurrenceKey = getOccurrenceKeyFromEtParts(scheduleAt, occurrenceParts);
-    const minuteKey = String(nowETMinuteKey(etDate));
-
-    if (lastRunOccurrenceKey === occurrenceKey) {
-        return { shouldRun: false, reason: 'already_ran_occurrence', occurrenceKey, minuteKey, lagMinutes: 0 };
-    }
-
-    return {
-        shouldRun: true,
-        reason: 'exact_minute_only',
-        occurrenceKey,
-        minuteKey,
-        lagMinutes: 0
-    };
-}
-
 function formatScheduleDowTime(scheduleAt) {
     if (!scheduleAt) return '';
     const dayName = INDEX_TO_DAY_NAME[Number(scheduleAt.dow)] || 'Unknown';
@@ -1216,7 +1182,6 @@ function checkAutoLock() {
 
 
 // Auto-release roster using recurring weekly ET schedule
-// IMPORTANT: exact scheduled minute only (no catch-up) to prevent stale or premature releases.
 async function autoReleaseRoster() {
     const etTime = getCurrentETTime();
 
@@ -1224,10 +1189,11 @@ async function autoReleaseRoster() {
     if (!rosterReleaseSchedule.at) return false;
     if (rosterReleased || players.length === 0) return false;
 
-    const releaseCheck = shouldRunScheduledActionExactMinuteOnly(
+    const releaseCheck = shouldRunScheduledAction(
         rosterReleaseSchedule.at,
         lastExactRosterReleaseRunAt,
-        etTime
+        etTime,
+        Number(process.env.ROSTER_RELEASE_CATCHUP_MINUTES || (31 * 60))
     );
     if (!releaseCheck.shouldRun) return false;
 
@@ -1371,7 +1337,6 @@ function checkMaintenanceModeSchedule() {
 
 
 // Weekly reset using recurring weekly ET schedule
-// IMPORTANT: exact scheduled minute only (no catch-up) to prevent stale resets after restarts or later requests.
 async function checkWeeklyReset() {
     const etTime = getCurrentETTime();
     const { week: currentWeek, year: currentYear } = getWeekNumber(etTime);
@@ -1379,10 +1344,11 @@ async function checkWeeklyReset() {
     if (!resetWeekSchedule || !resetWeekSchedule.enabled) return false;
     if (!resetWeekSchedule.at) return false;
 
-    const resetCheck = shouldRunScheduledActionExactMinuteOnly(
+    const resetCheck = shouldRunScheduledAction(
         resetWeekSchedule.at,
         lastExactResetRunAt,
-        etTime
+        etTime,
+        Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || (18 * 60))
     );
     if (!resetCheck.shouldRun) return false;
 
@@ -4875,7 +4841,7 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
     const normalizedPhone = backupGoalie.phone.replace(/\D/g, '');
     const exists = players.find(p => p.phone.replace(/\D/g, '') === normalizedPhone);
     if (exists) return res.status(400).json({ error: "This goalie is already registered" });
-    const newGoalie = { id: Date.now(), firstName: backupGoalie.firstName, lastName: backupGoalie.lastName, phone: backupGoalie.phone, paymentMethod: "N/A", paid: true, paidAmount: 0, rating: backupGoalie.rating, isGoalie: true, team: null, registeredAt: new Date().toISOString(), rulesAgreed: true };
+    const newGoalie = { id: Date.now(), firstName: backupGoalie.firstName, lastName: backupGoalie.lastName, phone: backupGoalie.phone, paymentMethod: "FREE", paid: true, paidAmount: 0, rating: backupGoalie.rating, isGoalie: true, team: null, registeredAt: new Date().toISOString(), rulesAgreed: true };
     try {
         await runProtectedMutation('add-backup-goalie', req, async () => { players.push(newGoalie); }, { goalieIndex, playerId: newGoalie.id });
         res.json({ success: true, goalie: newGoalie, message: `${backupGoalie.firstName} ${backupGoalie.lastName} added as substitute goalie` });
@@ -5639,7 +5605,7 @@ app.post('/api/admin/add-player', async (req, res) => {
         return res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
     }
     if (isGoalieBool && !isGoalieSpotsAvailable()) return res.status(400).json({ error: "Goalie spots are full (maximum 2)." });
-    const newPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', paid: isGoalieBool ? true : false, paidAmount: isGoalieBool ? 0 : null, rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, team: null });
+    const newPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: isGoalieBool ? 'FREE' : (paymentMethod || 'Cash'), paid: isGoalieBool ? true : false, paidAmount: isGoalieBool ? 0 : null, rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, team: null });
     try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; }, { playerId: newPlayer.id }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false });

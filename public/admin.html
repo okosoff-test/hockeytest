@@ -150,6 +150,15 @@
             font-size: 0.75rem;
             margin-left: 8px;
         }
+
+        .vip-badge {
+            background: #8e24aa;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            margin-left: 8px;
+        }
         
         .paid-input {
             width: 70px;
@@ -1621,6 +1630,7 @@ button {
 <style>
 /* tighten badges */
 .protected-badge,
+.vip-badge,
 .goalie-badge {
     display: inline-flex;
     align-items: center;
@@ -1646,6 +1656,7 @@ button {
 
 /* center badges under name */
 .protected-badge,
+.vip-badge,
 .goalie-badge {
     margin-left: 0 !important;
     margin-right: 0 !important;
@@ -1955,6 +1966,7 @@ button {
 
 <style id="admin-safe-mobile-patch-v10">
 #playerList .protected-badge,
+#playerList .vip-badge,
 #playerList .goalie-badge{display:none !important;}
 #playerList .player-name-cell{
     display:flex !important;
@@ -4864,22 +4876,18 @@ Date: ${selectedGameDate}`);
 
                     sortedPlayers.forEach(p => {
                         const tr = document.createElement('tr');
-                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
-                            '<span class="protected-badge">PROTECTED</span>' : '';
+                        const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
+                        const isGoalie = !!p.isGoalie;
+                        const isSpecialDisplay = isPhan || isGoalie;
+                        const goalieBadge = isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const vipBadge = isPhan ? '<span class="vip-badge">VIP</span>' : '';
                         const regularInfo = getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
                         let paidInput = '';
-                        if (p.isGoalie) {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
-                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
-                        } else {
-                            const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
+                        if (!isSpecialDisplay) {
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-
                             const compactAmount = isPaid
                                 ? parseFloat(p.paidAmount)
                                 : 15;
@@ -4894,10 +4902,16 @@ Date: ${selectedGameDate}`);
                             `;
                         }
 
+                        const paymentDisplay = isSpecialDisplay ? '' : (p.paymentMethod === 'E-Transfer' ? 'ET' : (p.paymentMethod || ''));
+                        const regularDisplay = isSpecialDisplay
+                            ? ''
+                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
+
                         tr.innerHTML = `
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
+                                ${vipBadge}${goalieBadge}
                                 ${p.registeredAt ? `<span class="player-time-sub">${new Date(p.registeredAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
@@ -4909,10 +4923,8 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
-                            <td>
-                                <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
-                            </td>
+                            <td>${paymentDisplay}</td>
+                            <td>${regularDisplay}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
