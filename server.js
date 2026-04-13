@@ -533,7 +533,7 @@ const AUTO_ADD_CORE_PLAYERS = [
         rating: 6,
         isGoalie: false,
         isFree: true,
-        paymentMethod: "N/A",
+        paymentMethod: "FREE",
         protected: true  // Cannot be cancelled from signup page
     }
 ];
