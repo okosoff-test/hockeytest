@@ -1121,6 +1121,90 @@
         .schedule-label2 { font-size: 0.85rem; color:#bbb; margin-bottom: 4px; }
         .schedule-hint { margin-top:8px; font-size:0.8rem; color:#aaa; }
 
+        /* Android compact patch for schedule table */
+        .schedule-card {
+            padding: 8px !important;
+        }
+        .schedule-title {
+            font-size: 0.92rem !important;
+            margin-bottom: 6px !important;
+            line-height: 1.15 !important;
+        }
+        .schedule-label {
+            gap: 8px !important;
+            margin-bottom: 8px !important;
+            font-size: 0.86rem !important;
+            line-height: 1.2 !important;
+        }
+        .schedule-label input[type="checkbox"] {
+            width: 15px !important;
+            height: 15px !important;
+            min-width: 15px !important;
+            min-height: 15px !important;
+            margin: 0 !important;
+            transform: none !important;
+            accent-color: #ff6b00;
+            vertical-align: middle;
+        }
+        .schedule-label2 {
+            font-size: 0.78rem !important;
+            margin-bottom: 3px !important;
+            line-height: 1.1 !important;
+        }
+        .schedule-card .control-input,
+        .schedule-card input[type="datetime-local"] {
+            font-size: 0.84rem !important;
+            padding: 6px 8px !important;
+            min-height: 34px !important;
+        }
+        .schedule-hint {
+            font-size: 0.72rem !important;
+            margin-top: 6px !important;
+            line-height: 1.2 !important;
+        }
+
+        @media (max-width: 700px) {
+            .schedule-editor h4 {
+                font-size: 0.95rem !important;
+                margin: 8px 0 6px 0 !important;
+            }
+            .schedule-grid {
+                gap: 8px !important;
+            }
+            .schedule-card {
+                padding: 7px !important;
+            }
+            .schedule-title {
+                font-size: 0.86rem !important;
+            }
+            .schedule-label {
+                font-size: 0.8rem !important;
+                gap: 6px !important;
+            }
+            .schedule-label input[type="checkbox"] {
+                width: 13px !important;
+                height: 13px !important;
+                min-width: 13px !important;
+                min-height: 13px !important;
+            }
+            .schedule-field {
+                min-width: 0 !important;
+            }
+            .schedule-card .control-input,
+            .schedule-card input[type="datetime-local"] {
+                font-size: 0.78rem !important;
+                padding: 5px 7px !important;
+                min-height: 32px !important;
+            }
+            .schedule-label2 {
+                font-size: 0.72rem !important;
+            }
+            .schedule-hint {
+                font-size: 0.68rem !important;
+            }
+        }
+
+
     
 /* Hide Game Details section */
 .details-box { display:none !important; }
