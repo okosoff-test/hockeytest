@@ -3234,6 +3234,46 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="admin-paid-pill-width-minus15-v1">
+/* Reduce Paid red pill width by ~15% ONLY */
+#playerList .compact-pay{
+    width: 46px !important;       /* ~15% down from 54px */
+    min-width: 46px !important;
+}
+
+/* Keep grid proportions intact */
+#playerList .compact-pay{
+    grid-template-columns: 1fr 13px !important; /* scale control column slightly */
+}
+
+/* Adjust +/- column widths accordingly */
+#playerList .compact-pay-plus,
+#playerList .compact-pay-minus{
+    width: 13px !important;
+    min-width: 13px !important;
+}
+
+/* Ensure main amount still centered and readable */
+#playerList .compact-pay-main{
+    padding: 0 3px !important;
+}
+
+/* Desktop slight bump to match previous scaling */
+@media (min-width: 601px){
+    #playerList .compact-pay{
+        width: 48px !important;
+        min-width: 48px !important;
+        grid-template-columns: 1fr 14px !important;
+    }
+    #playerList .compact-pay-plus,
+    #playerList .compact-pay-minus{
+        width: 14px !important;
+        min-width: 14px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
