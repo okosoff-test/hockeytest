@@ -3121,175 +3121,90 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     </script>
 
 
-<style id="admin-locked-pill-system-v1">
-/* LOCKED PILL SYSTEM — Registered Players only */
-#playerList td:nth-child(3),
-#playerList td:nth-child(4),
-#playerList td:nth-child(5) {
-    vertical-align: middle !important;
-    text-align: center !important;
-}
-
-#playerList .paid-wrap,
-#playerList .regular-wrap,
-#playerList .action-wrap {
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 100% !important;
-    min-height: 22px !important;
-    line-height: 1 !important;
-}
-
-#playerList .paid-wrap { gap: 0 !important; }
-#playerList .regular-wrap,
-#playerList .action-wrap { gap: 4px !important; }
-
-/* Preserve compact red PAID pill */
-#playerList .compact-pay {
-    display: inline-grid !important;
-    grid-template-columns: 1fr 15px !important;
-    grid-template-areas:
-        "main plus"
-        "main minus" !important;
-    align-items: stretch !important;
-    justify-items: stretch !important;
+<style id="admin-paid-pill-and-paymenttext-fix-v2">
+/* Restore full paid pill height so both + and - show, without touching anything else */
+#playerList .compact-pay{
     width: 54px !important;
     min-width: 54px !important;
     height: 22px !important;
     min-height: 22px !important;
+    grid-template-columns: 1fr 15px !important;
+    grid-template-rows: 11px 11px !important;
     border-radius: 6px !important;
     overflow: hidden !important;
-    margin: 0 auto !important;
-    white-space: nowrap !important;
-    vertical-align: middle !important;
 }
 
-#playerList .compact-pay-main {
-    grid-area: main !important;
-    min-height: 22px !important;
+#playerList .compact-pay-main{
     height: 22px !important;
+    min-height: 22px !important;
     padding: 0 4px !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
     font-size: 0.76rem !important;
-    font-weight: 700 !important;
     line-height: 1 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
 }
 
 #playerList .compact-pay-plus,
-#playerList .compact-pay-minus {
+#playerList .compact-pay-minus{
     width: 15px !important;
     min-width: 15px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    font-size: 0.90rem !important;
+    height: 11px !important;
+    min-height: 11px !important;
+    font-size: 0.9rem !important;
     line-height: 1 !important;
-    border-radius: 0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    overflow: visible !important;
+    color:#fff !important;
 }
 
-#playerList .compact-pay-plus {
-    grid-area: plus !important;
-    border-left: 1px solid rgba(255,255,255,0.22) !important;
-    border-bottom: 1px solid rgba(255,255,255,0.22) !important;
+#playerList .compact-pay-btn.compact-pay-plus,
+#playerList .compact-pay-btn.compact-pay-minus{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    padding:0 !important;
 }
 
-#playerList .compact-pay-minus {
-    grid-area: minus !important;
-    border-left: 1px solid rgba(255,255,255,0.22) !important;
-}
-
-/* Make REGULAR and ACTION match the paid pill height */
-#playerList .regular-toggle-btn,
-#playerList .remove-btn,
-#playerList .control-btn,
-#playerList .promote-btn {
-    height: 22px !important;
-    min-height: 22px !important;
-    padding: 0 7px !important;
-    margin: 0 !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    border-radius: 6px !important;
-    line-height: 1 !important;
-    font-size: 0.66rem !important;
-    font-weight: 700 !important;
-    white-space: nowrap !important;
-    vertical-align: middle !important;
-}
-
-#playerList .regular-toggle-btn {
-    min-width: 54px !important;
-}
-
-#playerList .remove-btn,
-#playerList .control-btn,
-#playerList .promote-btn {
-    min-width: 54px !important;
-}
-
-@media (min-width: 601px) {
-    #playerList .compact-pay {
-        width: 56px !important;
-        min-width: 56px !important;
+@media (max-width: 600px){
+    #playerList .compact-pay{
+        width: 54px !important;
+        min-width: 54px !important;
+        height: 22px !important;
+        min-height: 22px !important;
+        grid-template-columns: 1fr 15px !important;
+        grid-template-rows: 11px 11px !important;
     }
-    #playerList .compact-pay-main {
-        font-size: 0.78rem !important;
+    #playerList .compact-pay-main{
+        height: 22px !important;
+        min-height: 22px !important;
+        font-size: 0.76rem !important;
+        padding: 0 4px !important;
     }
-    #playerList .regular-toggle-btn,
-    #playerList .remove-btn,
-    #playerList .control-btn,
-    #playerList .promote-btn {
-        min-width: 56px !important;
-        font-size: 0.68rem !important;
+    #playerList .compact-pay-plus,
+    #playerList .compact-pay-minus{
+        width: 15px !important;
+        min-width: 15px !important;
+        height: 11px !important;
+        min-height: 11px !important;
+        font-size: 0.9rem !important;
     }
 }
-</style>
 
-
-<style id="admin-payment-font-minus-fix-v1">
-/* Make payment method text under Paid match the paid pill text size */
-#playerList td:nth-child(4),
-#playerList .payment-method,
-#playerList .payment-method-text {
+/* Make payment text column match paid pill text size better */
+#playerList td:nth-child(5){
     font-size: 0.76rem !important;
-    font-weight: 500 !important;
     line-height: 1 !important;
-    color: #ffffff !important;
+    color:#fff !important;
+    white-space: nowrap !important;
 }
 
-@media (min-width: 601px) {
-    #playerList td:nth-child(4),
-    #playerList .payment-method,
-    #playerList .payment-method-text {
+@media (min-width: 601px){
+    #playerList td:nth-child(5){
         font-size: 0.78rem !important;
     }
-}
-
-/* Put the minus back in the paid pill without changing anything else */
-#playerList .compact-pay-minus {
-    position: relative !important;
-    color: transparent !important;
-    font-size: 0 !important;
-}
-
-#playerList .compact-pay-minus::before {
-    content: "-" !important;
-    position: absolute !important;
-    inset: 0 !important;
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    color: #fff !important;
-    font-size: 0.82rem !important;
-    font-weight: 700 !important;
-    line-height: 1 !important;
-    pointer-events: none !important;
 }
 </style>
 
