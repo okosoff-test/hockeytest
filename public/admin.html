@@ -3120,145 +3120,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         })();
     </script>
 
-
-<style id="admin-paid-regular-action-pill-match-v1">
-/* match paid / regular / action pills closer to reference */
-#playerList td:nth-child(4),
-#playerList td:nth-child(5),
-#playerList td:nth-child(6),
-#playerList td:nth-child(7){
-    text-align:center !important;
-    vertical-align:middle !important;
-}
-
-#playerList .paid-wrap,
-#playerList td:nth-child(4),
-#playerList td:nth-child(6),
-#playerList td:nth-child(7){
-    white-space:nowrap !important;
-}
-
-#playerList .compact-pay{
-    display:inline-grid !important;
-    grid-template-columns: 1fr 17px !important;
-    grid-template-areas:
-        "main plus"
-        "main minus";
-    width:60px !important;
-    min-height:24px !important;
-    border-radius:7px !important;
-    overflow:hidden !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.06);
-}
-#playerList .compact-pay.is-unpaid{
-    background:#c62828 !important;
-}
-#playerList .compact-pay.is-paid{
-    background:#2e7d32 !important;
-}
-#playerList .compact-pay-main{
-    grid-area:main !important;
-    min-height:24px !important;
-    padding:0 4px !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    font-size:0.78rem !important;
-    font-weight:800 !important;
-    letter-spacing:0 !important;
-}
-#playerList .compact-pay-plus,
-#playerList .compact-pay-minus{
-    width:17px !important;
-    min-width:17px !important;
-    padding:0 !important;
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    font-size:0.74rem !important;
-    font-weight:800 !important;
-    line-height:1 !important;
-    border-left:1px solid rgba(255,255,255,0.18) !important;
-}
-#playerList .compact-pay-plus{
-    grid-area:plus !important;
-    border-bottom:1px solid rgba(255,255,255,0.18) !important;
-}
-#playerList .compact-pay-minus{
-    grid-area:minus !important;
-}
-#playerList .compact-pay-btn:hover{
-    background:rgba(255,255,255,0.08) !important;
-}
-
-#playerList .regular-toggle-btn,
-#playerList .remove-btn{
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    min-height:24px !important;
-    padding:0 9px !important;
-    border-radius:7px !important;
-    font-size:0.72rem !important;
-    font-weight:700 !important;
-    line-height:1 !important;
-    white-space:nowrap !important;
-    margin:0 !important;
-    border:none !important;
-    box-shadow:none !important;
-}
-
-#playerList .regular-toggle-btn{
-    background:#2e7d32 !important;
-    color:#fff !important;
-}
-#playerList .regular-toggle-btn.active{
-    background:#2e7d32 !important;
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.16) !important;
-}
-#playerList .remove-btn{
-    background:#d32f2f !important;
-    color:#fff !important;
-}
-#playerList .remove-btn:hover{
-    background:#e53935 !important;
-}
-
-#playerList td:nth-child(5){
-    font-size:0.75rem !important;
-    color:#e0e0e0 !important;
-    font-weight:600 !important;
-}
-
-@media (max-width:600px){
-    #playerList .compact-pay{
-        width:56px !important;
-        grid-template-columns:1fr 16px !important;
-        min-height:22px !important;
-    }
-    #playerList .compact-pay-main{
-        min-height:22px !important;
-        font-size:0.74rem !important;
-    }
-    #playerList .compact-pay-plus,
-    #playerList .compact-pay-minus{
-        width:16px !important;
-        min-width:16px !important;
-        font-size:0.7rem !important;
-    }
-    #playerList .regular-toggle-btn,
-    #playerList .remove-btn{
-        min-height:22px !important;
-        padding:0 8px !important;
-        font-size:0.68rem !important;
-        border-radius:6px !important;
-    }
-    #playerList td:nth-child(5){
-        font-size:0.7rem !important;
-    }
-}
-</style>
-
 </head>
 <body class="admin-layout-option-1">
 
@@ -7421,6 +7282,82 @@ async function compactPayToggle(playerId){
     }
 })();
 </script>
+
+
+<style id="red-pill-fix-v1">
+/* tighten Paid pill to match reference */
+#playerList .paid-wrap{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    gap:0 !important;
+}
+#playerList .compact-pay{
+    display:inline-grid !important;
+    grid-template-columns: 1fr 16px !important;
+    grid-template-areas:
+        "main plus"
+        "main minus" !important;
+    width: 58px !important;
+    min-height: 24px !important;
+    border-radius: 8px !important;
+    overflow: hidden !important;
+    background:#c62828 !important;
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.08);
+}
+#playerList .compact-pay-main{
+    grid-area:main !important;
+    min-height:24px !important;
+    padding:0 6px !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    font-size:0.76rem !important;
+    font-weight:800 !important;
+    line-height:1 !important;
+}
+#playerList .compact-pay-plus,
+#playerList .compact-pay-minus{
+    width:16px !important;
+    min-width:16px !important;
+    padding:0 !important;
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    font-size:0.78rem !important;
+    font-weight:800 !important;
+    line-height:1 !important;
+    border-left:1px solid rgba(255,255,255,0.18) !important;
+}
+#playerList .compact-pay-plus{
+    grid-area:plus !important;
+    border-bottom:1px solid rgba(255,255,255,0.18) !important;
+}
+#playerList .compact-pay-minus{
+    grid-area:minus !important;
+}
+#playerList .compact-pay-btn:hover{
+    background:rgba(255,255,255,0.08) !important;
+}
+@media (max-width: 600px){
+    #playerList .compact-pay{
+        width:56px !important;
+        min-height:23px !important;
+        grid-template-columns:1fr 15px !important;
+    }
+    #playerList .compact-pay-main{
+        min-height:23px !important;
+        padding:0 5px !important;
+        font-size:0.74rem !important;
+    }
+    #playerList .compact-pay-plus,
+    #playerList .compact-pay-minus{
+        width:15px !important;
+        min-width:15px !important;
+        font-size:0.74rem !important;
+    }
+}
+</style>
 
 </body>
 </html>
