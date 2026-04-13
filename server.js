@@ -1041,6 +1041,40 @@ function shouldRunScheduledAction(scheduleAt, lastRunOccurrenceKey, etDate = get
     };
 }
 
+
+
+function shouldRunScheduledActionExactMinuteOnly(scheduleAt, lastRunOccurrenceKey, etDate = getCurrentETTime()) {
+    if (!scheduleAt) {
+        return { shouldRun: false, reason: 'missing_schedule', occurrenceKey: '', minuteKey: '', lagMinutes: null };
+    }
+
+    if (!isNowAtSchedule(scheduleAt, etDate)) {
+        return { shouldRun: false, reason: 'not_exact_minute', occurrenceKey: '', minuteKey: String(nowETMinuteKey(etDate)), lagMinutes: null };
+    }
+
+    const occurrenceParts = {
+        year: etDate.getFullYear(),
+        month: etDate.getMonth() + 1,
+        day: etDate.getDate(),
+        hour: etDate.getHours(),
+        minute: etDate.getMinutes()
+    };
+    const occurrenceKey = getOccurrenceKeyFromEtParts(scheduleAt, occurrenceParts);
+    const minuteKey = String(nowETMinuteKey(etDate));
+
+    if (lastRunOccurrenceKey === occurrenceKey) {
+        return { shouldRun: false, reason: 'already_ran_occurrence', occurrenceKey, minuteKey, lagMinutes: 0 };
+    }
+
+    return {
+        shouldRun: true,
+        reason: 'exact_minute_only',
+        occurrenceKey,
+        minuteKey,
+        lagMinutes: 0
+    };
+}
+
 function formatScheduleDowTime(scheduleAt) {
     if (!scheduleAt) return '';
     const dayName = INDEX_TO_DAY_NAME[Number(scheduleAt.dow)] || 'Unknown';
@@ -1182,6 +1216,7 @@ function checkAutoLock() {
 
 
 // Auto-release roster using recurring weekly ET schedule
+// IMPORTANT: exact scheduled minute only (no catch-up) to prevent stale or premature releases.
 async function autoReleaseRoster() {
     const etTime = getCurrentETTime();
 
@@ -1189,11 +1224,10 @@ async function autoReleaseRoster() {
     if (!rosterReleaseSchedule.at) return false;
     if (rosterReleased || players.length === 0) return false;
 
-    const releaseCheck = shouldRunScheduledAction(
+    const releaseCheck = shouldRunScheduledActionExactMinuteOnly(
         rosterReleaseSchedule.at,
         lastExactRosterReleaseRunAt,
-        etTime,
-        Number(process.env.ROSTER_RELEASE_CATCHUP_MINUTES || (31 * 60))
+        etTime
     );
     if (!releaseCheck.shouldRun) return false;
 
@@ -1337,6 +1371,7 @@ function checkMaintenanceModeSchedule() {
 
 
 // Weekly reset using recurring weekly ET schedule
+// IMPORTANT: exact scheduled minute only (no catch-up) to prevent stale resets after restarts or later requests.
 async function checkWeeklyReset() {
     const etTime = getCurrentETTime();
     const { week: currentWeek, year: currentYear } = getWeekNumber(etTime);
@@ -1344,11 +1379,10 @@ async function checkWeeklyReset() {
     if (!resetWeekSchedule || !resetWeekSchedule.enabled) return false;
     if (!resetWeekSchedule.at) return false;
 
-    const resetCheck = shouldRunScheduledAction(
+    const resetCheck = shouldRunScheduledActionExactMinuteOnly(
         resetWeekSchedule.at,
         lastExactResetRunAt,
-        etTime,
-        Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || (18 * 60))
+        etTime
     );
     if (!resetCheck.shouldRun) return false;
 
