@@ -3274,6 +3274,42 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="admin-match-all-pills-to-paid-v1">
+/* Match Regular + Action pills to Paid pill EXACT size */
+
+#playerList .regular-toggle-btn,
+#playerList .remove-btn,
+#playerList .control-btn,
+#playerList .promote-btn {
+    height: 22px !important;
+    min-height: 22px !important;
+    width: 46px !important;
+    min-width: 46px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    font-size: 0.66rem !important;
+    font-weight: 700 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+}
+
+/* Desktop slight scale */
+@media (min-width: 601px){
+    #playerList .regular-toggle-btn,
+    #playerList .remove-btn,
+    #playerList .control-btn,
+    #playerList .promote-btn {
+        width: 48px !important;
+        min-width: 48px !important;
+        height: 22px !important;
+        font-size: 0.68rem !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
