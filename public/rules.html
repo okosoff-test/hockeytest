@@ -216,6 +216,80 @@
             .checkbox-container label { font-size: 1rem; }
         }
     </style>
+
+<style id="windows-firefox-mobile-preview">
+html.force-mobile-preview body {
+    padding: 10px !important;
+}
+html.force-mobile-preview .container {
+    width: 100% !important;
+    max-width: 430px !important;
+    padding: 14px !important;
+    margin: 0 auto !important;
+    border-radius: 14px !important;
+}
+html.force-mobile-preview h1 {
+    font-size: 1.3rem !important;
+    letter-spacing: 1px !important;
+}
+html.force-mobile-preview h2 {
+    font-size: 1rem !important;
+}
+html.force-mobile-preview button {
+    font-size: 0.95rem !important;
+}
+html.force-mobile-preview input,
+html.force-mobile-preview select,
+html.force-mobile-preview textarea {
+    font-size: 16px !important;
+}
+html.force-mobile-preview .teams-container,
+html.force-mobile-preview .preview-teams,
+html.force-mobile-preview .title-controls,
+html.force-mobile-preview .goalie-list,
+html.force-mobile-preview .payment-stats,
+html.force-mobile-preview .fly-goalie-form,
+html.force-mobile-preview .game-setup-grid,
+html.force-mobile-preview .message-grid,
+html.force-mobile-preview .regular-skaters-grid,
+html.force-mobile-preview .snapshot-stats,
+html.force-mobile-preview .snapshot-preview-grid,
+html.force-mobile-preview .snapshot-meta-grid,
+html.force-mobile-preview .form-row,
+html.force-mobile-preview .schedule-grid {
+    grid-template-columns: 1fr !important;
+}
+html.force-mobile-preview .payment-options > div {
+    flex: 1 1 100% !important;
+}
+html.force-mobile-preview .players-grid {
+    grid-template-columns: 1fr !important;
+}
+html.force-mobile-preview .spot-number,
+html.force-mobile-preview .waitlist-count {
+    font-size: 2.5rem !important;
+}
+html.force-mobile-preview .code-digit {
+    width: 50px !important;
+    height: 60px !important;
+    font-size: 1.5rem !important;
+}
+html.force-mobile-preview .maintenance-bulletin,
+html.force-mobile-preview .announcement-bulletin {
+    max-width: 430px !important;
+}
+</style>
+
+    <script>
+        (function(){
+            var ua = navigator.userAgent || '';
+            var isWindowsFirefox = /Windows NT/i.test(ua) && /Firefox\//i.test(ua) && !/Android/i.test(ua) && !/Mobile/i.test(ua);
+            if (isWindowsFirefox) {
+                document.documentElement.classList.add('force-mobile-preview');
+            }
+        })();
+    </script>
+
 </head>
 <body>
 
