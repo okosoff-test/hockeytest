@@ -150,15 +150,6 @@
             font-size: 0.75rem;
             margin-left: 8px;
         }
-
-        .vip-badge {
-            background: #8e24aa;
-            color: white;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.75rem;
-            margin-left: 8px;
-        }
         
         .paid-input {
             width: 70px;
@@ -1630,7 +1621,6 @@ button {
 <style>
 /* tighten badges */
 .protected-badge,
-.vip-badge,
 .goalie-badge {
     display: inline-flex;
     align-items: center;
@@ -1656,7 +1646,6 @@ button {
 
 /* center badges under name */
 .protected-badge,
-.vip-badge,
 .goalie-badge {
     margin-left: 0 !important;
     margin-right: 0 !important;
@@ -1966,7 +1955,6 @@ button {
 
 <style id="admin-safe-mobile-patch-v10">
 #playerList .protected-badge,
-#playerList .vip-badge,
 #playerList .goalie-badge{display:none !important;}
 #playerList .player-name-cell{
     display:flex !important;
@@ -2290,6 +2278,250 @@ th, td{padding:2px 3px !important;}
     }
     #adminPanel > .maintenance-control .maintenance-label{
         margin: 0 !important;
+    }
+}
+</style>
+
+
+
+<style id="android-compact-mode-v1">
+/* Android Compact Mode */
+@media (max-width: 700px) {
+    body {
+        padding: 10px !important;
+    }
+
+    .container {
+        padding: 12px !important;
+        border-radius: 12px !important;
+    }
+
+    h1 {
+        font-size: 1.18rem !important;
+        letter-spacing: 0.6px !important;
+        margin: 0 0 8px 0 !important;
+        line-height: 1.15 !important;
+    }
+
+    h2 {
+        font-size: 0.95rem !important;
+        margin: 0 0 8px 0 !important;
+    }
+
+    .section-header,
+    .control-box h3,
+    .details-box h3,
+    .add-player-form h3,
+    .waitlist-section h3,
+    .cancellations-section h3,
+    .roster-status h3,
+    .payment-summary-box h3,
+    .goalies-section h3,
+    .backup-goalies-section h3,
+    .add-goalie-fly-section h3,
+    .title-editor-section h3,
+    .arena-section h3,
+    .game-setup-section h3,
+    .announcement-control h3,
+    .regular-skaters-section h3,
+    .regular-summary-section h3,
+    .snapshot-pro-section h3,
+    .history-delete-box h3,
+    .maintenance-control h3,
+    .compact-announcement-control h3 {
+        font-size: 0.92rem !important;
+        margin: 0 0 8px 0 !important;
+        line-height: 1.15 !important;
+    }
+
+    .maintenance-control,
+    .compact-announcement-control,
+    .game-setup-section,
+    .snapshot-pro-section,
+    .control-box,
+    .payment-summary-box,
+    .roster-status,
+    .waitlist-section,
+    .cancellations-section,
+    .history-delete-box,
+    .add-player-form,
+    .announcement-control,
+    .arena-section,
+    .goalies-section,
+    .backup-goalies-section,
+    .add-goalie-fly-section,
+    .title-editor-section,
+    .regular-skaters-section,
+    .regular-summary-section {
+        padding: 10px !important;
+        margin-bottom: 14px !important;
+        border-radius: 10px !important;
+    }
+
+    .success-message,
+    .error-message,
+    .schedule-info,
+    .manual-override-warning,
+    .game-setup-preview-line,
+    .message-box,
+    .snapshot-compact-card,
+    .snapshot-preview-panel {
+        padding: 10px !important;
+        font-size: 0.82rem !important;
+        border-radius: 10px !important;
+    }
+
+    input,
+    select,
+    textarea {
+        padding: 8px !important;
+        font-size: 0.9rem !important;
+        margin: 4px 0 !important;
+        min-height: 36px !important;
+    }
+
+    button,
+    .control-btn,
+    .logout-btn,
+    .restore-btn,
+    .export-btn,
+    .delete-btn,
+    .update-title-btn,
+    .update-arena-btn,
+    .add-btn,
+    .add-goalies-btn,
+    .add-backup-btn,
+    .add-fly-btn,
+    .remove-btn,
+    .promote-btn {
+        padding: 7px 10px !important;
+        font-size: 0.74rem !important;
+        min-height: 32px !important;
+        margin-top: 6px !important;
+        border-radius: 8px !important;
+    }
+
+    .count-value,
+    .payment-stat-value,
+    .snapshot-stat-value {
+        font-size: 1.18rem !important;
+    }
+
+    .count-label,
+    .payment-stat-label,
+    .snapshot-stat-label,
+    .current-arena-display,
+    .game-setup-help,
+    .security-notice,
+    .schedule-hint,
+    .snapshot-mini,
+    .snapshot-pro-subtitle {
+        font-size: 0.76rem !important;
+    }
+
+    table {
+        margin-top: 10px !important;
+    }
+
+    th, td {
+        padding: 2px 3px !important;
+        font-size: 0.72rem !important;
+    }
+
+    .player-name-cell {
+        gap: 1px !important;
+    }
+
+    .player-name-main {
+        font-size: 0.82rem !important;
+    }
+
+    .player-phone-sub {
+        font-size: 0.62rem !important;
+    }
+
+    .player-time-sub {
+        font-size: 0.56rem !important;
+    }
+
+    .rating-pill-input {
+        width: 32px !important;
+        height: 21px !important;
+        font-size: 0.72rem !important;
+        border-radius: 6px !important;
+    }
+
+    .compact-pay {
+        width: 50px !important;
+        min-height: 21px !important;
+        grid-template-columns: 1fr 14px !important;
+        border-radius: 6px !important;
+    }
+
+    .compact-pay-main {
+        min-height: 21px !important;
+        font-size: 0.68rem !important;
+        padding: 0 3px !important;
+    }
+
+    .compact-pay-plus,
+    .compact-pay-minus {
+        width: 14px !important;
+        min-width: 14px !important;
+        font-size: 0.82rem !important;
+    }
+
+    .goalie-badge,
+    .protected-badge,
+    .cancelled-badge,
+    .announcement-status,
+    .snapshot-badge,
+    .maintenance-label,
+    .regular-toggle-btn {
+        font-size: 0.68rem !important;
+        padding: 4px 8px !important;
+        min-width: unset !important;
+    }
+
+    .maintenance-label {
+        min-width: 0 !important;
+        width: 100% !important;
+    }
+
+    .preview-thumb {
+        width: 88px !important;
+        height: 88px !important;
+    }
+
+    .payment-stat,
+    .snapshot-stat-card,
+    .snapshot-preview-box {
+        padding: 10px !important;
+    }
+
+    .control-row,
+    .message-actions,
+    .preview-row,
+    .snapshot-actions,
+    .regular-skaters-toolbar,
+    .backup-goalie-select,
+    .arena-select-group {
+        gap: 6px !important;
+    }
+
+    .game-setup-grid,
+    .message-grid,
+    .schedule-grid,
+    .snapshot-compact-grid,
+    .snapshot-meta-grid,
+    .snapshot-preview-grid,
+    .payment-stats,
+    .goalie-list,
+    .fly-goalie-form,
+    .title-controls,
+    .form-row,
+    .regular-skaters-grid {
+        gap: 8px !important;
     }
 }
 </style>
@@ -4876,18 +5108,22 @@ Date: ${selectedGameDate}`);
 
                     sortedPlayers.forEach(p => {
                         const tr = document.createElement('tr');
-                        const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
-                        const isGoalie = !!p.isGoalie;
-                        const isSpecialDisplay = isPhan || isGoalie;
-                        const goalieBadge = isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const vipBadge = isPhan ? '<span class="vip-badge">VIP</span>' : '';
+                        const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
+                            '<span class="protected-badge">PROTECTED</span>' : '';
                         const regularInfo = getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
                         let paidInput = '';
-                        if (!isSpecialDisplay) {
+                        if (p.isGoalie) {
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        } else if (p.firstName === 'Phan' && p.lastName === 'Ly') {
+                            paidInput = '<span style="color:#4CAF50; font-weight:bold;">FREE</span>';
+                        } else {
+                            const amount = p.paidAmount !== null && p.paidAmount !== undefined ? p.paidAmount : '';
                             const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
+
                             const compactAmount = isPaid
                                 ? parseFloat(p.paidAmount)
                                 : 15;
@@ -4902,16 +5138,10 @@ Date: ${selectedGameDate}`);
                             `;
                         }
 
-                        const paymentDisplay = isSpecialDisplay ? '' : (p.paymentMethod === 'E-Transfer' ? 'ET' : (p.paymentMethod || ''));
-                        const regularDisplay = isSpecialDisplay
-                            ? ''
-                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-
                         tr.innerHTML = `
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
-                                ${vipBadge}${goalieBadge}
                                 ${p.registeredAt ? `<span class="player-time-sub">${new Date(p.registeredAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
@@ -4923,8 +5153,10 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${paymentDisplay}</td>
-                            <td>${regularDisplay}</td>
+                            <td>${p.isGoalie ? 'N/A' : (p.paymentMethod === 'E-Transfer' ? 'ET' : p.paymentMethod)}</td>
+                            <td>
+                                <button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>
+                            </td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
