@@ -1051,6 +1051,143 @@
             margin: 0;
         }
 
+        .top-action-bar {
+            position: sticky;
+            top: 10px;
+            z-index: 80;
+            margin: 0 auto 14px;
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            justify-content: center;
+            pointer-events: none;
+        }
+
+        .top-action-btn {
+            pointer-events: auto;
+            width: min(100%, 430px);
+            margin: 0;
+            border-radius: 999px;
+            padding: 14px 20px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.28);
+        }
+
+        .quick-status-row {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            margin: 10px 0 16px;
+        }
+
+        .status-pill {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            min-height: 40px;
+            padding: 10px 16px;
+            border-radius: 999px;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+            text-transform: uppercase;
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.12);
+            text-align: center;
+        }
+
+        .status-pill.open {
+            background: linear-gradient(135deg, #1d6d32, #2d8d44);
+            color: #fff;
+        }
+
+        .status-pill.locked {
+            background: linear-gradient(135deg, #7a1f1f, #b83232);
+            color: #fff;
+        }
+
+        .status-pill.waitlist {
+            background: linear-gradient(135deg, #8a4b00, #c96c00);
+            color: #fff;
+        }
+
+        .status-pill.released {
+            background: linear-gradient(135deg, #155a9c, #2874c8);
+            color: #fff;
+        }
+
+        .status-subtle {
+            color: #cfcfcf;
+            font-size: 0.92rem;
+            background: rgba(255,255,255,0.05);
+        }
+
+        .game-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .game-time {
+            order: 1;
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #fff;
+        }
+
+        .game-location {
+            order: 2;
+        }
+
+        .game-date {
+            order: 3;
+            color: #d8d8d8;
+        }
+
+        .registered-summary {
+            text-align: center;
+            color: #ffd09a;
+            margin: -2px 0 14px;
+            font-size: 0.95rem;
+            font-weight: 700;
+        }
+
+        .player-payment-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 5px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
+        }
+
+        .player-payment-flag.paid { color: #7ee787; }
+        .player-payment-flag.owes { color: #ff8a80; }
+        .player-payment-flag.pending { color: #ffd166; }
+
+        .last-updated-row {
+            margin-top: 14px;
+            text-align: center;
+            color: #8f8f8f;
+            font-size: 0.82rem;
+        }
+
+        @media (max-width: 600px) {
+            body { padding: 12px; }
+            .container { padding: 18px; }
+            .top-action-bar { top: 8px; margin-bottom: 12px; }
+            .top-action-btn { padding: 13px 18px; }
+            .quick-status-row { gap: 8px; margin-bottom: 14px; }
+            .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
+            .status-subtle { font-size: 0.84rem; }
+            .game-time { font-size: 1.25rem; }
+            .registered-summary { font-size: 0.88rem; }
+            .last-updated-row { font-size: 0.76rem; }
+        }
+
 </style>
 <base target="_blank">
 
@@ -1268,6 +1405,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
     </div>
 
+    <div class="top-action-bar">
+        <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
+    </div>
+
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
@@ -1275,6 +1416,11 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="game-date" id="gameDate">Loading...</div>
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
+        </div>
+
+        <div class="quick-status-row">
+            <div class="status-pill open" id="portalStatusPill">🟢 Open</div>
+            <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
@@ -1306,15 +1452,17 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         <!-- Registered Players List -->
         <div class="registered-players-section" id="registeredPlayersSection">
-            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
+            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
+            <div class="registered-summary" id="registeredSummary">0 / 20 spots filled</div>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Cancellation must be done before roster release. Late cancel / no-show owes.
+                Cancel before roster release or you owe.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
             </div>
+            <div class="last-updated-row">Last updated: <span id="lastUpdatedTime">--</span></div>
         </div>
 
         <div id="registrationArea">
@@ -2476,6 +2624,68 @@ function updateCalculatedRating() {
             rosterCountdownTimer = setInterval(tick, 1000);
         }
 
+        function updateTopActionState() {
+            const btn = document.getElementById('topActionBtn');
+            if (!btn) return;
+            if (rosterReleased) {
+                btn.innerText = '🏒 View Roster';
+            } else if (isFull) {
+                btn.innerText = '📝 Join Waitlist';
+            } else {
+                btn.innerText = '🏒 Join Game';
+            }
+        }
+
+        function updateLastUpdatedTime() {
+            const el = document.getElementById('lastUpdatedTime');
+            if (!el) return;
+            const now = new Date();
+            el.innerText = new Intl.DateTimeFormat('en-US', {
+                hour: 'numeric',
+                minute: '2-digit',
+                hour12: true
+            }).format(now);
+        }
+
+        function updatePortalStatus(options = {}) {
+            const pill = document.getElementById('portalStatusPill');
+            const filledPill = document.getElementById('filledStatusPill');
+            const registeredSummary = document.getElementById('registeredSummary');
+            if (!pill || !filledPill) return;
+
+            const filled = Math.max(0, Math.min(20, 20 - Number(options.playerSpotsAvailable ?? playerSpotsAvailable ?? 20)));
+            const filledText = `${filled} / 20 Spots Filled`;
+            filledPill.innerText = filledText;
+            if (registeredSummary) registeredSummary.innerText = filledText.toLowerCase();
+
+            pill.className = 'status-pill';
+            if (options.rosterReleased) {
+                pill.classList.add('released');
+                pill.innerText = '🏒 Roster Released';
+            } else if (options.isFull) {
+                pill.classList.add('waitlist');
+                pill.innerText = '🟠 Waitlist Only';
+            } else if (options.effectiveLocked) {
+                pill.classList.add('locked');
+                pill.innerText = '🔒 Code Required';
+            } else {
+                pill.classList.add('open');
+                pill.innerText = '🟢 Open';
+            }
+        }
+
+        function scrollTopActionTarget() {
+            const targetId = rosterReleased ? 'rosterDisplay' : 'registrationArea';
+            const target = document.getElementById(targetId);
+            if (!target) return;
+            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const topActionBtn = document.getElementById('topActionBtn');
+            if (topActionBtn) topActionBtn.addEventListener('click', scrollTopActionTarget);
+        });
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -2559,6 +2769,9 @@ function updateCalculatedRating() {
                 
                 const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
                 codeRequired = effectiveLocked;
+                updatePortalStatus({ rosterReleased: data.rosterReleased, isFull, effectiveLocked, playerSpotsAvailable });
+                updateTopActionState();
+                updateLastUpdatedTime();
 
                 const lockNotice = document.getElementById('lockNotice');
                 if (effectiveLocked && !data.rosterReleased) {
@@ -2684,8 +2897,18 @@ function updateCalculatedRating() {
                 card.className = cardClass;
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
-                const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
+                const goalieLabel = isGoalie ? '<div class="goalie-label">🧤 GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
+                let paymentFlag = '';
+                if (!isGoalie && !isProtected) {
+                    if (player.paid === true) {
+                        paymentFlag = '<div class="player-payment-flag paid">🟢 Paid</div>';
+                    } else if (player.paidAmount && Number(player.paidAmount) > 0) {
+                        paymentFlag = '<div class="player-payment-flag pending">🟡 Pending</div>';
+                    } else {
+                        paymentFlag = '<div class="player-payment-flag owes">🔴 Owes</div>';
+                    }
+                }
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
@@ -2698,6 +2921,7 @@ function updateCalculatedRating() {
                         <div class="player-name-simple">${firstName} ${lastName}</div>
                         ${goalieLabel}
                         ${protectedLabel}
+                        ${paymentFlag}
                     </div>
                     ${cancelButton}
                 `;
