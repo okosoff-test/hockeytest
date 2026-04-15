@@ -1899,7 +1899,14 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             primaryMeta.textContent = buildQuickPlayerLabel(first) || '1 tap to sign up with your saved info';
             primaryBtn.textContent = `1-Tap Signup as ${first.firstName}`;
             primaryBtn.onclick = () => quickReturnOneTapSignup(first, primaryBtn);
-            if (editBtn) editBtn.onclick = () => fillSignupFormFromProfile(first);
+            if (editBtn) editBtn.onclick = () => {
+                fillSignupFormFromProfile(first);
+                const signupForm = document.getElementById('signupForm');
+                if (signupForm) {
+                    signupForm.style.display = 'block';
+                    signupForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            };
 
             rest.forEach(profile => {
                 const button = document.createElement('button');
@@ -2652,6 +2659,11 @@ function updateCalculatedRating() {
             const codeSection = document.getElementById('codeSection');
             const signupForm = document.getElementById('signupForm');
             const quickReturn = document.getElementById('quickReturnSection');
+
+            if (!codeRequired && signupForm && getComputedStyle(signupForm).display === 'none') {
+                signupForm.style.display = 'block';
+            }
+
             const target =
                 (codeSection && getComputedStyle(codeSection).display !== 'none') ? codeSection :
                 (quickReturn && getComputedStyle(quickReturn).display !== 'none') ? quickReturn :
@@ -2774,7 +2786,8 @@ function updateCalculatedRating() {
                 const codeTitle = document.getElementById('codeTitle');
                 if (effectiveLocked) {
                     document.getElementById('codeEntryBox').style.display = 'block';
-                    document.getElementById('openNotice').style.display = 'none';
+                    const openNoticeEl = document.getElementById('openNotice');
+                    if (openNoticeEl) openNoticeEl.style.display = 'none';
                     if (!verifiedCode) {
                         document.getElementById('signupForm').style.display = 'none';
                     }
@@ -2787,7 +2800,8 @@ function updateCalculatedRating() {
                     }
                 } else {
                     document.getElementById('codeEntryBox').style.display = 'none';
-                    document.getElementById('openNotice').style.display = 'block';
+                    const openNoticeEl = document.getElementById('openNotice');
+                    if (openNoticeEl) openNoticeEl.style.display = 'block';
                     document.getElementById('signupForm').style.display = 'block';
                 }
                 
