@@ -558,7 +558,6 @@
         }
 
         .goalie-badge {
-            background: #2196f3;
             background: #ff6b00;
             color: white;
             padding: 2px 6px;
@@ -707,6 +706,24 @@
             color: #ff6b00;
             font-size: 0.7rem;
             font-weight: bold;
+        }
+
+
+        .player-info-simple .goalie-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            background: #2196f3;
+            color: white;
+            font-size: 0.62rem;
+            font-weight: 800;
+            line-height: 1;
+            padding: 3px 6px;
+            border-radius: 999px;
+            margin-top: 4px;
+            width: fit-content;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
 
         .protected-label {
@@ -1052,197 +1069,6 @@
             margin: 0;
         }
 
-        .top-action-bar {
-            margin: 12px auto 10px;
-            width: 100%;
-            display: flex;
-            justify-content: center;
-        }
-
-        .top-action-btn {
-            width: min(100%, 430px);
-            margin: 0;
-            border-radius: 999px;
-            padding: 14px 20px;
-            box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-        }
-
-        .quick-status-row { display:none !important; }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 40px;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-weight: 800;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.12);
-            text-align: center;
-        }
-
-        .status-pill.open {
-            background: linear-gradient(135deg, #1d6d32, #2d8d44);
-            color: #fff;
-        }
-
-        .status-pill.locked {
-            background: linear-gradient(135deg, #7a1f1f, #b83232);
-            color: #fff;
-        }
-
-        .status-pill.waitlist {
-            background: linear-gradient(135deg, #8a4b00, #c96c00);
-            color: #fff;
-        }
-
-        .status-pill.released {
-            background: linear-gradient(135deg, #155a9c, #2874c8);
-            color: #fff;
-        }
-
-        .status-subtle {
-            color: #cfcfcf;
-            font-size: 0.92rem;
-            background: rgba(255,255,255,0.05);
-        }
-
-        .game-info {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .game-time {
-            order: 1;
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: #fff;
-        }
-
-        .game-location {
-            order: 2;
-        }
-
-        .game-date {
-            order: 3;
-            color: #d8d8d8;
-        }
-
-        .registered-summary {
-            text-align: center;
-            color: #ffd09a;
-            margin: -2px 0 14px;
-            font-size: 0.95rem;
-            font-weight: 700;
-        }
-
-        .hero-combined-card {
-            background: linear-gradient(135deg, #2a2a2a, #333);
-            border: 2px solid var(--accent);
-            border-radius: 14px;
-            padding: 18px 18px 16px;
-            margin: 18px 0 14px;
-            text-align: center;
-        }
-
-        .hero-combined-card .game-info {
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            padding: 0;
-            margin: 0 auto 4px;
-            max-width: 620px;
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .hero-combined-card .game-date,
-        .hero-combined-card .game-location,
-        .hero-combined-card .game-time {
-            margin-bottom: 0;
-        }
-
-        .hero-combined-card .game-time {
-            font-size: 1.45rem;
-            font-weight: 800;
-            color: #ffffff;
-        }
-
-        .hero-combined-card .game-location {
-            font-size: 1.15rem;
-        }
-
-        .hero-combined-card .game-date {
-            font-size: 0.92rem;
-            color: #d7d7d7;
-        }
-
-        .hero-combined-card .top-action-bar {
-            margin: 14px auto 10px;
-        }
-
-        .hero-combined-card .spots-container {
-            margin: 0;
-            gap: 0;
-        }
-
-        .hero-combined-card .spot-counter {
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            padding: 0;
-        }
-
-        .hero-combined-card .spot-number {
-            font-size: 2.35rem;
-            line-height: 1;
-        }
-
-        .hero-combined-card .spot-text {
-            margin-top: 4px;
-            font-size: 0.95rem;
-            font-weight: 700;
-            color: #d7d7d7;
-        }
-
-        .hero-combined-card .quick-status-row { display:none !important; }
-
-
-        .last-updated-row {
-            margin-top: 14px;
-            text-align: center;
-            color: #8f8f8f;
-            font-size: 0.82rem;
-        }
-
-        @media (max-width: 600px) {
-            body { padding: 12px; }
-            .container { padding: 18px; }
-            .top-action-bar { margin: 10px auto 8px; }
-            .top-action-btn { padding: 13px 18px; }
-            .quick-status-row { display:none !important; }
-            .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
-            .hero-combined-card { padding: 16px 14px 14px; margin: 14px 0 12px; }
-            .hero-combined-card .game-info { gap: 5px; }
-            .hero-combined-card .game-time { font-size: 1.3rem; }
-            .hero-combined-card .game-location { font-size: 1.05rem; }
-            .hero-combined-card .game-date { font-size: 0.86rem; }
-            .hero-combined-card .top-action-bar { margin: 14px auto 10px; }
-            .hero-combined-card .spots-container { margin-bottom: 0; }
-            .hero-combined-card .spot-number { font-size: 2.1rem; }
-            .hero-combined-card .spot-text { font-size: 0.9rem; }
-            .status-subtle { font-size: 0.84rem; }
-            .game-time { font-size: 1.25rem; }
-            .registered-summary { font-size: 0.88rem; }
-            .last-updated-row { font-size: 0.76rem; }
-        }
-
 </style>
 <base target="_blank">
 
@@ -1463,23 +1289,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
-        <div class="hero-combined-card">
-            <div class="game-info">
-                <div class="game-date" id="gameDate">Loading...</div>
-                <div class="game-location" id="gameLocation">Loading...</div>
-                <div class="game-time" id="gameTime">Loading...</div>
-            </div>
-
-            <div class="top-action-bar">
-                <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
-            </div>
-
-            <div class="spots-container">
-                <div class="spot-counter" id="playerSpotCounter">
-                    <div class="spot-number" id="spotsLeft">--</div>
-                    <div class="spot-text" id="spotsText">Open Spots</div>
-                </div>
-            </div>
+        <div class="game-info">
+            <div class="game-date" id="gameDate">Loading...</div>
+            <div class="game-location" id="gameLocation">Loading...</div>
+            <div class="game-time" id="gameTime">Loading...</div>
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
@@ -1511,20 +1324,25 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         <!-- Registered Players List -->
         <div class="registered-players-section" id="registeredPlayersSection">
-            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">
+            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
-            <div class="registered-summary" id="registeredSummary">0 / 20 spots filled</div>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Cancel before roster release or you owe.
+                Cancellation must be done before roster release. Late cancel / no-show owes.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
             </div>
-            <div class="last-updated-row">Last updated: <span id="lastUpdatedTime">--</span></div>
         </div>
 
         <div id="registrationArea">
+            <div class="spots-container">
+                <div class="spot-counter" id="playerSpotCounter">
+                    <div class="spot-number" id="spotsLeft">--</div>
+                    <div class="spot-text" id="spotsText">Player Spots Available</div>
+                </div>
+            </div>
+
             <!-- Lock Schedule Notice -->
             <div class="lock-notice" id="lockNotice" style="display:none;">
                 <strong>🔒 Signup Temporarily Locked</strong>
@@ -2676,48 +2494,6 @@ function updateCalculatedRating() {
             rosterCountdownTimer = setInterval(tick, 1000);
         }
 
-        function updateTopActionState() {
-            const btn = document.getElementById('topActionBtn');
-            if (!btn) return;
-            if (rosterReleased) {
-                btn.innerText = '🏒 View Roster';
-            } else if (isFull) {
-                btn.innerText = '📝 Join Waitlist';
-            } else {
-                btn.innerText = '🏒 Join Game';
-            }
-        }
-
-        function updateLastUpdatedTime() {
-            const el = document.getElementById('lastUpdatedTime');
-            if (!el) return;
-            const now = new Date();
-            el.innerText = new Intl.DateTimeFormat('en-US', {
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            }).format(now);
-        }
-
-        function updatePortalStatus(options = {}) {
-            const registeredSummary = document.getElementById('registeredSummary');
-            const filled = Math.max(0, Math.min(20, 20 - Number(options.playerSpotsAvailable ?? playerSpotsAvailable ?? 20)));
-            const filledText = `${filled} / 20 spots filled`;
-            if (registeredSummary) registeredSummary.innerText = filledText;
-        }
-
-        function scrollTopActionTarget() {
-            const targetId = rosterReleased ? 'rosterDisplay' : 'registrationArea';
-            const target = document.getElementById(targetId);
-            if (!target) return;
-            target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const topActionBtn = document.getElementById('topActionBtn');
-            if (topActionBtn) topActionBtn.addEventListener('click', scrollTopActionTarget);
-        });
-
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -2801,9 +2577,6 @@ function updateCalculatedRating() {
                 
                 const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
                 codeRequired = effectiveLocked;
-                updatePortalStatus({ rosterReleased: data.rosterReleased, isFull, effectiveLocked, playerSpotsAvailable });
-                updateTopActionState();
-                updateLastUpdatedTime();
 
                 const lockNotice = document.getElementById('lockNotice');
                 if (effectiveLocked && !data.rosterReleased) {
@@ -2929,9 +2702,8 @@ function updateCalculatedRating() {
                 card.className = cardClass;
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
-                const goalieLabel = '';
+                const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
-                let paymentFlag = '';
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
@@ -2942,6 +2714,7 @@ function updateCalculatedRating() {
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
                         <div class="player-name-simple">${firstName} ${lastName}</div>
+                        ${goalieLabel}
                         ${protectedLabel}
                     </div>
                     ${cancelButton}
