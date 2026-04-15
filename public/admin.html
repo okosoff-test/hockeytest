@@ -1035,6 +1035,17 @@
             border-radius: 5px;
             font-size: 1rem;
             flex: 1;
+            min-height: 220px;
+        }
+
+        .history-select option {
+            padding: 8px 10px;
+            border-bottom: 1px solid rgba(255,255,255,0.06);
+        }
+
+        .history-select option:checked {
+            background: #ff6b00 linear-gradient(0deg, #ff6b00 0%, #ff6b00 100%);
+            color: #fff;
         }
 
         .delete-btn {
@@ -2098,26 +2109,6 @@ th, td{padding:2px 3px !important;}
     align-items:center !important;
     gap:8px !important;
 }
-.history-delete-toolbar{
-    align-items:stretch !important;
-}
-.history-delete-actions{
-    display:flex;
-    flex-direction:column;
-    gap:8px;
-    min-width:150px;
-}
-.history-delete-actions .control-btn{
-    width:100%;
-    margin:0 !important;
-}
-.history-select[multiple]{
-    min-height:220px;
-    padding:8px;
-}
-.history-select[multiple] option{
-    padding:8px 10px;
-}
 
 .history-delete-box select,
 .payment-summary-box select{
@@ -2176,15 +2167,6 @@ th, td{padding:2px 3px !important;}
 
     .payment-summary-box .message-actions{
         gap:8px !important;
-    }
-
-    .history-delete-actions{
-        width:100%;
-        min-width:0;
-    }
-
-    .history-select[multiple]{
-        min-height:180px;
     }
 }
 </style>
@@ -3340,74 +3322,17 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="schedule-checkbox-uniform-fix-v2">
-/* Schedule table only: shrink blue checkboxes + tighten fonts without affecting anything else */
-.schedule-editor .schedule-card {
-    padding: 12px !important;
-}
-.schedule-editor .schedule-title {
-    font-size: 0.98rem !important;
-    line-height: 1.15 !important;
-    margin-bottom: 6px !important;
-}
-.schedule-editor .schedule-label {
-    gap: 8px !important;
-    margin-bottom: 8px !important;
-    font-size: 0.9rem !important;
-    line-height: 1.15 !important;
-    color: #e0e0e0 !important;
-}
-.schedule-editor .schedule-label input[type="checkbox"] {
-    width: 18px !important;
-    height: 18px !important;
-    min-width: 18px !important;
-    margin: 0 !important;
-    transform: none !important;
-    accent-color: #8ec1ff;
-    flex: 0 0 18px !important;
-}
-.schedule-editor .schedule-label2,
-.schedule-editor .schedule-hint,
-.schedule-editor .enhanced-datetime .picker-summary {
-    font-size: 0.8rem !important;
-    line-height: 1.2 !important;
-}
-.schedule-editor input[type="datetime-local"],
-.schedule-editor .enhanced-datetime .date-input,
-.schedule-editor .enhanced-datetime .time-trigger {
-    font-size: 0.9rem !important;
-}
-@media (max-width: 700px) {
-    .schedule-editor .schedule-card {
-        padding: 10px !important;
-    }
-    .schedule-editor .schedule-title {
-        font-size: 0.92rem !important;
-    }
-    .schedule-editor .schedule-label {
-        gap: 7px !important;
-        margin-bottom: 7px !important;
-        font-size: 0.84rem !important;
-    }
-    .schedule-editor .schedule-label input[type="checkbox"] {
-        width: 16px !important;
-        height: 16px !important;
-        min-width: 16px !important;
-        flex-basis: 16px !important;
-    }
-    .schedule-editor .schedule-label2,
-    .schedule-editor .schedule-hint,
-    .schedule-editor .enhanced-datetime .picker-summary {
-        font-size: 0.74rem !important;
-    }
-    .schedule-editor input[type="datetime-local"],
-    .schedule-editor .enhanced-datetime .date-input,
-    .schedule-editor .enhanced-datetime .time-trigger {
-        font-size: 0.84rem !important;
-    }
-}
+<style id="schedule-table-mobile-uniform-fix-v2">
+/* Schedule table only: shrink blue checkboxes + fonts, keep collapsible behavior intact */
+.schedule-editor .schedule-card { padding: 10px !important; }
+.schedule-editor .schedule-title { font-size: 0.95rem !important; }
+.schedule-editor .schedule-label { font-size: 0.86rem !important; gap: 8px !important; margin-bottom: 8px !important; }
+.schedule-editor .schedule-label2 { font-size: 0.78rem !important; }
+.schedule-editor .schedule-hint { font-size: 0.76rem !important; }
+.schedule-editor input[type="checkbox"] { width: 15px !important; height: 15px !important; min-width: 15px !important; min-height: 15px !important; accent-color: #4a90e2; transform: none !important; margin: 0 !important; vertical-align: middle !important; }
+.schedule-editor input[type="datetime-local"], .schedule-editor .enhanced-datetime .date-input, .schedule-editor .enhanced-datetime .time-trigger { font-size: 0.86rem !important; padding: 8px 10px !important; }
+@media (max-width: 700px) { .schedule-editor .schedule-card { padding: 8px !important; } .schedule-editor .schedule-title { font-size: 0.9rem !important; } .schedule-editor .schedule-label { font-size: 0.8rem !important; gap: 6px !important; } .schedule-editor .schedule-label2, .schedule-editor .schedule-hint { font-size: 0.74rem !important; } .schedule-editor input[type="checkbox"] { width: 14px !important; height: 14px !important; min-width: 14px !important; min-height: 14px !important; } .schedule-editor input[type="datetime-local"], .schedule-editor .enhanced-datetime .date-input, .schedule-editor .enhanced-datetime .time-trigger { font-size: 0.82rem !important; padding: 7px 8px !important; }}
 </style>
-
 </head>
 <body class="admin-layout-option-1">
 
@@ -3838,24 +3763,23 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         <!-- History Management -->
         <div class="history-delete-box">
             <h3>🗑️ Delete Old History</h3>
-            <div class="control-row history-delete-toolbar" style="margin-bottom: 10px;">
-                <select id="historySelect" class="history-select" multiple size="8"></select>
-                <div class="history-delete-actions">
-                    <button class="control-btn" type="button" onclick="toggleSelectAllHistory()" style="background: #607d8b;">
-                        ☑️ Select All
-                    </button>
-                    <button class="control-btn" type="button" onclick="clearHistorySelection()" style="background: #666;">
-                        ✖ Clear
-                    </button>
-                    <button class="control-btn" type="button" onclick="loadHistoryList()" style="background: #4a90e2;">
+            <div class="control-row" style="margin-bottom: 10px; align-items: stretch;">
+                <select id="historySelect" class="history-select" multiple size="8" aria-label="Delete old history weeks">
+                </select>
+                <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
+                    <button class="control-btn" type="button" onclick="loadHistoryList()" style="background: #4a90e2; margin-left: 0;">
                         🔄 Refresh
+                    </button>
+                    <button class="control-btn" type="button" onclick="selectAllHistory()" style="background: #4CAF50; margin-left: 0;">
+                        ✅ Select All
+                    </button>
+                    <button class="control-btn" type="button" onclick="clearHistorySelection()" style="background: #666; margin-left: 0;">
+                        Clear
                     </button>
                 </div>
             </div>
-            <div class="schedule-hint" style="margin-top: -2px; margin-bottom: 10px;">
-                Hold Ctrl or Cmd to manually pick multiple weeks.
-            </div>
-            <button class="delete-btn" onclick="deleteSelectedHistory()">
+            <div style="color:#aaa; font-size:0.85rem; margin: 2px 0 10px 0;">Tip: use Ctrl/⌘ or Shift to select multiple weeks.</div>
+            <button class="delete-btn" type="button" onclick="deleteSelectedHistory()">
                 ❌ Delete Selected History
             </button>
             <div id="deleteResult" class="delete-result"></div>
@@ -6483,41 +6407,37 @@ Date: ${selectedGameDate}`);
             }
             window.open(`${API_URL}/api/admin/payment-reports/${select.value}/download?sessionToken=${sessionToken}`, '_blank');
         }
-
+        
         async function loadHistoryList() {
             const select = document.getElementById('historySelect');
             const resultDiv = document.getElementById('deleteResult');
-            
+            if (!select || !resultDiv) return;
+
             try {
                 const res = await fetch(`${API_URL}/api/history`);
                 const data = await res.json();
-                
+
                 select.innerHTML = '';
-                
+
                 if (data.history && data.history.length > 0) {
                     data.history.forEach(week => {
                         const option = document.createElement('option');
                         option.value = `${week.year}-${week.weekNumber}`;
-                        const createdAt = week.created || week.releaseDate || week.date || week.created_at;
-                        const date = createdAt ? new Date(createdAt) : null;
-                        const dateLabel = date && !Number.isNaN(date.getTime())
+                        const rawDate = week.created || week.releaseDate || week.gameDate || '';
+                        const date = rawDate ? new Date(rawDate) : null;
+                        const dateText = date && !Number.isNaN(date.getTime())
                             ? date.toLocaleDateString()
                             : 'No date';
-                        option.text = `Week ${week.weekNumber}, ${week.year} (${dateLabel})`;
+                        option.text = `Week ${week.weekNumber}, ${week.year} (${dateText})`;
                         select.appendChild(option);
                     });
                     resultDiv.className = 'delete-result success';
-                    resultDiv.innerHTML = `✅ Loaded ${data.history.length} weeks from history`;
+                    resultDiv.innerHTML = `✅ Loaded ${data.history.length} week${data.history.length === 1 ? '' : 's'} from history`;
                 } else {
-                    const option = document.createElement('option');
-                    option.value = '';
-                    option.text = 'No history available';
-                    option.disabled = true;
-                    select.appendChild(option);
                     resultDiv.className = 'delete-result error';
                     resultDiv.innerHTML = '⚠️ No history found';
                 }
-                
+
             } catch (err) {
                 console.error("Error loading history list:", err);
                 resultDiv.className = 'delete-result error';
@@ -6528,20 +6448,14 @@ Date: ${selectedGameDate}`);
         function getSelectedHistoryValues() {
             const select = document.getElementById('historySelect');
             if (!select) return [];
-            return Array.from(select.options)
-                .filter(option => option.selected && option.value)
-                .map(option => option.value);
+            return Array.from(select.selectedOptions || []).map(option => option.value).filter(Boolean);
         }
 
-        function toggleSelectAllHistory() {
+        function selectAllHistory() {
             const select = document.getElementById('historySelect');
             if (!select) return;
-            const selectableOptions = Array.from(select.options).filter(option => option.value && !option.disabled);
-            if (!selectableOptions.length) return;
-
-            const allSelected = selectableOptions.every(option => option.selected);
-            selectableOptions.forEach(option => {
-                option.selected = !allSelected;
+            Array.from(select.options).forEach(option => {
+                if (option.value) option.selected = true;
             });
         }
 
@@ -6556,30 +6470,30 @@ Date: ${selectedGameDate}`);
         async function deleteSelectedHistory() {
             const resultDiv = document.getElementById('deleteResult');
             const selectedValues = getSelectedHistoryValues();
-            
+
             if (!selectedValues.length) {
                 alert("Please select at least one week to delete");
                 return;
             }
-            
+
             const summary = selectedValues.length === 1
                 ? `Week ${selectedValues[0].split('-')[1]}, ${selectedValues[0].split('-')[0]}`
-                : `${selectedValues.length} selected history weeks`;
+                : `${selectedValues.length} selected weeks`;
 
-            if (!confirm(`⚠️ WARNING: This will permanently delete ${summary}.
+            if (!confirm(`⚠️ WARNING: This will permanently delete ${summary} from history.
 
 This action cannot be undone!
 
 Continue?`)) {
                 return;
             }
-            
-            try {
-                let deletedCount = 0;
-                const failures = [];
 
-                for (const value of selectedValues) {
-                    const [year, week] = value.split('-');
+            let deletedCount = 0;
+            const errors = [];
+
+            for (const value of selectedValues) {
+                const [year, week] = value.split('-');
+                try {
                     const res = await fetch(`${API_URL}/api/admin/history/${year}/${week}`, {
                         method: 'DELETE',
                         headers: getAdminHeaders(),
@@ -6592,65 +6506,27 @@ Continue?`)) {
                         logout();
                         return;
                     } else {
-                        let errorText = 'Failed to delete';
-                        try {
-                            const err = await res.json();
-                            errorText = err.error || errorText;
-                        } catch (parseError) {}
-                        failures.push(`Week ${week}, ${year}: ${errorText}`);
+                        const err = await res.json().catch(() => ({}));
+                        errors.push(`Week ${week}, ${year}: ${err.error || 'Failed to delete'}`);
                     }
+                } catch (err) {
+                    console.error("Error deleting history:", err);
+                    errors.push(`Week ${week}, ${year}: Network error`);
                 }
-                
-                if (!failures.length) {
-                    resultDiv.className = 'delete-result success';
-                    resultDiv.innerHTML = `✅ Deleted ${deletedCount} history ${deletedCount === 1 ? 'week' : 'weeks'}`;
-                } else if (deletedCount > 0) {
-                    resultDiv.className = 'delete-result error';
-                    resultDiv.innerHTML = `⚠️ Deleted ${deletedCount} week(s), but ${failures.length} failed.<br>${failures.join('<br>')}`;
-                } else {
-                    resultDiv.className = 'delete-result error';
-                    resultDiv.innerHTML = `❌ ${failures.join('<br>')}`;
-                }
+            }
 
-                await loadHistoryList();
-            } catch (err) {
-                console.error("Error deleting history:", err);
+            if (deletedCount && !errors.length) {
+                resultDiv.className = 'delete-result success';
+                resultDiv.innerHTML = `✅ Deleted ${deletedCount} week${deletedCount === 1 ? '' : 's'} from history`;
+            } else if (deletedCount && errors.length) {
+                resultDiv.className = 'delete-result success';
+                resultDiv.innerHTML = `✅ Deleted ${deletedCount} week${deletedCount === 1 ? '' : 's'}. ${errors.length} error${errors.length === 1 ? '' : 's'} occurred.`;
+            } else {
                 resultDiv.className = 'delete-result error';
-                resultDiv.innerHTML = '❌ Network error';
+                resultDiv.innerHTML = `❌ ${errors[0] || 'Failed to delete selected history'}`;
             }
-        }
 
-            
-            const [year, week] = value.split('-');
-            
-            if (!confirm(`⚠️ WARNING: This will permanently delete Week ${week}, ${year} from history.\n\nThis action cannot be undone!\n\nContinue?`)) {
-                return;
-            }
-            
-            try {
-                const res = await fetch(`${API_URL}/api/admin/history/${year}/${week}`, {
-                    method: 'DELETE',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken })
-                });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    resultDiv.className = 'delete-result success';
-                    resultDiv.innerHTML = `✅ ${data.message}`;
-                    loadHistoryList();
-                } else if (res.status === 401) {
-                    logout();
-                } else {
-                    const err = await res.json();
-                    resultDiv.className = 'delete-result error';
-                    resultDiv.innerHTML = `❌ Error: ${err.error || 'Failed to delete'}`;
-                }
-            } catch (err) {
-                console.error("Error deleting history:", err);
-                resultDiv.className = 'delete-result error';
-                resultDiv.innerHTML = '❌ Network error';
-            }
+            await loadHistoryList();
         }
         async function resizeAnnouncementImageDataUrl(file, maxWidth = 1800, maxHeight = 1200, quality = 0.92) {
             return new Promise((resolve, reject) => {
