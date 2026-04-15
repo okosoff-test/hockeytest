@@ -1540,7 +1540,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <p id="codeError" style="color:#ff4444; display:none; margin-top:10px;">Invalid code</p>
                 </div>
 
-                
+                <div class="open-signup-notice" id="openNotice" style="display:none;">
+                    <h3>✅ Signup is Open!</h3>
+                    <p>No code required - register below</p>
+                </div>
             </div>
 
             <div class="quick-return-section" id="quickReturnSection">
@@ -1899,14 +1902,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             primaryMeta.textContent = buildQuickPlayerLabel(first) || '1 tap to sign up with your saved info';
             primaryBtn.textContent = `1-Tap Signup as ${first.firstName}`;
             primaryBtn.onclick = () => quickReturnOneTapSignup(first, primaryBtn);
-            if (editBtn) editBtn.onclick = () => {
-                fillSignupFormFromProfile(first);
-                const signupForm = document.getElementById('signupForm');
-                if (signupForm) {
-                    signupForm.style.display = 'block';
-                    signupForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                }
-            };
+            if (editBtn) editBtn.onclick = () => fillSignupFormFromProfile(first);
 
             rest.forEach(profile => {
                 const button = document.createElement('button');
@@ -2659,11 +2655,6 @@ function updateCalculatedRating() {
             const codeSection = document.getElementById('codeSection');
             const signupForm = document.getElementById('signupForm');
             const quickReturn = document.getElementById('quickReturnSection');
-
-            if (!codeRequired && signupForm && getComputedStyle(signupForm).display === 'none') {
-                signupForm.style.display = 'block';
-            }
-
             const target =
                 (codeSection && getComputedStyle(codeSection).display !== 'none') ? codeSection :
                 (quickReturn && getComputedStyle(quickReturn).display !== 'none') ? quickReturn :
@@ -2726,7 +2717,7 @@ function updateCalculatedRating() {
                 document.getElementById('gameLocation').innerText = currentLocation;
                 document.getElementById('gameTime').innerText = '';
                 const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
-                document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
+        document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
                 document.getElementById('rosterNoticeHeadline').innerText = '';
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
@@ -2749,12 +2740,15 @@ function updateCalculatedRating() {
                 }
                 
                 document.getElementById('spotsLeft').innerText = playerSpotsAvailable;
+                const heroJoinBtn = document.getElementById('heroJoinBtn');
                 if (playerSpotsAvailable === 0) {
                     document.getElementById('spotsLeft').classList.add('full');
                     document.getElementById('waitlistMode').style.display = 'block';
+                    if (heroJoinBtn) heroJoinBtn.innerText = '🏒 Join Waitlist';
                 } else {
                     document.getElementById('spotsLeft').classList.remove('full');
                     document.getElementById('waitlistMode').style.display = 'none';
+                    if (heroJoinBtn) heroJoinBtn.innerText = '🏒 Join Game';
                 }
                 
                 const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
@@ -2786,8 +2780,7 @@ function updateCalculatedRating() {
                 const codeTitle = document.getElementById('codeTitle');
                 if (effectiveLocked) {
                     document.getElementById('codeEntryBox').style.display = 'block';
-                    const openNoticeEl = document.getElementById('openNotice');
-                    if (openNoticeEl) openNoticeEl.style.display = 'none';
+                    document.getElementById('openNotice').style.display = 'none';
                     if (!verifiedCode) {
                         document.getElementById('signupForm').style.display = 'none';
                     }
@@ -2800,8 +2793,7 @@ function updateCalculatedRating() {
                     }
                 } else {
                     document.getElementById('codeEntryBox').style.display = 'none';
-                    const openNoticeEl = document.getElementById('openNotice');
-                    if (openNoticeEl) openNoticeEl.style.display = 'block';
+                    document.getElementById('openNotice').style.display = 'block';
                     document.getElementById('signupForm').style.display = 'block';
                 }
                 
