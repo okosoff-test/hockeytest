@@ -1540,10 +1540,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <p id="codeError" style="color:#ff4444; display:none; margin-top:10px;">Invalid code</p>
                 </div>
 
-                <div class="open-signup-notice" id="openNotice" style="display:none;">
-                    <h3>✅ Signup is Open!</h3>
-                    <p>No code required - register below</p>
-                </div>
             </div>
 
             <div class="quick-return-section" id="quickReturnSection">
@@ -2780,7 +2776,6 @@ function updateCalculatedRating() {
                 const codeTitle = document.getElementById('codeTitle');
                 if (effectiveLocked) {
                     document.getElementById('codeEntryBox').style.display = 'block';
-                    document.getElementById('openNotice').style.display = 'none';
                     if (!verifiedCode) {
                         document.getElementById('signupForm').style.display = 'none';
                     }
@@ -2793,7 +2788,6 @@ function updateCalculatedRating() {
                     }
                 } else {
                     document.getElementById('codeEntryBox').style.display = 'none';
-                    document.getElementById('openNotice').style.display = 'block';
                     document.getElementById('signupForm').style.display = 'block';
                 }
                 
