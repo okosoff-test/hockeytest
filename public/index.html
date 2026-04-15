@@ -1406,7 +1406,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <div class="quick-status-row">
-            <div class="status-pill open" id="portalStatusPill">🟢 Open</div>
+            <div class="status-pill open" id="portalStatusPill">OPEN</div>
             <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
         </div>
 
@@ -2641,16 +2641,13 @@ function updateCalculatedRating() {
             pill.className = 'status-pill';
             if (options.rosterReleased) {
                 pill.classList.add('released');
-                pill.innerText = '🏒 Roster Released';
+                pill.innerText = 'ROSTER RELEASED';
             } else if (options.isFull) {
                 pill.classList.add('waitlist');
-                pill.innerText = '🟠 Waitlist Only';
-            } else if (options.effectiveLocked) {
-                pill.classList.add('locked');
-                pill.innerText = '🔒 Code Required';
+                pill.innerText = 'FULL';
             } else {
                 pill.classList.add('open');
-                pill.innerText = '🟢 Open';
+                pill.innerText = 'OPEN';
             }
         }
 
