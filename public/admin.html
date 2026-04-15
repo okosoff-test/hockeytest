@@ -4402,7 +4402,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             const minute = parseInt(m[3], 10);
             const ap = m[4].toUpperCase();
             if (ap === 'PM' && hour !== 12) hour += 12;
-            if (ap === 'AM' && hour === 12) hour = 15;
+            if (ap === 'AM' && hour === 12) hour = 0;
             const dowMap = { Sunday:0, Monday:1, Tuesday:2, Wednesday:3, Thursday:4, Friday:5, Saturday:6 };
             return { dow: dowMap[day], hour, minute };
         }
