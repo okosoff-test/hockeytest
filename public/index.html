@@ -72,7 +72,9 @@
             color: var(--accent);
             margin-bottom: 5px;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: clamp(1.15px, 0.32vw, 1.7px);
+            font-size: clamp(1.45rem, 4.8vw, 1.9rem);
+            line-height: 1.12;
         }
 
         .game-info {
@@ -1052,13 +1054,19 @@
         }
 
         .top-action-bar {
-            margin: 12px auto 10px;
+            position: sticky;
+            top: 10px;
+            z-index: 80;
+            margin: 0 auto 14px;
             width: 100%;
+            max-width: 900px;
             display: flex;
             justify-content: center;
+            pointer-events: none;
         }
 
         .top-action-btn {
+            pointer-events: auto;
             width: min(100%, 430px);
             margin: 0;
             border-radius: 999px;
@@ -1147,49 +1155,20 @@
             font-weight: 700;
         }
 
-        .hero-combined-card {
-            background: linear-gradient(135deg, #2a2a2a, #333);
-            border: 2px solid var(--accent);
-            border-radius: 14px;
-            padding: 22px 18px;
-            margin: 20px 0 16px;
-            text-align: center;
+        .player-payment-flag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-top: 5px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
 
-        .hero-combined-card .game-info {
-            gap: 8px;
-            margin: 0;
-        }
-
-        .hero-combined-card .top-action-bar {
-            margin: 18px auto 14px;
-        }
-
-        .hero-combined-card .spots-container {
-            margin: 0 0 14px;
-            gap: 0;
-        }
-
-        .hero-combined-card .spot-counter {
-            background: transparent;
-            border: none;
-            box-shadow: none;
-            padding: 0;
-        }
-
-        .hero-combined-card .spot-number {
-            font-size: 2.7rem;
-            line-height: 1;
-        }
-
-        .hero-combined-card .spot-text {
-            margin-top: 8px;
-        }
-
-        .hero-combined-card .quick-status-row {
-            margin: 0;
-        }
-
+        .player-payment-flag.paid { color: #7ee787; }
+        .player-payment-flag.owes { color: #ff8a80; }
+        .player-payment-flag.pending { color: #ffd166; }
 
         .last-updated-row {
             margin-top: 14px;
@@ -1201,14 +1180,10 @@
         @media (max-width: 600px) {
             body { padding: 12px; }
             .container { padding: 18px; }
-            .top-action-bar { margin: 10px auto 8px; }
+            .top-action-bar { top: 8px; margin-bottom: 12px; }
             .top-action-btn { padding: 13px 18px; }
             .quick-status-row { gap: 8px; margin-bottom: 14px; }
             .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
-            .hero-combined-card { padding: 18px 14px; margin: 16px 0 14px; }
-            .hero-combined-card .top-action-bar { margin: 16px auto 12px; }
-            .hero-combined-card .spots-container { margin-bottom: 12px; }
-            .hero-combined-card .spot-number { font-size: 2.35rem; }
             .status-subtle { font-size: 0.84rem; }
             .game-time { font-size: 1.25rem; }
             .registered-summary { font-size: 0.88rem; }
@@ -1230,8 +1205,9 @@ html.force-mobile-preview .container {
     border-radius: 14px !important;
 }
 html.force-mobile-preview h1 {
-    font-size: 1.3rem !important;
-    letter-spacing: 1px !important;
+    font-size: clamp(1.32rem, 5vw, 1.55rem) !important;
+    letter-spacing: 1.05px !important;
+    line-height: 1.12 !important;
 }
 html.force-mobile-preview h2 {
     font-size: 1rem !important;
@@ -1303,7 +1279,7 @@ html.force-mobile-preview .container {
     padding: 14px !important;
     border-radius: 14px !important;
 }
-html.force-mobile-preview h1 { font-size: 1.3rem !important; letter-spacing: 1px !important; }
+html.force-mobile-preview h1 { font-size: clamp(1.32rem, 5vw, 1.55rem) !important; letter-spacing: 1.05px !important; line-height: 1.12 !important; }
 html.force-mobile-preview h2 { font-size: 1rem !important; }
 html.force-mobile-preview button { font-size: 0.95rem !important; }
 html.force-mobile-preview input,
@@ -1432,31 +1408,22 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
     </div>
 
+    <div class="top-action-bar">
+        <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
+    </div>
+
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
-        <div class="hero-combined-card">
-            <div class="game-info">
-                <div class="game-date" id="gameDate">Loading...</div>
-                <div class="game-location" id="gameLocation">Loading...</div>
-                <div class="game-time" id="gameTime">Loading...</div>
-            </div>
+        <div class="game-info">
+            <div class="game-date" id="gameDate">Loading...</div>
+            <div class="game-location" id="gameLocation">Loading...</div>
+            <div class="game-time" id="gameTime">Loading...</div>
+        </div>
 
-            <div class="top-action-bar">
-                <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
-            </div>
-
-            <div class="spots-container">
-                <div class="spot-counter" id="playerSpotCounter">
-                    <div class="spot-number" id="spotsLeft">--</div>
-                    <div class="spot-text" id="spotsText">Player Spots Available</div>
-                </div>
-            </div>
-
-            <div class="quick-status-row">
-                <div class="status-pill open" id="portalStatusPill">OPEN</div>
-                <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
-            </div>
+        <div class="quick-status-row">
+            <div class="status-pill open" id="portalStatusPill">🟢 Open</div>
+            <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
@@ -1502,6 +1469,13 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <div id="registrationArea">
+            <div class="spots-container">
+                <div class="spot-counter" id="playerSpotCounter">
+                    <div class="spot-number" id="spotsLeft">--</div>
+                    <div class="spot-text" id="spotsText">Player Spots Available</div>
+                </div>
+            </div>
+
             <!-- Lock Schedule Notice -->
             <div class="lock-notice" id="lockNotice" style="display:none;">
                 <strong>🔒 Signup Temporarily Locked</strong>
@@ -2690,13 +2664,16 @@ function updateCalculatedRating() {
             pill.className = 'status-pill';
             if (options.rosterReleased) {
                 pill.classList.add('released');
-                pill.innerText = 'ROSTER RELEASED';
+                pill.innerText = '🏒 Roster Released';
             } else if (options.isFull) {
                 pill.classList.add('waitlist');
-                pill.innerText = 'FULL';
+                pill.innerText = '🟠 Waitlist Only';
+            } else if (options.effectiveLocked) {
+                pill.classList.add('locked');
+                pill.innerText = '🔒 Code Required';
             } else {
                 pill.classList.add('open');
-                pill.innerText = 'OPEN';
+                pill.innerText = '🟢 Open';
             }
         }
 
@@ -2923,9 +2900,18 @@ function updateCalculatedRating() {
                 card.className = cardClass;
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
-                const goalieLabel = '';
+                const goalieLabel = isGoalie ? '<div class="goalie-label">🧤 GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
                 let paymentFlag = '';
+                if (!isGoalie && !isProtected) {
+                    if (player.paid === true) {
+                        paymentFlag = '<div class="player-payment-flag paid">🟢 Paid</div>';
+                    } else if (player.paidAmount && Number(player.paidAmount) > 0) {
+                        paymentFlag = '<div class="player-payment-flag pending">🟡 Pending</div>';
+                    } else {
+                        paymentFlag = '<div class="player-payment-flag owes">🔴 Owes</div>';
+                    }
+                }
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
@@ -2936,7 +2922,9 @@ function updateCalculatedRating() {
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
                         <div class="player-name-simple">${firstName} ${lastName}</div>
+                        ${goalieLabel}
                         ${protectedLabel}
+                        ${paymentFlag}
                     </div>
                     ${cancelButton}
                 `;
