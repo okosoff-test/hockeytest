@@ -4598,14 +4598,10 @@ app.get('/api/admin/session-info', (req, res) => {
     }
     const sessionToken = getAdminAuthToken(req);
     const decoded = decodeAdminSession(sessionToken);
-    const adminTokenSecretConfigured = !!String(process.env.ADMIN_TOKEN_SECRET || '').trim();
     res.json({
         remember: !!decoded?.remember,
         issuedAt: decoded?.iat ? new Date(decoded.iat * 1000).toISOString() : null,
-        expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null,
-        adminTokenSecretConfigured,
-        sessionSecretMode: adminTokenSecretConfigured ? 'configured-env' : 'ephemeral-fallback',
-        restartPersistence: adminTokenSecretConfigured
+        expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null
     });
 });
 
