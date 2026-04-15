@@ -1169,6 +1169,57 @@
             }
         }
 
+
+        .hero-join-wrap {
+            display: flex;
+            justify-content: center;
+            margin: 16px 0 14px;
+        }
+
+        .hero-join-btn {
+            width: auto;
+            min-width: 220px;
+            padding: 12px 28px;
+            border-radius: 999px;
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 800;
+            letter-spacing: 0.2px;
+            box-shadow: 0 0 0 rgba(255, 107, 0, 0.0);
+            animation: heroJoinPulse 1.35s infinite;
+        }
+
+        .hero-join-btn:hover {
+            background: #ff8533;
+        }
+
+        @keyframes heroJoinPulse {
+            0% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 107, 0, 0.45);
+            }
+            70% {
+                transform: scale(1.03);
+                box-shadow: 0 0 0 14px rgba(255, 107, 0, 0);
+            }
+            100% {
+                transform: scale(1);
+                box-shadow: 0 0 0 0 rgba(255, 107, 0, 0);
+            }
+        }
+
+        @media (max-width: 600px) {
+            .hero-join-wrap {
+                margin: 14px 0 12px;
+            }
+
+            .hero-join-btn {
+                min-width: 200px;
+                padding: 11px 24px;
+                font-size: 0.96rem;
+            }
+        }
+
 </style>
 <base target="_blank">
 
@@ -1394,6 +1445,9 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
         
+            <div class="hero-join-wrap">
+                <button type="button" class="hero-join-btn" id="heroJoinBtn">🏒 Join Game</button>
+            </div>
             <div class="game-meta-divider"></div>
             <div class="spots-container spots-container-inline">
                 <div class="spot-counter" id="playerSpotCounter">
@@ -2596,6 +2650,22 @@ function updateCalculatedRating() {
             rosterCountdownTimer = setInterval(tick, 1000);
         }
 
+
+        function jumpToSignupArea() {
+            const codeSection = document.getElementById('codeSection');
+            const signupForm = document.getElementById('signupForm');
+            const quickReturn = document.getElementById('quickReturnSection');
+            const target =
+                (codeSection && getComputedStyle(codeSection).display !== 'none') ? codeSection :
+                (quickReturn && getComputedStyle(quickReturn).display !== 'none') ? quickReturn :
+                (signupForm && getComputedStyle(signupForm).display !== 'none') ? signupForm :
+                document.getElementById('registrationArea');
+
+            if (target) {
+                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+        }
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
@@ -3105,6 +3175,12 @@ function updateCalculatedRating() {
                 }
             });
             
+
+            const heroJoinBtn = document.getElementById('heroJoinBtn');
+            if (heroJoinBtn) {
+                heroJoinBtn.addEventListener('click', jumpToSignupArea);
+            }
+
             const paymentRadios = document.querySelectorAll('input[name="payment"]');
             paymentRadios.forEach(radio => {
                 radio.addEventListener('change', function() {
