@@ -1324,7 +1324,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <h3 style="text-align: center; color: var(--accent); margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
-            <div class="registered-summary" id="registeredSummary"></div>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
                 Cancel before roster release or you owe.
             </div>
@@ -2373,7 +2372,6 @@ function updateCalculatedRating() {
         function updatePortalStatus(options = {}) {
             const registeredSummary = document.getElementById('registeredSummary');
             const filled = Math.max(0, Math.min(20, 20 - Number(options.playerSpotsAvailable ?? playerSpotsAvailable ?? 20)));
-            const filledText = `${filled} / 20 spots filled`;
             if (registeredSummary) registeredSummary.innerText = filledText;
         }
         function scrollTopActionTarget() {
