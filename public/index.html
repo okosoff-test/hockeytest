@@ -558,6 +558,8 @@
         }
 
         .goalie-badge {
+            font-size: 0.6rem;
+            padding: 1px 5px;
             background: #ff6b00;
             color: white;
             padding: 2px 6px;
@@ -1242,18 +1244,6 @@
             .last-updated-row { font-size: 0.76rem; }
         }
 
-
-/* Goalie Badge */
-.goalie-badge {
-    background: #00c853;
-    color: #000;
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 6px;
-    margin-left: 6px;
-}
-
 </style>
 <base target="_blank">
 
@@ -1318,18 +1308,6 @@ html.force-mobile-preview .maintenance-bulletin,
 html.force-mobile-preview .announcement-bulletin {
     max-width: 430px !important;
 }
-
-/* Goalie Badge */
-.goalie-badge {
-    background: #00c853;
-    color: #000;
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 6px;
-    margin-left: 6px;
-}
-
 </style>
 
     
@@ -1402,18 +1380,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 .preview-toolbar-btn.active{background:#ff6b00;border-color:#ff6b00;color:#fff;}
 .preview-toolbar-note{color:#ffcf99;font-size:0.74rem;}
 @media (max-width: 700px){ .preview-toolbar{display:none !important;} }
-
-/* Goalie Badge */
-.goalie-badge {
-    background: #00c853;
-    color: #000;
-    font-size: 0.7rem;
-    font-weight: 800;
-    padding: 2px 6px;
-    border-radius: 6px;
-    margin-left: 6px;
-}
-
 </style>
 
 <script>
@@ -2496,7 +2462,7 @@ function updateCalculatedRating() {
                     data.whiteTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">G</span>' : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
                         `;
@@ -2510,7 +2476,7 @@ function updateCalculatedRating() {
                     data.darkTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">G</span>' : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
                         `;
