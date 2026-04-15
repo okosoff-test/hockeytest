@@ -1035,17 +1035,6 @@
             border-radius: 5px;
             font-size: 1rem;
             flex: 1;
-            min-height: 220px;
-        }
-
-        .history-select option {
-            padding: 8px 10px;
-            border-bottom: 1px solid rgba(255,255,255,0.06);
-        }
-
-        .history-select option:checked {
-            background: #ff6b00 linear-gradient(0deg, #ff6b00 0%, #ff6b00 100%);
-            color: #fff;
         }
 
         .delete-btn {
@@ -2145,6 +2134,44 @@ th, td{padding:2px 3px !important;}
     border-radius:12px !important;
 }
 
+
+/* Android-friendly Recent Cancellations table */
+.cancellations-section table{
+    table-layout: fixed !important;
+}
+.cancellations-section th:nth-child(1),
+.cancellations-section td:nth-child(1){
+    width: 42% !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+}
+.cancellations-section th:nth-child(2),
+.cancellations-section td:nth-child(2){
+    width: 30% !important;
+}
+.cancellations-section th:nth-child(3),
+.cancellations-section td:nth-child(3){
+    width: 28% !important;
+    white-space: normal !important;
+}
+@media (max-width:600px){
+    .cancellations-section .player-name-cell{
+        font-size: 0.84rem !important;
+        line-height: 1.12 !important;
+    }
+    .cancellations-section th,
+    .cancellations-section td{
+        font-size: 0.73rem !important;
+    }
+    .cancellations-section .cancelled-badge{
+        font-size: 0.64rem !important;
+        padding: 3px 6px !important;
+        max-width: 100% !important;
+        white-space: normal !important;
+        text-align: center !important;
+        line-height: 1.1 !important;
+    }
+}
 @media (max-width:600px){
     .waitlist-section th,
     .waitlist-section td,
@@ -3321,18 +3348,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
-
-<style id="schedule-table-mobile-uniform-fix-v2">
-/* Schedule table only: shrink blue checkboxes + fonts, keep collapsible behavior intact */
-.schedule-editor .schedule-card { padding: 10px !important; }
-.schedule-editor .schedule-title { font-size: 0.95rem !important; }
-.schedule-editor .schedule-label { font-size: 0.86rem !important; gap: 8px !important; margin-bottom: 8px !important; }
-.schedule-editor .schedule-label2 { font-size: 0.78rem !important; }
-.schedule-editor .schedule-hint { font-size: 0.76rem !important; }
-.schedule-editor input[type="checkbox"] { width: 15px !important; height: 15px !important; min-width: 15px !important; min-height: 15px !important; accent-color: #4a90e2; transform: none !important; margin: 0 !important; vertical-align: middle !important; }
-.schedule-editor input[type="datetime-local"], .schedule-editor .enhanced-datetime .date-input, .schedule-editor .enhanced-datetime .time-trigger { font-size: 0.86rem !important; padding: 8px 10px !important; }
-@media (max-width: 700px) { .schedule-editor .schedule-card { padding: 8px !important; } .schedule-editor .schedule-title { font-size: 0.9rem !important; } .schedule-editor .schedule-label { font-size: 0.8rem !important; gap: 6px !important; } .schedule-editor .schedule-label2, .schedule-editor .schedule-hint { font-size: 0.74rem !important; } .schedule-editor input[type="checkbox"] { width: 14px !important; height: 14px !important; min-width: 14px !important; min-height: 14px !important; } .schedule-editor input[type="datetime-local"], .schedule-editor .enhanced-datetime .date-input, .schedule-editor .enhanced-datetime .time-trigger { font-size: 0.82rem !important; padding: 7px 8px !important; }}
-</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -3763,24 +3778,16 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         <!-- History Management -->
         <div class="history-delete-box">
             <h3>🗑️ Delete Old History</h3>
-            <div class="control-row" style="margin-bottom: 10px; align-items: stretch;">
-                <select id="historySelect" class="history-select" multiple size="8" aria-label="Delete old history weeks">
+            <div class="control-row" style="margin-bottom: 10px;">
+                <select id="historySelect" class="history-select">
+                    <option value="">-- Select a week to delete --</option>
                 </select>
-                <div style="display:flex; flex-direction:column; gap:8px; min-width:150px;">
-                    <button class="control-btn" type="button" onclick="loadHistoryList()" style="background: #4a90e2; margin-left: 0;">
-                        🔄 Refresh
-                    </button>
-                    <button class="control-btn" type="button" onclick="selectAllHistory()" style="background: #4CAF50; margin-left: 0;">
-                        ✅ Select All
-                    </button>
-                    <button class="control-btn" type="button" onclick="clearHistorySelection()" style="background: #666; margin-left: 0;">
-                        Clear
-                    </button>
-                </div>
+                <button class="control-btn" onclick="loadHistoryList()" style="background: #4a90e2; margin-left: 10px;">
+                    🔄 Refresh
+                </button>
             </div>
-            <div style="color:#aaa; font-size:0.85rem; margin: 2px 0 10px 0;">Tip: use Ctrl/⌘ or Shift to select multiple weeks.</div>
-            <button class="delete-btn" type="button" onclick="deleteSelectedHistory()">
-                ❌ Delete Selected History
+            <button class="delete-btn" onclick="deleteSelectedHistory()">
+                ❌ Delete Selected Week from History
             </button>
             <div id="deleteResult" class="delete-result"></div>
         </div>
@@ -3928,9 +3935,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 <thead>
                     <tr>
                         <th>Name</th>
-                        <th>Source</th>
                         <th>Type</th>
-                        <th>Phone</th>
                         <th>Cancelled</th>
                     </tr>
                 </thead>
@@ -6021,7 +6026,7 @@ Date: ${selectedGameDate}`);
                 cancellationBody.innerHTML = '';
 
                 if (cancellations.length === 0) {
-                    cancellationBody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
+                    cancellationBody.innerHTML = '<tr><td colspan="3" style="text-align:center; color:#666; padding:30px;">No cancellations logged yet</td></tr>';
                 } else {
                     cancellations.forEach(item => {
                         const tr = document.createElement('tr');
@@ -6033,10 +6038,8 @@ Date: ${selectedGameDate}`);
                                 : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
                         const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
                         tr.innerHTML = `
-                            <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}</td>
-                            <td>${item.source || '--'}</td>
+                            <td class="player-name-cell">${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}${item.notes ? `<div style="color:#ffb366; font-size:0.8rem; margin-top:4px; line-height:1.25;">${item.notes}</div>` : ''}</td>
                             <td>${typeBadge}</td>
-                            <td>${item.phone || '--'}${item.notes ? `<div style="color:#ffb366; font-size:0.95rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
                             <td>${when}</td>
                         `;
                         cancellationBody.appendChild(tr);
@@ -6411,122 +6414,76 @@ Date: ${selectedGameDate}`);
         async function loadHistoryList() {
             const select = document.getElementById('historySelect');
             const resultDiv = document.getElementById('deleteResult');
-            if (!select || !resultDiv) return;
-
+            
             try {
                 const res = await fetch(`${API_URL}/api/history`);
                 const data = await res.json();
-
-                select.innerHTML = '';
-
+                
+                select.innerHTML = '<option value="">-- Select a week to delete --</option>';
+                
                 if (data.history && data.history.length > 0) {
                     data.history.forEach(week => {
                         const option = document.createElement('option');
                         option.value = `${week.year}-${week.weekNumber}`;
-                        const rawDate = week.created || week.releaseDate || week.gameDate || '';
-                        const date = rawDate ? new Date(rawDate) : null;
-                        const dateText = date && !Number.isNaN(date.getTime())
-                            ? date.toLocaleDateString()
-                            : 'No date';
-                        option.text = `Week ${week.weekNumber}, ${week.year} (${dateText})`;
+                        const date = new Date(week.created);
+                        option.text = `Week ${week.weekNumber}, ${week.year} (${date.toLocaleDateString()})`;
                         select.appendChild(option);
                     });
                     resultDiv.className = 'delete-result success';
-                    resultDiv.innerHTML = `✅ Loaded ${data.history.length} week${data.history.length === 1 ? '' : 's'} from history`;
+                    resultDiv.innerHTML = `✅ Loaded ${data.history.length} weeks from history`;
                 } else {
+                    select.innerHTML = '<option value="">No history available</option>';
                     resultDiv.className = 'delete-result error';
                     resultDiv.innerHTML = '⚠️ No history found';
                 }
-
+                
             } catch (err) {
                 console.error("Error loading history list:", err);
                 resultDiv.className = 'delete-result error';
                 resultDiv.innerHTML = '❌ Error loading history';
             }
         }
-
-        function getSelectedHistoryValues() {
-            const select = document.getElementById('historySelect');
-            if (!select) return [];
-            return Array.from(select.selectedOptions || []).map(option => option.value).filter(Boolean);
-        }
-
-        function selectAllHistory() {
-            const select = document.getElementById('historySelect');
-            if (!select) return;
-            Array.from(select.options).forEach(option => {
-                if (option.value) option.selected = true;
-            });
-        }
-
-        function clearHistorySelection() {
-            const select = document.getElementById('historySelect');
-            if (!select) return;
-            Array.from(select.options).forEach(option => {
-                option.selected = false;
-            });
-        }
         
         async function deleteSelectedHistory() {
+            const select = document.getElementById('historySelect');
             const resultDiv = document.getElementById('deleteResult');
-            const selectedValues = getSelectedHistoryValues();
-
-            if (!selectedValues.length) {
-                alert("Please select at least one week to delete");
+            const value = select.value;
+            
+            if (!value) {
+                alert("Please select a week to delete");
                 return;
             }
-
-            const summary = selectedValues.length === 1
-                ? `Week ${selectedValues[0].split('-')[1]}, ${selectedValues[0].split('-')[0]}`
-                : `${selectedValues.length} selected weeks`;
-
-            if (!confirm(`⚠️ WARNING: This will permanently delete ${summary} from history.
-
-This action cannot be undone!
-
-Continue?`)) {
+            
+            const [year, week] = value.split('-');
+            
+            if (!confirm(`⚠️ WARNING: This will permanently delete Week ${week}, ${year} from history.\n\nThis action cannot be undone!\n\nContinue?`)) {
                 return;
             }
-
-            let deletedCount = 0;
-            const errors = [];
-
-            for (const value of selectedValues) {
-                const [year, week] = value.split('-');
-                try {
-                    const res = await fetch(`${API_URL}/api/admin/history/${year}/${week}`, {
-                        method: 'DELETE',
-                        headers: getAdminHeaders(),
-                        body: JSON.stringify({ sessionToken: sessionToken })
-                    });
-
-                    if (res.ok) {
-                        deletedCount += 1;
-                    } else if (res.status === 401) {
-                        logout();
-                        return;
-                    } else {
-                        const err = await res.json().catch(() => ({}));
-                        errors.push(`Week ${week}, ${year}: ${err.error || 'Failed to delete'}`);
-                    }
-                } catch (err) {
-                    console.error("Error deleting history:", err);
-                    errors.push(`Week ${week}, ${year}: Network error`);
+            
+            try {
+                const res = await fetch(`${API_URL}/api/admin/history/${year}/${week}`, {
+                    method: 'DELETE',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken })
+                });
+                
+                if (res.ok) {
+                    const data = await res.json();
+                    resultDiv.className = 'delete-result success';
+                    resultDiv.innerHTML = `✅ ${data.message}`;
+                    loadHistoryList();
+                } else if (res.status === 401) {
+                    logout();
+                } else {
+                    const err = await res.json();
+                    resultDiv.className = 'delete-result error';
+                    resultDiv.innerHTML = `❌ Error: ${err.error || 'Failed to delete'}`;
                 }
-            }
-
-            if (deletedCount && !errors.length) {
-                resultDiv.className = 'delete-result success';
-                resultDiv.innerHTML = `✅ Deleted ${deletedCount} week${deletedCount === 1 ? '' : 's'} from history`;
-            } else if (deletedCount && errors.length) {
-                resultDiv.className = 'delete-result success';
-                resultDiv.innerHTML = `✅ Deleted ${deletedCount} week${deletedCount === 1 ? '' : 's'}. ${errors.length} error${errors.length === 1 ? '' : 's'} occurred.`;
-            } else {
+            } catch (err) {
+                console.error("Error deleting history:", err);
                 resultDiv.className = 'delete-result error';
-                resultDiv.innerHTML = `❌ ${errors[0] || 'Failed to delete selected history'}`;
+                resultDiv.innerHTML = '❌ Network error';
             }
-
-            await loadHistoryList();
         }
         async function resizeAnnouncementImageDataUrl(file, maxWidth = 1800, maxHeight = 1200, quality = 0.92) {
             return new Promise((resolve, reject) => {
