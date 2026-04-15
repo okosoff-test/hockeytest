@@ -702,7 +702,7 @@
             word-break: break-word;
         }
 
-        .goalie-label { display:none; 
+        .goalie-label {
             color: #ff6b00;
             font-size: 0.7rem;
             font-weight: bold;
@@ -1051,100 +1051,7 @@
             margin: 0;
         }
 
-
-        .top-action-btn {
-            width: min(100%, 430px);
-            margin: 12px auto 0;
-            border-radius: 999px;
-            padding: 14px 20px;
-            box-shadow: 0 10px 24px rgba(0,0,0,0.28);
-            display: block;
-        }
-
-        .quick-status-row {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            align-items: center;
-            margin: 12px 0 0;
-        }
-
-        .status-pill {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            min-height: 40px;
-            padding: 10px 16px;
-            border-radius: 999px;
-            font-weight: 800;
-            letter-spacing: 0.4px;
-            text-transform: uppercase;
-            background: rgba(255,255,255,0.08);
-            border: 1px solid rgba(255,255,255,0.12);
-            text-align: center;
-        }
-
-        .status-pill.open {
-            background: linear-gradient(135deg, #1d6d32, #2d8d44);
-            color: #fff;
-        }
-
-        .status-pill.waitlist {
-            background: linear-gradient(135deg, #8a4b00, #c96c00);
-            color: #fff;
-        }
-
-        .status-pill.released {
-            background: linear-gradient(135deg, #155a9c, #2874c8);
-            color: #fff;
-        }
-
-        .status-subtle {
-            color: #cfcfcf;
-            font-size: 0.92rem;
-            background: rgba(255,255,255,0.05);
-        }
-
-        .hero-spots-wrap {
-            margin-top: 12px;
-            display: flex;
-            justify-content: center;
-        }
-
-        .hero-spots-available {
-            color: #ffd09a;
-            font-size: 0.98rem;
-            font-weight: 800;
-            text-align: center;
-        }
-
-        .registered-summary {
-            text-align: center;
-            color: #ffd09a;
-            margin: -2px 0 14px;
-            font-size: 0.95rem;
-            font-weight: 700;
-        }
-
-        .last-updated-row {
-            margin-top: 14px;
-            text-align: center;
-            color: #8f8f8f;
-            font-size: 0.82rem;
-        }
-
-        @media (max-width: 600px) {
-            .top-action-btn { padding: 13px 18px; }
-            .quick-status-row { gap: 8px; margin-top: 10px; }
-            .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
-            .status-subtle { font-size: 0.84rem; }
-            .hero-spots-available { font-size: 0.9rem; }
-            .last-updated-row { font-size: 0.76rem; }
-        }
-
-    </style>
+</style>
 <base target="_blank">
 
 <style id="windows-firefox-mobile-preview">
@@ -1368,16 +1275,9 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="game-date" id="gameDate">Loading...</div>
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
-            <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
-            <div class="hero-spots-wrap">
-                <div class="hero-spots-available" id="spotsText">Player Spots Available: <span id="spotsLeft">--</span></div>
-            </div>
-            <div class="quick-status-row">
-                <div class="status-pill open" id="portalStatusPill">OPEN</div>
-                <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
-            </div>
-            <div class="open-spots-notice" id="openSpotsNotice"></div>
         </div>
+
+        <div class="open-spots-notice" id="openSpotsNotice"></div>
 
 
         <!-- Roster Display Section -->
@@ -1406,20 +1306,24 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         <!-- Registered Players List -->
         <div class="registered-players-section" id="registeredPlayersSection">
-            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 10px 0; text-transform: uppercase; letter-spacing: 1px;">
+            <h3 style="text-align: center; color: var(--accent); margin: 20px 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
-            <div class="registered-summary" id="registeredSummary">0 / 20 spots filled</div>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Must cancel prior to roster release. No show owes!
+                Cancellation must be done before roster release. Late cancel / no-show owes.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
             </div>
-            <div class="last-updated-row">Last updated: <span id="lastUpdatedTime">--</span></div>
         </div>
 
         <div id="registrationArea">
+            <div class="spots-container">
+                <div class="spot-counter" id="playerSpotCounter">
+                    <div class="spot-number" id="spotsLeft">--</div>
+                    <div class="spot-text" id="spotsText">Player Spots Available</div>
+                </div>
+            </div>
 
             <!-- Lock Schedule Notice -->
             <div class="lock-notice" id="lockNotice" style="display:none;">
@@ -2645,10 +2549,6 @@ function updateCalculatedRating() {
                 }
                 
                 document.getElementById('spotsLeft').innerText = playerSpotsAvailable;
-                const portalStatusPill = document.getElementById('portalStatusPill');
-                const filledStatusPill = document.getElementById('filledStatusPill');
-                const filledCount = Math.max(0, Math.min(20, 20 - Number(playerSpotsAvailable || 0)));
-                if (filledStatusPill) filledStatusPill.innerText = `${filledCount} / 20 Spots Filled`;
                 if (playerSpotsAvailable === 0) {
                     document.getElementById('spotsLeft').classList.add('full');
                     document.getElementById('waitlistMode').style.display = 'block';
@@ -2656,21 +2556,8 @@ function updateCalculatedRating() {
                     document.getElementById('spotsLeft').classList.remove('full');
                     document.getElementById('waitlistMode').style.display = 'none';
                 }
-
-                const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
-                if (portalStatusPill) {
-                    if (data.rosterReleased) {
-                        portalStatusPill.className = 'status-pill released';
-                        portalStatusPill.innerText = 'ROSTER RELEASED';
-                    } else if (playerSpotsAvailable === 0) {
-                        portalStatusPill.className = 'status-pill waitlist';
-                        portalStatusPill.innerText = 'FULL';
-                    } else {
-                        portalStatusPill.className = 'status-pill open';
-                        portalStatusPill.innerText = 'OPEN';
-                    }
-                }
                 
+                const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
                 codeRequired = effectiveLocked;
 
                 const lockNotice = document.getElementById('lockNotice');
@@ -2781,10 +2668,6 @@ function updateCalculatedRating() {
             });
 
             countSpan.innerText = sortedPlayers.length;
-            const registeredSummary = document.getElementById('registeredSummary');
-            if (registeredSummary) registeredSummary.innerText = `${sortedPlayers.length} / 20 spots filled`;
-            const lastUpdatedTime = document.getElementById('lastUpdatedTime');
-            if (lastUpdatedTime) lastUpdatedTime.innerText = new Date().toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
 
             grid.innerHTML = '';
             sortedPlayers.forEach(player => {
@@ -2801,6 +2684,7 @@ function updateCalculatedRating() {
                 card.className = cardClass;
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
+                const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
 
                 let cancelButton = '';
@@ -2812,7 +2696,8 @@ function updateCalculatedRating() {
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
                         <div class="player-name-simple">${firstName} ${lastName}</div>
-                                                ${protectedLabel}
+                        ${goalieLabel}
+                        ${protectedLabel}
                     </div>
                     ${cancelButton}
                 `;
