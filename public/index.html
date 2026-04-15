@@ -2716,7 +2716,8 @@ function updateCalculatedRating() {
                 
                 document.getElementById('gameLocation').innerText = currentLocation;
                 document.getElementById('gameTime').innerText = '';
-                document.getElementById('gameDate').innerText = currentDate + ' • ' + currentTime;
+                const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
+        document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
                 document.getElementById('rosterNoticeHeadline').innerText = '';
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
