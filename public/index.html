@@ -1069,6 +1069,106 @@
             margin: 0;
         }
 
+
+        /* Combined game + spots card */
+        .game-info {
+            border-radius: 16px;
+            padding: 22px 18px 20px;
+            margin: 20px 0 22px;
+            box-shadow:
+                0 14px 30px rgba(0,0,0,0.28),
+                inset 0 1px 0 rgba(255,255,255,0.04);
+        }
+
+        .game-info .game-date {
+            font-size: 1.05rem;
+            letter-spacing: 0.2px;
+        }
+
+        .game-info .game-location {
+            font-size: 1.55rem;
+            margin-bottom: 6px;
+        }
+
+        .game-info .game-time {
+            font-size: 1.2rem;
+            color: #d7d7d7;
+        }
+
+        .game-meta-divider {
+            width: min(180px, 55%);
+            height: 1px;
+            margin: 16px auto 14px;
+            background: linear-gradient(90deg, rgba(255,107,0,0), rgba(255,107,0,0.85), rgba(255,107,0,0));
+            opacity: 0.9;
+        }
+
+        .spots-container-inline {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+
+        .spots-container-inline .spot-counter {
+            background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 14px 26px 12px;
+            min-width: 210px;
+            box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+        }
+
+        .spots-container-inline .spot-number {
+            font-size: 3.1rem;
+            line-height: 1;
+            margin-bottom: 4px;
+        }
+
+        .spots-container-inline .spot-text {
+            font-size: 0.92rem;
+            color: #e0e0e0;
+            letter-spacing: 0.2px;
+            margin-top: 0;
+        }
+
+        @media (max-width: 600px) {
+            .game-info {
+                padding: 18px 14px 16px;
+                margin: 16px 0 18px;
+                border-radius: 14px;
+            }
+
+            .game-info .game-date {
+                font-size: 0.98rem;
+            }
+
+            .game-info .game-location {
+                font-size: 1.32rem;
+            }
+
+            .game-info .game-time {
+                font-size: 1.08rem;
+            }
+
+            .game-meta-divider {
+                margin: 14px auto 12px;
+            }
+
+            .spots-container-inline .spot-counter {
+                min-width: 180px;
+                padding: 12px 20px 10px;
+                border-radius: 12px;
+            }
+
+            .spots-container-inline .spot-number {
+                font-size: 2.7rem;
+            }
+
+            .spots-container-inline .spot-text {
+                font-size: 0.86rem;
+            }
+        }
+
 </style>
 <base target="_blank">
 
@@ -1293,6 +1393,14 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="game-date" id="gameDate">Loading...</div>
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
+        
+            <div class="game-meta-divider"></div>
+            <div class="spots-container spots-container-inline">
+                <div class="spot-counter" id="playerSpotCounter">
+                    <div class="spot-number" id="spotsLeft">--</div>
+                    <div class="spot-text" id="spotsText">Player Spots Available</div>
+                </div>
+            </div>
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
@@ -1336,12 +1444,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <div id="registrationArea">
-            <div class="spots-container">
-                <div class="spot-counter" id="playerSpotCounter">
-                    <div class="spot-number" id="spotsLeft">--</div>
-                    <div class="spot-text" id="spotsText">Player Spots Available</div>
-                </div>
-            </div>
 
             <!-- Lock Schedule Notice -->
             <div class="lock-notice" id="lockNotice" style="display:none;">
