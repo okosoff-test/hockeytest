@@ -1540,10 +1540,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <p id="codeError" style="color:#ff4444; display:none; margin-top:10px;">Invalid code</p>
                 </div>
 
-                <div class="open-signup-notice" id="openNotice" style="display:none;">
-                    <h3>✅ Signup is Open!</h3>
-                    <p>No code required - register below</p>
-                </div>
+                
             </div>
 
             <div class="quick-return-section" id="quickReturnSection">
@@ -2716,8 +2713,7 @@ function updateCalculatedRating() {
                 
                 document.getElementById('gameLocation').innerText = currentLocation;
                 document.getElementById('gameTime').innerText = '';
-                const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
-        document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
+                document.getElementById('gameDate').innerText = currentDate + ' • ' + currentTime;
                 document.getElementById('rosterNoticeHeadline').innerText = '';
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
