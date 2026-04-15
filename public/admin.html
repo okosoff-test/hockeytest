@@ -3371,62 +3371,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         font-size: 0.68rem !important;
     }
 }
-
-
-<style id="admin-session-security-indicator">
-.admin-security-indicator {
-    background: linear-gradient(135deg, #1e2a1f, #223426);
-    border: 1px solid rgba(255,255,255,0.12);
-    border-left: 4px solid #4CAF50;
-    border-radius: 12px;
-    padding: 12px 14px;
-    margin-bottom: 18px;
-}
-.admin-security-indicator.warning {
-    background: linear-gradient(135deg, #3a2418, #4a2d1d);
-    border-left-color: #ff9800;
-}
-.admin-security-indicator.error {
-    background: linear-gradient(135deg, #3a1d1d, #4b2424);
-    border-left-color: #ff4444;
-}
-.admin-security-indicator-header {
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    flex-wrap:wrap;
-    margin-bottom:6px;
-}
-.admin-security-indicator-title {
-    font-weight:800;
-    color:#fff;
-}
-.admin-security-indicator-pill {
-    display:inline-flex;
-    align-items:center;
-    justify-content:center;
-    padding:6px 10px;
-    border-radius:999px;
-    font-size:0.8rem;
-    font-weight:800;
-    letter-spacing:.2px;
-    white-space:nowrap;
-    background:#2e7d32;
-    color:#fff;
-}
-.admin-security-indicator.warning .admin-security-indicator-pill {
-    background:#ef6c00;
-}
-.admin-security-indicator.error .admin-security-indicator-pill {
-    background:#c62828;
-}
-.admin-security-indicator-copy {
-    color:#d8ded8;
-    font-size:0.9rem;
-    line-height:1.45;
-}
-.admin-security-indicator-copy strong { color:#fff; }
 </style>
 
 </head>
@@ -3463,16 +3407,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 <input type="file" id="restoreBackupFile" accept=".json,application/json" style="display:none;" onchange="restoreBackupFromFile(event)">
                 <button class="control-btn" onclick="logoutAllDevices()" style="background:#6d4c41;">Logout All Devices</button>
                 <button class="logout-btn" onclick="logout()">Logout</button>
-            </div>
-        </div>
-
-        <div id="adminSecurityIndicator" class="admin-security-indicator">
-            <div class="admin-security-indicator-header">
-                <div class="admin-security-indicator-title">🔐 Admin Session Security</div>
-                <div id="adminSecurityIndicatorPill" class="admin-security-indicator-pill">Checking…</div>
-            </div>
-            <div id="adminSecurityIndicatorCopy" class="admin-security-indicator-copy">
-                Loading session security details…
             </div>
         </div>
 
@@ -4579,61 +4513,22 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         async function loadSessionInfo() {
             const el = document.getElementById('securitySessionInfo');
-            const indicator = document.getElementById('adminSecurityIndicator');
-            const indicatorPill = document.getElementById('adminSecurityIndicatorPill');
-            const indicatorCopy = document.getElementById('adminSecurityIndicatorCopy');
-            if (!sessionToken) return;
-
-            const setIndicatorState = (mode, pill, html) => {
-                if (!indicator || !indicatorPill || !indicatorCopy) return;
-                indicator.classList.remove('warning', 'error');
-                if (mode === 'warning') indicator.classList.add('warning');
-                if (mode === 'error') indicator.classList.add('error');
-                indicatorPill.textContent = pill;
-                indicatorCopy.innerHTML = html;
-            };
-
+            if (!el || !sessionToken) return;
             try {
                 const res = await adminFetch(`${API_URL}/api/admin/session-info`);
                 if (!res.ok) {
-                    if (el) el.textContent = 'Unable to load session details.';
-                    setIndicatorState(
-                        'error',
-                        'Unavailable',
-                        'Could not load admin session security details right now.'
-                    );
+                    el.textContent = 'Unable to load session details.';
                     return;
                 }
                 const data = await res.json();
-                if (el) {
-                    el.innerHTML = `
-                        <strong>Session type:</strong> ${data.remember ? 'Remembered device' : 'This browser session only'}<br>
-                        <strong>Issued:</strong> ${formatDateTime(data.issuedAt)}<br>
-                        <strong>Expires:</strong> ${formatDateTime(data.expiresAt)}
-                    `;
-                }
-
-                if (data.adminTokenSecretConfigured) {
-                    setIndicatorState(
-                        'ok',
-                        'Configured',
-                        `Your server is using <strong>ADMIN_TOKEN_SECRET</strong> from the environment. Admin sessions <strong>should survive server restarts</strong> until they expire.`
-                    );
-                } else {
-                    setIndicatorState(
-                        'warning',
-                        'Fallback in use',
-                        `Your server is <strong>not</strong> using an environment-set <strong>ADMIN_TOKEN_SECRET</strong>. Admin sessions will <strong>reset after a server restart</strong>.`
-                    );
-                }
+                el.innerHTML = `
+                    <strong>Session type:</strong> ${data.remember ? 'Remembered device' : 'This browser session only'}<br>
+                    <strong>Issued:</strong> ${formatDateTime(data.issuedAt)}<br>
+                    <strong>Expires:</strong> ${formatDateTime(data.expiresAt)}
+                `;
             } catch (err) {
                 console.error(err);
-                if (el) el.textContent = 'Unable to load session details.';
-                setIndicatorState(
-                    'error',
-                    'Unavailable',
-                    'Could not load admin session security details right now.'
-                );
+                el.textContent = 'Unable to load session details.';
             }
         }
 
