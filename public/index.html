@@ -98,7 +98,7 @@
             margin-bottom: 5px;
         }
 
-        .game-time {
+        .game-time { display:none; /* hidden - merged into date */
             font-size: 1.1rem;
             color: #ccc;
         }
@@ -1090,7 +1090,7 @@
             margin-bottom: 6px;
         }
 
-        .game-info .game-time {
+        .game-info .game-time { display:none; /* hidden - merged into date */
             font-size: 1.2rem;
             color: #d7d7d7;
         }
@@ -1146,7 +1146,7 @@
                 font-size: 1.32rem;
             }
 
-            .game-info .game-time {
+            .game-info .game-time { display:none; /* hidden - merged into date */
                 font-size: 1.08rem;
             }
 
@@ -2715,8 +2715,8 @@ function updateCalculatedRating() {
                 currentPlayers = data.players || [];
                 
                 document.getElementById('gameLocation').innerText = currentLocation;
-                document.getElementById('gameTime').innerText = currentTime;
-                document.getElementById('gameDate').innerText = currentDate;
+                document.getElementById('gameTime').innerText = '';
+                document.getElementById('gameDate').innerText = currentDate + ' • ' + currentTime;
                 document.getElementById('rosterNoticeHeadline').innerText = '';
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
