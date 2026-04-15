@@ -558,8 +558,7 @@
         }
 
         .goalie-badge {
-            font-size: 0.6rem;
-            padding: 1px 5px;
+            background: #2196f3;
             background: #ff6b00;
             color: white;
             padding: 2px 6px;
@@ -2462,7 +2461,7 @@ function updateCalculatedRating() {
                     data.whiteTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">G</span>' : '';
+                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
                         `;
@@ -2476,7 +2475,7 @@ function updateCalculatedRating() {
                     data.darkTeam.forEach(player => {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">G</span>' : '';
+                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
                         `;
