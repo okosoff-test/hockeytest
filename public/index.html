@@ -1144,22 +1144,50 @@
             background: linear-gradient(135deg, #2a2a2a, #333);
             border: 2px solid var(--accent);
             border-radius: 14px;
-            padding: 22px 18px;
-            margin: 20px 0 16px;
+            padding: 18px 18px 16px;
+            margin: 18px 0 14px;
             text-align: center;
         }
 
         .hero-combined-card .game-info {
-            gap: 8px;
-            margin: 0;
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+            margin: 0 auto 4px;
+            max-width: 620px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hero-combined-card .game-date,
+        .hero-combined-card .game-location,
+        .hero-combined-card .game-time {
+            margin-bottom: 0;
+        }
+
+        .hero-combined-card .game-time {
+            font-size: 1.45rem;
+            font-weight: 800;
+            color: #ffffff;
+        }
+
+        .hero-combined-card .game-location {
+            font-size: 1.15rem;
+        }
+
+        .hero-combined-card .game-date {
+            font-size: 0.92rem;
+            color: #d7d7d7;
         }
 
         .hero-combined-card .top-action-bar {
-            margin: 18px auto 14px;
+            margin: 14px auto 10px;
         }
 
         .hero-combined-card .spots-container {
-            margin: 0 0 14px;
+            margin: 0;
             gap: 0;
         }
 
@@ -1171,12 +1199,15 @@
         }
 
         .hero-combined-card .spot-number {
-            font-size: 2.7rem;
+            font-size: 2.35rem;
             line-height: 1;
         }
 
         .hero-combined-card .spot-text {
-            margin-top: 8px;
+            margin-top: 4px;
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: #d7d7d7;
         }
 
         .hero-combined-card .quick-status-row { display:none !important; }
@@ -1196,10 +1227,15 @@
             .top-action-btn { padding: 13px 18px; }
             .quick-status-row { display:none !important; }
             .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
-            .hero-combined-card { padding: 18px 14px; margin: 16px 0 14px; }
-            .hero-combined-card .top-action-bar { margin: 16px auto 12px; }
-            .hero-combined-card .spots-container { margin-bottom: 12px; }
-            .hero-combined-card .spot-number { font-size: 2.35rem; }
+            .hero-combined-card { padding: 16px 14px 14px; margin: 14px 0 12px; }
+            .hero-combined-card .game-info { gap: 5px; }
+            .hero-combined-card .game-time { font-size: 1.3rem; }
+            .hero-combined-card .game-location { font-size: 1.05rem; }
+            .hero-combined-card .game-date { font-size: 0.86rem; }
+            .hero-combined-card .top-action-bar { margin: 14px auto 10px; }
+            .hero-combined-card .spots-container { margin-bottom: 0; }
+            .hero-combined-card .spot-number { font-size: 2.1rem; }
+            .hero-combined-card .spot-text { font-size: 0.9rem; }
             .status-subtle { font-size: 0.84rem; }
             .game-time { font-size: 1.25rem; }
             .registered-summary { font-size: 0.88rem; }
