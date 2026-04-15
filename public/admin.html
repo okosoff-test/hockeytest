@@ -1101,7 +1101,20 @@
             .preview-teams { grid-template-columns: 1fr; }
             .goalie-list { grid-template-columns: 1fr; }
             .paid-input { width: 60px; }
-            .payment-stats { grid-template-columns: 1fr; }
+            .payment-stats {
+                grid-template-columns: repeat(3, minmax(0, 1fr));
+                gap: 8px;
+            }
+            .payment-stat {
+                padding: 10px;
+            }
+            .payment-stat-value {
+                font-size: 1.15rem;
+            }
+            .payment-stat-label {
+                font-size: 0.72rem;
+                line-height: 1.2;
+            }
             .fly-goalie-form { grid-template-columns: 1fr; }
             .title-controls { grid-template-columns: 1fr; }
             .game-setup-section, .backup-goalies-section, .add-goalie-fly-section { padding: 14px; }
