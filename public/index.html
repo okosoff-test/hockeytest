@@ -1052,19 +1052,13 @@
         }
 
         .top-action-bar {
-            position: sticky;
-            top: 10px;
-            z-index: 80;
-            margin: 0 auto 14px;
+            margin: 12px auto 10px;
             width: 100%;
-            max-width: 900px;
             display: flex;
             justify-content: center;
-            pointer-events: none;
         }
 
         .top-action-btn {
-            pointer-events: auto;
             width: min(100%, 430px);
             margin: 0;
             border-radius: 999px;
@@ -1153,20 +1147,6 @@
             font-weight: 700;
         }
 
-        .player-payment-flag {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            margin-top: 5px;
-            font-size: 0.7rem;
-            font-weight: 800;
-            letter-spacing: 0.3px;
-            text-transform: uppercase;
-        }
-
-        .player-payment-flag.paid { color: #7ee787; }
-        .player-payment-flag.owes { color: #ff8a80; }
-        .player-payment-flag.pending { color: #ffd166; }
 
         .last-updated-row {
             margin-top: 14px;
@@ -1178,7 +1158,7 @@
         @media (max-width: 600px) {
             body { padding: 12px; }
             .container { padding: 18px; }
-            .top-action-bar { top: 8px; margin-bottom: 12px; }
+            .top-action-bar { margin: 10px auto 8px; }
             .top-action-btn { padding: 13px 18px; }
             .quick-status-row { gap: 8px; margin-bottom: 14px; }
             .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
@@ -1405,10 +1385,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
     </div>
 
-    <div class="top-action-bar">
-        <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
-    </div>
-
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
@@ -1416,6 +1392,17 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="game-date" id="gameDate">Loading...</div>
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
+        </div>
+
+        <div class="top-action-bar">
+            <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
+        </div>
+
+        <div class="spots-container">
+            <div class="spot-counter" id="playerSpotCounter">
+                <div class="spot-number" id="spotsLeft">--</div>
+                <div class="spot-text" id="spotsText">Player Spots Available</div>
+            </div>
         </div>
 
         <div class="quick-status-row">
@@ -1466,13 +1453,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <div id="registrationArea">
-            <div class="spots-container">
-                <div class="spot-counter" id="playerSpotCounter">
-                    <div class="spot-number" id="spotsLeft">--</div>
-                    <div class="spot-text" id="spotsText">Player Spots Available</div>
-                </div>
-            </div>
-
             <!-- Lock Schedule Notice -->
             <div class="lock-notice" id="lockNotice" style="display:none;">
                 <strong>🔒 Signup Temporarily Locked</strong>
@@ -2897,18 +2877,9 @@ function updateCalculatedRating() {
                 card.className = cardClass;
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
-                const goalieLabel = isGoalie ? '<div class="goalie-label">🧤 GOALIE</div>' : '';
+                const goalieLabel = '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
                 let paymentFlag = '';
-                if (!isGoalie && !isProtected) {
-                    if (player.paid === true) {
-                        paymentFlag = '<div class="player-payment-flag paid">🟢 Paid</div>';
-                    } else if (player.paidAmount && Number(player.paidAmount) > 0) {
-                        paymentFlag = '<div class="player-payment-flag pending">🟡 Pending</div>';
-                    } else {
-                        paymentFlag = '<div class="player-payment-flag owes">🔴 Owes</div>';
-                    }
-                }
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
@@ -2919,9 +2890,7 @@ function updateCalculatedRating() {
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
                         <div class="player-name-simple">${firstName} ${lastName}</div>
-                        ${goalieLabel}
                         ${protectedLabel}
-                        ${paymentFlag}
                     </div>
                     ${cancelButton}
                 `;
