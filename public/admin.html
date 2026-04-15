@@ -1121,108 +1121,6 @@
         .schedule-label2 { font-size: 0.85rem; color:#bbb; margin-bottom: 4px; }
         .schedule-hint { margin-top:8px; font-size:0.8rem; color:#aaa; }
 
-        /* Schedule editor mobile sizing patch */
-        .schedule-editor .schedule-card {
-            padding: 12px;
-        }
-
-        .schedule-editor .schedule-title {
-            font-size: 1.02rem;
-            line-height: 1.2;
-            margin-bottom: 8px;
-        }
-
-        .schedule-editor .schedule-label {
-            gap: 10px;
-            align-items: flex-start;
-            font-size: 0.98rem;
-            line-height: 1.2;
-            margin-bottom: 12px;
-        }
-
-        .schedule-editor .schedule-label input[type="checkbox"] {
-            -webkit-appearance: none;
-            appearance: none;
-            width: 18px;
-            height: 18px;
-            min-width: 18px;
-            margin: 1px 0 0 0;
-            border: 2px solid #7fb4ff;
-            border-radius: 4px;
-            background: #fff;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            cursor: pointer;
-            flex: 0 0 18px;
-        }
-
-        .schedule-editor .schedule-label input[type="checkbox"]:checked {
-            background: #8fc0ff;
-            border-color: #8fc0ff;
-        }
-
-        .schedule-editor .schedule-label input[type="checkbox"]:checked::after {
-            content: '✓';
-            color: #1f1f1f;
-            font-size: 13px;
-            font-weight: 800;
-            line-height: 1;
-        }
-
-        .schedule-editor .schedule-label2,
-        .schedule-editor .schedule-hint {
-            font-size: 0.82rem;
-            line-height: 1.25;
-        }
-
-        .schedule-editor .enhanced-datetime .date-input,
-        .schedule-editor .enhanced-datetime .time-trigger,
-        .schedule-editor input[type="datetime-local"] {
-            font-size: 0.95rem;
-        }
-
-        @media (max-width: 700px) {
-            .schedule-editor .schedule-card {
-                padding: 10px;
-            }
-
-            .schedule-editor .schedule-title {
-                font-size: 0.96rem;
-                margin-bottom: 6px;
-            }
-
-            .schedule-editor .schedule-label {
-                gap: 8px;
-                font-size: 0.9rem;
-                margin-bottom: 10px;
-            }
-
-            .schedule-editor .schedule-label input[type="checkbox"] {
-                width: 16px;
-                height: 16px;
-                min-width: 16px;
-                flex-basis: 16px;
-                border-width: 2px;
-            }
-
-            .schedule-editor .schedule-label input[type="checkbox"]:checked::after {
-                font-size: 11px;
-            }
-
-            .schedule-editor .schedule-label2,
-            .schedule-editor .schedule-hint {
-                font-size: 0.76rem;
-            }
-
-            .schedule-editor .enhanced-datetime .date-input,
-            .schedule-editor .enhanced-datetime .time-trigger,
-            .schedule-editor input[type="datetime-local"] {
-                font-size: 0.88rem;
-            }
-        }
-
     
 /* Hide Game Details section */
 .details-box { display:none !important; }
@@ -2200,6 +2098,26 @@ th, td{padding:2px 3px !important;}
     align-items:center !important;
     gap:8px !important;
 }
+.history-delete-toolbar{
+    align-items:stretch !important;
+}
+.history-delete-actions{
+    display:flex;
+    flex-direction:column;
+    gap:8px;
+    min-width:150px;
+}
+.history-delete-actions .control-btn{
+    width:100%;
+    margin:0 !important;
+}
+.history-select[multiple]{
+    min-height:220px;
+    padding:8px;
+}
+.history-select[multiple] option{
+    padding:8px 10px;
+}
 
 .history-delete-box select,
 .payment-summary-box select{
@@ -2258,6 +2176,15 @@ th, td{padding:2px 3px !important;}
 
     .payment-summary-box .message-actions{
         gap:8px !important;
+    }
+
+    .history-delete-actions{
+        width:100%;
+        min-width:0;
+    }
+
+    .history-select[multiple]{
+        min-height:180px;
     }
 }
 </style>
@@ -3842,16 +3769,25 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         <!-- History Management -->
         <div class="history-delete-box">
             <h3>🗑️ Delete Old History</h3>
-            <div class="control-row" style="margin-bottom: 10px;">
-                <select id="historySelect" class="history-select">
-                    <option value="">-- Select a week to delete --</option>
-                </select>
-                <button class="control-btn" onclick="loadHistoryList()" style="background: #4a90e2; margin-left: 10px;">
-                    🔄 Refresh
-                </button>
+            <div class="control-row history-delete-toolbar" style="margin-bottom: 10px;">
+                <select id="historySelect" class="history-select" multiple size="8"></select>
+                <div class="history-delete-actions">
+                    <button class="control-btn" type="button" onclick="toggleSelectAllHistory()" style="background: #607d8b;">
+                        ☑️ Select All
+                    </button>
+                    <button class="control-btn" type="button" onclick="clearHistorySelection()" style="background: #666;">
+                        ✖ Clear
+                    </button>
+                    <button class="control-btn" type="button" onclick="loadHistoryList()" style="background: #4a90e2;">
+                        🔄 Refresh
+                    </button>
+                </div>
+            </div>
+            <div class="schedule-hint" style="margin-top: -2px; margin-bottom: 10px;">
+                Hold Ctrl or Cmd to manually pick multiple weeks.
             </div>
             <button class="delete-btn" onclick="deleteSelectedHistory()">
-                ❌ Delete Selected Week from History
+                ❌ Delete Selected History
             </button>
             <div id="deleteResult" class="delete-result"></div>
         </div>
