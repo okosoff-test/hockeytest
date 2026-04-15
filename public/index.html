@@ -1147,6 +1147,49 @@
             font-weight: 700;
         }
 
+        .hero-combined-card {
+            background: linear-gradient(135deg, #2a2a2a, #333);
+            border: 2px solid var(--accent);
+            border-radius: 14px;
+            padding: 22px 18px;
+            margin: 20px 0 16px;
+            text-align: center;
+        }
+
+        .hero-combined-card .game-info {
+            gap: 8px;
+            margin: 0;
+        }
+
+        .hero-combined-card .top-action-bar {
+            margin: 18px auto 14px;
+        }
+
+        .hero-combined-card .spots-container {
+            margin: 0 0 14px;
+            gap: 0;
+        }
+
+        .hero-combined-card .spot-counter {
+            background: transparent;
+            border: none;
+            box-shadow: none;
+            padding: 0;
+        }
+
+        .hero-combined-card .spot-number {
+            font-size: 2.7rem;
+            line-height: 1;
+        }
+
+        .hero-combined-card .spot-text {
+            margin-top: 8px;
+        }
+
+        .hero-combined-card .quick-status-row {
+            margin: 0;
+        }
+
 
         .last-updated-row {
             margin-top: 14px;
@@ -1162,6 +1205,10 @@
             .top-action-btn { padding: 13px 18px; }
             .quick-status-row { gap: 8px; margin-bottom: 14px; }
             .status-pill { width: 100%; font-size: 0.86rem; padding: 9px 14px; }
+            .hero-combined-card { padding: 18px 14px; margin: 16px 0 14px; }
+            .hero-combined-card .top-action-bar { margin: 16px auto 12px; }
+            .hero-combined-card .spots-container { margin-bottom: 12px; }
+            .hero-combined-card .spot-number { font-size: 2.35rem; }
             .status-subtle { font-size: 0.84rem; }
             .game-time { font-size: 1.25rem; }
             .registered-summary { font-size: 0.88rem; }
@@ -1388,26 +1435,28 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
-        <div class="game-info">
-            <div class="game-date" id="gameDate">Loading...</div>
-            <div class="game-location" id="gameLocation">Loading...</div>
-            <div class="game-time" id="gameTime">Loading...</div>
-        </div>
-
-        <div class="top-action-bar">
-            <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
-        </div>
-
-        <div class="spots-container">
-            <div class="spot-counter" id="playerSpotCounter">
-                <div class="spot-number" id="spotsLeft">--</div>
-                <div class="spot-text" id="spotsText">Player Spots Available</div>
+        <div class="hero-combined-card">
+            <div class="game-info">
+                <div class="game-date" id="gameDate">Loading...</div>
+                <div class="game-location" id="gameLocation">Loading...</div>
+                <div class="game-time" id="gameTime">Loading...</div>
             </div>
-        </div>
 
-        <div class="quick-status-row">
-            <div class="status-pill open" id="portalStatusPill">OPEN</div>
-            <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
+            <div class="top-action-bar">
+                <button type="button" class="top-action-btn" id="topActionBtn">🏒 Join Game</button>
+            </div>
+
+            <div class="spots-container">
+                <div class="spot-counter" id="playerSpotCounter">
+                    <div class="spot-number" id="spotsLeft">--</div>
+                    <div class="spot-text" id="spotsText">Player Spots Available</div>
+                </div>
+            </div>
+
+            <div class="quick-status-row">
+                <div class="status-pill open" id="portalStatusPill">OPEN</div>
+                <div class="status-pill status-subtle" id="filledStatusPill">0 / 20 Spots Filled</div>
+            </div>
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
