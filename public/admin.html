@@ -6483,7 +6483,7 @@ Date: ${selectedGameDate}`);
             }
             window.open(`${API_URL}/api/admin/payment-reports/${select.value}/download?sessionToken=${sessionToken}`, '_blank');
         }
-        
+
         async function loadHistoryList() {
             const select = document.getElementById('historySelect');
             const resultDiv = document.getElementById('deleteResult');
@@ -6492,20 +6492,28 @@ Date: ${selectedGameDate}`);
                 const res = await fetch(`${API_URL}/api/history`);
                 const data = await res.json();
                 
-                select.innerHTML = '<option value="">-- Select a week to delete --</option>';
+                select.innerHTML = '';
                 
                 if (data.history && data.history.length > 0) {
                     data.history.forEach(week => {
                         const option = document.createElement('option');
                         option.value = `${week.year}-${week.weekNumber}`;
-                        const date = new Date(week.created);
-                        option.text = `Week ${week.weekNumber}, ${week.year} (${date.toLocaleDateString()})`;
+                        const createdAt = week.created || week.releaseDate || week.date || week.created_at;
+                        const date = createdAt ? new Date(createdAt) : null;
+                        const dateLabel = date && !Number.isNaN(date.getTime())
+                            ? date.toLocaleDateString()
+                            : 'No date';
+                        option.text = `Week ${week.weekNumber}, ${week.year} (${dateLabel})`;
                         select.appendChild(option);
                     });
                     resultDiv.className = 'delete-result success';
                     resultDiv.innerHTML = `✅ Loaded ${data.history.length} weeks from history`;
                 } else {
-                    select.innerHTML = '<option value="">No history available</option>';
+                    const option = document.createElement('option');
+                    option.value = '';
+                    option.text = 'No history available';
+                    option.disabled = true;
+                    select.appendChild(option);
                     resultDiv.className = 'delete-result error';
                     resultDiv.innerHTML = '⚠️ No history found';
                 }
@@ -6516,16 +6524,102 @@ Date: ${selectedGameDate}`);
                 resultDiv.innerHTML = '❌ Error loading history';
             }
         }
+
+        function getSelectedHistoryValues() {
+            const select = document.getElementById('historySelect');
+            if (!select) return [];
+            return Array.from(select.options)
+                .filter(option => option.selected && option.value)
+                .map(option => option.value);
+        }
+
+        function toggleSelectAllHistory() {
+            const select = document.getElementById('historySelect');
+            if (!select) return;
+            const selectableOptions = Array.from(select.options).filter(option => option.value && !option.disabled);
+            if (!selectableOptions.length) return;
+
+            const allSelected = selectableOptions.every(option => option.selected);
+            selectableOptions.forEach(option => {
+                option.selected = !allSelected;
+            });
+        }
+
+        function clearHistorySelection() {
+            const select = document.getElementById('historySelect');
+            if (!select) return;
+            Array.from(select.options).forEach(option => {
+                option.selected = false;
+            });
+        }
         
         async function deleteSelectedHistory() {
-            const select = document.getElementById('historySelect');
             const resultDiv = document.getElementById('deleteResult');
-            const value = select.value;
+            const selectedValues = getSelectedHistoryValues();
             
-            if (!value) {
-                alert("Please select a week to delete");
+            if (!selectedValues.length) {
+                alert("Please select at least one week to delete");
                 return;
             }
+            
+            const summary = selectedValues.length === 1
+                ? `Week ${selectedValues[0].split('-')[1]}, ${selectedValues[0].split('-')[0]}`
+                : `${selectedValues.length} selected history weeks`;
+
+            if (!confirm(`⚠️ WARNING: This will permanently delete ${summary}.
+
+This action cannot be undone!
+
+Continue?`)) {
+                return;
+            }
+            
+            try {
+                let deletedCount = 0;
+                const failures = [];
+
+                for (const value of selectedValues) {
+                    const [year, week] = value.split('-');
+                    const res = await fetch(`${API_URL}/api/admin/history/${year}/${week}`, {
+                        method: 'DELETE',
+                        headers: getAdminHeaders(),
+                        body: JSON.stringify({ sessionToken: sessionToken })
+                    });
+
+                    if (res.ok) {
+                        deletedCount += 1;
+                    } else if (res.status === 401) {
+                        logout();
+                        return;
+                    } else {
+                        let errorText = 'Failed to delete';
+                        try {
+                            const err = await res.json();
+                            errorText = err.error || errorText;
+                        } catch (parseError) {}
+                        failures.push(`Week ${week}, ${year}: ${errorText}`);
+                    }
+                }
+                
+                if (!failures.length) {
+                    resultDiv.className = 'delete-result success';
+                    resultDiv.innerHTML = `✅ Deleted ${deletedCount} history ${deletedCount === 1 ? 'week' : 'weeks'}`;
+                } else if (deletedCount > 0) {
+                    resultDiv.className = 'delete-result error';
+                    resultDiv.innerHTML = `⚠️ Deleted ${deletedCount} week(s), but ${failures.length} failed.<br>${failures.join('<br>')}`;
+                } else {
+                    resultDiv.className = 'delete-result error';
+                    resultDiv.innerHTML = `❌ ${failures.join('<br>')}`;
+                }
+
+                await loadHistoryList();
+            } catch (err) {
+                console.error("Error deleting history:", err);
+                resultDiv.className = 'delete-result error';
+                resultDiv.innerHTML = '❌ Network error';
+            }
+        }
+
             
             const [year, week] = value.split('-');
             
