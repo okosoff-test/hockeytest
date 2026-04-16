@@ -3886,11 +3886,11 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <div class="payment-stat-label">Total Collected</div>
                 </div>
                 <div class="payment-stat">
-                    <div class="payment-stat-value" id="totalExpectedDisplay">$0.00</div>
+                    <div class="payment-stat-value" id="totalExpectedDisplay">$15.00</div>
                     <div class="payment-stat-label">Total Expected</div>
                 </div>
                 <div class="payment-stat">
-                    <div class="payment-stat-value unpaid" id="outstandingBalanceDisplay">$0.00</div>
+                    <div class="payment-stat-value unpaid" id="outstandingDisplay">$0.00</div>
                     <div class="payment-stat-label">Outstanding</div>
                 </div>
                 <div class="payment-stat">
@@ -3985,7 +3985,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
     <script>
         const API_URL = window.location.origin;
-        const PAYMENT_TARGET_PER_PLAYER = 15;
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -5921,8 +5920,14 @@ Date: ${selectedGameDate}`);
                 
                 // Update payment summary
                 document.getElementById('totalCollected').innerText = '$' + currentTotalPaid.toFixed(2);
-                document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
-                document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
+                const paidPlayers = Number(data.paidCount || 0);
+                const unpaidPlayers = Number(data.unpaidCount || 0);
+                const totalExpected = currentTotalPaid + (unpaidPlayers * 15);
+                const outstanding = unpaidPlayers * 15;
+                document.getElementById('totalExpectedDisplay').innerText = '$' + totalExpected.toFixed(2);
+                document.getElementById('outstandingDisplay').innerText = '$' + outstanding.toFixed(2);
+                document.getElementById('paidCountDisplay').innerText = paidPlayers;
+                document.getElementById('unpaidCountDisplay').innerText = unpaidPlayers;
                 
                 // Update counts
                 document.getElementById('currentPlayerSpotsDisplay').innerText = data.playerSpots;
