@@ -463,7 +463,7 @@
 
         .payment-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
             gap: 15px;
             text-align: center;
             margin-bottom: 15px;
@@ -1102,7 +1102,7 @@
             .goalie-list { grid-template-columns: 1fr; }
             .paid-input { width: 60px; }
             .payment-stats {
-                grid-template-columns: repeat(3, minmax(0, 1fr));
+                grid-template-columns: repeat(2, minmax(0, 1fr));
                 gap: 8px;
             }
             .payment-stat {
@@ -3886,6 +3886,14 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <div class="payment-stat-label">Total Collected</div>
                 </div>
                 <div class="payment-stat">
+                    <div class="payment-stat-value" id="totalExpectedDisplay">$0.00</div>
+                    <div class="payment-stat-label">Total Expected</div>
+                </div>
+                <div class="payment-stat">
+                    <div class="payment-stat-value unpaid" id="outstandingBalanceDisplay">$0.00</div>
+                    <div class="payment-stat-label">Outstanding</div>
+                </div>
+                <div class="payment-stat">
                     <div class="payment-stat-value" id="paidCountDisplay">0</div>
                     <div class="payment-stat-label">Paid Players</div>
                 </div>
@@ -3903,18 +3911,12 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             </div>
             <div class="message-box" style="margin-top:12px;">
                 <label for="paymentReportSnapshotSelect">Saved Payment Report Snapshots</label>
-                <div class="control-row" style="margin-bottom:10px; gap:10px; align-items:flex-start; flex-wrap:wrap;">
-                    <select id="paymentReportSnapshotSelect" class="history-select" multiple size="8" style="flex:1; min-height:220px;">
+                <div class="control-row">
+                    <select id="paymentReportSnapshotSelect" style="flex:1;">
                         <option value="">No saved reports loaded</option>
                     </select>
-                    <div style="display:flex; flex-direction:column; gap:10px; min-width:170px;">
-                        <button type="button" class="control-btn" onclick="loadPaymentReportSnapshots()" style="background:#4a90e2;">🔄 Refresh</button>
-                        <button type="button" class="control-btn" onclick="selectAllPaymentReports()" style="background:#2e7d32;">✅ Select All</button>
-                        <button type="button" class="control-btn" onclick="clearPaymentReportSelection()" style="background:#666;">🧹 Clear</button>
-                        <button type="button" class="control-btn" onclick="downloadSelectedPaymentReport()" style="background:#6f42c1;">📥 Download Selected</button>
-                    </div>
+                    <button type="button" class="control-btn" onclick="downloadSelectedPaymentReport()" style="background:#6f42c1;">Download Selected</button>
                 </div>
-                <button type="button" class="delete-btn" onclick="deleteSelectedPaymentReports()">❌ Delete Selected Reports</button>
                 <small id="paymentReportSnapshotStatus">Reports are auto-saved to the database before scheduled and manual weekly reset.</small>
             </div>
             <p class="security-notice">
@@ -3983,6 +3985,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
     <script>
         const API_URL = window.location.origin;
+        const PAYMENT_TARGET_PER_PLAYER = 15;
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -6033,7 +6036,6 @@ Date: ${selectedGameDate}`);
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName} ${goalieBadge}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
-                                ${p.joinedAt ? `<span class="player-time-sub">${new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
                             </td>
                             <td>
                                 <div class="waitlist-rating-wrap">
@@ -6436,101 +6438,13 @@ Date: ${selectedGameDate}`);
             window.open(`${API_URL}/api/admin/payment-reports/latest?sessionToken=${sessionToken}`, '_blank');
         }
 
-        function selectAllPaymentReports() {
-            const select = document.getElementById('paymentReportSnapshotSelect');
-            if (!select) return;
-            Array.from(select.options).forEach(option => {
-                if (option.value) option.selected = true;
-            });
-        }
-
-        function clearPaymentReportSelection() {
-            const select = document.getElementById('paymentReportSnapshotSelect');
-            if (!select) return;
-            Array.from(select.options).forEach(option => {
-                option.selected = false;
-            });
-        }
-
         function downloadSelectedPaymentReport() {
             const select = document.getElementById('paymentReportSnapshotSelect');
-            const selectedValues = select
-                ? Array.from(select.selectedOptions).map(option => option.value).filter(Boolean)
-                : [];
-
-            if (!selectedValues.length) {
-                alert('Please choose at least one saved report first.');
+            if (!select || !select.value) {
+                alert('Please choose a saved report first.');
                 return;
             }
-
-            selectedValues.forEach(reportId => {
-                window.open(`${API_URL}/api/admin/payment-reports/${reportId}/download?sessionToken=${sessionToken}`, '_blank');
-            });
-        }
-
-        async function deleteSelectedPaymentReports() {
-            const select = document.getElementById('paymentReportSnapshotSelect');
-            const status = document.getElementById('paymentReportSnapshotStatus');
-            if (!select || !status || !sessionToken) return;
-
-            const selectedOptions = Array.from(select.selectedOptions).filter(option => option.value);
-            const selectedValues = selectedOptions.map(option => option.value);
-
-            if (!selectedValues.length) {
-                alert('Please select at least one saved report to delete.');
-                return;
-            }
-
-            const confirmMessage = selectedValues.length === 1
-                ? `⚠️ WARNING: This will permanently delete ${selectedOptions[0].text}.
-
-This action cannot be undone!
-
-Continue?`
-                : `⚠️ WARNING: This will permanently delete ${selectedValues.length} selected payment report snapshots.
-
-This action cannot be undone!
-
-Continue?`;
-
-            if (!confirm(confirmMessage)) return;
-
-            let deletedCount = 0;
-            const failures = [];
-            status.innerText = 'Deleting selected reports...';
-
-            for (const reportId of selectedValues) {
-                try {
-                    const res = await fetch(`${API_URL}/api/admin/payment-reports/${reportId}`, {
-                        method: 'DELETE',
-                        headers: getAdminHeaders(),
-                        body: JSON.stringify({ sessionToken })
-                    });
-
-                    if (res.ok) {
-                        deletedCount += 1;
-                    } else if (res.status === 401) {
-                        logout();
-                        return;
-                    } else {
-                        const err = await res.json().catch(() => ({}));
-                        failures.push(`#${reportId}: ${err.error || 'Failed to delete'}`);
-                    }
-                } catch (err) {
-                    console.error('Error deleting payment report snapshot:', err);
-                    failures.push(`#${reportId}: Network error`);
-                }
-            }
-
-            if (deletedCount > 0 && failures.length === 0) {
-                status.innerText = `✅ Deleted ${deletedCount} payment report${deletedCount === 1 ? '' : 's'}.`;
-            } else if (deletedCount > 0) {
-                status.innerText = `✅ Deleted ${deletedCount} report${deletedCount === 1 ? '' : 's'} • ⚠️ ${failures.length} failed`;
-            } else {
-                status.innerText = `❌ ${failures[0] || 'Failed to delete selected payment reports.'}`;
-            }
-
-            await loadPaymentReportSnapshots();
+            window.open(`${API_URL}/api/admin/payment-reports/${select.value}/download?sessionToken=${sessionToken}`, '_blank');
         }
         
         async function loadHistoryList() {

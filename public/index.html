@@ -1270,7 +1270,43 @@
             }
         }
 
-</style>
+
+        .portal-status-bar {
+            position: sticky;
+            top: 8px;
+            z-index: 9990;
+            width: 100%;
+            max-width: 900px;
+            margin: 0 auto 14px;
+            background: rgba(14, 24, 38, 0.96);
+            border: 1px solid rgba(95, 168, 255, 0.35);
+            border-radius: 14px;
+            box-shadow: 0 10px 24px rgba(0,0,0,0.26);
+            backdrop-filter: blur(8px);
+            overflow: hidden;
+        }
+        .portal-status-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:0; }
+        .portal-status-item { padding:10px 12px; border-right:1px solid rgba(255,255,255,0.08); min-width:0; }
+        .portal-status-item:last-child { border-right:none; }
+        .portal-status-label { color:#9dc6f7; font-size:0.72rem; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:3px; }
+        .portal-status-value { color:#fff; font-size:0.98rem; font-weight:800; line-height:1.2; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+        .portal-status-footer { display:flex; justify-content:space-between; gap:10px; flex-wrap:wrap; padding:8px 12px 10px; border-top:1px solid rgba(255,255,255,0.08); color:#b7c8da; font-size:0.8rem; }
+        .portal-status-pill-open { color:#73e07d; }
+        .portal-status-pill-locked { color:#ff8b8b; }
+        .portal-status-pill-ready { color:#73e07d; }
+        .portal-status-pill-pending { color:#ffcf7a; }
+        @media (max-width: 600px) {
+            .portal-status-bar { top:6px; margin-bottom:12px; border-radius:12px; }
+            .portal-status-grid { grid-template-columns:1fr 1fr; }
+            .portal-status-item { padding:9px 10px; }
+            .portal-status-grid .portal-status-item:nth-child(2) { border-right:none; }
+            .portal-status-grid .portal-status-item:nth-child(-n+2) { border-bottom:1px solid rgba(255,255,255,0.08); }
+            .portal-status-label { font-size:0.66rem; }
+            .portal-status-value { font-size:0.9rem; }
+            .portal-status-footer { font-size:0.74rem; padding:8px 10px; }
+        }
+
+    </style>
 <base target="_blank">
 
 <style id="windows-firefox-mobile-preview">
@@ -2704,11 +2740,41 @@ function updateCalculatedRating() {
             }
         }
 
+
+        function formatPortalUpdatedTime(dateObj) {
+            return dateObj.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+        }
+
+        function updatePortalStatusBar(statusData) {
+            const spotsEl = document.getElementById('portalStatusSpots');
+            const signupEl = document.getElementById('portalStatusSignup');
+            const rosterEl = document.getElementById('portalStatusRoster');
+            const waitlistEl = document.getElementById('portalStatusWaitlist');
+            const gameEl = document.getElementById('portalStatusGame');
+            const updatedEl = document.getElementById('portalStatusUpdated');
+            if (!spotsEl || !signupEl || !rosterEl || !waitlistEl || !gameEl || !updatedEl) return;
+
+            spotsEl.textContent = String(statusData.playerSpotsRemaining ?? 0);
+            const locked = !!(statusData.requireCode ?? statusData.signupLocked);
+            signupEl.textContent = locked ? 'Locked' : 'Open';
+            signupEl.className = 'portal-status-value ' + (locked ? 'portal-status-pill-locked' : 'portal-status-pill-open');
+            rosterEl.textContent = statusData.rosterReleased ? 'Released' : 'Pending';
+            rosterEl.className = 'portal-status-value ' + (statusData.rosterReleased ? 'portal-status-pill-ready' : 'portal-status-pill-pending');
+            waitlistEl.textContent = String(statusData.waitlistCount ?? 0);
+            const location = statusData.location || 'Game';
+            const cleanTime = String(statusData.time || '').replace(/^[A-Za-z]+\s*/, '');
+            const dateLine = statusData.formattedDate || statusData.date || '';
+            gameEl.textContent = [location, [dateLine, cleanTime].filter(Boolean).join(' • ')].filter(Boolean).join(' • ');
+            updatedEl.textContent = 'Updated ' + formatPortalUpdatedTime(new Date());
+        }
+
         async function checkStatus() {
             try {
                 const res = await fetch(`${API_URL}/api/status`);
                 const data = await res.json();
                 
+                updatePortalStatusBar(data);
+
                 // Handle maintenance mode
                 maintenanceMode = data.maintenanceMode;
                 const maintenanceBulletin = document.getElementById('maintenanceBulletin');
