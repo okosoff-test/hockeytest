@@ -1271,7 +1271,7 @@
         }
 
         .venue-waitlist-box {
-            display: none;
+            display: block;
             margin-top: 16px;
             padding: 14px 14px 12px;
             background: linear-gradient(135deg, rgba(58,26,26,0.92), rgba(77,45,45,0.92));
@@ -1358,35 +1358,74 @@
         }
 
         @media (max-width: 600px) {
+            .game-info {
+                padding: 16px 12px 14px;
+                border-radius: 14px;
+            }
+
+            .game-info .game-date {
+                font-size: 0.96rem;
+                line-height: 1.2;
+                margin-bottom: 4px;
+            }
+
+            .game-info .game-location {
+                font-size: 1.22rem;
+                line-height: 1.15;
+                margin-bottom: 4px;
+            }
+
             .venue-waitlist-box {
-                margin-top: 14px;
-                padding: 12px 12px 10px;
+                margin-top: 12px;
+                padding: 10px 10px 8px;
                 border-radius: 12px;
             }
 
+            .venue-waitlist-header {
+                gap: 6px;
+                margin-bottom: 8px;
+                align-items: flex-start;
+            }
+
             .venue-waitlist-title {
-                font-size: 0.92rem;
+                font-size: 0.84rem;
+                letter-spacing: 0.15px;
             }
 
             .venue-waitlist-count {
-                font-size: 0.78rem;
-                padding: 4px 8px;
+                font-size: 0.72rem;
+                padding: 3px 7px;
+                line-height: 1.1;
+            }
+
+            .venue-waitlist-list {
+                gap: 6px;
             }
 
             .venue-waitlist-item {
-                padding: 7px 9px;
-                gap: 8px;
+                padding: 6px 8px;
+                gap: 7px;
+                border-radius: 9px;
             }
 
             .venue-waitlist-pos {
-                width: 26px;
-                height: 26px;
-                flex-basis: 26px;
-                font-size: 0.8rem;
+                width: 22px;
+                height: 22px;
+                flex-basis: 22px;
+                font-size: 0.72rem;
             }
 
             .venue-waitlist-name {
-                font-size: 0.88rem;
+                font-size: 0.82rem;
+                line-height: 1.15;
+            }
+
+            .venue-waitlist-name .goalie-badge {
+                font-size: 0.56rem;
+                padding: 2px 5px;
+                margin-left: 5px;
+                border-radius: 999px;
+                vertical-align: middle;
             }
         }
 
@@ -2842,7 +2881,8 @@ function updateCalculatedRating() {
             listEl.innerHTML = '';
 
             if (!safeEntries.length) {
-                wrap.classList.remove('active');
+                listEl.innerHTML = '<li class="venue-waitlist-empty">No players on the waitlist yet.</li>';
+                wrap.classList.add('active');
                 return;
             }
 
@@ -2875,9 +2915,9 @@ function updateCalculatedRating() {
                 renderVenueWaitlist(data.waitlist);
             } catch (err) {
                 console.error('Error loading venue waitlist', err);
-                wrap.classList.remove('active');
-                listEl.innerHTML = '';
                 countEl.innerText = '0';
+                listEl.innerHTML = '<li class="venue-waitlist-empty">Unable to load waitlist right now.</li>';
+                wrap.classList.add('active');
             }
         }
 
