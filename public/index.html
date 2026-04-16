@@ -2831,6 +2831,37 @@ function updateCalculatedRating() {
             }
         }
 
+        function renderVenueWaitlist(entries) {
+            const wrap = document.getElementById('venueWaitlistBox');
+            const countEl = document.getElementById('venueWaitlistCount');
+            const listEl = document.getElementById('venueWaitlistList');
+            if (!wrap || !countEl || !listEl) return;
+
+            const safeEntries = Array.isArray(entries) ? entries : [];
+            countEl.innerText = safeEntries.length;
+            listEl.innerHTML = '';
+
+            if (!safeEntries.length) {
+                wrap.classList.remove('active');
+                return;
+            }
+
+            safeEntries.forEach((player, index) => {
+                const li = document.createElement('li');
+                li.className = 'venue-waitlist-item';
+                const goalieBadge = player.isGoalie ? ' <span class="goalie-badge">GOALIE</span>' : '';
+                const displayName = player.fullName || [player.firstName || '', player.lastName || ''].join(' ').trim() || 'Waitlist Player';
+                const position = player.position || (index + 1);
+                li.innerHTML = `
+                    <span class="venue-waitlist-pos">${position}</span>
+                    <div class="venue-waitlist-name">${displayName}${goalieBadge}</div>
+                `;
+                listEl.appendChild(li);
+            });
+
+            wrap.classList.add('active');
+        }
+
         async function loadVenueWaitlist() {
             const wrap = document.getElementById('venueWaitlistBox');
             const countEl = document.getElementById('venueWaitlistCount');
@@ -2841,30 +2872,7 @@ function updateCalculatedRating() {
                 const res = await fetch(`${API_URL}/api/waitlist`);
                 if (!res.ok) throw new Error(`Waitlist request failed: ${res.status}`);
                 const data = await res.json();
-                const entries = Array.isArray(data.waitlist) ? data.waitlist : [];
-
-                countEl.innerText = entries.length;
-                listEl.innerHTML = '';
-
-                if (!entries.length) {
-                    wrap.classList.remove('active');
-                    return;
-                }
-
-                entries.forEach((player, index) => {
-                    const li = document.createElement('li');
-                    li.className = 'venue-waitlist-item';
-                    const goalieBadge = player.isGoalie ? ' <span class="goalie-badge">GOALIE</span>' : '';
-                    const displayName = player.fullName || [player.firstName || '', player.lastName || ''].join(' ').trim() || 'Waitlist Player';
-                    const position = player.position || (index + 1);
-                    li.innerHTML = `
-                        <span class="venue-waitlist-pos">${position}</span>
-                        <div class="venue-waitlist-name">${displayName}${goalieBadge}</div>
-                    `;
-                    listEl.appendChild(li);
-                });
-
-                wrap.classList.add('active');
+                renderVenueWaitlist(data.waitlist);
             } catch (err) {
                 console.error('Error loading venue waitlist', err);
                 wrap.classList.remove('active');
@@ -2958,6 +2966,7 @@ function updateCalculatedRating() {
                     if (heroJoinBtn) heroJoinBtn.innerText = '🏒 Join Game';
                 }
                 
+                renderVenueWaitlist(data.waitlist);
                 await loadVenueWaitlist();
 
                 const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
