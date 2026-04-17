@@ -3424,6 +3424,12 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style>
+.bypass-on { background-color: #28a745 !important; color: white; }
+.bypass-off { background-color: #dc3545 !important; color: white; }
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -6096,7 +6102,7 @@ Date: ${selectedGameDate}`);
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
-                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Bypass ON' : 'Bypass OFF'}</button>
+                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Bypass' : 'Bypass'}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6300,7 +6306,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function toggleWaitlistBypass(id, bypassAutoPromote) {
-            const label = bypassAutoPromote ? 'Bypass ON' : 'Bypass OFF';
+            const label = bypassAutoPromote ? 'Bypass' : 'Bypass';
             if (!confirm(`Set this waitlist player to ${label}?`)) return;
 
             try {
