@@ -1258,21 +1258,26 @@
             }
             .waitlist-section .waitlist-action-wrap {
                 display: inline-flex !important;
-                flex-direction: column !important;
-                align-items: stretch !important;
+                flex-direction: row !important;
+                flex-wrap: nowrap !important;
+                align-items: center !important;
                 justify-content: center !important;
                 gap: 4px !important;
-                min-width: 64px !important;
+                min-width: 0 !important;
+                white-space: nowrap !important;
             }
             .waitlist-section .bypass-btn,
             .waitlist-section .promote-btn,
             .waitlist-section .remove-btn {
-                width: 100% !important;
-                min-width: 64px !important;
+                width: auto !important;
+                min-width: 0 !important;
                 padding: 4px 6px !important;
                 font-size: 0.62rem !important;
                 line-height: 1.05 !important;
                 border-radius: 7px !important;
+                margin: 0 !important;
+                white-space: nowrap !important;
+                flex: 0 0 auto !important;
             }
         }
 
@@ -2299,11 +2304,25 @@ th, td{padding:2px 3px !important;}
         font-size:0.74rem !important;
     }
 
+    .waitlist-section .waitlist-action-wrap{
+        display:flex !important;
+        flex-direction:row !important;
+        flex-wrap:nowrap !important;
+        align-items:center !important;
+        justify-content:center !important;
+        gap:4px !important;
+    }
+
+    .waitlist-section .bypass-btn,
     .waitlist-section .promote-btn,
     .waitlist-section .remove-btn,
     .cancellations-section .control-btn{
         font-size:0.62rem !important;
         padding:3px 5px !important;
+        width:auto !important;
+        min-width:0 !important;
+        white-space:nowrap !important;
+        flex:0 0 auto !important;
     }
 
     .payment-summary-box .payment-stat-value{
