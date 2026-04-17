@@ -5633,6 +5633,41 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
     });
 });
 
+
+app.post('/api/admin/toggle-waitlist-bypass', async (req, res) => {
+    const { password, sessionToken, waitlistId } = req.body;
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+
+    const index = waitlist.findIndex(p => String(p.id) === String(waitlistId));
+    if (index === -1) return res.status(404).json({ error: "Player not found in waitlist" });
+
+    const player = waitlist[index];
+    const nextBypassState = !player?.bypassAutoPromote;
+
+    try {
+        await runProtectedMutation('toggle-waitlist-bypass', req, async () => {
+            waitlist[index] = hydratePlayerRatingProfile({
+                ...player,
+                bypassAutoPromote: nextBypassState
+            });
+        }, {
+            waitlistId,
+            bypassAutoPromote: nextBypassState,
+            playerId: player.id
+        });
+    } catch (err) {
+        console.error('Error toggling waitlist bypass:', err);
+        return res.status(500).json({ error: "Failed to update waitlist bypass safely" });
+    }
+
+    return res.json({
+        success: true,
+        waitlistId,
+        playerId: player.id,
+        bypassAutoPromote: nextBypassState
+    });
+});
+
 app.post('/api/admin/promote-waitlist', async (req, res) => {
     const { password, sessionToken, waitlistId } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
