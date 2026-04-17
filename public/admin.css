@@ -1,39 +1,29 @@
-/* Add this inside your existing <style> in admin.html */
+/* FINAL FIX - WIDEN WAITLIST ONLY */
 
 @media (max-width: 600px) {
 
-    .container {
-        padding-left: 8px !important;
-        padding-right: 8px !important;
+    /* Expand waitlist card beyond container */
+    .waitlist-section {
+        margin-left: -14px !important;
+        margin-right: -14px !important;
+        width: calc(100% + 28px) !important;
     }
 
-    .waitlist-table {
-        width: 100% !important;
-        table-layout: auto !important;
+    /* Reduce internal padding */
+    .waitlist-section {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
     }
 
-    .waitlist-table td:last-child,
-    .waitlist-table th:last-child {
-        width: 140px !important;
-        min-width: 140px !important;
+    /* Give action column more space */
+    .waitlist-section td:last-child {
+        min-width: 150px !important;
+        white-space: nowrap !important;
     }
 
-    .waitlist-actions {
-        display: flex;
-        gap: 6px;
-        justify-content: flex-end;
-        flex-wrap: nowrap;
-    }
-
-    .waitlist-actions button {
-        padding: 5px 8px;
-        font-size: 0.7rem;
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
-
-    .waitlist-table td:nth-child(2) {
-        max-width: 140px;
-        overflow: hidden;
+    /* Keep pills tight */
+    .waitlist-section button {
+        padding: 5px 7px !important;
+        font-size: 0.7rem !important;
     }
 }
