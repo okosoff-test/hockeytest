@@ -2148,30 +2148,12 @@ th, td{padding:2px 3px !important;}
 
 .waitlist-section .promote-btn,
 .waitlist-section .remove-btn,
-.waitlist-section .waitlist-bypass-btn,
 .cancellations-section .control-btn{
-    height: 22px !important;
-    min-height: 22px !important;
-    min-width: 46px !important;
-    padding: 0 8px !important;
-    border-radius: 6px !important;
+    padding:4px 6px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
     margin:0 !important;
     white-space:nowrap !important;
-    font-size:0.66rem !important;
-    font-weight:700 !important;
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    line-height:1 !important;
-}
-
-.waitlist-section .waitlist-bypass-btn{
-    background:#7fa0b7 !important;
-    color:#fff !important;
-}
-.waitlist-section .waitlist-bypass-btn.active{
-    background:#f6a313 !important;
-    color:#fff !important;
 }
 
 .history-delete-box .control-row,
@@ -2226,13 +2208,9 @@ th, td{padding:2px 3px !important;}
 
     .waitlist-section .promote-btn,
     .waitlist-section .remove-btn,
-    .waitlist-section .waitlist-bypass-btn,
     .cancellations-section .control-btn{
-        height:22px !important;
-        min-height:22px !important;
-        min-width:46px !important;
         font-size:0.62rem !important;
-        padding:0 7px !important;
+        padding:3px 5px !important;
     }
 
     .payment-summary-box .payment-stat-value{
@@ -6050,7 +6028,6 @@ Date: ${selectedGameDate}`);
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const isBypassed = !!(p.bypassAutoPromote || p.bypass_auto || p.bypass);
                         tr.innerHTML = `
                             <td>${index + 1}</td>
                             <td class="player-name-cell">
@@ -6062,11 +6039,11 @@ Date: ${selectedGameDate}`);
                                 <div class="waitlist-rating-wrap">
                                     <input type="number" id="rating-${p.id}" class="rating-pill-input" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
                                         onchange="updateRating(${p.id}, this.value)">
+
                                 </div>
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
-                                    <button type="button" class="waitlist-bypass-btn ${isBypassed ? 'active' : ''}" onclick="toggleWaitlistBypass(${p.id}, ${isBypassed ? 'true' : 'false'})">${isBypassed ? 'Unbypass' : 'Bypass'}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6260,27 +6237,6 @@ Date: ${selectedGameDate}`);
             } catch (err) {
                 console.error("Promote player error:", err);
                 alert("Error promoting player");
-            }
-        }
-
-        async function toggleWaitlistBypass(id, isCurrentlyBypassed) {
-            try {
-                const res = await fetch(`${API_URL}/api/admin/toggle-waitlist-bypass`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id, bypass: !isCurrentlyBypassed })
-                });
-                if (res.ok) {
-                    loadData();
-                } else if (res.status === 401) {
-                    logout();
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    alert(err.error || 'Error updating waitlist bypass');
-                }
-            } catch (err) {
-                console.error('Toggle waitlist bypass error:', err);
-                alert('Error updating waitlist bypass');
             }
         }
 
