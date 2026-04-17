@@ -3374,86 +3374,71 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="waitlist-mobile-remove-fix-v2">
-@media (max-width: 600px) {
-  .waitlist-section {
-    overflow: hidden !important;
-  }
-  .waitlist-section table {
-    width: 100% !important;
-    table-layout: fixed !important;
-  }
-  .waitlist-section th,
-  .waitlist-section td {
-    box-sizing: border-box !important;
-  }
-  .waitlist-section th:first-child,
-  .waitlist-section td:first-child {
-    width: 6% !important;
-    padding-left: 2px !important;
-    padding-right: 2px !important;
-  }
-  .waitlist-section th:nth-child(2),
-  .waitlist-section td:nth-child(2) {
-    width: 41% !important;
-  }
-  .waitlist-section th:nth-child(3),
-  .waitlist-section td:nth-child(3) {
-    width: 14% !important;
-    text-align: center !important;
-  }
-  .waitlist-section th:nth-child(4),
-  .waitlist-section td:nth-child(4) {
-    width: 39% !important;
-    padding-left: 2px !important;
-    padding-right: 2px !important;
-  }
-  .waitlist-section .player-name-main {
-    font-size: 0.84rem !important;
-    line-height: 1.05 !important;
-    word-break: break-word !important;
-  }
-  .waitlist-section .player-phone-sub {
-    font-size: 0.62rem !important;
-    line-height: 1 !important;
-  }
-  .waitlist-section .player-time-sub {
-    font-size: 0.56rem !important;
-    line-height: 1 !important;
-  }
-  .waitlist-section .waitlist-rating-wrap {
-    justify-content: center !important;
-  }
-  .waitlist-section .rating-pill-input {
-    width: 100% !important;
-    max-width: 54px !important;
-    min-width: 0 !important;
-    height: 22px !important;
-    font-size: 0.78rem !important;
-    padding: 0 2px !important;
-  }
-  .waitlist-section .waitlist-action-wrap {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: flex-start !important;
-    gap: 3px !important;
-    flex-wrap: nowrap !important;
-    overflow: visible !important;
-    width: 100% !important;
-  }
-  .waitlist-section .waitlist-action-wrap .promote-btn,
-  .waitlist-section .waitlist-action-wrap .remove-btn,
-  .waitlist-section .waitlist-action-wrap .regular-toggle-btn,
-  .waitlist-section .waitlist-action-wrap button {
-    flex: 0 0 auto !important;
-    min-width: 0 !important;
-    padding: 4px 5px !important;
-    font-size: 0.56rem !important;
-    line-height: 1 !important;
-    border-radius: 8px !important;
-    white-space: nowrap !important;
-    letter-spacing: 0 !important;
-  }
+<style id="waitlist-bypass-mobile-fix-v2">
+.waitlist-section .waitlist-actions-cell{
+    width: 1%;
+}
+.waitlist-section .waitlist-action-wrap{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:flex-start !important;
+    gap:6px !important;
+    flex-wrap:nowrap !important;
+}
+.waitlist-section .bypass-btn,
+.waitlist-section .promote-btn,
+.waitlist-section .remove-btn{
+    width:auto !important;
+    min-width:0 !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+    flex:0 0 auto !important;
+    padding:4px 8px !important;
+    font-size:0.66rem !important;
+    border-radius:8px !important;
+}
+.waitlist-section .bypass-btn{
+    background:#7ea6bf !important;
+    color:#fff !important;
+}
+.waitlist-section .bypass-btn.active{
+    background:#f39c12 !important;
+}
+@media (max-width:600px){
+    .waitlist-section table{
+        width:100% !important;
+        table-layout:fixed !important;
+    }
+    .waitlist-section th:nth-child(1),
+    .waitlist-section td:nth-child(1){
+        width:26px !important;
+        padding-left:2px !important;
+        padding-right:2px !important;
+    }
+    .waitlist-section th:nth-child(2),
+    .waitlist-section td:nth-child(2){
+        width:40% !important;
+    }
+    .waitlist-section th:nth-child(3),
+    .waitlist-section td:nth-child(3){
+        width:54px !important;
+        text-align:center !important;
+    }
+    .waitlist-section th:nth-child(4),
+    .waitlist-section td:nth-child(4){
+        width:170px !important;
+        padding-left:2px !important;
+        padding-right:2px !important;
+    }
+    .waitlist-section .waitlist-action-wrap{
+        gap:4px !important;
+    }
+    .waitlist-section .bypass-btn,
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn{
+        padding:4px 6px !important;
+        font-size:0.60rem !important;
+    }
 }
 </style>
 
@@ -6126,8 +6111,9 @@ Date: ${selectedGameDate}`);
 
                                 </div>
                             </td>
-                            <td>
+                            <td class="waitlist-actions-cell">
                                 <div class="waitlist-action-wrap">
+                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" onclick="toggleWaitlistBypass(${p.id}, ${p.bypassAutoPromote ? 'false' : 'true'})">${p.bypassAutoPromote ? 'Unbypass' : 'Bypass'}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6339,6 +6325,32 @@ Date: ${selectedGameDate}`);
                 }
             } catch (err) {
                 console.error("Remove waitlist error:", err);
+            }
+        }
+
+        async function toggleWaitlistBypass(id, shouldBypass) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/toggle-waitlist-bypass`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id, bypass: !!shouldBypass })
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({ error: 'Error updating waitlist bypass' }));
+                    alert(err.error || 'Error updating waitlist bypass');
+                    return;
+                }
+
+                loadData();
+            } catch (err) {
+                console.error('Toggle waitlist bypass error:', err);
+                alert('Error updating waitlist bypass');
             }
         }
 
