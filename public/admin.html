@@ -196,6 +196,45 @@
             background: #45a049;
         }
 
+        .bypass-btn {
+            padding: 5px 10px;
+            font-size: 0.8rem;
+            width: auto;
+            background: #607d8b;
+            margin: 0;
+            margin-right: 5px;
+        }
+
+        .bypass-btn:hover {
+            background: #78909c;
+        }
+
+        .bypass-btn.active {
+            background: #ff9800;
+        }
+
+        .waitlist-bypass-note {
+            color: #ffcf99;
+            font-size: 0.85rem;
+            margin: 4px 0 12px 0;
+            text-align: center;
+            line-height: 1.35;
+        }
+
+        .waitlist-bypass-flag {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: fit-content;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.7rem;
+            background: #ff9800;
+            color: white;
+            margin-top: 4px;
+            white-space: nowrap;
+        }
+
         .control-box {
             background: linear-gradient(135deg, #2a2a2a, #333);
             border: 2px solid var(--accent);
@@ -3944,6 +3983,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         <div class="waitlist-section">
             <h3>⏳ Waitlist (<span id="waitlistCount">0</span>)</h3>
+            <div class="waitlist-bypass-note">Mark a waitlist player as bypassed to skip them during auto-promote when a registered player cancels. Manual Promote still works.</div>
             <table>
                 <thead>
                     <tr>
@@ -6028,12 +6068,16 @@ Date: ${selectedGameDate}`);
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const bypassBadge = p.bypassAutoPromote ? '<span class="waitlist-bypass-flag">BYPASS AUTO</span>' : '';
+                        const bypassBtnText = p.bypassAutoPromote ? 'Unbypass' : 'Bypass';
+                        const bypassBtnClass = p.bypassAutoPromote ? 'bypass-btn active' : 'bypass-btn';
                         tr.innerHTML = `
                             <td>${index + 1}</td>
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName} ${goalieBadge}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
                                 ${p.joinedAt ? `<span class="player-time-sub">${new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
+                                ${bypassBadge}
                             </td>
                             <td>
                                 <div class="waitlist-rating-wrap">
@@ -6044,6 +6088,7 @@ Date: ${selectedGameDate}`);
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
+                                    <button class="${bypassBtnClass}" onclick="toggleWaitlistBypass(${p.id})">${bypassBtnText}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6237,6 +6282,32 @@ Date: ${selectedGameDate}`);
             } catch (err) {
                 console.error("Promote player error:", err);
                 alert("Error promoting player");
+            }
+        }
+
+        async function toggleWaitlistBypass(id) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/toggle-waitlist-bypass`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id })
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                const data = await res.json();
+                if (res.ok) {
+                    showNotification(data.bypassAutoPromote ? '⏭️ Waitlist auto-promote bypass enabled' : '✅ Waitlist auto-promote bypass cleared', 'success');
+                    loadData();
+                } else {
+                    showNotification("Error: " + (data.error || "Failed to update waitlist bypass"), 'error');
+                }
+            } catch (err) {
+                console.error("Toggle waitlist bypass error:", err);
+                showNotification("Error updating waitlist bypass", 'error');
             }
         }
 
