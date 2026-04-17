@@ -3373,6 +3373,42 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="waitlist-table-match-players-v1">
+.waitlist-section table { width:100% !important; table-layout:auto !important; }
+.waitlist-section th, .waitlist-section td { text-align:center !important; }
+.waitlist-section .player-name-cell { text-align:left !important; align-items:flex-start !important; }
+.waitlist-section .phone-col-hidden { display:none !important; }
+.waitlist-section .promote-btn,
+.waitlist-section .remove-btn,
+.waitlist-section .regular-toggle-btn {
+    width:auto !important;
+    white-space:nowrap !important;
+}
+@media (max-width: 600px) {
+    .waitlist-section { margin-left:-6px !important; margin-right:-6px !important; width:calc(100% + 12px) !important; }
+    .waitlist-section table { width:100% !important; table-layout:fixed !important; }
+    .waitlist-section th:nth-child(1) { width:40% !important; }
+    .waitlist-section th:nth-child(2) { width:13% !important; }
+    .waitlist-section th:nth-child(3),
+    .waitlist-section th:nth-child(4),
+    .waitlist-section th:nth-child(5) { width:15.66% !important; }
+    .waitlist-section th,
+    .waitlist-section td { padding:4px 3px !important; }
+    .waitlist-section .player-name-main { font-size:0.85rem !important; }
+    .waitlist-section .player-phone-sub { font-size:0.70rem !important; }
+    .waitlist-section .player-time-sub { font-size:0.58rem !important; }
+    .waitlist-section .rating-pill-input { width:34px !important; }
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn,
+    .waitlist-section .regular-toggle-btn {
+        font-size:0.62rem !important;
+        padding:4px 5px !important;
+        border-radius:7px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -3944,7 +3980,19 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
         <div class="waitlist-section">
             <h3>⏳ Waitlist (<span id="waitlistCount">0</span>)</h3>
-            <div class="waitlist-cards" id="waitlistList"></div>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="phone-col-hidden">Phone</th>
+                        <th>Rating</th>
+                        <th>Bypass</th>
+                        <th>Promote</th>
+                        <th>Remove</th>
+                    </tr>
+                </thead>
+                <tbody id="waitlistList"></tbody>
+            </table>
         </div>
 
         <div class="cancellations-section">
@@ -6009,40 +6057,39 @@ Date: ${selectedGameDate}`);
                     });
                 }
 
-                // Render waitlist with card layout (ADMIN ONLY)
+                // Render waitlist with same table feel as registered players
                 const waitlistBody = document.getElementById('waitlistList');
                 waitlistBody.innerHTML = '';
                 if (data.waitlist.length === 0) {
-                    waitlistBody.innerHTML = '<div class="waitlist-empty">No one on waitlist</div>';
+                    waitlistBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
                 } else {
-                    data.waitlist.forEach((p, index) => {
-                        const card = document.createElement('div');
-                        card.className = 'waitlist-card';
+                    data.waitlist.forEach((p) => {
+                        const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const joinedAt = p.joinedAt ? new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' }) : '';
-                        const bypassEnabled = !!(p.bypassAutoPromote || p.bypass_auto || p.bypass);
-                        const bypassLabel = bypassEnabled ? 'Unbypass' : 'Bypass';
-                        card.innerHTML = `
-                            <div class="waitlist-main">
-                                <div class="waitlist-pos">${index + 1}</div>
-                                <div class="waitlist-player-meta">
-                                    <div class="waitlist-player-name">${p.firstName} ${p.lastName}</div>
-                                    <div class="waitlist-badges">${goalieBadge}${bypassEnabled ? '<span class="waitlist-badge bypass">BYPASS AUTO</span>' : ''}</div>
-                                    <div class="waitlist-player-phone">${p.phone || ''}</div>
-                                    ${joinedAt ? `<div class="waitlist-player-time">${joinedAt}</div>` : ''}
+                        const bypassOn = !!(p.bypassAutoPromote || p.bypass_auto || p.bypass);
+                        const hasBypassHandler = typeof window.toggleWaitlistBypass === 'function';
+                        const bypassCell = hasBypassHandler
+                            ? `<button class="control-btn regular-toggle-btn ${bypassOn ? 'active' : ''}" onclick="toggleWaitlistBypass(${p.id})">${bypassOn ? 'Bypassed' : 'Bypass'}</button>`
+                            : `<span class="table-note-muted">${bypassOn ? 'Bypassed' : '—'}</span>`;
+
+                        tr.innerHTML = `
+                            <td class="player-name-cell">
+                                <span class="player-name-main">${p.firstName} ${p.lastName} ${goalieBadge}</span>
+                                <span class="player-phone-sub">${p.phone}</span>
+                                ${p.joinedAt ? `<span class="player-time-sub">${new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
+                            </td>
+                            <td class="phone-col-hidden">${p.phone}</td>
+                            <td>
+                                <div class="waitlist-rating-wrap">
+                                    <input type="number" id="rating-${p.id}" class="rating-pill-input" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
+                                        onchange="updateRating(${p.id}, this.value)">
                                 </div>
-                            </div>
-                            <div class="waitlist-rating-col">
-                                <input type="number" id="rating-${p.id}" class="rating-pill-input" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
-                                    onchange="updateRating(${p.id}, this.value)">
-                            </div>
-                            <div class="waitlist-actions">
-                                <button class="control-btn waitlist-bypass-btn ${bypassEnabled ? 'active' : ''}" onclick="toggleWaitlistBypass(${p.id}, ${bypassEnabled ? 'false' : 'true'})">${bypassLabel}</button>
-                                <button class="promote-btn" data-player-id="${p.id}">Promote</button>
-                                <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
-                            </div>
+                            </td>
+                            <td>${bypassCell}</td>
+                            <td><button class="promote-btn" data-player-id="${p.id}">Promote</button></td>
+                            <td><button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button></td>
                         `;
-                        waitlistBody.appendChild(card);
+                        waitlistBody.appendChild(tr);
                     });
                 }
 
@@ -6248,27 +6295,6 @@ Date: ${selectedGameDate}`);
                 }
             } catch (err) {
                 console.error("Remove waitlist error:", err);
-            }
-        }
-
-        async function toggleWaitlistBypass(id, bypass) {
-            try {
-                const res = await fetch(`${API_URL}/api/admin/toggle-waitlist-bypass`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id, bypass: !!bypass })
-                });
-                if (res.ok) {
-                    loadData();
-                } else if (res.status === 401) {
-                    logout();
-                } else {
-                    const err = await res.json().catch(() => ({}));
-                    showNotification(err.error || 'Error updating waitlist bypass', 'error');
-                }
-            } catch (err) {
-                console.error('Toggle waitlist bypass error:', err);
-                showNotification('Error updating waitlist bypass', 'error');
             }
         }
 
