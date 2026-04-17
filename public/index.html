@@ -1289,9 +1289,9 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 12px;
+            gap: 10px;
             margin-bottom: 10px;
-            flex-wrap: wrap;
+            flex-wrap: nowrap;
         }
 
         .venue-waitlist-title {
@@ -1300,16 +1300,22 @@
             font-size: 0.98rem;
             letter-spacing: 0.2px;
             text-transform: uppercase;
+            margin: 0;
+            min-width: 0;
+            white-space: nowrap;
         }
 
         .venue-waitlist-count {
             color: #fff;
-            font-size: 0.84rem;
+            font-size: 0.78rem;
             font-weight: 700;
             background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 999px;
             padding: 4px 10px;
+            line-height: 1.1;
+            white-space: nowrap;
+            flex: 0 0 auto;
         }
 
         .venue-waitlist-list {
@@ -1384,18 +1390,23 @@
             .venue-waitlist-header {
                 gap: 6px;
                 margin-bottom: 8px;
-                align-items: flex-start;
+                align-items: center;
+                justify-content: space-between;
+                flex-wrap: nowrap;
             }
 
             .venue-waitlist-title {
                 font-size: 0.84rem;
                 letter-spacing: 0.15px;
+                white-space: nowrap;
             }
 
             .venue-waitlist-count {
-                font-size: 0.72rem;
+                font-size: 0.7rem;
                 padding: 3px 7px;
                 line-height: 1.1;
+                white-space: nowrap;
+                flex: 0 0 auto;
             }
 
             .venue-waitlist-list {
@@ -1667,7 +1678,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 
             <div class="venue-waitlist-box" id="venueWaitlistBox">
                 <div class="venue-waitlist-header">
-                    <div class="venue-waitlist-title">Current Waitlist</div>
+                    <div class="venue-waitlist-title">CURRENT WAITLIST</div>
                     <div class="venue-waitlist-count"><span id="venueWaitlistCount">0</span> player(s)</div>
                 </div>
                 <ul class="venue-waitlist-list" id="venueWaitlistList"></ul>
