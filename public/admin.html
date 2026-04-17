@@ -3464,19 +3464,23 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="admin-waitlist-stack-fix">
+<style id="admin-waitlist-stack-fix-v2">
 .waitlist-section .waitlist-action-wrap {
     display:flex !important;
-    flex-direction: column !important;
     align-items:center !important;
     justify-content:center !important;
-    gap:3px !important;
+    gap:4px !important;
 }
-.waitlist-section .promote-btn,
-.waitlist-section .remove-btn,
+
+/* stack only promote + remove */
+.waitlist-section .action-stack {
+    display:flex;
+    flex-direction:column;
+    gap:3px;
+}
+
 .waitlist-section .bypass-btn {
-    width: 100% !important;
-    text-align:center !important;
+    margin-left:4px;
 }
 </style>
 
