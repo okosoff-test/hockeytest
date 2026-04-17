@@ -3427,6 +3427,75 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="waitlist-surgical-mobile-width-fix-v1">
+@media (max-width:600px){
+    .container{
+        overflow: visible !important;
+    }
+    .waitlist-section{
+        position: relative !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        width: calc(100vw - 14px) !important;
+        max-width: calc(100vw - 14px) !important;
+        margin-left: 0 !important;
+        margin-right: 0 !important;
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+        overflow: visible !important;
+    }
+    .waitlist-section table{
+        width: 100% !important;
+        table-layout: fixed !important;
+    }
+    .waitlist-section .waitlist-pos-col{
+        display:none !important;
+        width:0 !important;
+        padding:0 !important;
+    }
+    .waitlist-section th,
+    .waitlist-section td{
+        padding-left: 2px !important;
+        padding-right: 2px !important;
+    }
+    .waitlist-section th:nth-child(2),
+    .waitlist-section td:nth-child(2){
+        width: auto !important;
+    }
+    .waitlist-section th:nth-child(3),
+    .waitlist-section td:nth-child(3){
+        width: 68px !important;
+        text-align:center !important;
+    }
+    .waitlist-section th:nth-child(4),
+    .waitlist-section td:nth-child(4){
+        width: 182px !important;
+        text-align:center !important;
+    }
+    .waitlist-section .player-name-cell{
+        white-space: normal !important;
+        min-width: 0 !important;
+    }
+    .waitlist-section .waitlist-action-wrap{
+        display:flex !important;
+        justify-content:flex-start !important;
+        align-items:center !important;
+        gap:4px !important;
+        flex-wrap:nowrap !important;
+        width:100% !important;
+    }
+    .waitlist-section .bypass-btn,
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn{
+        flex: 0 0 auto !important;
+        min-width: 0 !important;
+        font-size: 0.60rem !important;
+        padding: 4px 6px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
