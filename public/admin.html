@@ -2015,30 +2015,47 @@ button {
 
 </style>
 
-<style id="admin-waitlist-bypass-mobile-v18">
-.waitlist-section table { table-layout: fixed !important; }
-.waitlist-section th:nth-child(1), .waitlist-section td:nth-child(1) { width: 28px; text-align:center !important; }
-.waitlist-section th:nth-child(3), .waitlist-section td:nth-child(3) { width: 48px; text-align:center !important; }
-.waitlist-section th:nth-child(4), .waitlist-section td:nth-child(4) { width: 124px; text-align:center !important; }
+<style id="admin-waitlist-bypass-mobile-v19">
+.waitlist-section {
+    max-width: 760px !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+.waitlist-section table {
+    table-layout: fixed !important;
+    width: 100% !important;
+}
+.waitlist-section th:nth-child(1),
+.waitlist-section td:nth-child(1) {
+    width: 30px;
+    text-align: center !important;
+}
+.waitlist-section th:nth-child(3),
+.waitlist-section td:nth-child(3) {
+    width: 52px;
+    text-align: center !important;
+}
+.waitlist-section th:nth-child(4),
+.waitlist-section td:nth-child(4) {
+    width: 146px;
+    text-align: center !important;
+}
 .waitlist-section .waitlist-action-wrap {
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    gap:4px !important;
-    flex-wrap:wrap !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 4px !important;
+    flex-wrap: nowrap !important;
 }
 .waitlist-section .bypass-btn {
-    background:#607d8b;
-    color:#fff;
-    border:none;
-    border-radius:7px;
-    padding:4px 6px !important;
-    font-size:0.66rem !important;
-    line-height:1;
-    margin:0 !important;
-    white-space:nowrap;
+    border: none;
+    border-radius: 7px;
+    padding: 4px 7px !important;
+    font-size: 0.66rem !important;
+    line-height: 1;
+    margin: 0 !important;
+    white-space: nowrap;
 }
-.waitlist-section .bypass-btn.active { background:#ff9800; color:#1a1a1a; font-weight:800; }
 .waitlist-section .player-badge-row {
     display:flex;
     gap:4px;
@@ -2046,23 +2063,45 @@ button {
     align-items:center;
 }
 .waitlist-section .player-phone-sub,
-.waitlist-section .player-time-sub { display:block; }
+.waitlist-section .player-time-sub {
+    display:block;
+}
 @media (max-width:600px){
-    .waitlist-section { padding:12px !important; }
+    .waitlist-section {
+        max-width: 100% !important;
+        padding: 10px !important;
+    }
     .waitlist-section th,
-    .waitlist-section td { padding:2px 2px !important; }
-    .waitlist-section th:nth-child(4), .waitlist-section td:nth-child(4) { width: 118px; }
-    .waitlist-section .player-name-main { font-size:0.82rem !important; }
-    .waitlist-section .player-phone-sub { font-size:0.66rem !important; line-height:1 !important; }
-    .waitlist-section .player-time-sub { font-size:0.56rem !important; line-height:1 !important; }
+    .waitlist-section td {
+        padding: 2px 2px !important;
+    }
+    .waitlist-section th:nth-child(4),
+    .waitlist-section td:nth-child(4) {
+        width: 138px !important;
+    }
+    .waitlist-section .player-name-main {
+        font-size: 0.80rem !important;
+    }
+    .waitlist-section .player-phone-sub {
+        font-size: 0.64rem !important;
+        line-height: 1 !important;
+    }
+    .waitlist-section .player-time-sub {
+        font-size: 0.55rem !important;
+        line-height: 1 !important;
+    }
     .waitlist-section .promote-btn,
     .waitlist-section .remove-btn,
     .waitlist-section .bypass-btn {
-        padding:3px 5px !important;
-        font-size:0.58rem !important;
-        border-radius:6px !important;
+        padding: 3px 5px !important;
+        font-size: 0.57rem !important;
+        border-radius: 6px !important;
+        min-width: 42px !important;
     }
-    .waitlist-section .waitlist-action-wrap { gap:3px !important; }
+    .waitlist-section .waitlist-action-wrap {
+        gap: 3px !important;
+        flex-wrap: nowrap !important;
+    }
 }
 </style>
 
@@ -3422,12 +3461,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         font-size: 0.68rem !important;
     }
 }
-</style>
-
-
-<style>
-.bypass-on { background-color: #28a745 !important; color: white; }
-.bypass-off { background-color: #dc3545 !important; color: white; }
 </style>
 
 </head>
@@ -6102,7 +6135,7 @@ Date: ${selectedGameDate}`);
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
-                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Bypass' : 'Bypass'}</button>
+                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Bypass' : 'Auto On'}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6306,7 +6339,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function toggleWaitlistBypass(id, bypassAutoPromote) {
-            const label = bypassAutoPromote ? 'Bypass' : 'Bypass';
+            const label = bypassAutoPromote ? 'bypass auto-promotion' : 'allow auto-promotion';
             if (!confirm(`Set this waitlist player to ${label}?`)) return;
 
             try {
