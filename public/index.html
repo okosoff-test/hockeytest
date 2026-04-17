@@ -1670,7 +1670,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="venue-waitlist-box" id="venueWaitlistBox">
                 <div class="venue-waitlist-header">
                     <div class="venue-waitlist-title">Current Waitlist</div>
-                    <div class="venue-waitlist-count"><span id="venueWaitlistCount">0</span> player(s)</div>
                 </div>
                 <ul class="venue-waitlist-list" id="venueWaitlistList"></ul>
             </div>
@@ -2874,12 +2873,10 @@ function updateCalculatedRating() {
 
         function renderVenueWaitlist(entries) {
             const wrap = document.getElementById('venueWaitlistBox');
-            const countEl = document.getElementById('venueWaitlistCount');
             const listEl = document.getElementById('venueWaitlistList');
-            if (!wrap || !countEl || !listEl) return;
+            if (!wrap || !listEl) return;
 
             const safeEntries = Array.isArray(entries) ? entries : [];
-            countEl.innerText = safeEntries.length;
             listEl.innerHTML = '';
 
             if (!safeEntries.length) {
@@ -2906,9 +2903,8 @@ function updateCalculatedRating() {
 
         async function loadVenueWaitlist() {
             const wrap = document.getElementById('venueWaitlistBox');
-            const countEl = document.getElementById('venueWaitlistCount');
             const listEl = document.getElementById('venueWaitlistList');
-            if (!wrap || !countEl || !listEl) return;
+            if (!wrap || !listEl) return;
 
             try {
                 const res = await fetch(`${API_URL}/api/waitlist`);
@@ -2917,7 +2913,6 @@ function updateCalculatedRating() {
                 renderVenueWaitlist(data.waitlist);
             } catch (err) {
                 console.error('Error loading venue waitlist', err);
-                countEl.innerText = '0';
                 listEl.innerHTML = '<li class="venue-waitlist-empty">Unable to load waitlist right now.</li>';
                 wrap.classList.add('active');
             }
