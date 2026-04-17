@@ -2221,6 +2221,60 @@ th, td{padding:2px 3px !important;}
         gap:8px !important;
     }
 }
+
+.waitlist-section .bypass-btn{
+    background:#6f8ea1;
+    color:#fff;
+    padding:4px 6px !important;
+    font-size:0.66rem !important;
+    border-radius:7px !important;
+    margin:0 !important;
+    white-space:nowrap !important;
+}
+.waitlist-section .bypass-btn.active{
+    background:#f39c12;
+}
+.waitlist-section .bypass-auto-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    width:fit-content;
+    margin-top:5px;
+    padding:3px 10px;
+    border-radius:999px;
+    background:#f39c12;
+    color:#fff;
+    font-size:0.68rem;
+    font-weight:800;
+    letter-spacing:0.25px;
+}
+.waitlist-section .player-name-main{
+    display:block;
+}
+@media (max-width:600px){
+    .waitlist-section{
+        margin-left:-6px !important;
+        margin-right:-6px !important;
+        width:calc(100% + 12px) !important;
+    }
+    .waitlist-section .waitlist-pos-col{
+        display:none !important;
+    }
+    .waitlist-section .waitlist-action-wrap{
+        gap:3px !important;
+    }
+    .waitlist-section .bypass-btn,
+    .waitlist-section .promote-btn,
+    .waitlist-section .remove-btn{
+        font-size:0.58rem !important;
+        padding:4px 5px !important;
+        border-radius:8px !important;
+    }
+    .waitlist-section .bypass-auto-badge{
+        font-size:0.6rem !important;
+        padding:3px 8px !important;
+    }
+}
 </style>
 
 
@@ -3373,42 +3427,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
-
-<style id="waitlist-table-match-players-v1">
-.waitlist-section table { width:100% !important; table-layout:auto !important; }
-.waitlist-section th, .waitlist-section td { text-align:center !important; }
-.waitlist-section .player-name-cell { text-align:left !important; align-items:flex-start !important; }
-.waitlist-section .phone-col-hidden { display:none !important; }
-.waitlist-section .promote-btn,
-.waitlist-section .remove-btn,
-.waitlist-section .regular-toggle-btn {
-    width:auto !important;
-    white-space:nowrap !important;
-}
-@media (max-width: 600px) {
-    .waitlist-section { margin-left:-6px !important; margin-right:-6px !important; width:calc(100% + 12px) !important; }
-    .waitlist-section table { width:100% !important; table-layout:fixed !important; }
-    .waitlist-section th:nth-child(1) { width:40% !important; }
-    .waitlist-section th:nth-child(2) { width:13% !important; }
-    .waitlist-section th:nth-child(3),
-    .waitlist-section th:nth-child(4),
-    .waitlist-section th:nth-child(5) { width:15.66% !important; }
-    .waitlist-section th,
-    .waitlist-section td { padding:4px 3px !important; }
-    .waitlist-section .player-name-main { font-size:0.85rem !important; }
-    .waitlist-section .player-phone-sub { font-size:0.70rem !important; }
-    .waitlist-section .player-time-sub { font-size:0.58rem !important; }
-    .waitlist-section .rating-pill-input { width:34px !important; }
-    .waitlist-section .promote-btn,
-    .waitlist-section .remove-btn,
-    .waitlist-section .regular-toggle-btn {
-        font-size:0.62rem !important;
-        padding:4px 5px !important;
-        border-radius:7px !important;
-    }
-}
-</style>
-
 </head>
 <body class="admin-layout-option-1">
 
@@ -3983,12 +4001,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <table>
                 <thead>
                     <tr>
+                        <th class="waitlist-pos-col">#</th>
                         <th>Name</th>
-                        <th class="phone-col-hidden">Phone</th>
                         <th>Rating</th>
-                        <th>Bypass</th>
-                        <th>Promote</th>
-                        <th>Remove</th>
+                        <th>Action</th>
                     </tr>
                 </thead>
                 <tbody id="waitlistList"></tbody>
@@ -6057,37 +6073,38 @@ Date: ${selectedGameDate}`);
                     });
                 }
 
-                // Render waitlist with same table feel as registered players
+                // Render waitlist with full data (ADMIN ONLY)
                 const waitlistBody = document.getElementById('waitlistList');
                 waitlistBody.innerHTML = '';
                 if (data.waitlist.length === 0) {
-                    waitlistBody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
+                    waitlistBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
                 } else {
-                    data.waitlist.forEach((p) => {
+                    data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const bypassOn = !!(p.bypassAutoPromote || p.bypass_auto || p.bypass);
-                        const hasBypassHandler = typeof window.toggleWaitlistBypass === 'function';
-                        const bypassCell = hasBypassHandler
-                            ? `<button class="control-btn regular-toggle-btn ${bypassOn ? 'active' : ''}" onclick="toggleWaitlistBypass(${p.id})">${bypassOn ? 'Bypassed' : 'Bypass'}</button>`
-                            : `<span class="table-note-muted">${bypassOn ? 'Bypassed' : '—'}</span>`;
-
+                        const isBypassed = !!(p.bypassAutoPromote || p.bypass_auto || p.bypassAuto);
+                        const bypassLabel = isBypassed ? 'Unbypass' : 'Bypass';
                         tr.innerHTML = `
+                            <td class="waitlist-pos-col">${index + 1}</td>
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName} ${goalieBadge}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
                                 ${p.joinedAt ? `<span class="player-time-sub">${new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
+                                ${isBypassed ? `<span class="bypass-auto-badge">BYPASS AUTO</span>` : ``}
                             </td>
-                            <td class="phone-col-hidden">${p.phone}</td>
                             <td>
                                 <div class="waitlist-rating-wrap">
                                     <input type="number" id="rating-${p.id}" class="rating-pill-input" value="${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}" min="1" max="10" step="0.1"
                                         onchange="updateRating(${p.id}, this.value)">
                                 </div>
                             </td>
-                            <td>${bypassCell}</td>
-                            <td><button class="promote-btn" data-player-id="${p.id}">Promote</button></td>
-                            <td><button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button></td>
+                            <td>
+                                <div class="waitlist-action-wrap">
+                                    <button class="bypass-btn ${isBypassed ? 'active' : ''}" data-player-id="${p.id}" data-next-state="${isBypassed ? 'false' : 'true'}">${bypassLabel}</button>
+                                    <button class="promote-btn" data-player-id="${p.id}">Promote</button>
+                                    <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
+                                </div>
+                            </td>
                         `;
                         waitlistBody.appendChild(tr);
                     });
@@ -6236,8 +6253,39 @@ Date: ${selectedGameDate}`);
             if (e.target && e.target.classList.contains('promote-btn')) {
                 const playerId = parseInt(e.target.getAttribute('data-player-id'));
                 promotePlayer(playerId);
+                return;
+            }
+            if (e.target && e.target.classList.contains('bypass-btn')) {
+                const playerId = parseInt(e.target.getAttribute('data-player-id'));
+                const nextState = String(e.target.getAttribute('data-next-state')) === 'true';
+                toggleWaitlistBypass(playerId, nextState);
             }
         });
+
+        async function toggleWaitlistBypass(id, bypass) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/toggle-waitlist-bypass`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id, bypass })
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    return;
+                }
+
+                if (res.ok) {
+                    loadData();
+                } else {
+                    const err = await res.json().catch(() => ({}));
+                    alert("Error updating waitlist bypass" + (err.error ? ": " + err.error : ""));
+                }
+            } catch (err) {
+                console.error("Toggle waitlist bypass error:", err);
+                alert("Error updating waitlist bypass");
+            }
+        }
 
         async function promotePlayer(id) {
             const spotsDisplay = document.getElementById('currentPlayerSpotsDisplay').innerText;
