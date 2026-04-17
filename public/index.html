@@ -1289,29 +1289,27 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            gap: 8px;
+            gap: 12px;
             margin-bottom: 10px;
-            flex-wrap: nowrap;
+            flex-wrap: wrap;
         }
 
         .venue-waitlist-title {
             color: #ffb366;
             font-weight: 800;
-            font-size: 0.88rem;
-            letter-spacing: 0.15px;
+            font-size: 0.98rem;
+            letter-spacing: 0.2px;
             text-transform: uppercase;
-            white-space: nowrap;
         }
 
         .venue-waitlist-count {
             color: #fff;
-            font-size: 0.78rem;
+            font-size: 0.84rem;
             font-weight: 700;
             background: rgba(255,255,255,0.08);
             border: 1px solid rgba(255,255,255,0.12);
             border-radius: 999px;
-            padding: 3px 8px;
-            white-space: nowrap;
+            padding: 4px 10px;
         }
 
         .venue-waitlist-list {
@@ -1670,6 +1668,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <div class="venue-waitlist-box" id="venueWaitlistBox">
                 <div class="venue-waitlist-header">
                     <div class="venue-waitlist-title">Current Waitlist</div>
+                    <div class="venue-waitlist-count"><span id="venueWaitlistCount">0</span> player(s)</div>
                 </div>
                 <ul class="venue-waitlist-list" id="venueWaitlistList"></ul>
             </div>
@@ -2873,10 +2872,12 @@ function updateCalculatedRating() {
 
         function renderVenueWaitlist(entries) {
             const wrap = document.getElementById('venueWaitlistBox');
+            const countEl = document.getElementById('venueWaitlistCount');
             const listEl = document.getElementById('venueWaitlistList');
-            if (!wrap || !listEl) return;
+            if (!wrap || !countEl || !listEl) return;
 
             const safeEntries = Array.isArray(entries) ? entries : [];
+            countEl.innerText = safeEntries.length;
             listEl.innerHTML = '';
 
             if (!safeEntries.length) {
@@ -2903,8 +2904,9 @@ function updateCalculatedRating() {
 
         async function loadVenueWaitlist() {
             const wrap = document.getElementById('venueWaitlistBox');
+            const countEl = document.getElementById('venueWaitlistCount');
             const listEl = document.getElementById('venueWaitlistList');
-            if (!wrap || !listEl) return;
+            if (!wrap || !countEl || !listEl) return;
 
             try {
                 const res = await fetch(`${API_URL}/api/waitlist`);
@@ -2913,6 +2915,7 @@ function updateCalculatedRating() {
                 renderVenueWaitlist(data.waitlist);
             } catch (err) {
                 console.error('Error loading venue waitlist', err);
+                countEl.innerText = '0';
                 listEl.innerHTML = '<li class="venue-waitlist-empty">Unable to load waitlist right now.</li>';
                 wrap.classList.add('active');
             }

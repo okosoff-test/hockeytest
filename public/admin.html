@@ -2038,7 +2038,7 @@ button {
     margin:0 !important;
     white-space:nowrap;
 }
-.waitlist-section .bypass-btn.active { background:#ff9800; }
+.waitlist-section .bypass-btn.active { background:#ff9800; color:#1a1a1a; font-weight:800; }
 .waitlist-section .player-badge-row {
     display:flex;
     gap:4px;
@@ -6079,7 +6079,7 @@ Date: ${selectedGameDate}`);
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const bypassBadge = p.bypassAutoPromote ? '<span class="protected-badge" style="background:#ff9800;">BYPASS</span>' : '';
+                        const bypassBadge = '';
                         tr.innerHTML = `
                             <td>${index + 1}</td>
                             <td class="player-name-cell">
@@ -6096,7 +6096,7 @@ Date: ${selectedGameDate}`);
                             </td>
                             <td>
                                 <div class="waitlist-action-wrap">
-                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Auto Off' : 'Auto On'}</button>
+                                    <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">${p.bypassAutoPromote ? 'Bypass' : 'Auto On'}</button>
                                     <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                     <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                 </div>
@@ -6300,7 +6300,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function toggleWaitlistBypass(id, bypassAutoPromote) {
-            const label = bypassAutoPromote ? 'skip auto-promotion' : 'allow auto-promotion';
+            const label = bypassAutoPromote ? 'bypass auto-promotion' : 'allow auto-promotion';
             if (!confirm(`Set this waitlist player to ${label}?`)) return;
 
             try {
