@@ -3465,6 +3465,49 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="admin-waitlist-height-reduction-v1">
+/* Reduce waitlist box heights vertically by ~25% while keeping font sizes unchanged */
+.waitlist-section #waitlistList tr td {
+    padding-top: 1px !important;
+    padding-bottom: 1px !important;
+    vertical-align: middle !important;
+}
+.waitlist-section .player-name-cell {
+    line-height: 1.0 !important;
+    gap: 1px !important;
+}
+.waitlist-section .player-name-main,
+.waitlist-section .player-phone-sub,
+.waitlist-section .player-time-sub {
+    margin: 0 !important;
+}
+.waitlist-section .action-stack {
+    gap: 2px !important;
+}
+.waitlist-section .action-stack .promote-btn,
+.waitlist-section .action-stack .remove-btn,
+.waitlist-section .bypass-btn {
+    min-height: 18px !important;
+    height: 18px !important;
+    padding-top: 0 !important;
+    padding-bottom: 0 !important;
+    line-height: 1 !important;
+}
+@media (max-width:600px){
+    .waitlist-section #waitlistList tr td {
+        padding-top: 1px !important;
+        padding-bottom: 1px !important;
+    }
+    .waitlist-section .action-stack .promote-btn,
+    .waitlist-section .action-stack .remove-btn,
+    .waitlist-section .bypass-btn {
+        min-height: 17px !important;
+        height: 17px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
