@@ -2017,9 +2017,14 @@ button {
 
 <style id="admin-waitlist-bypass-mobile-v22">
 .waitlist-section {
-    max-width: 760px !important;
     margin-left: auto !important;
     margin-right: auto !important;
+}
+@media (min-width: 601px) {
+    .waitlist-section {
+        width: 100% !important;
+        max-width: 100% !important;
+    }
 }
 .waitlist-section table {
     table-layout: fixed !important;
