@@ -3036,7 +3036,12 @@ function updateCalculatedRating() {
                     lockNotice.style.display = 'none';
                 }
 
-                document.getElementById('registeredPlayersSection').style.display = 'none';
+                document.getElementById('registeredPlayersSection').style.display = 'block';
+                if (Array.isArray(data.players)) {
+                    renderPlayers(data.players);
+                } else {
+                    loadRegisteredPlayers();
+                }
                 document.getElementById('codeSection').style.display = 'block';
 
                 if (data.rosterReleased) {
