@@ -4011,6 +4011,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
                     <th>Payment</th>
                     <th>Regular</th>
+                    <th>Team</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -6083,9 +6084,10 @@ Date: ${selectedGameDate}`);
                 // Render players table with payment controls (ADMIN ONLY)
                 const tbody = document.getElementById('playerList');
                 tbody.innerHTML = '';
+                const rosterReleased = !!data.rosterReleased;
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
                         const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
@@ -6134,6 +6136,10 @@ Date: ${selectedGameDate}`);
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
+                        const teamCell = rosterReleased
+                            ? `<span class="goalie-badge" style="background:${p.team === 'White' ? '#6c7ae0' : (p.team === 'Dark' ? '#555' : '#777')}; margin-left:0;">${p.team || 'Bench'}</span>`
+                            : `<span style="color:#777;">--</span>`;
+
                         tr.innerHTML = `
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
@@ -6151,6 +6157,7 @@ Date: ${selectedGameDate}`);
                             <td>${paidInput}</td>
                             <td>${paymentText}</td>
                             <td>${regularCell}</td>
+                            <td>${teamCell}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                             </td>
@@ -6165,10 +6172,19 @@ Date: ${selectedGameDate}`);
                 if (data.waitlist.length === 0) {
                     waitlistBody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No one on waitlist</td></tr>';
                 } else {
+                    const waitlistHeaderEl = document.querySelector('.waitlist-section h3');
+                    if (waitlistHeaderEl) {
+                        waitlistHeaderEl.innerHTML = rosterReleased
+                            ? `⏳ Waitlist (<span id="waitlistCount">${data.waitlist.length}</span>) • Tap White/Dark to add directly to released roster`
+                            : `⏳ Waitlist (<span id="waitlistCount">${data.waitlist.length}</span>)`;
+                    }
                     data.waitlist.forEach((p, index) => {
                         const tr = document.createElement('tr');
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const bypassBadge = '';
+                        const promoteButtons = rosterReleased
+                            ? `<button class="promote-btn" data-player-id="${p.id}" data-target-team="White">White</button><button class="promote-btn" data-player-id="${p.id}" data-target-team="Dark">Dark</button>`
+                            : `<button class="promote-btn" data-player-id="${p.id}">Promote</button>`;
                         tr.innerHTML = `
                             <td>${index + 1}</td>
                             <td class="player-name-cell">
@@ -6186,7 +6202,7 @@ Date: ${selectedGameDate}`);
                             <td>
                                 <div class="waitlist-action-wrap">
                                     <div class="action-stack">
-                                        <button class="promote-btn" data-player-id="${p.id}">Promote</button>
+                                        ${promoteButtons}
                                         <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                     </div>
                                     <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">Bypass</button>
@@ -6266,7 +6282,13 @@ Date: ${selectedGameDate}`);
                     const removedName = data.removedPlayer ? 
                         `${data.removedPlayer.firstName} ${data.removedPlayer.lastName}` : 
                         'Player';
-                    showNotification(`✅ ${removedName} removed successfully`, 'success');
+                    const promotedName = data.promotedPlayer
+                        ? `${data.promotedPlayer.firstName} ${data.promotedPlayer.lastName}`
+                        : '';
+                    const message = promotedName
+                        ? `✅ ${removedName} removed. ${promotedName} added from waitlist.`
+                        : `✅ ${removedName} removed successfully`;
+                    showNotification(message, 'success');
                 } else if (res.status === 401) {
                     logout();
                 } else {
@@ -6339,7 +6361,8 @@ Date: ${selectedGameDate}`);
         document.addEventListener('click', function(e) {
             if (e.target && e.target.classList.contains('promote-btn')) {
                 const playerId = parseInt(e.target.getAttribute('data-player-id'));
-                promotePlayer(playerId);
+                const targetTeam = e.target.getAttribute('data-target-team') || null;
+                promotePlayer(playerId, targetTeam);
                 return;
             }
             if (e.target && e.target.classList.contains('bypass-btn')) {
@@ -6349,13 +6372,15 @@ Date: ${selectedGameDate}`);
             }
         });
 
-        async function promotePlayer(id) {
+        async function promotePlayer(id, targetTeam = null) {
             const spotsDisplay = document.getElementById('currentPlayerSpotsDisplay').innerText;
             const spots = parseInt(spotsDisplay);
             
-            let confirmMsg = "Promote this player from waitlist to game?";
+            let confirmMsg = targetTeam
+                ? `Add this waitlist player to Team ${targetTeam}?`
+                : "Promote this player from waitlist to game?";
             if (spots <= 0) {
-                confirmMsg = "⚠️ ADMIN OVERRIDE\n\nPlayer spots are currently 0.\nPromote player anyway?";
+                confirmMsg += "\n\n⚠️ Admin override: player spots are currently 0.";
             }
             
             if (!confirm(confirmMsg)) return;
@@ -6364,7 +6389,7 @@ Date: ${selectedGameDate}`);
                 const res = await fetch(`${API_URL}/api/admin/promote-waitlist`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id })
+                    body: JSON.stringify({ sessionToken: sessionToken, waitlistId: id, targetTeam })
                 });
 
                 if (res.status === 401) {
@@ -6375,8 +6400,13 @@ Date: ${selectedGameDate}`);
                 if (res.ok) {
                     const data = await res.json();
                     let message = `✅ Player promoted!`;
+                    if (data.assignedTeam) {
+                        message += ` Added to Team ${data.assignedTeam}.`;
+                    }
                     if (data.override) {
-                        message += '\n\n(Admin override - spots were at 0)';
+                        message += '
+
+(Admin override - spots were at 0)';
                     }
                     alert(message);
                     loadData();
