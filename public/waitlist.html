@@ -553,6 +553,8 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     <script>
         const API_URL = window.location.origin;
         let playerToCancel = null;
+        let cancelModalAwaitingContinue = false;
+        let cancelModalAfterCloseAction = null;
         let rosterReleased = false;
 
         function normalizePhoneDigits(value) {
@@ -577,31 +579,55 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             return digits;
         }
 
-        function openCancelModal(player) {
-            console.log('openCancelModal called with player:', player);
-            if (!player || !player.id) {
-                console.error('Invalid player object:', player);
-                return;
+        function resetCancelModalButtons() {
+            const abortBtn = document.getElementById('abortCancelBtn');
+            const confirmBtn = document.getElementById('confirmCancelBtn');
+            if (abortBtn) {
+                abortBtn.style.display = '';
+                abortBtn.textContent = 'Keep Spot';
             }
+            if (confirmBtn) confirmBtn.textContent = 'Confirm Cancel';
+        }
+
+        function openCancelModal(player) {
             playerToCancel = player;
+            cancelModalAwaitingContinue = false;
+            cancelModalAfterCloseAction = null;
             document.getElementById('cancelPhoneInput').value = '';
+            document.getElementById('cancelPhoneInput').disabled = false;
             document.getElementById('cancelError').style.display = 'none';
             document.getElementById('cancelSuccess').style.display = 'none';
+            resetCancelModalButtons();
             document.getElementById('cancelModal').classList.add('active');
             document.getElementById('cancelPhoneInput').focus();
         }
 
         function closeCancelModal() {
             document.getElementById('cancelModal').classList.remove('active');
+            document.getElementById('cancelPhoneInput').disabled = false;
+            resetCancelModalButtons();
+            const afterCloseAction = cancelModalAfterCloseAction;
+            cancelModalAwaitingContinue = false;
+            cancelModalAfterCloseAction = null;
             playerToCancel = null;
+            if (typeof afterCloseAction === 'function') {
+                afterCloseAction();
+            }
         }
 
         async function confirmCancel() {
             if (!playerToCancel) return;
 
+            if (cancelModalAwaitingContinue) {
+                closeCancelModal();
+                return;
+            }
+
             const digits = normalizeCancelPhoneInput();
             const errorDiv = document.getElementById('cancelError');
             const successDiv = document.getElementById('cancelSuccess');
+            const abortBtn = document.getElementById('abortCancelBtn');
+            const confirmBtn = document.getElementById('confirmCancelBtn');
 
             if (digits.length !== 10) {
                 errorDiv.innerText = 'Phone number must be exactly 10 digits.';
@@ -623,12 +649,15 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 const data = await res.json();
                 if (res.ok && data.success) {
                     errorDiv.style.display = 'none';
-                    successDiv.innerHTML = `✅ ${playerToCancel.fullName || (playerToCancel.firstName + ' ' + playerToCancel.lastName)} has been removed from the waitlist.`;
+                    successDiv.innerHTML = `✅ ${playerToCancel.fullName || (playerToCancel.firstName + ' ' + playerToCancel.lastName)} has been removed from the waitlist.<br><br>Tap Continue.`;
                     successDiv.style.display = 'block';
-                    setTimeout(async () => {
-                        closeCancelModal();
+                    document.getElementById('cancelPhoneInput').disabled = true;
+                    if (abortBtn) abortBtn.style.display = 'none';
+                    if (confirmBtn) confirmBtn.textContent = 'Continue';
+                    cancelModalAwaitingContinue = true;
+                    cancelModalAfterCloseAction = async () => {
                         await loadWaitlist();
-                    }, 1500);
+                    };
                 } else {
                     errorDiv.innerText = data.error || 'Failed to cancel waitlist registration.';
                     errorDiv.style.display = 'block';
