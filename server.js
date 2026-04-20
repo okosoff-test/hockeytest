@@ -698,8 +698,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
-        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. Cancellation must be done 2 hours prior to puck drop. No Show Owes!`
-        : 'Payments must be received prior to stepping on the ice. Cancellation must be done 2 hours prior to puck drop. No Show Owes!';
+        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. Last chance cancellation must be done 3 hours prior to puck drop. No Show Owes!`
+        : 'Payments must be received prior to stepping on the ice. Last chance cancellation must be done 3 hours prior to puck drop. No Show Owes!';
 }
 
 function clearAnnouncementState() {
