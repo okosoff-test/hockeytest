@@ -1189,10 +1189,36 @@ function shouldBeLocked() {
     return isNowInWindow(signupLockSchedule.start, signupLockSchedule.end);
 }
 
+function getResetLockStartedMinuteKey() {
+    const state = String(manualOverrideState || '').trim();
+    const match = state.match(/^reset-lock:(\d{12})$/);
+    return match ? Number(match[1]) : null;
+}
+
+function getResetLockUnlockMinuteKey(etDate = getCurrentETTime()) {
+    if (!signupLockSchedule || !signupLockSchedule.end) return null;
+
+    const resetLockStartedMinuteKey = getResetLockStartedMinuteKey();
+    if (!Number.isFinite(resetLockStartedMinuteKey)) return null;
+
+    const latestUnlockParts = getLatestOccurrenceEtParts(signupLockSchedule.end, etDate);
+    const nextUnlockParts = getNextOccurrenceEtParts(signupLockSchedule.end, etDate);
+    const latestUnlockMinuteKey = latestUnlockParts ? etPartsToMinuteKey(latestUnlockParts) : null;
+    const nextUnlockMinuteKey = nextUnlockParts ? etPartsToMinuteKey(nextUnlockParts) : null;
+
+    if (Number.isFinite(latestUnlockMinuteKey) && latestUnlockMinuteKey >= resetLockStartedMinuteKey) {
+        return latestUnlockMinuteKey;
+    }
+    if (Number.isFinite(nextUnlockMinuteKey)) {
+        return nextUnlockMinuteKey;
+    }
+    return null;
+}
+
 function checkAutoLock() {
     refreshDynamicSignupCode();
     const etTime = getCurrentETTime();
-
+    const currentMinuteKey = nowETMinuteKey(etTime);
     const shouldLock = shouldBeLocked();
 
     if (manualOverride && manualOverrideState) {
@@ -1220,6 +1246,26 @@ function checkAutoLock() {
                 isLockedWindow: shouldLock,
                 rosterReleased
             };
+        } else if (String(manualOverrideState).startsWith('reset-lock:')) {
+            const unlockMinuteKey = getResetLockUnlockMinuteKey(etTime);
+            const shouldStayLocked = !Number.isFinite(unlockMinuteKey) || currentMinuteKey < unlockMinuteKey;
+
+            if (shouldStayLocked) {
+                if (!requirePlayerCode) {
+                    requirePlayerCode = true;
+                    saveData();
+                }
+                return {
+                    requirePlayerCode: true,
+                    manualOverride: true,
+                    manualOverrideState,
+                    isLockedWindow: shouldLock,
+                    rosterReleased
+                };
+            }
+
+            manualOverride = false;
+            manualOverrideState = null;
         }
     }
 
@@ -1456,8 +1502,8 @@ async function checkWeeklyReset() {
         darkTeam: []
     };
 
-    manualOverride = false;
-    manualOverrideState = null;
+    manualOverride = true;
+    manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`;
     requirePlayerCode = true;
     maintenanceMode = false;
     clearAnnouncementState();
@@ -6043,7 +6089,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
+        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: requirePlayerCode, rosterReleased: true });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });
@@ -6063,7 +6109,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             playerSpots = 20; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            manualOverride = false; manualOverrideState = null; requirePlayerCode = true; clearAnnouncementState();
+            manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             await addAutoPlayers();
