@@ -2168,11 +2168,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 return;
             }
 
-            if (rosterReleased) {
-                showSignupError('Roster has already been released. Signup is closed for this skate.');
-                return;
-            }
-
             if (codeRequired && !verifiedCode) {
                 showSignupError('Enter the 4-digit code first, then you can use 1-tap signup.');
                 document.getElementById('code1')?.focus();
@@ -2656,8 +2651,12 @@ function updateCalculatedRating() {
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
+                        const cancelButton = (!player.cancelled && player.canCancel !== false)
+                            ? `<button class="cancel-btn" onclick="openCancelModal(${JSON.stringify(player.id)}, ${JSON.stringify(player.firstName || '')}, ${JSON.stringify(player.lastName || '')})">Cancel</button>`
+                            : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge}</span>
+                            ${cancelButton}
                         `;
                         whiteList.appendChild(li);
                     });
@@ -2671,8 +2670,12 @@ function updateCalculatedRating() {
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
+                        const cancelButton = (!player.cancelled && player.canCancel !== false)
+                            ? `<button class="cancel-btn" onclick="openCancelModal(${JSON.stringify(player.id)}, ${JSON.stringify(player.firstName || '')}, ${JSON.stringify(player.lastName || '')})">Cancel</button>`
+                            : '';
                         li.innerHTML = `
                             <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge}</span>
+                            ${cancelButton}
                         `;
                         darkList.appendChild(li);
                     });
