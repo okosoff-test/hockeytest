@@ -3191,6 +3191,34 @@ function normalizePhoneDigits(phone) {
     return cleaned;
 }
 
+function getGameStartEtDate() {
+    const safeDate = String(gameDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) return null;
+
+    const [year, month, day] = safeDate.split('-').map(value => parseInt(value, 10));
+    if (![year, month, day].every(Number.isFinite)) return null;
+
+    const parsedTime = parseGameTimeString(gameTime);
+    return new Date(year, month - 1, day, parsedTime.hour24, parsedTime.minute, 0, 0);
+}
+
+function getCancellationTimingStatus(etNow = getCurrentETTime()) {
+    const gameStart = getGameStartEtDate();
+    if (!gameStart) {
+        return {
+            gameStart: null,
+            hoursUntilGame: null,
+            isLateCancelWindow: false
+        };
+    }
+
+    const hoursUntilGame = (gameStart.getTime() - etNow.getTime()) / (1000 * 60 * 60);
+    return {
+        gameStart,
+        hoursUntilGame,
+        isLateCancelWindow: hoursUntilGame < 3
+    };
+}
 
 function appendCancellationLog(entry) {
     const normalized = {
@@ -4565,7 +4593,10 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    if (getEffectiveRosterReleasedState()) {
+    const cancellationTiming = getCancellationTimingStatus();
+    const isLateCancelWindow = foundSource === 'players' && !!cancellationTiming.isLateCancelWindow;
+
+    if (isLateCancelWindow) {
         const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
             String(item?.id) === String(foundPlayer.id) &&
             item?.action === 'late_cancel_no_show_owed'
@@ -4594,13 +4625,17 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                 });
             } catch (err) {
                 console.error('Error logging late cancel attempt:', err.message);
+                return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
             }
         }
 
-        return res.status(403).json({
-            error: "Cancellation is closed because the roster has been released. No-show owes.",
+        return res.json({
+            success: true,
+            lateCancel: true,
             noShowOwes: true,
-            policy: NO_SHOW_POLICY_TEXT
+            policy: NO_SHOW_POLICY_TEXT,
+            message: "Cancellation recorded. Late cancel / no-show owes.",
+            spotsAvailable: playerSpots
         });
     }
 
@@ -4670,6 +4705,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
+            lateCancel: false,
             message: "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
                 firstName: promotedPlayer.firstName,
@@ -4710,6 +4746,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
+            lateCancel: false,
             message: "Waitlist registration cancelled successfully.",
             fromWaitlist: true
         });
