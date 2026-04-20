@@ -548,7 +548,7 @@ let currentWeekData = {
 };
 
 const MAX_GOALIES = 2;
-const NO_SHOW_POLICY_TEXT = 'Cancellation must be done prior to roster release. Late cancel / no-show owes.';
+const NO_SHOW_POLICY_TEXT = 'Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.';
 
 const GAME_RULES = [
     "No contact. Board tie-ups only.",
@@ -561,7 +561,7 @@ const GAME_RULES = [
     "No excessive aggression. It’s pickup.",
     "Don’t be “that guy.” You know who you are.",
     "Handshake/fist bump after the game. Have fun.",
-    "Cancellation must be done prior to roster release. This gives waitlist players a chance for a spot. No-show owes.",
+    "Last minute cancellations must be done 3 hours before game time. This gives waitlist players a chance for a spot. No-show owes.",
     "Respect the game and players — or you’re done."
 ];
 
@@ -698,8 +698,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
-        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. Last chance cancellation must be done 3 hours prior to puck drop. No Show Owes!`
-        : 'Payments must be received prior to stepping on the ice. Last chance cancellation must be done 3 hours prior to puck drop. No Show Owes!';
+        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. Last minute cancellations must be done 3 hours before game time. No Show Owes!`
+        : 'Payments must be received prior to stepping on the ice. Last minute cancellations must be done 3 hours before game time. No Show Owes!';
 }
 
 function clearAnnouncementState() {
