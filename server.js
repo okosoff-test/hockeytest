@@ -3389,45 +3389,6 @@ function extractWaitlistPlayerToPromote() {
     return player || null;
 }
 
-function buildPromotedPlayerFromWaitlist(waitlistPlayer, overrides = {}) {
-    if (!waitlistPlayer) return null;
-    return hydratePlayerRatingProfile({
-        id: waitlistPlayer.id,
-        firstName: waitlistPlayer.firstName,
-        lastName: waitlistPlayer.lastName,
-        phone: waitlistPlayer.phone,
-        paymentMethod: waitlistPlayer.paymentMethod,
-        paid: false,
-        paidAmount: null,
-        rating: parseInt(waitlistPlayer.rating) || 5,
-        skatingRating: waitlistPlayer.skatingRating,
-        puckSkillsRating: waitlistPlayer.puckSkillsRating,
-        hockeySenseRating: waitlistPlayer.hockeySenseRating,
-        conditioningRating: waitlistPlayer.conditioningRating,
-        effortRating: waitlistPlayer.effortRating,
-        levelPlayed: waitlistPlayer.levelPlayed,
-        peerComparison: waitlistPlayer.peerComparison,
-        confidenceLevel: waitlistPlayer.confidenceLevel,
-        selfRatingRaw: waitlistPlayer.selfRatingRaw,
-        derivedRating: waitlistPlayer.derivedRating,
-        finalRating: waitlistPlayer.finalRating,
-        isGoalie: waitlistPlayer.isGoalie,
-        bypassAutoPromote: false,
-        team: null,
-        registeredAt: new Date().toISOString(),
-        rulesAgreed: true,
-        ...overrides
-    });
-}
-
-function getSubbedForName(player) {
-    const direct = String(player?.subbedForName || '').trim();
-    if (direct) return direct;
-    const first = String(player?.subbedForFirstName || '').trim();
-    const last = String(player?.subbedForLastName || '').trim();
-    return `${first} ${last}`.trim();
-}
-
 function isDuplicatePlayer(firstName, lastName, phone) {
     const normalizedName = (capitalizeFullName(firstName) + ' ' + capitalizeFullName(lastName)).toLowerCase().trim();
     const normalizedPhone = normalizePhoneDigits(phone);
@@ -4091,19 +4052,14 @@ function buildPublicRosterPayload() {
 
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
-        const subbedForName = getSubbedForName(p);
-        const publicLastName = subbedForName
-            ? `${p.lastName} (sub for ${subbedForName})`
-            : p.lastName;
         return {
             id: p.id,
             firstName: p.firstName,
-            lastName: publicLastName,
+            lastName: p.lastName,
             isGoalie: !!p.isGoalie,
             cancelled,
             owes: cancelled,
-            subbedForName: subbedForName || null,
-            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(publicLastName || '').toLowerCase() === 'ly')
+            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
         };
     };
 
@@ -4609,51 +4565,16 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    if (getEffectiveRosterReleasedState()) {
-        const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
-            String(item?.id) === String(foundPlayer.id) &&
-            item?.action === 'late_cancel_no_show_owed'
-        );
-
-        if (!alreadyLoggedLateAttempt) {
-            try {
-                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
-                    appendCancellationLog({
-                        id: foundPlayer.id,
-                        firstName: foundPlayer.firstName,
-                        lastName: foundPlayer.lastName,
-                        phone: foundPlayer.phone,
-                        rating: foundPlayer.rating,
-                        isGoalie: foundPlayer.isGoalie,
-                        paymentMethod: foundPlayer.paymentMethod,
-                        source: foundSource || 'players',
-                        action: 'late_cancel_no_show_owed',
-                        cancelledBy: 'player',
-                        cancelledAt: new Date().toISOString(),
-                        notes: NO_SHOW_POLICY_TEXT
-                    });
-                }, {
-                    playerId: foundPlayer.id,
-                    source: foundSource || 'players'
-                });
-            } catch (err) {
-                console.error('Error logging late cancel attempt:', err.message);
-            }
-        }
-
-        return res.status(403).json({
-            error: "Cancellation is closed because the roster has been released. No-show owes.",
-            noShowOwes: true,
-            policy: NO_SHOW_POLICY_TEXT
-        });
-    }
+    const rosterAlreadyReleased = getEffectiveRosterReleasedState();
 
     if (playerIndex !== -1) {
         const player = players[playerIndex];
+        const removedTeam = player.team || null;
         let promotedPlayer = null;
+        const lateCancel = !!rosterAlreadyReleased;
 
         try {
-            await runProtectedMutation('player-cancel', req, async () => {
+            await runProtectedMutation(lateCancel ? 'player-cancel-late' : 'player-cancel', req, async () => {
                 appendCancellationLog({
                     id: player.id,
                     firstName: player.firstName,
@@ -4663,23 +4584,55 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                     isGoalie: player.isGoalie,
                     paymentMethod: player.paymentMethod,
                     source: 'players',
-                    action: 'cancelled',
+                    action: lateCancel ? 'late_cancel_no_show_owed' : 'cancelled',
                     cancelledBy: 'player',
-                    cancelledAt: new Date().toISOString()
+                    cancelledAt: new Date().toISOString(),
+                    notes: lateCancel ? NO_SHOW_POLICY_TEXT : undefined
                 });
 
                 players.splice(playerIndex, 1);
-                playerSpots++;
+                if (!player.isGoalie) playerSpots++;
 
                 const waitlistPlayer = extractWaitlistPlayerToPromote();
                 if (waitlistPlayer) {
-                    promotedPlayer = buildPromotedPlayerFromWaitlist(waitlistPlayer);
+                    promotedPlayer = hydratePlayerRatingProfile({
+                        id: waitlistPlayer.id,
+                        firstName: waitlistPlayer.firstName,
+                        lastName: waitlistPlayer.lastName,
+                        phone: waitlistPlayer.phone,
+                        paymentMethod: waitlistPlayer.paymentMethod,
+                        paid: false,
+                        paidAmount: null,
+                        rating: parseInt(waitlistPlayer.rating) || 5,
+                        skatingRating: waitlistPlayer.skatingRating,
+                        puckSkillsRating: waitlistPlayer.puckSkillsRating,
+                        hockeySenseRating: waitlistPlayer.hockeySenseRating,
+                        conditioningRating: waitlistPlayer.conditioningRating,
+                        effortRating: waitlistPlayer.effortRating,
+                        levelPlayed: waitlistPlayer.levelPlayed,
+                        peerComparison: waitlistPlayer.peerComparison,
+                        confidenceLevel: waitlistPlayer.confidenceLevel,
+                        selfRatingRaw: waitlistPlayer.selfRatingRaw,
+                        derivedRating: waitlistPlayer.derivedRating,
+                        finalRating: waitlistPlayer.finalRating,
+                        isGoalie: waitlistPlayer.isGoalie,
+                        team: lateCancel ? removedTeam : null,
+                        registeredAt: new Date().toISOString(),
+                        rulesAgreed: true
+                    });
+
+                    if (lateCancel && removedTeam) {
+                        promotedPlayer.subbedFor = `${player.firstName} ${player.lastName}`.trim();
+                    }
+
                     players.push(promotedPlayer);
-                    playerSpots--;
+                    if (!promotedPlayer.isGoalie) playerSpots--;
                 }
             }, {
                 playerId: player.id,
-                waitlistPromotion: !!promotedPlayer
+                lateCancel,
+                waitlistPromotion: !!promotedPlayer,
+                removedTeam
             });
         } catch (err) {
             console.error('Error cancelling registration:', err.message);
@@ -4688,10 +4641,15 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
-            message: "Registration cancelled successfully.",
+            lateCancel,
+            noShowOwes: lateCancel,
+            policy: lateCancel ? NO_SHOW_POLICY_TEXT : undefined,
+            message: lateCancel ? "Late cancellation recorded successfully." : "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
                 firstName: promotedPlayer.firstName,
-                lastName: promotedPlayer.lastName
+                lastName: promotedPlayer.lastName,
+                team: promotedPlayer.team || null,
+                subbedFor: promotedPlayer.subbedFor || null
             } : null,
             spotsAvailable: playerSpots
         });
@@ -5896,47 +5854,17 @@ app.post('/api/admin/remove-player', async (req, res) => {
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
     if (index === -1) return res.status(404).json({ error: "Player not found" });
     const player = players[index];
-    let promotedPlayer = null;
     try {
         await runProtectedMutation('remove-player', req, async () => {
             const removedPlayer = players.splice(index, 1)[0];
             appendCancellationLog({ id: removedPlayer.id, firstName: removedPlayer.firstName, lastName: removedPlayer.lastName, phone: removedPlayer.phone, rating: removedPlayer.rating, isGoalie: removedPlayer.isGoalie, paymentMethod: removedPlayer.paymentMethod, source: 'players', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
             if (!removedPlayer.isGoalie) playerSpots++;
-
-            const shouldAutoSubFromWaitlist = getEffectiveRosterReleasedState();
-            if (shouldAutoSubFromWaitlist) {
-                const waitlistPlayer = extractWaitlistPlayerToPromote();
-                if (waitlistPlayer) {
-                    promotedPlayer = buildPromotedPlayerFromWaitlist(waitlistPlayer, {
-                        team: removedPlayer.team || null,
-                        subbedForPlayerId: removedPlayer.id,
-                        subbedForFirstName: removedPlayer.firstName,
-                        subbedForLastName: removedPlayer.lastName,
-                        subbedForName: `${removedPlayer.firstName || ''} ${removedPlayer.lastName || ''}`.trim(),
-                        subbedInAt: new Date().toISOString(),
-                        subbedInReason: 'admin_remove_after_release'
-                    });
-                    players.push(promotedPlayer);
-                    if (!promotedPlayer.isGoalie) playerSpots = Math.max(0, playerSpots - 1);
-                }
-            }
-        }, { playerId: idToRemove, waitlistPromotion: !!promotedPlayer });
+        }, { playerId: idToRemove });
     } catch (err) {
         console.error('Error removing player:', err);
         return res.status(500).json({ error: "Failed to remove player safely" });
     }
-    res.json({
-        success: true,
-        spots: playerSpots,
-        removedPlayer: player,
-        promotedPlayer: promotedPlayer ? {
-            id: promotedPlayer.id,
-            firstName: promotedPlayer.firstName,
-            lastName: promotedPlayer.lastName,
-            team: promotedPlayer.team,
-            subbedForName: getSubbedForName(promotedPlayer)
-        } : null
-    });
+    res.json({ success: true, spots: playerSpots, removedPlayer: player });
 });
 
 app.post('/api/admin/update-spots', async (req, res) => {
