@@ -698,8 +698,9 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
-        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}.`
-        : 'Payments must be received prior to stepping on the ice.';
+        ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. No Show Owes!`
+        : 'Payments must be received prior to stepping on the ice. No Show Owes!';
+}
 }
 
 function clearAnnouncementState() {
@@ -766,7 +767,7 @@ let customTitle = `Phan's ${getGameDayName()} Hockey`;
 let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
-let paymentEmail = String(process.env.PAYMENT_EMAIL || '').trim();
+let paymentEmail = String(process.env.PAYMENT_EMAIL || 'okosoff@outlook.com').trim();
 
 // ============================================
 // END NEW CONFIGURATION SECTION
