@@ -3452,15 +3452,49 @@ function buildPlayerFromSkillProfile(basePlayer, skillProfile = {}) {
 }
 
 
-function getNextAutoPromoteWaitlistIndex() {
-    return waitlist.findIndex(p => p && p.bypassAutoPromote !== true);
+function getNextAutoPromoteWaitlistIndex(options = {}) {
+    const preferGoalie = options && typeof options.preferGoalie === 'boolean' ? options.preferGoalie : null;
+    return waitlist.findIndex(p => {
+        if (!p || p.bypassAutoPromote === true) return false;
+        if (preferGoalie === null) return true;
+        return !!p.isGoalie === preferGoalie;
+    });
 }
 
-function extractWaitlistPlayerToPromote() {
-    const index = getNextAutoPromoteWaitlistIndex();
+function extractWaitlistPlayerToPromote(options = {}) {
+    const index = getNextAutoPromoteWaitlistIndex(options);
     if (index === -1) return null;
     const [player] = waitlist.splice(index, 1);
     return player || null;
+}
+
+function buildPromotedRosterPlayer(waitlistPlayer, team = null) {
+    if (!waitlistPlayer) return null;
+    return hydratePlayerRatingProfile({
+        id: waitlistPlayer.id,
+        firstName: waitlistPlayer.firstName,
+        lastName: waitlistPlayer.lastName,
+        phone: waitlistPlayer.phone,
+        paymentMethod: waitlistPlayer.paymentMethod,
+        paid: false,
+        paidAmount: null,
+        rating: parseInt(waitlistPlayer.rating) || 5,
+        skatingRating: waitlistPlayer.skatingRating,
+        puckSkillsRating: waitlistPlayer.puckSkillsRating,
+        hockeySenseRating: waitlistPlayer.hockeySenseRating,
+        conditioningRating: waitlistPlayer.conditioningRating,
+        effortRating: waitlistPlayer.effortRating,
+        levelPlayed: waitlistPlayer.levelPlayed,
+        peerComparison: waitlistPlayer.peerComparison,
+        confidenceLevel: waitlistPlayer.confidenceLevel,
+        selfRatingRaw: waitlistPlayer.selfRatingRaw,
+        derivedRating: waitlistPlayer.derivedRating,
+        finalRating: waitlistPlayer.finalRating,
+        isGoalie: waitlistPlayer.isGoalie,
+        bypassAutoPromote: false,
+        team: team || null,
+        rulesAgreed: true
+    });
 }
 
 function syncCurrentWeekTeamsFromPlayers() {
@@ -5904,31 +5938,30 @@ app.post('/api/admin/toggle-waitlist-bypass', async (req, res) => {
 });
 
 app.post('/api/admin/promote-waitlist', async (req, res) => {
-    const { password, sessionToken, waitlistId } = req.body;
+    const { password, sessionToken, waitlistId, assignTeam } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
     const index = waitlist.findIndex(p => String(p.id) === String(waitlistId));
     if (index === -1) return res.status(404).json({ error: "Player not found in waitlist" });
+
+    const requestedTeam = assignTeam === 'White' || assignTeam === 'Dark' ? assignTeam : null;
     const player = waitlist[index];
-    const newPlayer = hydratePlayerRatingProfile({
-        id: player.id, firstName: player.firstName, lastName: player.lastName, phone: player.phone,
-        paymentMethod: player.paymentMethod, paid: false, paidAmount: null,
-        rating: parseInt(player.rating) || 5, skatingRating: player.skatingRating, puckSkillsRating: player.puckSkillsRating,
-        hockeySenseRating: player.hockeySenseRating, conditioningRating: player.conditioningRating, effortRating: player.effortRating,
-        levelPlayed: player.levelPlayed, peerComparison: player.peerComparison, confidenceLevel: player.confidenceLevel,
-        selfRatingRaw: player.selfRatingRaw, derivedRating: player.derivedRating, finalRating: player.finalRating,
-        isGoalie: player.isGoalie, bypassAutoPromote: false, team: null, rulesAgreed: true
-    });
+    const teamForPromotion = rosterReleased ? requestedTeam : null;
+    const newPlayer = buildPromotedRosterPlayer(player, teamForPromotion);
+
     try {
         await runProtectedMutation('promote-waitlist', req, async () => {
             waitlist.splice(index, 1);
             players.push(newPlayer);
             if (!player.isGoalie && playerSpots > 0) playerSpots--;
-        }, { waitlistId, promotedPlayerId: newPlayer.id });
+            if (rosterReleased) {
+                syncCurrentWeekTeamsFromPlayers();
+            }
+        }, { waitlistId, promotedPlayerId: newPlayer.id, assignTeam: teamForPromotion });
     } catch (err) {
         console.error('Error promoting player:', err);
         return res.status(500).json({ error: "Failed to promote waitlist player safely" });
     }
-    res.json({ success: true, player: newPlayer, spots: playerSpots, override: playerSpots <= 0 && !player.isGoalie });
+    res.json({ success: true, player: newPlayer, spots: playerSpots, override: playerSpots <= 0 && !player.isGoalie, assignTeam: teamForPromotion, rosterReleased });
 });
 
 app.post('/api/admin/remove-waitlist', async (req, res) => {
@@ -5981,17 +6014,28 @@ app.post('/api/admin/remove-player', async (req, res) => {
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
     if (index === -1) return res.status(404).json({ error: "Player not found" });
     const player = players[index];
+    let autoPromotedPlayer = null;
     try {
         await runProtectedMutation('remove-player', req, async () => {
             const removedPlayer = players.splice(index, 1)[0];
             appendCancellationLog({ id: removedPlayer.id, firstName: removedPlayer.firstName, lastName: removedPlayer.lastName, phone: removedPlayer.phone, rating: removedPlayer.rating, isGoalie: removedPlayer.isGoalie, paymentMethod: removedPlayer.paymentMethod, source: 'players', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
             if (!removedPlayer.isGoalie) playerSpots++;
-        }, { playerId: idToRemove });
+
+            if (rosterReleased) {
+                const replacement = extractWaitlistPlayerToPromote({ preferGoalie: !!removedPlayer.isGoalie });
+                if (replacement) {
+                    autoPromotedPlayer = buildPromotedRosterPlayer(replacement, removedPlayer.team === 'White' || removedPlayer.team === 'Dark' ? removedPlayer.team : null);
+                    players.push(autoPromotedPlayer);
+                    if (!autoPromotedPlayer.isGoalie && playerSpots > 0) playerSpots--;
+                }
+                syncCurrentWeekTeamsFromPlayers();
+            }
+        }, { playerId: idToRemove, rosterReleased, removedTeam: player.team || null });
     } catch (err) {
         console.error('Error removing player:', err);
         return res.status(500).json({ error: "Failed to remove player safely" });
     }
-    res.json({ success: true, spots: playerSpots, removedPlayer: player });
+    res.json({ success: true, spots: playerSpots, removedPlayer: player, autoPromotedPlayer, rosterReleased });
 });
 
 app.post('/api/admin/update-spots', async (req, res) => {
