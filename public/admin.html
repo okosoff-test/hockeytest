@@ -4010,7 +4010,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <th>Rating</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
                     <th>Payment</th>
-                    <th id="playerMetaHeader">Regular</th>
+                    <th>Regular</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -6130,12 +6130,9 @@ Date: ${selectedGameDate}`);
                             ? ''
                             : (p.paymentMethod === 'E-Transfer' ? 'ET' : (p.paymentMethod || ''));
 
-                        const teamDisplay = data.rosterReleased
-                            ? `<span style="font-weight:700; color:${p.team === 'White' ? '#ffffff' : (p.team === 'Dark' ? '#b0b0b0' : '#888')};">${p.team || '--'}</span>`
-                            : '';
                         const regularCell = hideAdminPaymentUi
-                            ? (data.rosterReleased ? teamDisplay : '')
-                            : (data.rosterReleased ? teamDisplay : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`);
+                            ? ''
+                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
                         tr.innerHTML = `
                             <td class="player-name-cell">
@@ -6189,10 +6186,7 @@ Date: ${selectedGameDate}`);
                             <td>
                                 <div class="waitlist-action-wrap">
                                     <div class="action-stack">
-                                        ${data.rosterReleased
-                                            ? `<button class="promote-btn" data-player-id="${p.id}" data-assign-team="White">White</button>
-                                               <button class="promote-btn" data-player-id="${p.id}" data-assign-team="Dark">Dark</button>`
-                                            : `<button class="promote-btn" data-player-id="${p.id}">Promote</button>`}
+                                        <button class="promote-btn" data-player-id="${p.id}">Promote</button>
                                         <button class="remove-btn" onclick="removeWaitlist(${p.id})">Remove</button>
                                     </div>
                                     <button class="bypass-btn ${p.bypassAutoPromote ? 'active' : ''}" data-bypass-id="${p.id}" data-bypass-state="${p.bypassAutoPromote ? '1' : '0'}">Bypass</button>
@@ -6201,11 +6195,6 @@ Date: ${selectedGameDate}`);
                         `;
                         waitlistBody.appendChild(tr);
                     });
-                }
-
-                const playerMetaHeader = document.getElementById('playerMetaHeader');
-                if (playerMetaHeader) {
-                    playerMetaHeader.textContent = data.rosterReleased ? 'Team' : 'Regular';
                 }
 
                 const cancellationBody = document.getElementById('cancellationList');
@@ -6277,11 +6266,7 @@ Date: ${selectedGameDate}`);
                     const removedName = data.removedPlayer ? 
                         `${data.removedPlayer.firstName} ${data.removedPlayer.lastName}` : 
                         'Player';
-                    let message = `✅ ${removedName} removed successfully`;
-                    if (data.autoPromotedPlayer) {
-                        message += ` • ${data.autoPromotedPlayer.firstName} ${data.autoPromotedPlayer.lastName} auto-added${data.autoPromotedPlayer.team ? ' to ' + data.autoPromotedPlayer.team : ''}`;
-                    }
-                    showNotification(message, 'success');
+                    showNotification(`✅ ${removedName} removed successfully`, 'success');
                 } else if (res.status === 401) {
                     logout();
                 } else {
@@ -6354,8 +6339,7 @@ Date: ${selectedGameDate}`);
         document.addEventListener('click', function(e) {
             if (e.target && e.target.classList.contains('promote-btn')) {
                 const playerId = parseInt(e.target.getAttribute('data-player-id'));
-                const assignTeam = e.target.getAttribute('data-assign-team') || null;
-                promotePlayer(playerId, assignTeam);
+                promotePlayer(playerId);
                 return;
             }
             if (e.target && e.target.classList.contains('bypass-btn')) {
