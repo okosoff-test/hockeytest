@@ -2627,12 +2627,16 @@ function updateCalculatedRating() {
             saveFormData();
         }
 
-        async function loadAndDisplayRoster() {
+        async function loadAndDisplayRoster(retries = 2) {
             try {
                 const res = await fetch(`${API_URL}/api/roster`);
                 const data = await res.json();
                 
                 if (!data.released) {
+                    if (retries > 0 && rosterReleased) {
+                        await new Promise(resolve => setTimeout(resolve, 350));
+                        return loadAndDisplayRoster(retries - 1);
+                    }
                     document.getElementById('rosterDisplay').classList.remove('active');
                     return false;
                 }
