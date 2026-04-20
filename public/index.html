@@ -557,6 +557,16 @@
             font-size: 0.9rem;
         }
 
+        .late-cancel-badge {
+            background: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.65rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
         .goalie-badge {
             background: #ff6b00;
             color: white;
@@ -1702,7 +1712,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <!-- Registered Players List -->
-        <div class="registered-players-section" id="registeredPlayersSection">
+        <div class="registered-players-section" id="registeredPlayersSection" style="display:none;">
             <h3 style="text-align: center; color: var(--accent); margin: 20px 0 15px 0; text-transform: uppercase; letter-spacing: 1px;">
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
@@ -2640,8 +2650,9 @@ function updateCalculatedRating() {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
                         li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
+                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${lateCancelBadge}</span>
                         `;
                         whiteList.appendChild(li);
                     });
@@ -2654,8 +2665,9 @@ function updateCalculatedRating() {
                         const li = document.createElement('li');
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                        const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
                         li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge}</span>
+                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${lateCancelBadge}</span>
                         `;
                         darkList.appendChild(li);
                     });
@@ -3009,7 +3021,7 @@ function updateCalculatedRating() {
                 renderVenueWaitlist(data.waitlist);
                 await loadVenueWaitlist();
 
-                const effectiveLocked = !!(data.requireCode ?? data.signupLocked);
+                const effectiveLocked = !!(data.requireCode ?? data.signupLocked) && !data.rosterReleased;
                 codeRequired = effectiveLocked;
 
                 const lockNotice = document.getElementById('lockNotice');
@@ -3024,16 +3036,11 @@ function updateCalculatedRating() {
                     lockNotice.style.display = 'none';
                 }
 
+                document.getElementById('registeredPlayersSection').style.display = 'none';
+                document.getElementById('codeSection').style.display = 'block';
+
                 if (data.rosterReleased) {
-                    document.getElementById('registeredPlayersSection').style.display = 'block';
-                    document.getElementById('codeSection').style.display = 'none';
-                    document.getElementById('signupForm').style.display = 'none';
-                    document.getElementById('waitlistMode').style.display = 'none';
-                    await loadRegisteredPlayers();
-                } else {
-                    document.getElementById('registeredPlayersSection').style.display = 'block';
-                    document.getElementById('codeSection').style.display = 'block';
-                    await loadRegisteredPlayers();
+                    document.getElementById('waitlistMode').style.display = 'block';
                 }
 
                 const codeTitle = document.getElementById('codeTitle');

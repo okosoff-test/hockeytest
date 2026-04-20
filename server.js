@@ -4143,12 +4143,19 @@ app.get('/api/roster', (req, res) => {
         return nameA.localeCompare(nameB);
     };
     
+    const lateCancelledPlayerIds = new Set(
+        (Array.isArray(cancelledRegistrations) ? cancelledRegistrations : [])
+            .filter(item => item && item.action === 'late_cancel_no_show_owed')
+            .map(item => String(item.id))
+    );
+
     // STRIP all sensitive data from public roster
-    // Players see: name, goalie status ONLY
+    // Players see: name, goalie status, late-cancel badge ONLY
     const sanitizePlayer = (p) => ({
         firstName: p.firstName,
         lastName: p.lastName,
-        isGoalie: p.isGoalie
+        isGoalie: p.isGoalie,
+        lateCancelOwes: lateCancelledPlayerIds.has(String(p.id))
         // EXCLUDED: id, rating, paid, paidAmount, paymentMethod, phone, team
     });
     
@@ -4272,9 +4279,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         directRating
     } = req.body;
 
-    if (rosterReleased) {
-        return res.status(403).json({ error: 'Signup is closed after roster release.' });
-    }
+    const forceWaitlistAfterRosterRelease = rosterReleased;
 
     if (!firstName || !lastName || !phone || !paymentMethod) {
         return res.status(400).json({ error: "All fields are required." });
@@ -4315,7 +4320,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         return res.status(400).json({ error: "Skill profile changed. Please review your calculated rating and try again." });
     }
 
-    if (playerSpots <= 0) {
+    if (forceWaitlistAfterRosterRelease || playerSpots <= 0) {
         const waitlistPlayer = hydratePlayerRatingProfile({
             id: Date.now(),
             firstName: cleanFirstName,
@@ -4368,7 +4373,9 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             success: true,
             inWaitlist: true,
             waitlistPosition: waitlist.length,
-            message: "Game is full. You have been added to the waitlist."
+            message: forceWaitlistAfterRosterRelease
+                ? "Roster is already released. You have been added to the waitlist for any late opening."
+                : "Game is full. You have been added to the waitlist."
         });
     }
 
@@ -5934,7 +5941,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
+        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: requirePlayerCode, rosterReleased: true });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });

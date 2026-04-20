@@ -189,6 +189,16 @@
             flex-wrap: wrap;
         }
 
+        .late-cancel-badge {
+            background: #ff4444;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
         .goalie-badge {
             background: #ff6b00;
             color: white;
@@ -575,9 +585,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
                     
                     li.innerHTML = `
-                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
+                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge} ${lateCancelBadge}</span>
                     `;
                     whiteList.appendChild(li);
                 });
@@ -590,9 +601,10 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
+                    const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
                     
                     li.innerHTML = `
-                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge}</span>
+                        <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge} ${lateCancelBadge}</span>
                     `;
                     darkList.appendChild(li);
                 });
