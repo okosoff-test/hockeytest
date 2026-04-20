@@ -1720,7 +1720,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Cancel anytime. Last minute cancellations must be done 3 hours before game time. No show owes!
+                Cancel anytime. Late cancellations are marked as no-show owes.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
@@ -1966,13 +1966,13 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         <div class="modal-content">
             <h3>⚠️ Cancel Registration</h3>
             <p>Enter the phone number you used to register to confirm cancellation.</p>
-            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Last minute cancellation must be 3 hours before game time. No show owes!</p>
+            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Cancel anytime. Late cancellations are marked as no-show owes.</p>
             <input type="tel" id="cancelPhoneInput" placeholder="Phone Number" inputmode="numeric" autocomplete="tel" maxlength="14" style="margin-bottom: 15px;">
             <div class="cancel-error" id="cancelError"></div>
             <div class="cancel-success" id="cancelSuccess"></div>
             <div class="modal-buttons">
-                <button class="abort-btn" id="abortCancelBtn" onclick="closeCancelModal()">Abort</button>
-                <button class="confirm-cancel" id="confirmCancelBtn" onclick="confirmCancel()">Confirm Cancel</button>
+                <button class="abort-btn" onclick="closeCancelModal()">Abort</button>
+                <button class="confirm-cancel" onclick="confirmCancel()">Confirm Cancel</button>
             </div>
         </div>
     </div>
@@ -1983,8 +1983,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         let codeRequired = true;
         let currentLocation = "";
         let currentTime = "";
-        let cancelModalAwaitingContinue = false;
-        let cancelModalAfterCloseAction = null;
         let currentDate = "";
         let playerSpotsAvailable = 20;
         let isFull = false;
@@ -3154,52 +3152,26 @@ function updateCalculatedRating() {
             });
         }
 
-        function resetCancelModalButtons() {
-            const abortBtn = document.getElementById('abortCancelBtn');
-            const confirmBtn = document.getElementById('confirmCancelBtn');
-            if (abortBtn) abortBtn.style.display = '';
-            if (confirmBtn) confirmBtn.textContent = 'Confirm Cancel';
-        }
-
         function openCancelModal(playerId, firstName, lastName) {
             playerToCancel = { id: playerId, firstName, lastName };
-            cancelModalAwaitingContinue = false;
-            cancelModalAfterCloseAction = null;
             document.getElementById('cancelPhoneInput').value = '';
-            document.getElementById('cancelPhoneInput').disabled = false;
             document.getElementById('cancelError').style.display = 'none';
             document.getElementById('cancelSuccess').style.display = 'none';
-            resetCancelModalButtons();
             document.getElementById('cancelModal').classList.add('active');
         }
 
         function closeCancelModal() {
             document.getElementById('cancelModal').classList.remove('active');
-            document.getElementById('cancelPhoneInput').disabled = false;
-            resetCancelModalButtons();
-            const afterCloseAction = cancelModalAfterCloseAction;
-            cancelModalAwaitingContinue = false;
-            cancelModalAfterCloseAction = null;
             playerToCancel = null;
-            if (typeof afterCloseAction === 'function') {
-                afterCloseAction();
-            }
         }
 
         async function confirmCancel() {
             if (!playerToCancel) return;
 
-            if (cancelModalAwaitingContinue) {
-                closeCancelModal();
-                return;
-            }
-
             const cancelPhoneDigits = normalizeCancelPhoneInput();
             const phone = formatPhoneInputValue(cancelPhoneDigits);
             const errorDiv = document.getElementById('cancelError');
             const successDiv = document.getElementById('cancelSuccess');
-            const abortBtn = document.getElementById('abortCancelBtn');
-            const confirmBtn = document.getElementById('confirmCancelBtn');
 
             if (!cancelPhoneDigits) {
                 errorDiv.innerText = 'Please enter your phone number.';
@@ -3229,24 +3201,22 @@ function updateCalculatedRating() {
 
                 if (res.ok && data.success) {
                     errorDiv.style.display = 'none';
-                    let successMsg = data.lateCancel
-                        ? `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s cancellation was recorded.<br><br>Late cancel / no-show owes.`
-                        : `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s registration has been cancelled.`;
+                    let successMsg = `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s registration has been cancelled.`;
                     if (data.promotedPlayer) {
                         successMsg += `<br><br>🎉 ${data.promotedPlayer.firstName} ${data.promotedPlayer.lastName} has been promoted from the waitlist!`;
                     }
-                    successMsg += '<br><br>Tap Continue.';
                     successDiv.innerHTML = successMsg;
                     successDiv.style.display = 'block';
-                    document.getElementById('cancelPhoneInput').disabled = true;
-                    if (abortBtn) abortBtn.style.display = 'none';
-                    if (confirmBtn) confirmBtn.textContent = 'Continue';
-                    cancelModalAwaitingContinue = true;
-                    cancelModalAfterCloseAction = () => {
+                    
+                    setTimeout(() => {
+                        closeCancelModal();
                         checkStatus();
-                    };
+                    }, 2500);
                 } else {
                     errorDiv.innerText = data.error || 'Failed to cancel registration.';
+                    if (data && data.noShowOwes) {
+                        errorDiv.innerHTML = `<strong>${data.error || 'Cancellation closed.'}</strong><br><span style="color:#ffb3b3;">${data.policy || 'Late cancel / no-show owes.'}</span>`;
+                    }
                     errorDiv.style.display = 'block';
                 }
             } catch (err) {
