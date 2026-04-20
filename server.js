@@ -4153,11 +4153,13 @@ app.get('/api/roster', (req, res) => {
     );
 
     const sanitizePlayer = (p) => ({
+        id: p.id,
         firstName: p.firstName,
         lastName: p.lastName,
         isGoalie: p.isGoalie,
-        cancelled: cancelledPlayerIds.has(String(p.id || '').trim())
-        // EXCLUDED: id, rating, paid, paidAmount, paymentMethod, phone, team
+        cancelled: cancelledPlayerIds.has(String(p.id || '').trim()),
+        canCancel: !p.isGoalie && !isProtectedPlayer(p)
+        // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone, team
     });
     
     const whiteTeam = players.filter(p => p.team === 'White').sort(sortPlayers).map(sanitizePlayer);
