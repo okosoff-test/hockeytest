@@ -1377,24 +1377,7 @@ async function addAutoPlayers() {
 
 
 function checkMaintenanceModeSchedule() {
-    const etTime = getCurrentETTime();
-    const day = etTime.getDay();
-    const hour = etTime.getHours();
-    const minute = etTime.getMinutes();
-
-    if (day === 6 && hour === 0 && minute === 0 && maintenanceMode !== true) {
-        maintenanceMode = true;
-        saveData();
-        return true;
-    }
-
-    if (day === 6 && hour === 12 && minute === 0 && maintenanceMode !== false) {
-        maintenanceMode = false;
-        saveData();
-        return true;
-    }
-
-    return false;
+    return false; // disabled - manual control only
 }
 
 
