@@ -181,6 +181,12 @@
             background: rgba(255, 107, 0, 0.1);
         }
 
+        .player-item.late-cancelled {
+            opacity: 0.68;
+            border-left-color: #ff4444;
+            background: rgba(255, 68, 68, 0.14);
+        }
+
         .player-name {
             font-weight: 500;
             display: flex;
@@ -574,15 +580,15 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 document.getElementById('checkBackMessage').style.display = 'none';
                 document.getElementById('teamsDisplay').style.display = 'block';
 
-                document.getElementById('whiteCount').innerText = data.whiteTeam.length;
-                document.getElementById('darkCount').innerText = data.darkTeam.length;
+                document.getElementById('whiteCount').innerText = Number.isFinite(data.whiteActiveCount) ? data.whiteActiveCount : data.whiteTeam.length;
+                document.getElementById('darkCount').innerText = Number.isFinite(data.darkActiveCount) ? data.darkActiveCount : data.darkTeam.length;
 
                 // White Team
                 const whiteList = document.getElementById('whiteTeamList');
                 whiteList.innerHTML = '';
                 data.whiteTeam.forEach(player => {
                     const li = document.createElement('li');
-                    li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
+                    li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.lateCancelOwes ? ' late-cancelled' : '');
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                     const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
@@ -598,7 +604,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 darkList.innerHTML = '';
                 data.darkTeam.forEach(player => {
                     const li = document.createElement('li');
-                    li.className = 'player-item' + (player.isGoalie ? ' goalie' : '');
+                    li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.lateCancelOwes ? ' late-cancelled' : '');
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                     const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
