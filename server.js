@@ -4061,7 +4061,7 @@ app.get('/api/status', (req, res) => {
         waitlistCount: waitlist.length,
         waitlist: publicWaitlist,
         requireCode: requirePlayerCode,
-        signupLocked: rosterReleased ? false : requirePlayerCode,
+        signupLocked: requirePlayerCode,
         isLockedWindow: lockStatus.isLockedWindow,
         manualOverride: lockStatus.manualOverride,
         manualOverrideState: lockStatus.manualOverrideState,
@@ -4486,6 +4486,56 @@ app.post('/api/register-final', async (req, res) => {
     if (isDuplicatePlayer(tempData.firstName, tempData.lastName, tempData.phone)) {
         return res.status(400).json({ error: "A player with this name or phone number is already registered." });
     }
+
+    const makeWaitlistPlayer = () => hydratePlayerRatingProfile({
+        id: Date.now(),
+        firstName: tempData.firstName,
+        lastName: tempData.lastName,
+        phone: tempData.phone,
+        paymentMethod: tempData.paymentMethod,
+        rating: tempData.rating,
+        skatingRating: tempData.skatingRating,
+        puckSkillsRating: tempData.puckSkillsRating,
+        hockeySenseRating: tempData.hockeySenseRating,
+        conditioningRating: tempData.conditioningRating,
+        effortRating: tempData.effortRating,
+        levelPlayed: tempData.levelPlayed,
+        peerComparison: tempData.peerComparison,
+        confidenceLevel: tempData.confidenceLevel,
+        selfRatingRaw: tempData.selfRatingRaw,
+        derivedRating: tempData.derivedRating,
+        finalRating: tempData.finalRating,
+        isGoalie: false,
+        bypassAutoPromote: false,
+        joinedAt: new Date()
+    });
+
+    if (rosterReleased || playerSpots <= 0) {
+        const waitlistPlayer = makeWaitlistPlayer();
+        try {
+            await runProtectedMutation('waitlist-signup-post-release', req, async () => {
+                waitlist.push(waitlistPlayer);
+            }, {
+                playerId: waitlistPlayer.id,
+                firstName: waitlistPlayer.firstName,
+                lastName: waitlistPlayer.lastName,
+                rosterReleased,
+                waitlistPosition: waitlist.length + 1
+            });
+        } catch (err) {
+            console.error('Error saving post-release waitlist registration:', err.message);
+            return res.status(500).json({ error: "Registration could not be saved safely. Please try again." });
+        }
+
+        return res.json({
+            success: true,
+            inWaitlist: true,
+            waitlistPosition: waitlist.length,
+            message: rosterReleased
+                ? "Roster has already been released. You have been added to the waitlist."
+                : "Game is full. You have been added to the waitlist."
+        });
+    }
     
     const newPlayer = hydratePlayerRatingProfile({
         id: Date.now(),
@@ -4579,42 +4629,87 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    if (rosterReleased) {
+    if (rosterReleased && playerIndex !== -1) {
+        const rosterPlayer = players[playerIndex];
         const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
-            String(item?.id) === String(foundPlayer.id) &&
+            String(item?.id) === String(rosterPlayer.id) &&
             item?.action === 'late_cancel_no_show_owed'
         );
+        let promotedPlayer = null;
 
-        if (!alreadyLoggedLateAttempt) {
-            try {
-                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
+        try {
+            await runProtectedMutation('player-cancel-post-release', req, async () => {
+                if (!alreadyLoggedLateAttempt) {
                     appendCancellationLog({
-                        id: foundPlayer.id,
-                        firstName: foundPlayer.firstName,
-                        lastName: foundPlayer.lastName,
-                        phone: foundPlayer.phone,
-                        rating: foundPlayer.rating,
-                        isGoalie: foundPlayer.isGoalie,
-                        paymentMethod: foundPlayer.paymentMethod,
+                        id: rosterPlayer.id,
+                        firstName: rosterPlayer.firstName,
+                        lastName: rosterPlayer.lastName,
+                        phone: rosterPlayer.phone,
+                        rating: rosterPlayer.rating,
+                        isGoalie: rosterPlayer.isGoalie,
+                        paymentMethod: rosterPlayer.paymentMethod,
                         source: foundSource || 'players',
                         action: 'late_cancel_no_show_owed',
                         cancelledBy: 'player',
                         cancelledAt: new Date().toISOString(),
                         notes: NO_SHOW_POLICY_TEXT
                     });
-                }, {
-                    playerId: foundPlayer.id,
-                    source: foundSource || 'players'
-                });
-            } catch (err) {
-                console.error('Error logging late cancel attempt:', err.message);
-            }
+                }
+
+                const waitlistPlayer = extractWaitlistPlayerToPromote();
+                if (waitlistPlayer) {
+                    promotedPlayer = hydratePlayerRatingProfile({
+                        id: waitlistPlayer.id,
+                        firstName: waitlistPlayer.firstName,
+                        lastName: waitlistPlayer.lastName,
+                        phone: waitlistPlayer.phone,
+                        paymentMethod: waitlistPlayer.paymentMethod,
+                        paid: false,
+                        paidAmount: null,
+                        rating: parseInt(waitlistPlayer.rating) || 5,
+                        skatingRating: waitlistPlayer.skatingRating,
+                        puckSkillsRating: waitlistPlayer.puckSkillsRating,
+                        hockeySenseRating: waitlistPlayer.hockeySenseRating,
+                        conditioningRating: waitlistPlayer.conditioningRating,
+                        effortRating: waitlistPlayer.effortRating,
+                        levelPlayed: waitlistPlayer.levelPlayed,
+                        peerComparison: waitlistPlayer.peerComparison,
+                        confidenceLevel: waitlistPlayer.confidenceLevel,
+                        selfRatingRaw: waitlistPlayer.selfRatingRaw,
+                        derivedRating: waitlistPlayer.derivedRating,
+                        finalRating: waitlistPlayer.finalRating,
+                        isGoalie: waitlistPlayer.isGoalie,
+                        team: rosterPlayer.team || null,
+                        registeredAt: new Date().toISOString(),
+                        rulesAgreed: true,
+                        promotedFromWaitlist: true
+                    });
+                    players.push(promotedPlayer);
+                }
+            }, {
+                playerId: rosterPlayer.id,
+                source: 'players',
+                alreadyLoggedLateAttempt,
+                waitlistPromotion: !!promotedPlayer
+            });
+        } catch (err) {
+            console.error('Error processing post-release cancellation:', err.message);
+            return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
         }
 
-        return res.status(403).json({
-            error: "Cancellation is closed because the roster has been released. No-show owes.",
+        return res.json({
+            success: true,
+            lateCancel: true,
             noShowOwes: true,
-            policy: NO_SHOW_POLICY_TEXT
+            message: alreadyLoggedLateAttempt
+                ? "Late cancellation was already recorded. No-show owes."
+                : "Late cancellation recorded. No-show owes.",
+            policy: NO_SHOW_POLICY_TEXT,
+            promotedPlayer: promotedPlayer ? {
+                firstName: promotedPlayer.firstName,
+                lastName: promotedPlayer.lastName
+            } : null,
+            spotsAvailable: playerSpots
         });
     }
 
