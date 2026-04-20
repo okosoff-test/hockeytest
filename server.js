@@ -4135,19 +4135,23 @@ app.get('/api/roster', (req, res) => {
         });
     }
     
+    const lateCancelledPlayerIds = new Set(
+        (Array.isArray(cancelledRegistrations) ? cancelledRegistrations : [])
+            .filter(item => item && item.action === 'late_cancel_no_show_owed')
+            .map(item => String(item.id))
+    );
+
     const sortPlayers = (a, b) => {
+        const aLateCancelled = lateCancelledPlayerIds.has(String(a.id));
+        const bLateCancelled = lateCancelledPlayerIds.has(String(b.id));
+        if (aLateCancelled && !bLateCancelled) return 1;
+        if (!aLateCancelled && bLateCancelled) return -1;
         if (a.isGoalie && !b.isGoalie) return -1;
         if (!a.isGoalie && b.isGoalie) return 1;
         const nameA = (a.firstName + ' ' + a.lastName).toLowerCase();
         const nameB = (b.firstName + ' ' + b.lastName).toLowerCase();
         return nameA.localeCompare(nameB);
     };
-    
-    const lateCancelledPlayerIds = new Set(
-        (Array.isArray(cancelledRegistrations) ? cancelledRegistrations : [])
-            .filter(item => item && item.action === 'late_cancel_no_show_owed')
-            .map(item => String(item.id))
-    );
 
     // STRIP all sensitive data from public roster
     // Players see: name, goalie status, late-cancel badge ONLY
@@ -4158,19 +4162,25 @@ app.get('/api/roster', (req, res) => {
         lateCancelOwes: lateCancelledPlayerIds.has(String(p.id))
         // EXCLUDED: id, rating, paid, paidAmount, paymentMethod, phone, team
     });
+
+    const whitePlayers = players.filter(p => p.team === 'White').sort(sortPlayers);
+    const darkPlayers = players.filter(p => p.team === 'Dark').sort(sortPlayers);
+    const whiteTeam = whitePlayers.map(sanitizePlayer);
+    const darkTeam = darkPlayers.map(sanitizePlayer);
+    const whiteActiveCount = whitePlayers.filter(p => !lateCancelledPlayerIds.has(String(p.id))).length;
+    const darkActiveCount = darkPlayers.filter(p => !lateCancelledPlayerIds.has(String(p.id))).length;
     
-    const whiteTeam = players.filter(p => p.team === 'White').sort(sortPlayers).map(sanitizePlayer);
-    const darkTeam = players.filter(p => p.team === 'Dark').sort(sortPlayers).map(sanitizePlayer);
-    
-    const whiteRating = players.filter(p => p.team === 'White').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
-    const darkRating = players.filter(p => p.team === 'Dark').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const whiteRating = whitePlayers.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const darkRating = darkPlayers.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
     
     res.json({
         released: true,
         whiteTeam,
         darkTeam,
-        whiteRating: (whiteRating / whiteTeam.length).toFixed(1),
-        darkRating: (darkRating / darkTeam.length).toFixed(1),
+        whiteActiveCount,
+        darkActiveCount,
+        whiteRating: whiteTeam.length ? (whiteRating / whiteTeam.length).toFixed(1) : '0.0',
+        darkRating: darkTeam.length ? (darkRating / darkTeam.length).toFixed(1) : '0.0',
         location: gameLocation,
         time: gameTime,
         date: gameDate,
@@ -4521,41 +4531,117 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
     }
 
     if (rosterReleased) {
+        if (playerIndex === -1) {
+            return res.status(403).json({
+                error: "Waitlist changes are closed after the roster is released. Please contact admin if needed."
+            });
+        }
+
+        const rosterPlayer = players[playerIndex];
         const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
-            String(item?.id) === String(foundPlayer.id) &&
+            String(item?.id) === String(rosterPlayer.id) &&
             item?.action === 'late_cancel_no_show_owed'
         );
+        const alreadyLoggedReplacement = cancelledRegistrations.some(item =>
+            String(item?.id) === String(rosterPlayer.id) &&
+            item?.action === 'late_cancel_replaced'
+        );
 
-        if (!alreadyLoggedLateAttempt) {
-            try {
-                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
+        let promotedPlayer = null;
+
+        try {
+            await runProtectedMutation('player-cancel-late-after-release', req, async () => {
+                if (!alreadyLoggedLateAttempt) {
                     appendCancellationLog({
-                        id: foundPlayer.id,
-                        firstName: foundPlayer.firstName,
-                        lastName: foundPlayer.lastName,
-                        phone: foundPlayer.phone,
-                        rating: foundPlayer.rating,
-                        isGoalie: foundPlayer.isGoalie,
-                        paymentMethod: foundPlayer.paymentMethod,
-                        source: foundSource || 'players',
+                        id: rosterPlayer.id,
+                        firstName: rosterPlayer.firstName,
+                        lastName: rosterPlayer.lastName,
+                        phone: rosterPlayer.phone,
+                        rating: rosterPlayer.rating,
+                        isGoalie: rosterPlayer.isGoalie,
+                        paymentMethod: rosterPlayer.paymentMethod,
+                        source: 'players',
                         action: 'late_cancel_no_show_owed',
                         cancelledBy: 'player',
                         cancelledAt: new Date().toISOString(),
+                        team: rosterPlayer.team || null,
                         notes: NO_SHOW_POLICY_TEXT
                     });
-                }, {
-                    playerId: foundPlayer.id,
-                    source: foundSource || 'players'
-                });
-            } catch (err) {
-                console.error('Error logging late cancel attempt:', err.message);
-            }
+                }
+
+                if (!alreadyLoggedReplacement) {
+                    const waitlistPlayer = extractWaitlistPlayerToPromote();
+                    if (waitlistPlayer) {
+                        promotedPlayer = hydratePlayerRatingProfile({
+                            id: waitlistPlayer.id,
+                            firstName: waitlistPlayer.firstName,
+                            lastName: waitlistPlayer.lastName,
+                            phone: waitlistPlayer.phone,
+                            paymentMethod: waitlistPlayer.paymentMethod,
+                            paid: false,
+                            paidAmount: null,
+                            rating: parseInt(waitlistPlayer.rating) || 5,
+                            skatingRating: waitlistPlayer.skatingRating,
+                            puckSkillsRating: waitlistPlayer.puckSkillsRating,
+                            hockeySenseRating: waitlistPlayer.hockeySenseRating,
+                            conditioningRating: waitlistPlayer.conditioningRating,
+                            effortRating: waitlistPlayer.effortRating,
+                            levelPlayed: waitlistPlayer.levelPlayed,
+                            peerComparison: waitlistPlayer.peerComparison,
+                            confidenceLevel: waitlistPlayer.confidenceLevel,
+                            selfRatingRaw: waitlistPlayer.selfRatingRaw,
+                            derivedRating: waitlistPlayer.derivedRating,
+                            finalRating: waitlistPlayer.finalRating,
+                            isGoalie: waitlistPlayer.isGoalie,
+                            team: rosterPlayer.team || null,
+                            registeredAt: new Date().toISOString(),
+                            rulesAgreed: true
+                        });
+
+                        players.push(promotedPlayer);
+
+                        appendCancellationLog({
+                            id: rosterPlayer.id,
+                            firstName: rosterPlayer.firstName,
+                            lastName: rosterPlayer.lastName,
+                            phone: rosterPlayer.phone,
+                            rating: rosterPlayer.rating,
+                            isGoalie: rosterPlayer.isGoalie,
+                            paymentMethod: rosterPlayer.paymentMethod,
+                            source: 'players',
+                            action: 'late_cancel_replaced',
+                            cancelledBy: 'system',
+                            cancelledAt: new Date().toISOString(),
+                            team: rosterPlayer.team || null,
+                            replacementPlayerId: promotedPlayer.id,
+                            replacementPlayerName: `${promotedPlayer.firstName} ${promotedPlayer.lastName}`,
+                            notes: 'Waitlist player auto-promoted into released roster after late cancellation.'
+                        });
+                    }
+                }
+            }, {
+                playerId: rosterPlayer.id,
+                source: 'players',
+                replacementAdded: !!promotedPlayer
+            });
+        } catch (err) {
+            console.error('Error processing late cancellation:', err.message);
+            return res.status(500).json({ error: "Late cancellation could not be saved safely. Please try again." });
         }
 
-        return res.status(403).json({
-            error: "Cancellation is closed because the roster has been released. No-show owes.",
+        return res.json({
+            success: true,
+            lateCancelled: true,
             noShowOwes: true,
-            policy: NO_SHOW_POLICY_TEXT
+            policy: NO_SHOW_POLICY_TEXT,
+            message: promotedPlayer
+                ? "Late cancellation recorded. A waitlist player was added to your roster spot. No-show owes."
+                : "Late cancellation recorded. No-show owes. No waitlist replacement was available.",
+            promotedPlayer: promotedPlayer ? {
+                firstName: promotedPlayer.firstName,
+                lastName: promotedPlayer.lastName,
+                team: promotedPlayer.team || null
+            } : null
         });
     }
 
