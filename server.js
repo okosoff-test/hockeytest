@@ -4161,12 +4161,22 @@ app.get('/api/roster', (req, res) => {
         canCancel: !p.isGoalie && !isProtectedPlayer(p)
         // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone, team
     });
+
+    let whiteSource = players.filter(p => p.team === 'White');
+    let darkSource = players.filter(p => p.team === 'Dark');
+
+    // Fallback for manual roster releases or older saved states where currentWeekData has the teams
+    // but the in-memory players array does not yet reflect team assignments.
+    if ((!whiteSource.length && !darkSource.length) && currentWeekData && (Array.isArray(currentWeekData.whiteTeam) || Array.isArray(currentWeekData.darkTeam))) {
+        whiteSource = Array.isArray(currentWeekData.whiteTeam) ? currentWeekData.whiteTeam.map(p => ({ ...p, team: 'White' })) : [];
+        darkSource = Array.isArray(currentWeekData.darkTeam) ? currentWeekData.darkTeam.map(p => ({ ...p, team: 'Dark' })) : [];
+    }
     
-    const whiteTeam = players.filter(p => p.team === 'White').sort(sortPlayers).map(sanitizePlayer);
-    const darkTeam = players.filter(p => p.team === 'Dark').sort(sortPlayers).map(sanitizePlayer);
+    const whiteTeam = whiteSource.sort(sortPlayers).map(sanitizePlayer);
+    const darkTeam = darkSource.sort(sortPlayers).map(sanitizePlayer);
     
-    const whiteRating = players.filter(p => p.team === 'White').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
-    const darkRating = players.filter(p => p.team === 'Dark').reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const whiteRating = whiteSource.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
+    const darkRating = darkSource.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
     const whiteActiveCount = whiteTeam.filter(p => !p.cancelled).length;
     const darkActiveCount = darkTeam.filter(p => !p.cancelled).length;
     
@@ -6091,6 +6101,12 @@ app.post('/api/admin/release-roster', async (req, res) => {
         await runProtectedMutation('release-roster', req, async () => {
             rosterReleased = true;
             resetArmed = true;
+            // Force the live players array to match the released teams so the public roster
+            // always has team assignments immediately after a manual release.
+            players = [
+                ...teams.whiteTeam.map(player => ({ ...player, team: 'White' })),
+                ...teams.darkTeam.map(player => ({ ...player, team: 'Dark' }))
+            ];
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
             announcementText = buildRosterReleasePaymentAnnouncement();
