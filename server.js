@@ -558,8 +558,15 @@ function hasReleasedRosterTeams() {
     );
 }
 
+function hasAssignedRosterPlayers() {
+    return Array.isArray(players) && players.some(player => {
+        const team = String(player && player.team || '').trim().toLowerCase();
+        return team === 'white' || team === 'dark';
+    });
+}
+
 function isRosterReleasedEffective() {
-    return !!rosterReleased || hasReleasedRosterTeams();
+    return !!rosterReleased || hasReleasedRosterTeams() || hasAssignedRosterPlayers();
 }
 
 
