@@ -575,10 +575,8 @@
             font-weight: bold;
         }
 
-        .player-item.cancelled {
+        .cancelled-player {
             opacity: 0.6;
-            border-left-color: #ff4444;
-            background: rgba(255, 68, 68, 0.12);
         }
 
         /* Lock schedule notice */
@@ -2627,69 +2625,42 @@ function updateCalculatedRating() {
             saveFormData();
         }
 
-        async function loadAndDisplayRoster(retries = 2) {
+        async function loadAndDisplayRoster() {
             try {
                 const res = await fetch(`${API_URL}/api/roster`);
                 const data = await res.json();
-                
+
                 if (!data.released) {
-                    if (retries > 0 && rosterReleased) {
-                        await new Promise(resolve => setTimeout(resolve, 350));
-                        return loadAndDisplayRoster(retries - 1);
-                    }
                     document.getElementById('rosterDisplay').classList.remove('active');
                     return false;
                 }
-                
-                document.getElementById('rosterGameInfo').innerText = 
+
+                document.getElementById('rosterGameInfo').innerText =
                     `${data.formattedDate || data.date || currentDate} | ${data.location || currentLocation} | ${data.time || currentTime}`;
-                
-                document.getElementById('whiteCount').innerText = Number.isFinite(data.whiteActiveCount) ? data.whiteActiveCount : data.whiteTeam.length;
-                document.getElementById('darkCount').innerText = Number.isFinite(data.darkActiveCount) ? data.darkActiveCount : data.darkTeam.length;
-                
-                const whiteList = document.getElementById('whiteTeamList');
-                whiteList.innerHTML = '';
-                if (data.whiteTeam && Array.isArray(data.whiteTeam)) {
-                    data.whiteTeam.forEach(player => {
+
+                document.getElementById('whiteCount').innerText = data.whiteActiveCount ?? (Array.isArray(data.whiteTeam) ? data.whiteTeam.filter(p => !p.cancelled).length : 0);
+                document.getElementById('darkCount').innerText = data.darkActiveCount ?? (Array.isArray(data.darkTeam) ? data.darkTeam.filter(p => !p.cancelled).length : 0);
+
+                const renderTeam = (listEl, team) => {
+                    listEl.innerHTML = '';
+                    if (!Array.isArray(team)) return;
+                    team.forEach(player => {
                         const li = document.createElement('li');
-                        li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled' : '');
+                        li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled-player' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
-                        const cancelButton = (!player.cancelled && player.canCancel !== false)
-                            ? `<button class="cancel-btn" onclick="openCancelModal(${JSON.stringify(player.id)}, ${JSON.stringify(player.firstName || '')}, ${JSON.stringify(player.lastName || '')})">Cancel</button>`
-                            : '';
-                        li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge}</span>
-                            ${cancelButton}
-                        `;
-                        whiteList.appendChild(li);
+                        li.innerHTML = `<span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge}</span>`;
+                        listEl.appendChild(li);
                     });
-                }
-                
-                const darkList = document.getElementById('darkTeamList');
-                darkList.innerHTML = '';
-                if (data.darkTeam && Array.isArray(data.darkTeam)) {
-                    data.darkTeam.forEach(player => {
-                        const li = document.createElement('li');
-                        li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled' : '');
-                        const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
-                        const cancelButton = (!player.cancelled && player.canCancel !== false)
-                            ? `<button class="cancel-btn" onclick="openCancelModal(${JSON.stringify(player.id)}, ${JSON.stringify(player.firstName || '')}, ${JSON.stringify(player.lastName || '')})">Cancel</button>`
-                            : '';
-                        li.innerHTML = `
-                            <span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge}</span>
-                            ${cancelButton}
-                        `;
-                        darkList.appendChild(li);
-                    });
-                }
-                
+                };
+
+                renderTeam(document.getElementById('whiteTeamList'), data.whiteTeam);
+                renderTeam(document.getElementById('darkTeamList'), data.darkTeam);
+
                 document.getElementById('rosterDisplay').classList.add('active');
                 return true;
-                
             } catch (err) {
-                console.error("Error loading roster:", err);
+                console.error('Error loading roster:', err);
                 return false;
             }
         }
@@ -3050,20 +3021,13 @@ function updateCalculatedRating() {
 
                 if (data.rosterReleased) {
                     document.getElementById('registeredPlayersSection').style.display = 'none';
-                    document.getElementById('codeSection').style.display = 'block';
-                    document.getElementById('signupForm').style.display = 'block';
-                    document.getElementById('waitlistMode').style.display = 'block';
                 } else {
                     document.getElementById('registeredPlayersSection').style.display = 'block';
-                    document.getElementById('codeSection').style.display = 'block';
                     await loadRegisteredPlayers();
                 }
 
                 const codeTitle = document.getElementById('codeTitle');
-                if (data.rosterReleased) {
-                    document.getElementById('codeEntryBox').style.display = 'none';
-                    document.getElementById('signupForm').style.display = 'block';
-                } else if (effectiveLocked) {
+                if (effectiveLocked) {
                     document.getElementById('codeEntryBox').style.display = 'block';
                     if (!verifiedCode) {
                         document.getElementById('signupForm').style.display = 'none';
