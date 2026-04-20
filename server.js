@@ -5903,87 +5903,32 @@ app.post('/api/admin/toggle-waitlist-bypass', async (req, res) => {
     return res.json({ success: true, waitlistId, bypassAutoPromote: nextValue });
 });
 
-function normalizeRosterTeamName(value) {
-    const team = String(value || '').trim().toLowerCase();
-    if (team === 'white') return 'White';
-    if (team === 'dark') return 'Dark';
-    return null;
-}
-
-function getRosterTeamCounts() {
-    return {
-        White: players.filter(p => p && p.team === 'White').length,
-        Dark: players.filter(p => p && p.team === 'Dark').length
-    };
-}
-
-function getPreferredRosterTeamForPromotion(requestedTeam = null) {
-    const normalizedRequestedTeam = normalizeRosterTeamName(requestedTeam);
-    if (normalizedRequestedTeam) return normalizedRequestedTeam;
-
-    const counts = getRosterTeamCounts();
-    return counts.White <= counts.Dark ? 'White' : 'Dark';
-}
-
-function buildPromotedPlayerFromWaitlist(waitlistPlayer, targetTeam = null) {
-    return hydratePlayerRatingProfile({
-        id: waitlistPlayer.id,
-        firstName: waitlistPlayer.firstName,
-        lastName: waitlistPlayer.lastName,
-        phone: waitlistPlayer.phone,
-        paymentMethod: waitlistPlayer.paymentMethod,
-        paid: false,
-        paidAmount: null,
-        rating: parseInt(waitlistPlayer.rating) || 5,
-        skatingRating: waitlistPlayer.skatingRating,
-        puckSkillsRating: waitlistPlayer.puckSkillsRating,
-        hockeySenseRating: waitlistPlayer.hockeySenseRating,
-        conditioningRating: waitlistPlayer.conditioningRating,
-        effortRating: waitlistPlayer.effortRating,
-        levelPlayed: waitlistPlayer.levelPlayed,
-        peerComparison: waitlistPlayer.peerComparison,
-        confidenceLevel: waitlistPlayer.confidenceLevel,
-        selfRatingRaw: waitlistPlayer.selfRatingRaw,
-        derivedRating: waitlistPlayer.derivedRating,
-        finalRating: waitlistPlayer.finalRating,
-        isGoalie: waitlistPlayer.isGoalie,
-        bypassAutoPromote: false,
-        team: normalizeRosterTeamName(targetTeam),
-        registeredAt: new Date().toISOString(),
-        rulesAgreed: true
-    });
-}
-
 app.post('/api/admin/promote-waitlist', async (req, res) => {
-    const { password, sessionToken, waitlistId, targetTeam } = req.body;
+    const { password, sessionToken, waitlistId } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
     const index = waitlist.findIndex(p => String(p.id) === String(waitlistId));
     if (index === -1) return res.status(404).json({ error: "Player not found in waitlist" });
-
     const player = waitlist[index];
-    const rosterWasReleased = getEffectiveRosterReleasedState();
-    const assignedTeam = rosterWasReleased ? getPreferredRosterTeamForPromotion(targetTeam) : null;
-    const newPlayer = buildPromotedPlayerFromWaitlist(player, assignedTeam);
-
+    const newPlayer = hydratePlayerRatingProfile({
+        id: player.id, firstName: player.firstName, lastName: player.lastName, phone: player.phone,
+        paymentMethod: player.paymentMethod, paid: false, paidAmount: null,
+        rating: parseInt(player.rating) || 5, skatingRating: player.skatingRating, puckSkillsRating: player.puckSkillsRating,
+        hockeySenseRating: player.hockeySenseRating, conditioningRating: player.conditioningRating, effortRating: player.effortRating,
+        levelPlayed: player.levelPlayed, peerComparison: player.peerComparison, confidenceLevel: player.confidenceLevel,
+        selfRatingRaw: player.selfRatingRaw, derivedRating: player.derivedRating, finalRating: player.finalRating,
+        isGoalie: player.isGoalie, bypassAutoPromote: false, team: null, rulesAgreed: true
+    });
     try {
         await runProtectedMutation('promote-waitlist', req, async () => {
             waitlist.splice(index, 1);
             players.push(newPlayer);
             if (!player.isGoalie && playerSpots > 0) playerSpots--;
-            if (assignedTeam) syncCurrentWeekTeamsFromPlayers();
-        }, { waitlistId, promotedPlayerId: newPlayer.id, targetTeam: assignedTeam });
+        }, { waitlistId, promotedPlayerId: newPlayer.id });
     } catch (err) {
         console.error('Error promoting player:', err);
         return res.status(500).json({ error: "Failed to promote waitlist player safely" });
     }
-
-    res.json({
-        success: true,
-        player: newPlayer,
-        spots: playerSpots,
-        override: playerSpots <= 0 && !player.isGoalie,
-        assignedTeam
-    });
+    res.json({ success: true, player: newPlayer, spots: playerSpots, override: playerSpots <= 0 && !player.isGoalie });
 });
 
 app.post('/api/admin/remove-waitlist', async (req, res) => {
@@ -6036,34 +5981,17 @@ app.post('/api/admin/remove-player', async (req, res) => {
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
     if (index === -1) return res.status(404).json({ error: "Player not found" });
     const player = players[index];
-    let promotedPlayer = null;
-
     try {
         await runProtectedMutation('remove-player', req, async () => {
             const removedPlayer = players.splice(index, 1)[0];
             appendCancellationLog({ id: removedPlayer.id, firstName: removedPlayer.firstName, lastName: removedPlayer.lastName, phone: removedPlayer.phone, rating: removedPlayer.rating, isGoalie: removedPlayer.isGoalie, paymentMethod: removedPlayer.paymentMethod, source: 'players', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
             if (!removedPlayer.isGoalie) playerSpots++;
-
-            const removedPlayerTeam = normalizeRosterTeamName(removedPlayer.team);
-            const rosterWasReleased = getEffectiveRosterReleasedState();
-            const waitlistPlayer = extractWaitlistPlayerToPromote();
-
-            if (waitlistPlayer) {
-                const assignedTeam = rosterWasReleased && removedPlayerTeam ? removedPlayerTeam : null;
-                promotedPlayer = buildPromotedPlayerFromWaitlist(waitlistPlayer, assignedTeam);
-                players.push(promotedPlayer);
-                if (!promotedPlayer.isGoalie && playerSpots > 0) playerSpots--;
-            }
-
-            if (rosterWasReleased && removedPlayerTeam) {
-                syncCurrentWeekTeamsFromPlayers();
-            }
-        }, { playerId: idToRemove, waitlistPromotion: !!promotedPlayer });
+        }, { playerId: idToRemove });
     } catch (err) {
         console.error('Error removing player:', err);
         return res.status(500).json({ error: "Failed to remove player safely" });
     }
-    res.json({ success: true, spots: playerSpots, removedPlayer: player, promotedPlayer });
+    res.json({ success: true, spots: playerSpots, removedPlayer: player });
 });
 
 app.post('/api/admin/update-spots', async (req, res) => {
