@@ -4053,6 +4053,7 @@ function buildPublicRosterPayload() {
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
         return {
+            id: p.id,
             firstName: p.firstName,
             lastName: p.lastName,
             isGoalie: !!p.isGoalie,
