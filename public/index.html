@@ -1707,7 +1707,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Cancellation must be done before roster release. Late cancel / no-show owes.
+                Cancellation must be done at least 2 hours prior to puck drop. After roster release, cancelling player still owes.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
@@ -1953,7 +1953,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         <div class="modal-content">
             <h3>⚠️ Cancel Registration</h3>
             <p>Enter the phone number you used to register to confirm cancellation.</p>
-            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Cancellation must be done before roster release. Late cancel / no-show owes.</p>
+            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Cancellation must be done at least 2 hours prior to puck drop. After roster release, cancelling player still owes.</p>
             <input type="tel" id="cancelPhoneInput" placeholder="Phone Number" inputmode="numeric" autocomplete="tel" maxlength="14" style="margin-bottom: 15px;">
             <div class="cancel-error" id="cancelError"></div>
             <div class="cancel-success" id="cancelSuccess"></div>
@@ -3138,7 +3138,7 @@ function updateCalculatedRating() {
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
 
                 let cancelButton = '';
-                if (!isGoalie && !isProtected && !rosterReleased && player.canCancel !== false) {
+                if (!isGoalie && !isProtected && player.canCancel !== false) {
                     cancelButton = `<button class="cancel-btn" onclick="openCancelModal(${player.id}, '${firstName}', '${lastName}')">Cancel</button>`;
                 }
 
@@ -3157,10 +3157,6 @@ function updateCalculatedRating() {
         }
 
         function openCancelModal(playerId, firstName, lastName) {
-            if (rosterReleased) {
-                alert('Cannot cancel after roster has been released.');
-                return;
-            }
             playerToCancel = { id: playerId, firstName, lastName };
             document.getElementById('cancelPhoneInput').value = '';
             document.getElementById('cancelError').style.display = 'none';
