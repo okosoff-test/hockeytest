@@ -1189,36 +1189,10 @@ function shouldBeLocked() {
     return isNowInWindow(signupLockSchedule.start, signupLockSchedule.end);
 }
 
-function getResetLockStartedMinuteKey() {
-    const state = String(manualOverrideState || '').trim();
-    const match = state.match(/^reset-lock:(\d{12})$/);
-    return match ? Number(match[1]) : null;
-}
-
-function getResetLockUnlockMinuteKey(etDate = getCurrentETTime()) {
-    if (!signupLockSchedule || !signupLockSchedule.end) return null;
-
-    const resetLockStartedMinuteKey = getResetLockStartedMinuteKey();
-    if (!Number.isFinite(resetLockStartedMinuteKey)) return null;
-
-    const latestUnlockParts = getLatestOccurrenceEtParts(signupLockSchedule.end, etDate);
-    const nextUnlockParts = getNextOccurrenceEtParts(signupLockSchedule.end, etDate);
-    const latestUnlockMinuteKey = latestUnlockParts ? etPartsToMinuteKey(latestUnlockParts) : null;
-    const nextUnlockMinuteKey = nextUnlockParts ? etPartsToMinuteKey(nextUnlockParts) : null;
-
-    if (Number.isFinite(latestUnlockMinuteKey) && latestUnlockMinuteKey >= resetLockStartedMinuteKey) {
-        return latestUnlockMinuteKey;
-    }
-    if (Number.isFinite(nextUnlockMinuteKey)) {
-        return nextUnlockMinuteKey;
-    }
-    return null;
-}
-
 function checkAutoLock() {
     refreshDynamicSignupCode();
     const etTime = getCurrentETTime();
-    const currentMinuteKey = nowETMinuteKey(etTime);
+
     const shouldLock = shouldBeLocked();
 
     if (manualOverride && manualOverrideState) {
@@ -1246,26 +1220,6 @@ function checkAutoLock() {
                 isLockedWindow: shouldLock,
                 rosterReleased
             };
-        } else if (String(manualOverrideState).startsWith('reset-lock:')) {
-            const unlockMinuteKey = getResetLockUnlockMinuteKey(etTime);
-            const shouldStayLocked = !Number.isFinite(unlockMinuteKey) || currentMinuteKey < unlockMinuteKey;
-
-            if (shouldStayLocked) {
-                if (!requirePlayerCode) {
-                    requirePlayerCode = true;
-                    saveData();
-                }
-                return {
-                    requirePlayerCode: true,
-                    manualOverride: true,
-                    manualOverrideState,
-                    isLockedWindow: shouldLock,
-                    rosterReleased
-                };
-            }
-
-            manualOverride = false;
-            manualOverrideState = null;
         }
     }
 
@@ -1502,8 +1456,8 @@ async function checkWeeklyReset() {
         darkTeam: []
     };
 
-    manualOverride = true;
-    manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`;
+    manualOverride = false;
+    manualOverrideState = null;
     requirePlayerCode = true;
     maintenanceMode = false;
     clearAnnouncementState();
@@ -3237,34 +3191,6 @@ function normalizePhoneDigits(phone) {
     return cleaned;
 }
 
-function getGameStartEtDate() {
-    const safeDate = String(gameDate || '').trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) return null;
-
-    const [year, month, day] = safeDate.split('-').map(value => parseInt(value, 10));
-    if (![year, month, day].every(Number.isFinite)) return null;
-
-    const parsedTime = parseGameTimeString(gameTime);
-    return new Date(year, month - 1, day, parsedTime.hour24, parsedTime.minute, 0, 0);
-}
-
-function getCancellationTimingStatus(etNow = getCurrentETTime()) {
-    const gameStart = getGameStartEtDate();
-    if (!gameStart) {
-        return {
-            gameStart: null,
-            hoursUntilGame: null,
-            isLateCancelWindow: false
-        };
-    }
-
-    const hoursUntilGame = (gameStart.getTime() - etNow.getTime()) / (1000 * 60 * 60);
-    return {
-        gameStart,
-        hoursUntilGame,
-        isLateCancelWindow: hoursUntilGame < 3
-    };
-}
 
 function appendCancellationLog(entry) {
     const normalized = {
@@ -3463,15 +3389,43 @@ function extractWaitlistPlayerToPromote() {
     return player || null;
 }
 
-function syncCurrentWeekTeamsFromPlayers() {
-    const whitePlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'White') : [];
-    const darkPlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'Dark') : [];
+function buildPromotedPlayerFromWaitlist(waitlistPlayer, overrides = {}) {
+    if (!waitlistPlayer) return null;
+    return hydratePlayerRatingProfile({
+        id: waitlistPlayer.id,
+        firstName: waitlistPlayer.firstName,
+        lastName: waitlistPlayer.lastName,
+        phone: waitlistPlayer.phone,
+        paymentMethod: waitlistPlayer.paymentMethod,
+        paid: false,
+        paidAmount: null,
+        rating: parseInt(waitlistPlayer.rating) || 5,
+        skatingRating: waitlistPlayer.skatingRating,
+        puckSkillsRating: waitlistPlayer.puckSkillsRating,
+        hockeySenseRating: waitlistPlayer.hockeySenseRating,
+        conditioningRating: waitlistPlayer.conditioningRating,
+        effortRating: waitlistPlayer.effortRating,
+        levelPlayed: waitlistPlayer.levelPlayed,
+        peerComparison: waitlistPlayer.peerComparison,
+        confidenceLevel: waitlistPlayer.confidenceLevel,
+        selfRatingRaw: waitlistPlayer.selfRatingRaw,
+        derivedRating: waitlistPlayer.derivedRating,
+        finalRating: waitlistPlayer.finalRating,
+        isGoalie: waitlistPlayer.isGoalie,
+        bypassAutoPromote: false,
+        team: null,
+        registeredAt: new Date().toISOString(),
+        rulesAgreed: true,
+        ...overrides
+    });
+}
 
-    currentWeekData = {
-        ...(currentWeekData || {}),
-        whiteTeam: whitePlayers.map(player => ({ ...player })),
-        darkTeam: darkPlayers.map(player => ({ ...player }))
-    };
+function getSubbedForName(player) {
+    const direct = String(player?.subbedForName || '').trim();
+    if (direct) return direct;
+    const first = String(player?.subbedForFirstName || '').trim();
+    const last = String(player?.subbedForLastName || '').trim();
+    return `${first} ${last}`.trim();
 }
 
 function isDuplicatePlayer(firstName, lastName, phone) {
@@ -4137,14 +4091,19 @@ function buildPublicRosterPayload() {
 
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
+        const subbedForName = getSubbedForName(p);
+        const publicLastName = subbedForName
+            ? `${p.lastName} (sub for ${subbedForName})`
+            : p.lastName;
         return {
             id: p.id,
             firstName: p.firstName,
-            lastName: p.lastName,
+            lastName: publicLastName,
             isGoalie: !!p.isGoalie,
             cancelled,
             owes: cancelled,
-            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
+            subbedForName: subbedForName || null,
+            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(publicLastName || '').toLowerCase() === 'ly')
         };
     };
 
@@ -4650,10 +4609,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    const cancellationTiming = getCancellationTimingStatus();
-    const isLateCancelWindow = foundSource === 'players' && !!cancellationTiming.isLateCancelWindow;
-
-    if (isLateCancelWindow) {
+    if (getEffectiveRosterReleasedState()) {
         const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
             String(item?.id) === String(foundPlayer.id) &&
             item?.action === 'late_cancel_no_show_owed'
@@ -4682,17 +4638,13 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                 });
             } catch (err) {
                 console.error('Error logging late cancel attempt:', err.message);
-                return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
             }
         }
 
-        return res.json({
-            success: true,
-            lateCancel: true,
+        return res.status(403).json({
+            error: "Cancellation is closed because the roster has been released. No-show owes.",
             noShowOwes: true,
-            policy: NO_SHOW_POLICY_TEXT,
-            message: "Cancellation recorded. Late cancel / no-show owes.",
-            spotsAvailable: playerSpots
+            policy: NO_SHOW_POLICY_TEXT
         });
     }
 
@@ -4719,46 +4671,11 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                 players.splice(playerIndex, 1);
                 playerSpots++;
 
-                const removedPlayerTeam = player.team === 'White' || player.team === 'Dark' ? player.team : null;
-                const rosterWasReleased = getEffectiveRosterReleasedState();
                 const waitlistPlayer = extractWaitlistPlayerToPromote();
                 if (waitlistPlayer) {
-                    const assignedTeam = rosterWasReleased && removedPlayerTeam ? removedPlayerTeam : null;
-
-                    promotedPlayer = hydratePlayerRatingProfile({
-                        id: waitlistPlayer.id,
-                        firstName: waitlistPlayer.firstName,
-                        lastName: waitlistPlayer.lastName,
-                        phone: waitlistPlayer.phone,
-                        paymentMethod: waitlistPlayer.paymentMethod,
-                        paid: false,
-                        paidAmount: null,
-                        rating: parseInt(waitlistPlayer.rating) || 5,
-                        skatingRating: waitlistPlayer.skatingRating,
-                        puckSkillsRating: waitlistPlayer.puckSkillsRating,
-                        hockeySenseRating: waitlistPlayer.hockeySenseRating,
-                        conditioningRating: waitlistPlayer.conditioningRating,
-                        effortRating: waitlistPlayer.effortRating,
-                        levelPlayed: waitlistPlayer.levelPlayed,
-                        peerComparison: waitlistPlayer.peerComparison,
-                        confidenceLevel: waitlistPlayer.confidenceLevel,
-                        selfRatingRaw: waitlistPlayer.selfRatingRaw,
-                        derivedRating: waitlistPlayer.derivedRating,
-                        finalRating: waitlistPlayer.finalRating,
-                        isGoalie: waitlistPlayer.isGoalie,
-                        team: assignedTeam,
-                        registeredAt: new Date().toISOString(),
-                        rulesAgreed: true
-                    });
-
+                    promotedPlayer = buildPromotedPlayerFromWaitlist(waitlistPlayer);
                     players.push(promotedPlayer);
                     playerSpots--;
-
-                    if (assignedTeam) {
-                        syncCurrentWeekTeamsFromPlayers();
-                    }
-                } else if (rosterWasReleased && removedPlayerTeam) {
-                    syncCurrentWeekTeamsFromPlayers();
                 }
             }, {
                 playerId: player.id,
@@ -4771,7 +4688,6 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
-            lateCancel: false,
             message: "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
                 firstName: promotedPlayer.firstName,
@@ -4812,7 +4728,6 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
-            lateCancel: false,
             message: "Waitlist registration cancelled successfully.",
             fromWaitlist: true
         });
@@ -5981,17 +5896,47 @@ app.post('/api/admin/remove-player', async (req, res) => {
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
     if (index === -1) return res.status(404).json({ error: "Player not found" });
     const player = players[index];
+    let promotedPlayer = null;
     try {
         await runProtectedMutation('remove-player', req, async () => {
             const removedPlayer = players.splice(index, 1)[0];
             appendCancellationLog({ id: removedPlayer.id, firstName: removedPlayer.firstName, lastName: removedPlayer.lastName, phone: removedPlayer.phone, rating: removedPlayer.rating, isGoalie: removedPlayer.isGoalie, paymentMethod: removedPlayer.paymentMethod, source: 'players', action: 'removed', cancelledBy: 'admin', cancelledAt: new Date().toISOString() });
             if (!removedPlayer.isGoalie) playerSpots++;
-        }, { playerId: idToRemove });
+
+            const shouldAutoSubFromWaitlist = getEffectiveRosterReleasedState();
+            if (shouldAutoSubFromWaitlist) {
+                const waitlistPlayer = extractWaitlistPlayerToPromote();
+                if (waitlistPlayer) {
+                    promotedPlayer = buildPromotedPlayerFromWaitlist(waitlistPlayer, {
+                        team: removedPlayer.team || null,
+                        subbedForPlayerId: removedPlayer.id,
+                        subbedForFirstName: removedPlayer.firstName,
+                        subbedForLastName: removedPlayer.lastName,
+                        subbedForName: `${removedPlayer.firstName || ''} ${removedPlayer.lastName || ''}`.trim(),
+                        subbedInAt: new Date().toISOString(),
+                        subbedInReason: 'admin_remove_after_release'
+                    });
+                    players.push(promotedPlayer);
+                    if (!promotedPlayer.isGoalie) playerSpots = Math.max(0, playerSpots - 1);
+                }
+            }
+        }, { playerId: idToRemove, waitlistPromotion: !!promotedPlayer });
     } catch (err) {
         console.error('Error removing player:', err);
         return res.status(500).json({ error: "Failed to remove player safely" });
     }
-    res.json({ success: true, spots: playerSpots, removedPlayer: player });
+    res.json({
+        success: true,
+        spots: playerSpots,
+        removedPlayer: player,
+        promotedPlayer: promotedPlayer ? {
+            id: promotedPlayer.id,
+            firstName: promotedPlayer.firstName,
+            lastName: promotedPlayer.lastName,
+            team: promotedPlayer.team,
+            subbedForName: getSubbedForName(promotedPlayer)
+        } : null
+    });
 });
 
 app.post('/api/admin/update-spots', async (req, res) => {
@@ -6089,7 +6034,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: requirePlayerCode, rosterReleased: true });
+        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });
@@ -6109,7 +6054,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             playerSpots = 20; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
+            manualOverride = false; manualOverrideState = null; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             await addAutoPlayers();
