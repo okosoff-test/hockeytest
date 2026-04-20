@@ -3417,6 +3417,17 @@ function extractWaitlistPlayerToPromote() {
     return player || null;
 }
 
+function syncCurrentWeekTeamsFromPlayers() {
+    const whitePlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'White') : [];
+    const darkPlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'Dark') : [];
+
+    currentWeekData = {
+        ...(currentWeekData || {}),
+        whiteTeam: whitePlayers.map(player => ({ ...player })),
+        darkTeam: darkPlayers.map(player => ({ ...player }))
+    };
+}
+
 function isDuplicatePlayer(firstName, lastName, phone) {
     const normalizedName = (capitalizeFullName(firstName) + ' ' + capitalizeFullName(lastName)).toLowerCase().trim();
     const normalizedPhone = normalizePhoneDigits(phone);
@@ -4662,8 +4673,11 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                 players.splice(playerIndex, 1);
                 playerSpots++;
 
+                const removedPlayerTeam = player.team === 'White' || player.team === 'Dark' ? player.team : null;
+                const rosterWasReleased = getEffectiveRosterReleasedState();
                 const waitlistPlayer = extractWaitlistPlayerToPromote();
                 if (waitlistPlayer) {
+                    const assignedTeam = rosterWasReleased && removedPlayerTeam ? removedPlayerTeam : null;
 
                     promotedPlayer = hydratePlayerRatingProfile({
                         id: waitlistPlayer.id,
@@ -4686,13 +4700,19 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                         derivedRating: waitlistPlayer.derivedRating,
                         finalRating: waitlistPlayer.finalRating,
                         isGoalie: waitlistPlayer.isGoalie,
-                        team: null,
+                        team: assignedTeam,
                         registeredAt: new Date().toISOString(),
                         rulesAgreed: true
                     });
 
                     players.push(promotedPlayer);
                     playerSpots--;
+
+                    if (assignedTeam) {
+                        syncCurrentWeekTeamsFromPlayers();
+                    }
+                } else if (rosterWasReleased && removedPlayerTeam) {
+                    syncCurrentWeekTeamsFromPlayers();
                 }
             }, {
                 playerId: player.id,
