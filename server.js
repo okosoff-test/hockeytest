@@ -547,29 +547,6 @@ let currentWeekData = {
     darkTeam: []
 };
 
-function hasReleasedRosterTeams() {
-    return !!(
-        currentWeekData &&
-        (Array.isArray(currentWeekData.whiteTeam) || Array.isArray(currentWeekData.darkTeam)) &&
-        (
-            (Array.isArray(currentWeekData.whiteTeam) && currentWeekData.whiteTeam.length > 0) ||
-            (Array.isArray(currentWeekData.darkTeam) && currentWeekData.darkTeam.length > 0)
-        )
-    );
-}
-
-function hasAssignedRosterPlayers() {
-    return Array.isArray(players) && players.some(player => {
-        const team = String(player && player.team || '').trim().toLowerCase();
-        return team === 'white' || team === 'dark';
-    });
-}
-
-function isRosterReleasedEffective() {
-    return !!rosterReleased || hasReleasedRosterTeams() || hasAssignedRosterPlayers();
-}
-
-
 const MAX_GOALIES = 2;
 const NO_SHOW_POLICY_TEXT = 'Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.';
 
@@ -1301,8 +1278,8 @@ async function autoReleaseRoster() {
             year: year,
             releaseDate: new Date().toISOString(),
             rosterReleaseTime: Date.now(),
-            whiteTeam: teams.whiteTeam.map(player => ({ ...player, team: 'White' })),
-            darkTeam: teams.darkTeam.map(player => ({ ...player, team: 'Dark' }))
+            whiteTeam: teams.whiteTeam,
+            darkTeam: teams.darkTeam
         };
 
         if (pool) {
@@ -3716,7 +3693,7 @@ async function savePaymentReportSnapshot(triggerSource = 'manual') {
                 gameLocation,
                 gameTime,
                 safeGameDate,
-                isRosterReleasedEffective(),
+                rosterReleased,
                 activeWeek,
                 activeYear,
                 new Date()
@@ -4044,6 +4021,78 @@ function getSignupOpenMessageData() {
 // ============================================
 // MODIFIED PUBLIC API - ADD MAINTENANCE MODE & CUSTOM TITLE
 // ============================================
+
+function getEffectiveRosterReleasedState() {
+    const assignedPlayersExist = Array.isArray(players) && players.some(p => p && (p.team === 'White' || p.team === 'Dark'));
+    const savedWhite = Array.isArray(currentWeekData?.whiteTeam) ? currentWeekData.whiteTeam : [];
+    const savedDark = Array.isArray(currentWeekData?.darkTeam) ? currentWeekData.darkTeam : [];
+    return !!(rosterReleased || assignedPlayersExist || savedWhite.length > 0 || savedDark.length > 0);
+}
+
+function isLateCancelledPlayer(player = {}) {
+    const playerId = String(player?.id ?? '').trim();
+    const firstName = String(player?.firstName || '').trim().toLowerCase();
+    const lastName = String(player?.lastName || '').trim().toLowerCase();
+    return Array.isArray(cancelledRegistrations) && cancelledRegistrations.some(entry => {
+        const entryAction = String(entry?.action || '').trim();
+        const sameId = playerId && String(entry?.id ?? '').trim() === playerId;
+        const sameName = firstName && lastName && String(entry?.firstName || '').trim().toLowerCase() == firstName && String(entry?.lastName || '').trim().toLowerCase() == lastName;
+        return (sameId || sameName) && (entryAction === 'late_cancel_no_show_owed' || entryAction === 'cancelled' || entryAction === 'removed');
+    });
+}
+
+function buildPublicRosterPayload() {
+    const sortPlayers = (a, b) => {
+        if (a.isGoalie && !b.isGoalie) return -1;
+        if (!a.isGoalie && b.isGoalie) return 1;
+        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
+        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
+        return nameA.localeCompare(nameB);
+    };
+
+    const sanitizePlayer = (p) => {
+        const cancelled = isLateCancelledPlayer(p);
+        return {
+            firstName: p.firstName,
+            lastName: p.lastName,
+            isGoalie: !!p.isGoalie,
+            cancelled,
+            owes: cancelled,
+            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
+        };
+    };
+
+    let whiteSource = Array.isArray(players) ? players.filter(p => p && p.team === 'White') : [];
+    let darkSource = Array.isArray(players) ? players.filter(p => p && p.team === 'Dark') : [];
+
+    if (!whiteSource.length && !darkSource.length) {
+        whiteSource = Array.isArray(currentWeekData?.whiteTeam) ? currentWeekData.whiteTeam : [];
+        darkSource = Array.isArray(currentWeekData?.darkTeam) ? currentWeekData.darkTeam : [];
+    }
+
+    whiteSource = [...whiteSource].sort(sortPlayers);
+    darkSource = [...darkSource].sort(sortPlayers);
+
+    const activeWhite = whiteSource.filter(p => !isLateCancelledPlayer(p));
+    const activeDark = darkSource.filter(p => !isLateCancelledPlayer(p));
+
+    const avgRating = (team) => {
+        if (!team.length) return '0.0';
+        const total = team.reduce((sum, p) => sum + (parseFloat(p.finalRating ?? p.rating) || 0), 0);
+        return (total / team.length).toFixed(1);
+    };
+
+    return {
+        released: getEffectiveRosterReleasedState(),
+        whiteTeam: whiteSource.map(sanitizePlayer),
+        darkTeam: darkSource.map(sanitizePlayer),
+        whiteActiveCount: activeWhite.length,
+        darkActiveCount: activeDark.length,
+        whiteRating: avgRating(activeWhite),
+        darkRating: avgRating(activeDark)
+    };
+}
+
 app.get('/api/status', (req, res) => {
     const lockStatus = checkAutoLock();
     const etTime = getCurrentETTime();
@@ -4092,7 +4141,7 @@ app.get('/api/status', (req, res) => {
         time: gameTime,
         date: gameDate,
         formattedDate: formatGameDate(gameDate),
-        rosterReleased: isRosterReleasedEffective(),
+        rosterReleased: getEffectiveRosterReleasedState(),
         resetArmed: resetArmed,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         rosterReleaseTime: currentWeekData.rosterReleaseTime,
@@ -4120,7 +4169,7 @@ app.get('/api/status', (req, res) => {
         rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline,
         rosterReleaseLine: signupMessageData.rosterReleaseLine,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
-        cancellationDeadlineLine: 'Cancellation closes at roster release.'
+        cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
     });
 });
 
@@ -4133,7 +4182,7 @@ app.get('/api/waitlist', (req, res) => {
         lastName: p.lastName,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie,
-        canCancel: !isRosterReleasedEffective() && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
+        canCancel: !rosterReleased && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
         // EXCLUDED: rating, phone, paymentMethod
     }));
     
@@ -4144,74 +4193,29 @@ app.get('/api/waitlist', (req, res) => {
         time: gameTime,
         date: gameDate,
         formattedDate: formatGameDate(gameDate),
-        rosterReleased: isRosterReleasedEffective()
+        rosterReleased
     });
 });
 
 app.get('/api/roster', (req, res) => {
-    const rosterReleasedEffective = isRosterReleasedEffective();
-    if (!rosterReleasedEffective) {
+    const rosterPayload = buildPublicRosterPayload();
+    if (!rosterPayload.released) {
         const signupMessageData = getSignupOpenMessageData();
         return res.json({
             released: false,
-            message: "Roster has not been released yet",
-            releaseTime: signupMessageData.rosterReleaseLine || "Teams will be released at the scheduled time"
+            message: 'Roster has not been released yet',
+            releaseTime: signupMessageData.rosterReleaseLine || 'Teams will be released at the scheduled time'
         });
     }
-    
-    const sortPlayers = (a, b) => {
-        if (a.isGoalie && !b.isGoalie) return -1;
-        if (!a.isGoalie && b.isGoalie) return 1;
-        const nameA = (a.firstName + ' ' + a.lastName).toLowerCase();
-        const nameB = (b.firstName + ' ' + b.lastName).toLowerCase();
-        return nameA.localeCompare(nameB);
-    };
-    
-    // STRIP all sensitive data from public roster
-    // Players see: name, goalie status, cancellation status only
-    const cancelledPlayerIds = new Set(
-        (Array.isArray(cancelledRegistrations) ? cancelledRegistrations : [])
-            .filter(item => ['late_cancel_no_show_owed', 'cancelled'].includes(String(item?.action || '')))
-            .map(item => String(item?.id || '').trim())
-            .filter(Boolean)
-    );
 
-    const sanitizePlayer = (p) => ({
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        isGoalie: p.isGoalie,
-        cancelled: cancelledPlayerIds.has(String(p.id || '').trim()),
-        canCancel: !p.isGoalie && !isProtectedPlayer(p)
-        // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone, team
-    });
-
-    let whiteSource = players.filter(p => p.team === 'White');
-    let darkSource = players.filter(p => p.team === 'Dark');
-
-    // Fallback for manual roster releases or older saved states where currentWeekData has the teams
-    // but the in-memory players array does not yet reflect team assignments.
-    if ((!whiteSource.length && !darkSource.length) && currentWeekData && (Array.isArray(currentWeekData.whiteTeam) || Array.isArray(currentWeekData.darkTeam))) {
-        whiteSource = Array.isArray(currentWeekData.whiteTeam) ? currentWeekData.whiteTeam.map(p => ({ ...p, team: 'White' })) : [];
-        darkSource = Array.isArray(currentWeekData.darkTeam) ? currentWeekData.darkTeam.map(p => ({ ...p, team: 'Dark' })) : [];
-    }
-    
-    const whiteTeam = whiteSource.sort(sortPlayers).map(sanitizePlayer);
-    const darkTeam = darkSource.sort(sortPlayers).map(sanitizePlayer);
-    
-    const whiteRating = whiteSource.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
-    const darkRating = darkSource.reduce((sum, p) => sum + (parseInt(p.rating) || 0), 0);
-    const whiteActiveCount = whiteTeam.filter(p => !p.cancelled).length;
-    const darkActiveCount = darkTeam.filter(p => !p.cancelled).length;
-    
     res.json({
         released: true,
-        whiteTeam,
-        darkTeam,
-        whiteActiveCount,
-        darkActiveCount,
-        whiteRating: whiteTeam.length ? (whiteRating / whiteTeam.length).toFixed(1) : '0.0',
-        darkRating: darkTeam.length ? (darkRating / darkTeam.length).toFixed(1) : '0.0',
+        whiteTeam: rosterPayload.whiteTeam,
+        darkTeam: rosterPayload.darkTeam,
+        whiteActiveCount: rosterPayload.whiteActiveCount,
+        darkActiveCount: rosterPayload.darkActiveCount,
+        whiteRating: rosterPayload.whiteRating,
+        darkRating: rosterPayload.darkRating,
         location: gameLocation,
         time: gameTime,
         date: gameDate,
@@ -4320,6 +4324,9 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         directRating
     } = req.body;
 
+
+    const effectiveRosterReleased = getEffectiveRosterReleasedState();
+
     if (!firstName || !lastName || !phone || !paymentMethod) {
         return res.status(400).json({ error: "All fields are required." });
     }
@@ -4358,66 +4365,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
     if (Number.isFinite(submittedRating) && Math.abs(submittedRating - skillProfile.derivedRating) > 0.2) {
         return res.status(400).json({ error: "Skill profile changed. Please review your calculated rating and try again." });
     }
-    if (rosterReleased) {
-        const waitlistPlayer = hydratePlayerRatingProfile({
-            id: Date.now(),
-            firstName: cleanFirstName,
-            lastName: cleanLastName,
-            phone: cleanPhone,
-            paymentMethod,
-            rating: skillProfile.finalRating,
-            finalRating: skillProfile.finalRating,
-            derivedRating: skillProfile.derivedRating,
-            selfRatingRaw: skillProfile.selfRatingRaw,
-            skatingRating: skillProfile.skatingRating,
-            puckSkillsRating: skillProfile.puckSkillsRating,
-            hockeySenseRating: skillProfile.hockeySenseRating,
-            conditioningRating: skillProfile.conditioningRating,
-            effortRating: skillProfile.effortRating,
-            levelPlayed: skillProfile.levelPlayed,
-            peerComparison: skillProfile.peerComparison,
-            confidenceLevel: skillProfile.confidenceLevel,
-            isGoalie: false,
-            bypassAutoPromote: false,
-            joinedAt: new Date()
-        });
 
-        waitlist.push(waitlistPlayer);
-        await saveData();
-
-        if (pool) {
-            try {
-                await pool.query(
-                    `INSERT INTO waitlist (
-                        id, first_name, last_name, phone, payment_method, rating,
-                        skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
-                        level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote
-                    )
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
-                    [
-                        waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
-                        waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
-                        waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
-                        waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
-                        waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false, false
-                    ]
-                );
-            } catch (err) {
-                console.error('Error adding post-release signup to waitlist:', err.message);
-            }
-        }
-
-        return res.json({
-            success: true,
-            inWaitlist: true,
-            waitlistPosition: waitlist.length,
-            rosterReleased: true,
-            message: "Roster already released. You have been added to the waitlist."
-        });
-    }
-
-
-    if (playerSpots <= 0) {
+    if (effectiveRosterReleased || playerSpots <= 0) {
         const waitlistPlayer = hydratePlayerRatingProfile({
             id: Date.now(),
             firstName: cleanFirstName,
@@ -4522,58 +4471,6 @@ app.post('/api/register-final', async (req, res) => {
     if (isDuplicatePlayer(tempData.firstName, tempData.lastName, tempData.phone)) {
         return res.status(400).json({ error: "A player with this name or phone number is already registered." });
     }
-
-    const makeWaitlistPlayer = () => hydratePlayerRatingProfile({
-        id: Date.now(),
-        firstName: tempData.firstName,
-        lastName: tempData.lastName,
-        phone: tempData.phone,
-        paymentMethod: tempData.paymentMethod,
-        rating: tempData.rating,
-        skatingRating: tempData.skatingRating,
-        puckSkillsRating: tempData.puckSkillsRating,
-        hockeySenseRating: tempData.hockeySenseRating,
-        conditioningRating: tempData.conditioningRating,
-        effortRating: tempData.effortRating,
-        levelPlayed: tempData.levelPlayed,
-        peerComparison: tempData.peerComparison,
-        confidenceLevel: tempData.confidenceLevel,
-        selfRatingRaw: tempData.selfRatingRaw,
-        derivedRating: tempData.derivedRating,
-        finalRating: tempData.finalRating,
-        isGoalie: false,
-        bypassAutoPromote: false,
-        joinedAt: new Date()
-    });
-
-    const rosterReleasedEffective = isRosterReleasedEffective();
-
-    if (rosterReleasedEffective || playerSpots <= 0) {
-        const waitlistPlayer = makeWaitlistPlayer();
-        try {
-            await runProtectedMutation('waitlist-signup-post-release', req, async () => {
-                waitlist.push(waitlistPlayer);
-            }, {
-                playerId: waitlistPlayer.id,
-                firstName: waitlistPlayer.firstName,
-                lastName: waitlistPlayer.lastName,
-                rosterReleased,
-                waitlistPosition: waitlist.length + 1
-            });
-        } catch (err) {
-            console.error('Error saving post-release waitlist registration:', err.message);
-            return res.status(500).json({ error: "Registration could not be saved safely. Please try again." });
-        }
-
-        return res.json({
-            success: true,
-            inWaitlist: true,
-            waitlistPosition: waitlist.length,
-            message: rosterReleasedEffective
-                ? "Roster has already been released. You have been added to the waitlist."
-                : "Game is full. You have been added to the waitlist."
-        });
-    }
     
     const newPlayer = hydratePlayerRatingProfile({
         id: Date.now(),
@@ -4667,89 +4564,42 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    const rosterReleasedEffective = isRosterReleasedEffective();
-
-    if (rosterReleasedEffective && playerIndex !== -1) {
-        const rosterPlayer = players[playerIndex];
+    if (getEffectiveRosterReleasedState()) {
         const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
-            String(item?.id) === String(rosterPlayer.id) &&
+            String(item?.id) === String(foundPlayer.id) &&
             item?.action === 'late_cancel_no_show_owed'
         );
-        let promotedPlayer = null;
 
-        try {
-            await runProtectedMutation('player-cancel-post-release', req, async () => {
-                if (!alreadyLoggedLateAttempt) {
+        if (!alreadyLoggedLateAttempt) {
+            try {
+                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
                     appendCancellationLog({
-                        id: rosterPlayer.id,
-                        firstName: rosterPlayer.firstName,
-                        lastName: rosterPlayer.lastName,
-                        phone: rosterPlayer.phone,
-                        rating: rosterPlayer.rating,
-                        isGoalie: rosterPlayer.isGoalie,
-                        paymentMethod: rosterPlayer.paymentMethod,
+                        id: foundPlayer.id,
+                        firstName: foundPlayer.firstName,
+                        lastName: foundPlayer.lastName,
+                        phone: foundPlayer.phone,
+                        rating: foundPlayer.rating,
+                        isGoalie: foundPlayer.isGoalie,
+                        paymentMethod: foundPlayer.paymentMethod,
                         source: foundSource || 'players',
                         action: 'late_cancel_no_show_owed',
                         cancelledBy: 'player',
                         cancelledAt: new Date().toISOString(),
                         notes: NO_SHOW_POLICY_TEXT
                     });
-                }
-
-                const waitlistPlayer = extractWaitlistPlayerToPromote();
-                if (waitlistPlayer) {
-                    promotedPlayer = hydratePlayerRatingProfile({
-                        id: waitlistPlayer.id,
-                        firstName: waitlistPlayer.firstName,
-                        lastName: waitlistPlayer.lastName,
-                        phone: waitlistPlayer.phone,
-                        paymentMethod: waitlistPlayer.paymentMethod,
-                        paid: false,
-                        paidAmount: null,
-                        rating: parseInt(waitlistPlayer.rating) || 5,
-                        skatingRating: waitlistPlayer.skatingRating,
-                        puckSkillsRating: waitlistPlayer.puckSkillsRating,
-                        hockeySenseRating: waitlistPlayer.hockeySenseRating,
-                        conditioningRating: waitlistPlayer.conditioningRating,
-                        effortRating: waitlistPlayer.effortRating,
-                        levelPlayed: waitlistPlayer.levelPlayed,
-                        peerComparison: waitlistPlayer.peerComparison,
-                        confidenceLevel: waitlistPlayer.confidenceLevel,
-                        selfRatingRaw: waitlistPlayer.selfRatingRaw,
-                        derivedRating: waitlistPlayer.derivedRating,
-                        finalRating: waitlistPlayer.finalRating,
-                        isGoalie: waitlistPlayer.isGoalie,
-                        team: rosterPlayer.team || null,
-                        registeredAt: new Date().toISOString(),
-                        rulesAgreed: true,
-                        promotedFromWaitlist: true
-                    });
-                    players.push(promotedPlayer);
-                }
-            }, {
-                playerId: rosterPlayer.id,
-                source: 'players',
-                alreadyLoggedLateAttempt,
-                waitlistPromotion: !!promotedPlayer
-            });
-        } catch (err) {
-            console.error('Error processing post-release cancellation:', err.message);
-            return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
+                }, {
+                    playerId: foundPlayer.id,
+                    source: foundSource || 'players'
+                });
+            } catch (err) {
+                console.error('Error logging late cancel attempt:', err.message);
+            }
         }
 
-        return res.json({
-            success: true,
-            lateCancel: true,
+        return res.status(403).json({
+            error: "Cancellation is closed because the roster has been released. No-show owes.",
             noShowOwes: true,
-            message: alreadyLoggedLateAttempt
-                ? "Late cancellation was already recorded. No-show owes."
-                : "Late cancellation recorded. No-show owes.",
-            policy: NO_SHOW_POLICY_TEXT,
-            promotedPlayer: promotedPlayer ? {
-                firstName: promotedPlayer.firstName,
-                lastName: promotedPlayer.lastName
-            } : null,
-            spotsAvailable: playerSpots
+            policy: NO_SHOW_POLICY_TEXT
         });
     }
 
@@ -6129,26 +5979,13 @@ app.post('/api/admin/release-roster', async (req, res) => {
         await runProtectedMutation('release-roster', req, async () => {
             rosterReleased = true;
             resetArmed = true;
-            // Force the live players array to match the released teams so the public roster
-            // always has team assignments immediately after a manual release.
-            players = [
-                ...teams.whiteTeam.map(player => ({ ...player, team: 'White' })),
-                ...teams.darkTeam.map(player => ({ ...player, team: 'Dark' }))
-            ];
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
             announcementText = buildRosterReleasePaymentAnnouncement();
-            currentWeekData = {
-                weekNumber: week,
-                year,
-                releaseDate: new Date().toISOString(),
-                rosterReleaseTime: Date.now(),
-                whiteTeam: teams.whiteTeam.map(player => ({ ...player, team: 'White' })),
-                darkTeam: teams.darkTeam.map(player => ({ ...player, team: 'Dark' }))
-            };
+            currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: false, rosterReleased: true });
+        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });
