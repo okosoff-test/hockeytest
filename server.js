@@ -701,7 +701,6 @@ function buildRosterReleasePaymentAnnouncement() {
         ? `Payments must be received prior to stepping on the ice. E-transfer to ${email}. No Show Owes!`
         : 'Payments must be received prior to stepping on the ice. No Show Owes!';
 }
-}
 
 function clearAnnouncementState() {
     announcementEnabled = false;
