@@ -1189,10 +1189,36 @@ function shouldBeLocked() {
     return isNowInWindow(signupLockSchedule.start, signupLockSchedule.end);
 }
 
+function getResetLockStartedMinuteKey() {
+    const state = String(manualOverrideState || '').trim();
+    const match = state.match(/^reset-lock:(\d{12})$/);
+    return match ? Number(match[1]) : null;
+}
+
+function getResetLockUnlockMinuteKey(etDate = getCurrentETTime()) {
+    if (!signupLockSchedule || !signupLockSchedule.end) return null;
+
+    const resetLockStartedMinuteKey = getResetLockStartedMinuteKey();
+    if (!Number.isFinite(resetLockStartedMinuteKey)) return null;
+
+    const latestUnlockParts = getLatestOccurrenceEtParts(signupLockSchedule.end, etDate);
+    const nextUnlockParts = getNextOccurrenceEtParts(signupLockSchedule.end, etDate);
+    const latestUnlockMinuteKey = latestUnlockParts ? etPartsToMinuteKey(latestUnlockParts) : null;
+    const nextUnlockMinuteKey = nextUnlockParts ? etPartsToMinuteKey(nextUnlockParts) : null;
+
+    if (Number.isFinite(latestUnlockMinuteKey) && latestUnlockMinuteKey >= resetLockStartedMinuteKey) {
+        return latestUnlockMinuteKey;
+    }
+    if (Number.isFinite(nextUnlockMinuteKey)) {
+        return nextUnlockMinuteKey;
+    }
+    return null;
+}
+
 function checkAutoLock() {
     refreshDynamicSignupCode();
     const etTime = getCurrentETTime();
-
+    const currentMinuteKey = nowETMinuteKey(etTime);
     const shouldLock = shouldBeLocked();
 
     if (manualOverride && manualOverrideState) {
@@ -1220,6 +1246,26 @@ function checkAutoLock() {
                 isLockedWindow: shouldLock,
                 rosterReleased
             };
+        } else if (String(manualOverrideState).startsWith('reset-lock:')) {
+            const unlockMinuteKey = getResetLockUnlockMinuteKey(etTime);
+            const shouldStayLocked = !Number.isFinite(unlockMinuteKey) || currentMinuteKey < unlockMinuteKey;
+
+            if (shouldStayLocked) {
+                if (!requirePlayerCode) {
+                    requirePlayerCode = true;
+                    saveData();
+                }
+                return {
+                    requirePlayerCode: true,
+                    manualOverride: true,
+                    manualOverrideState,
+                    isLockedWindow: shouldLock,
+                    rosterReleased
+                };
+            }
+
+            manualOverride = false;
+            manualOverrideState = null;
         }
     }
 
@@ -1456,8 +1502,8 @@ async function checkWeeklyReset() {
         darkTeam: []
     };
 
-    manualOverride = false;
-    manualOverrideState = null;
+    manualOverride = true;
+    manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`;
     requirePlayerCode = true;
     maintenanceMode = false;
     clearAnnouncementState();
@@ -3191,6 +3237,34 @@ function normalizePhoneDigits(phone) {
     return cleaned;
 }
 
+function getGameStartEtDate() {
+    const safeDate = String(gameDate || '').trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(safeDate)) return null;
+
+    const [year, month, day] = safeDate.split('-').map(value => parseInt(value, 10));
+    if (![year, month, day].every(Number.isFinite)) return null;
+
+    const parsedTime = parseGameTimeString(gameTime);
+    return new Date(year, month - 1, day, parsedTime.hour24, parsedTime.minute, 0, 0);
+}
+
+function getCancellationTimingStatus(etNow = getCurrentETTime()) {
+    const gameStart = getGameStartEtDate();
+    if (!gameStart) {
+        return {
+            gameStart: null,
+            hoursUntilGame: null,
+            isLateCancelWindow: false
+        };
+    }
+
+    const hoursUntilGame = (gameStart.getTime() - etNow.getTime()) / (1000 * 60 * 60);
+    return {
+        gameStart,
+        hoursUntilGame,
+        isLateCancelWindow: hoursUntilGame < 3
+    };
+}
 
 function appendCancellationLog(entry) {
     const normalized = {
@@ -3387,6 +3461,17 @@ function extractWaitlistPlayerToPromote() {
     if (index === -1) return null;
     const [player] = waitlist.splice(index, 1);
     return player || null;
+}
+
+function syncCurrentWeekTeamsFromPlayers() {
+    const whitePlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'White') : [];
+    const darkPlayers = Array.isArray(players) ? players.filter(p => p && p.team === 'Dark') : [];
+
+    currentWeekData = {
+        ...(currentWeekData || {}),
+        whiteTeam: whitePlayers.map(player => ({ ...player })),
+        darkTeam: darkPlayers.map(player => ({ ...player }))
+    };
 }
 
 function isDuplicatePlayer(firstName, lastName, phone) {
@@ -4565,16 +4650,58 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(401).json({ error: "Phone number does not match registration." });
     }
 
-    const rosterAlreadyReleased = getEffectiveRosterReleasedState();
+    const cancellationTiming = getCancellationTimingStatus();
+    const isLateCancelWindow = foundSource === 'players' && !!cancellationTiming.isLateCancelWindow;
+
+    if (isLateCancelWindow) {
+        const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
+            String(item?.id) === String(foundPlayer.id) &&
+            item?.action === 'late_cancel_no_show_owed'
+        );
+
+        if (!alreadyLoggedLateAttempt) {
+            try {
+                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
+                    appendCancellationLog({
+                        id: foundPlayer.id,
+                        firstName: foundPlayer.firstName,
+                        lastName: foundPlayer.lastName,
+                        phone: foundPlayer.phone,
+                        rating: foundPlayer.rating,
+                        isGoalie: foundPlayer.isGoalie,
+                        paymentMethod: foundPlayer.paymentMethod,
+                        source: foundSource || 'players',
+                        action: 'late_cancel_no_show_owed',
+                        cancelledBy: 'player',
+                        cancelledAt: new Date().toISOString(),
+                        notes: NO_SHOW_POLICY_TEXT
+                    });
+                }, {
+                    playerId: foundPlayer.id,
+                    source: foundSource || 'players'
+                });
+            } catch (err) {
+                console.error('Error logging late cancel attempt:', err.message);
+                return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
+            }
+        }
+
+        return res.json({
+            success: true,
+            lateCancel: true,
+            noShowOwes: true,
+            policy: NO_SHOW_POLICY_TEXT,
+            message: "Cancellation recorded. Late cancel / no-show owes.",
+            spotsAvailable: playerSpots
+        });
+    }
 
     if (playerIndex !== -1) {
         const player = players[playerIndex];
-        const removedTeam = player.team || null;
         let promotedPlayer = null;
-        const lateCancel = !!rosterAlreadyReleased;
 
         try {
-            await runProtectedMutation(lateCancel ? 'player-cancel-late' : 'player-cancel', req, async () => {
+            await runProtectedMutation('player-cancel', req, async () => {
                 appendCancellationLog({
                     id: player.id,
                     firstName: player.firstName,
@@ -4584,17 +4711,20 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                     isGoalie: player.isGoalie,
                     paymentMethod: player.paymentMethod,
                     source: 'players',
-                    action: lateCancel ? 'late_cancel_no_show_owed' : 'cancelled',
+                    action: 'cancelled',
                     cancelledBy: 'player',
-                    cancelledAt: new Date().toISOString(),
-                    notes: lateCancel ? NO_SHOW_POLICY_TEXT : undefined
+                    cancelledAt: new Date().toISOString()
                 });
 
                 players.splice(playerIndex, 1);
-                if (!player.isGoalie) playerSpots++;
+                playerSpots++;
 
+                const removedPlayerTeam = player.team === 'White' || player.team === 'Dark' ? player.team : null;
+                const rosterWasReleased = getEffectiveRosterReleasedState();
                 const waitlistPlayer = extractWaitlistPlayerToPromote();
                 if (waitlistPlayer) {
+                    const assignedTeam = rosterWasReleased && removedPlayerTeam ? removedPlayerTeam : null;
+
                     promotedPlayer = hydratePlayerRatingProfile({
                         id: waitlistPlayer.id,
                         firstName: waitlistPlayer.firstName,
@@ -4616,23 +4746,23 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                         derivedRating: waitlistPlayer.derivedRating,
                         finalRating: waitlistPlayer.finalRating,
                         isGoalie: waitlistPlayer.isGoalie,
-                        team: lateCancel ? removedTeam : null,
+                        team: assignedTeam,
                         registeredAt: new Date().toISOString(),
                         rulesAgreed: true
                     });
 
-                    if (lateCancel && removedTeam) {
-                        promotedPlayer.subbedFor = `${player.firstName} ${player.lastName}`.trim();
-                    }
-
                     players.push(promotedPlayer);
-                    if (!promotedPlayer.isGoalie) playerSpots--;
+                    playerSpots--;
+
+                    if (assignedTeam) {
+                        syncCurrentWeekTeamsFromPlayers();
+                    }
+                } else if (rosterWasReleased && removedPlayerTeam) {
+                    syncCurrentWeekTeamsFromPlayers();
                 }
             }, {
                 playerId: player.id,
-                lateCancel,
-                waitlistPromotion: !!promotedPlayer,
-                removedTeam
+                waitlistPromotion: !!promotedPlayer
             });
         } catch (err) {
             console.error('Error cancelling registration:', err.message);
@@ -4641,15 +4771,11 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
-            lateCancel,
-            noShowOwes: lateCancel,
-            policy: lateCancel ? NO_SHOW_POLICY_TEXT : undefined,
-            message: lateCancel ? "Late cancellation recorded successfully." : "Registration cancelled successfully.",
+            lateCancel: false,
+            message: "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
                 firstName: promotedPlayer.firstName,
-                lastName: promotedPlayer.lastName,
-                team: promotedPlayer.team || null,
-                subbedFor: promotedPlayer.subbedFor || null
+                lastName: promotedPlayer.lastName
             } : null,
             spotsAvailable: playerSpots
         });
@@ -4686,6 +4812,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
         return res.json({
             success: true,
+            lateCancel: false,
             message: "Waitlist registration cancelled successfully.",
             fromWaitlist: true
         });
@@ -5962,7 +6089,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
-        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: true, rosterReleased: true });
+        res.json({ success: true, message: "Roster released successfully. Reset arm is now ON.", whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam, whiteRating: teams.whiteRating.toFixed(1), darkRating: teams.darkRating.toFixed(1), signupLocked: requirePlayerCode, rosterReleased: true });
     } catch (error) {
         console.error('Release roster error:', error);
         res.status(500).json({ error: "Server error: " + error.message });
@@ -5982,7 +6109,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             playerSpots = 20; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            manualOverride = false; manualOverrideState = null; requirePlayerCode = true; clearAnnouncementState();
+            manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             await addAutoPlayers();
