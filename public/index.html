@@ -58,43 +58,43 @@
         
 
         .container {
-            width: 100%;
-            max-width: 900px;
-            background: var(--card-bg);
-            padding: 30px;
-            border-radius: 15px;
+        width: 100%;
+        max-width: clamp(320px, 92vw, 900px);
+        background: var(--card-bg);
+        padding: clamp(16px, 3.6vw, 30px);
+        border-radius: clamp(12px, 2vw, 15px);
             box-shadow: 0 10px 30px rgba(0,0,0,0.5);
             border: 1px solid #444;
         }
 
         h1 {
-            text-align: center;
-            color: var(--accent);
-            margin-bottom: 5px;
-            text-transform: uppercase;
-            font-size: clamp(1.7rem, 4.6vw, 2rem);
-            letter-spacing: clamp(1px, 0.35vw, 2px);
-            line-height: 1.1;
-        }
+        text-align: center;
+        color: var(--accent);
+        margin-bottom: 5px;
+        text-transform: uppercase;
+        letter-spacing: clamp(1px, 0.35vw, 2px);
+        font-size: clamp(1.65rem, 4.8vw, 2rem);
+        line-height: 1.1;
+    }
 
         .game-info {
-            background: linear-gradient(135deg, #2a2a2a, #333);
-            border: 2px solid var(--accent);
-            border-radius: 10px;
-            padding: 15px;
-            margin: 20px 0;
-            text-align: center;
-        }
+        background: linear-gradient(135deg, #2a2a2a, #333);
+        border: 2px solid var(--accent);
+        border-radius: clamp(10px, 2vw, 14px);
+        padding: clamp(14px, 3vw, 18px);
+        margin: clamp(14px, 3vw, 20px) 0;
+        text-align: center;
+    }
 
         .game-date {
-            font-size: 1.1rem;
+            font-size: clamp(0.95rem, 2.7vw, 1.1rem);
             color: #fff;
             margin-bottom: 5px;
             font-weight: bold;
         }
 
         .game-location {
-            font-size: 1.3rem;
+            font-size: clamp(1.2rem, 4vw, 1.7rem);
             font-weight: bold;
             color: var(--accent);
             margin-bottom: 5px;
@@ -106,22 +106,22 @@
         }
 
         .spots-container {
-            display: grid;
-            grid-template-columns: 1fr;
-            gap: 15px;
-            margin: 20px 0;
-        }
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: clamp(12px, 2.5vw, 15px);
+        margin: clamp(16px, 3vw, 20px) 0;
+    }
 
         .spot-counter {
-            background: linear-gradient(135deg, #333, #444);
-            padding: 20px;
-            border-radius: 10px;
-            text-align: center;
-            border: 2px solid var(--accent);
-        }
+        background: linear-gradient(135deg, #333, #444);
+        padding: clamp(16px, 3.5vw, 20px);
+        border-radius: clamp(10px, 2vw, 12px);
+        text-align: center;
+        border: 2px solid var(--accent);
+    }
 
         .spot-number {
-            font-size: 3rem;
+            font-size: clamp(2.25rem, 10vw, 3.3rem);
             font-weight: bold;
             color: var(--accent);
         }
@@ -131,7 +131,7 @@
         }
 
         .spot-text { 
-            font-size: 0.9rem; 
+            font-size: clamp(0.82rem, 2.6vw, 0.95rem); 
             color: #ccc; 
             margin-top: 5px;
         }
@@ -147,13 +147,13 @@
         }
 
         .waitlist-mode {
-            background: linear-gradient(135deg, #3a1a1a, #4d2d2d);
-            border: 2px solid #ff6b00;
-            border-radius: 10px;
-            padding: 15px;
-            margin: 15px 0;
-            text-align: center;
-        }
+        background: linear-gradient(135deg, #3a1a1a, #4d2d2d);
+        border: 2px solid #ff6b00;
+        border-radius: clamp(10px, 2vw, 14px);
+        padding: clamp(14px, 3vw, 18px);
+        margin: clamp(12px, 2.5vw, 15px) 0;
+        text-align: center;
+    }
 
         .waitlist-mode h3 {
             color: #ff6b00;
@@ -177,17 +177,17 @@
         }
 
         button {
-            width: 100%;
-            padding: 15px;
-            background: var(--accent);
-            color: white;
-            border: none;
-            border-radius: 5px;
-            font-size: 1.1rem;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
+        width: 100%;
+        padding: clamp(12px, 3vw, 15px);
+        background: var(--accent);
+        color: white;
+        border: none;
+        border-radius: clamp(8px, 1.8vw, 10px);
+        font-size: clamp(0.98rem, 2.9vw, 1.1rem);
+        font-weight: bold;
+        cursor: pointer;
+        margin-top: 10px;
+    }
 
         button:hover { background: #ff8533; }
 
