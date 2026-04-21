@@ -1736,13 +1736,9 @@ button {
 
 <style>
 .compact-pay{
-    display:inline-grid;
-    grid-template-columns: 1fr 20px;
-    grid-template-areas:
-        "main plus"
-        "main minus";
-    align-items:stretch;
-    justify-items:stretch;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
@@ -1768,32 +1764,14 @@ button {
     border-radius:0 !important;
 }
 .compact-pay-main{
-    grid-area:main;
     padding:0 8px !important;
     min-width:0;
     min-height:28px;
+    width:100%;
     display:flex;
     align-items:center;
     justify-content:center;
     font-size:0.82rem !important;
-}
-.compact-pay-plus,
-.compact-pay-minus{
-    min-width:20px;
-    width:20px;
-    padding:0 !important;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:0.74rem !important;
-    border-left:1px solid rgba(255,255,255,0.22);
-}
-.compact-pay-plus{
-    grid-area:plus;
-    border-bottom:1px solid rgba(255,255,255,0.22);
-}
-.compact-pay-minus{
-    grid-area:minus;
 }
 .compact-pay-btn:hover{
     background:rgba(255,255,255,0.08);
@@ -1827,6 +1805,74 @@ button {
     outline:none;
     border-color:#ff6b00 !important;
     box-shadow:0 0 0 1px rgba(255,107,0,0.35);
+}
+
+/* payment slider modal */
+.payment-slider-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:10000;
+    padding:20px;
+}
+.payment-slider-modal.active{ display:flex; }
+.payment-slider-card{
+    width:min(360px,100%);
+    background:linear-gradient(135deg,#222,#2f2f2f);
+    border:2px solid var(--accent);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.45);
+}
+.payment-slider-title{
+    color:var(--accent);
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:12px;
+}
+.payment-slider-amount{
+    text-align:center;
+    font-size:1.8rem;
+    font-weight:bold;
+    color:#fff;
+    margin-bottom:14px;
+}
+.payment-slider-input{
+    width:100%;
+    margin:0 0 14px 0 !important;
+    accent-color:#ff6b00;
+}
+.payment-slider-presets{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-bottom:14px;
+}
+.payment-slider-preset{
+    padding:8px 0 !important;
+    margin:0 !important;
+    border-radius:10px !important;
+    font-size:0.85rem !important;
+}
+.payment-slider-actions{
+    display:flex;
+    gap:10px;
+}
+.payment-slider-actions button{
+    flex:1;
+    margin:0 !important;
+}
+.payment-slider-clear{
+    background:#b71c1c !important;
+}
+.payment-slider-cancel{
+    background:#666 !important;
+}
+.payment-slider-save{
+    background:#2e7d32 !important;
 }
 </style>
 
@@ -6343,7 +6389,6 @@ Date: ${selectedGameDate}`);
 
                     sortedPlayers.forEach(p => {
                         const tr = document.createElement('tr');
-                        tr.setAttribute('data-player-id', String(p.id));
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
@@ -6362,11 +6407,9 @@ Date: ${selectedGameDate}`);
                                 : 15;
                             paidInput = `
                                 <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid. Tap again to change amount." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
                                 </div>
                             `;
                         }
@@ -7902,6 +7945,8 @@ This backup has fewer records than live data.
 
 
 <script>
+let activePaymentSliderPlayerId = null;
+
 function compactPayFind(playerId){
     return document.querySelector('.compact-pay[data-player-id="' + playerId + '"]');
 }
@@ -7909,25 +7954,54 @@ function compactPayMain(playerId){
     const wrap = compactPayFind(playerId);
     return wrap ? wrap.querySelector('.compact-pay-main') : null;
 }
-async function compactPayAdjust(playerId, delta){
+function getCompactPayAmount(playerId){
     const main = compactPayMain(playerId);
-    const wrap = compactPayFind(playerId);
-    if(!main || !wrap || wrap.dataset.busy === '1') return;
+    let amount = parseFloat(main?.dataset.amount || '15');
+    if(!Number.isFinite(amount) || amount < 0) amount = 15;
+    return amount;
+}
+function setPaymentSliderAmount(amount){
+    const slider = document.getElementById('paymentSliderInput');
+    const valueLabel = document.getElementById('paymentSliderAmount');
+    const numberInput = document.getElementById('paymentSliderNumber');
+    const safe = Math.max(0, Math.min(50, Number(amount) || 0));
+    if(slider) slider.value = String(safe);
+    if(numberInput) numberInput.value = String(safe);
+    if(valueLabel) valueLabel.textContent = '$' + safe;
+}
+function openPaymentSlider(playerId){
+    activePaymentSliderPlayerId = playerId;
+    setPaymentSliderAmount(getCompactPayAmount(playerId));
+    const modal = document.getElementById('paymentSliderModal');
+    if(modal) modal.classList.add('active');
+}
+function closePaymentSlider(){
+    const modal = document.getElementById('paymentSliderModal');
+    if(modal) modal.classList.remove('active');
+    activePaymentSliderPlayerId = null;
+}
+function paymentSliderPreset(amount){
+    setPaymentSliderAmount(amount);
+}
+function handlePaymentSliderInput(value){
+    setPaymentSliderAmount(value);
+}
+async function savePaymentSlider(){
+    if(activePaymentSliderPlayerId == null) return;
+    const wrap = compactPayFind(activePaymentSliderPlayerId);
+    if(wrap && wrap.dataset.busy === '1') return;
 
-    let amount = parseFloat(main.dataset.amount || '15');
-    if(!Number.isFinite(amount) || amount <= 0) amount = 15;
-    amount = Math.max(1, Math.min(99, amount + delta));
-
-    main.dataset.amount = String(amount);
-    main.textContent = '$' + amount;
-
-    if(wrap.classList.contains('is-paid')){
+    const amount = Number(document.getElementById('paymentSliderInput')?.value || 0);
+    if(wrap){
         wrap.dataset.busy = '1';
         wrap.style.opacity = '0.7';
-        try {
-            await updatePaidAmount(playerId, amount);
-            await loadData();
-        } finally {
+    }
+    try {
+        await updatePaidAmount(activePaymentSliderPlayerId, amount);
+        closePaymentSlider();
+        await loadData();
+    } finally {
+        if(wrap){
             delete wrap.dataset.busy;
             wrap.style.opacity = '';
         }
@@ -7937,27 +8011,50 @@ async function compactPayToggle(playerId){
     const main = compactPayMain(playerId);
     const wrap = compactPayFind(playerId);
     if(!main || !wrap || wrap.dataset.busy === '1') return;
-    if (window.compactPayHoldState && Date.now() < (window.compactPayHoldState.suppressClickUntil || 0)) return;
 
-    const currentAmount = parseFloat(main.dataset.amount || '15');
-    const amount = Number.isFinite(currentAmount) && currentAmount > 0 ? currentAmount : 15;
+    if(wrap.classList.contains('is-paid')){
+        openPaymentSlider(playerId);
+        return;
+    }
+
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
-
     try {
-        if(wrap.classList.contains('is-paid')){
-            await updatePaidAmount(playerId, 0);
-        } else {
-            await updatePaidAmount(playerId, amount);
-        }
+        await updatePaidAmount(playerId, 15);
         await loadData();
     } finally {
         delete wrap.dataset.busy;
         wrap.style.opacity = '';
     }
 }
+document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+        closePaymentSlider();
+    }
+});
 </script>
 
+
+
+    <div class="payment-slider-modal" id="paymentSliderModal" onclick="if(event.target === this) closePaymentSlider()">
+        <div class="payment-slider-card">
+            <div class="payment-slider-title">Set Payment Amount</div>
+            <div class="payment-slider-amount" id="paymentSliderAmount">$15</div>
+            <input type="range" id="paymentSliderInput" class="payment-slider-input" min="0" max="50" step="1" value="15" oninput="handlePaymentSliderInput(this.value)">
+            <input type="number" id="paymentSliderNumber" min="0" max="50" step="1" value="15" oninput="handlePaymentSliderInput(this.value)">
+            <div class="payment-slider-presets">
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(10)">$10</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(15)">$15</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(20)">$20</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(0)">$0</button>
+            </div>
+            <div class="payment-slider-actions">
+                <button type="button" class="payment-slider-cancel" onclick="closePaymentSlider()">Cancel</button>
+                <button type="button" class="payment-slider-clear" onclick="paymentSliderPreset(0)">Clear</button>
+                <button type="button" class="payment-slider-save" onclick="savePaymentSlider()">Save</button>
+            </div>
+        </div>
+    </div>
 
 <script id="android-mobile-collapsible-sections-script-v3">
 (function() {
@@ -8102,211 +8199,6 @@ async function compactPayToggle(playerId){
         initMobileCollapsibles();
     }
 })();
-</script>
-
-
-<style id="compact-pay-modal-style-v1">
-.compact-pay-modal-overlay{
-    position:fixed;
-    inset:0;
-    background:rgba(0,0,0,0.72);
-    display:none;
-    align-items:center;
-    justify-content:center;
-    z-index:100000;
-    padding:18px;
-}
-.compact-pay-modal-overlay.active{ display:flex; }
-.compact-pay-modal{
-    width:min(360px, 100%);
-    background:linear-gradient(135deg, #222, #2f2f2f);
-    border:2px solid var(--accent);
-    border-radius:16px;
-    padding:18px;
-    box-shadow:0 18px 40px rgba(0,0,0,0.45);
-}
-.compact-pay-modal h3{
-    margin:0 0 10px 0;
-    color:var(--accent);
-    text-align:center;
-    font-size:1.05rem;
-}
-.compact-pay-modal-sub{
-    color:#bbb;
-    text-align:center;
-    font-size:0.84rem;
-    margin-bottom:12px;
-}
-.compact-pay-modal-presets{
-    display:grid;
-    grid-template-columns:repeat(4, 1fr);
-    gap:8px;
-    margin-bottom:12px;
-}
-.compact-pay-preset-btn{
-    margin:0 !important;
-    padding:10px 8px !important;
-    min-height:40px !important;
-    border-radius:10px !important;
-    font-size:0.86rem !important;
-}
-.compact-pay-modal .custom-amount-input{
-    width:100%;
-    margin:0 0 12px 0 !important;
-    text-align:center;
-    font-size:1.05rem !important;
-    padding:10px !important;
-}
-.compact-pay-modal-actions{
-    display:flex;
-    gap:10px;
-}
-.compact-pay-modal-actions button{
-    flex:1;
-    margin:0 !important;
-}
-.compact-pay-cancel-btn{
-    background:#666 !important;
-}
-.compact-pay-cancel-btn:hover{
-    background:#777 !important;
-}
-@media (max-width:600px){
-    .compact-pay-modal{ padding:14px; border-radius:14px; }
-    .compact-pay-modal-presets{ grid-template-columns:repeat(2, 1fr); }
-}
-</style>
-
-<div class="compact-pay-modal-overlay" id="compactPayModalOverlay">
-    <div class="compact-pay-modal">
-        <h3>Custom Payment Amount</h3>
-        <div class="compact-pay-modal-sub" id="compactPayModalPlayer">Set payment amount</div>
-        <div class="compact-pay-modal-presets">
-            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(5)">$5</button>
-            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(10)">$10</button>
-            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(15)">$15</button>
-            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(20)">$20</button>
-        </div>
-        <input type="number" id="compactPayModalAmount" class="custom-amount-input" min="0" max="999" step="1" placeholder="Enter amount">
-        <div class="compact-pay-modal-actions">
-            <button type="button" class="compact-pay-cancel-btn" onclick="closeCompactPayModal()">Cancel</button>
-            <button type="button" onclick="saveCompactPayModal()">Save</button>
-        </div>
-    </div>
-</div>
-
-<script id="compact-pay-modal-script-v1">
-window.compactPayHoldState = {
-    timer: null,
-    playerId: null,
-    opened: false,
-    suppressClickUntil: 0
-};
-window.compactPayModalState = {
-    playerId: null
-};
-
-function getPlayerNameForCompactPay(playerId){
-    const row = document.querySelector('#playerList tr[data-player-id="' + playerId + '"]');
-    const nameEl = row ? row.querySelector('.player-name-main') : null;
-    return nameEl ? nameEl.textContent.trim() : 'player';
-}
-
-function setCompactPayModalAmount(amount){
-    const input = document.getElementById('compactPayModalAmount');
-    if (input) input.value = amount;
-}
-
-function openCompactPayModal(playerId){
-    const overlay = document.getElementById('compactPayModalOverlay');
-    const input = document.getElementById('compactPayModalAmount');
-    const main = compactPayMain(playerId);
-    const currentAmount = parseFloat((main && main.dataset.amount) || '15');
-    const name = getPlayerNameForCompactPay(playerId);
-
-    window.compactPayModalState.playerId = playerId;
-    document.getElementById('compactPayModalPlayer').textContent = 'Set payment for ' + name;
-    input.value = Number.isFinite(currentAmount) && currentAmount >= 0 ? currentAmount : 15;
-    overlay.classList.add('active');
-    setTimeout(() => {
-        input.focus();
-        input.select();
-    }, 30);
-}
-
-function closeCompactPayModal(){
-    const overlay = document.getElementById('compactPayModalOverlay');
-    overlay.classList.remove('active');
-    window.compactPayModalState.playerId = null;
-}
-
-async function saveCompactPayModal(){
-    const playerId = window.compactPayModalState.playerId;
-    const input = document.getElementById('compactPayModalAmount');
-    const raw = input.value;
-    const amount = parseFloat(raw);
-
-    if (!Number.isFinite(amount) || amount < 0) {
-        alert('Enter a valid amount.');
-        input.focus();
-        return;
-    }
-
-    await updatePaidAmount(playerId, amount);
-    closeCompactPayModal();
-    await loadData();
-}
-
-function clearCompactPayHoldTimer(){
-    if (window.compactPayHoldState.timer) {
-        clearTimeout(window.compactPayHoldState.timer);
-        window.compactPayHoldState.timer = null;
-    }
-}
-
-function compactPayPointerDown(e){
-    const mainBtn = e.target.closest('.compact-pay-main');
-    if (!mainBtn) return;
-    if (e.pointerType === 'mouse' && e.button !== 0) return;
-
-    const wrap = mainBtn.closest('.compact-pay');
-    if (!wrap) return;
-    const playerId = wrap.getAttribute('data-player-id');
-    if (!playerId) return;
-
-    clearCompactPayHoldTimer();
-    window.compactPayHoldState.playerId = playerId;
-    window.compactPayHoldState.opened = false;
-    window.compactPayHoldState.timer = setTimeout(() => {
-        window.compactPayHoldState.opened = true;
-        window.compactPayHoldState.suppressClickUntil = Date.now() + 1000;
-        openCompactPayModal(playerId);
-    }, 3000);
-}
-
-function compactPayPointerEnd(){
-    if (window.compactPayHoldState.opened) {
-        window.compactPayHoldState.suppressClickUntil = Date.now() + 1000;
-    }
-    clearCompactPayHoldTimer();
-}
-
-document.addEventListener('pointerdown', compactPayPointerDown);
-document.addEventListener('pointerup', compactPayPointerEnd);
-document.addEventListener('pointercancel', compactPayPointerEnd);
-document.addEventListener('pointerleave', compactPayPointerEnd);
-
-document.addEventListener('keydown', function(e){
-    if (e.key === 'Escape') closeCompactPayModal();
-    if (e.key === 'Enter' && document.getElementById('compactPayModalOverlay').classList.contains('active')) {
-        e.preventDefault();
-        saveCompactPayModal();
-    }
-});
-
-document.getElementById('compactPayModalOverlay').addEventListener('click', function(e){
-    if (e.target === this) closeCompactPayModal();
-});
 </script>
 
 </body>
