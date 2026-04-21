@@ -1680,7 +1680,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 </div>
             </div>
 
-            <div id="venueWaitlistHome"></div>
             <div class="venue-waitlist-box" id="venueWaitlistBox">
                 <div class="venue-waitlist-header">
                     <div class="venue-waitlist-title">Current Waitlist</div>
@@ -1716,7 +1715,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 </div>
             </div>
         </div>
-        <div id="rosterWaitlistMount"></div>
 
         <!-- Registered Players List -->
         <div class="registered-players-section" id="registeredPlayersSection">
@@ -2876,26 +2874,6 @@ function updateCalculatedRating() {
             }
         }
 
-        function syncVenueWaitlistPlacement(forceRosterReleased = null) {
-            const wrap = document.getElementById('venueWaitlistBox');
-            const home = document.getElementById('venueWaitlistHome');
-            const roster = document.getElementById('rosterDisplay');
-            const mount = document.getElementById('rosterWaitlistMount');
-            const shouldPlaceUnderRoster = forceRosterReleased === null ? !!rosterReleased : !!forceRosterReleased;
-
-            if (!wrap || !home || !roster || !mount) return;
-
-            if (shouldPlaceUnderRoster) {
-                if (wrap.parentNode !== mount) {
-                    mount.appendChild(wrap);
-                }
-            } else {
-                if (wrap.parentNode !== home.parentNode || wrap.previousElementSibling !== home) {
-                    home.insertAdjacentElement('afterend', wrap);
-                }
-            }
-        }
-
         function renderVenueWaitlist(entries) {
             const wrap = document.getElementById('venueWaitlistBox');
             const countEl = document.getElementById('venueWaitlistCount');
@@ -3019,7 +2997,6 @@ function updateCalculatedRating() {
                 } else {
                     document.getElementById('rosterDisplay').classList.remove('active');
                 }
-                syncVenueWaitlistPlacement(rosterReleased);
                 
                 document.getElementById('spotsLeft').innerText = playerSpotsAvailable;
                 const heroJoinBtn = document.getElementById('heroJoinBtn');
