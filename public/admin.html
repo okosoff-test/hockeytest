@@ -2960,66 +2960,64 @@ th, td{padding:2px 3px !important;}
 </style>
 
 
-<style id="android-mobile-collapsible-sections-v3">
-@media (max-width: 700px) {
-    .mobile-collapsible {
-        overflow: hidden;
-    }
+<style id="android-mobile-collapsible-sections-v4">
+.mobile-collapsible {
+    overflow: hidden;
+}
 
-    .mobile-collapse-header {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 10px;
-        cursor: pointer;
-        user-select: none;
-        margin: 0 !important;
-        padding: 2px 0 !important;
-    }
+.mobile-collapse-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+    margin: 0 !important;
+    padding: 2px 0 !important;
+}
 
-    .mobile-collapse-header h3,
-    .mobile-collapse-header .section-header,
-    .mobile-collapse-header .mobile-collapse-title {
-        margin: 0 !important;
-    }
+.mobile-collapse-header h3,
+.mobile-collapse-header .section-header,
+.mobile-collapse-header .mobile-collapse-title {
+    margin: 0 !important;
+}
 
-    .mobile-collapse-chevron {
-        flex: 0 0 auto;
-        width: 22px;
-        height: 22px;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        border-radius: 999px;
-        background: rgba(255,255,255,0.08);
-        font-size: 0.82rem;
-        line-height: 1;
-        transition: transform 0.18s ease;
-    }
+.mobile-collapse-chevron {
+    flex: 0 0 auto;
+    width: 22px;
+    height: 22px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.08);
+    font-size: 0.82rem;
+    line-height: 1;
+    transition: transform 0.18s ease;
+}
 
-    .mobile-collapsible.is-collapsed .mobile-collapse-chevron {
-        transform: rotate(-90deg);
-    }
+.mobile-collapsible.is-collapsed .mobile-collapse-chevron {
+    transform: rotate(-90deg);
+}
 
-    .mobile-collapse-body {
-        margin-top: 8px;
-    }
+.mobile-collapse-body {
+    margin-top: 8px;
+}
 
-    .mobile-collapsible.is-collapsed .mobile-collapse-body {
-        display: none !important;
-    }
+.mobile-collapsible.is-collapsed .mobile-collapse-body {
+    display: none !important;
+}
 
-    .mobile-collapse-summary {
-        display: none;
-        margin-top: 6px;
-        color: #bfc8d4;
-        font-size: 0.66rem;
-        line-height: 1.25;
-    }
+.mobile-collapse-summary {
+    display: none;
+    margin-top: 6px;
+    color: #bfc8d4;
+    font-size: 0.72rem;
+    line-height: 1.25;
+}
 
-    .mobile-collapsible.is-collapsed .mobile-collapse-summary {
-        display: block;
-    }
+.mobile-collapsible.is-collapsed .mobile-collapse-summary {
+    display: block;
 }
 </style>
 
@@ -7720,6 +7718,24 @@ async function compactPayToggle(playerId){
         return window.innerWidth <= MOBILE_BREAKPOINT;
     }
 
+    function ensureRegisteredPlayersCollapsibleSection() {
+        const existing = document.getElementById('registeredPlayersSection');
+        if (existing) return existing;
+
+        const titleEl = document.querySelector('h3.section-header');
+        const playerTable = titleEl ? titleEl.nextElementSibling : null;
+        if (!titleEl || !playerTable || playerTable.tagName !== 'TABLE') return null;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'control-box registered-players-section-admin';
+        wrapper.id = 'registeredPlayersSection';
+
+        titleEl.parentNode.insertBefore(wrapper, titleEl);
+        wrapper.appendChild(titleEl);
+        wrapper.appendChild(playerTable);
+        return wrapper;
+    }
+
     function makeCollapsible(section, opts = {}) {
         if (!section || section.dataset.mobileCollapseReady === '1') return;
 
@@ -7770,7 +7786,7 @@ async function compactPayToggle(playerId){
         section.dataset.mobileCollapseReady = '1';
 
         function applyState(collapsed) {
-            if (isMobileViewport() && collapsed) {
+            if (collapsed) {
                 section.classList.add('is-collapsed');
                 header.setAttribute('aria-expanded', 'false');
             } else {
@@ -7780,7 +7796,6 @@ async function compactPayToggle(playerId){
         }
 
         function toggle() {
-            if (!isMobileViewport()) return;
             const collapsed = !section.classList.contains('is-collapsed');
             applyState(collapsed);
         }
@@ -7798,6 +7813,12 @@ async function compactPayToggle(playerId){
     }
 
     function initMobileCollapsibles() {
+        const registeredPlayersSection = ensureRegisteredPlayersCollapsibleSection();
+        makeCollapsible(registeredPlayersSection, {
+            collapsedByDefault: false,
+            summary: 'Registered players hidden. Tap to expand.'
+        });
+
         makeCollapsible(document.querySelector('.payment-summary-box'), {
             collapsedByDefault: true,
             summary: 'Payment totals hidden. Tap to expand.'
