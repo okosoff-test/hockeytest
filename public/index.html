@@ -1664,7 +1664,8 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     <div class="container" id="playerView">
         <h1 id="pageTitle">Phan's Hockey</h1>
         
-        <div class="game-info">
+        <div id="gameInfoHome"></div>
+        <div class="game-info" id="gameInfoCard">
             <div class="game-date" id="gameDate">Loading...</div>
             <div class="game-location" id="gameLocation">Loading...</div>
             <div class="game-time" id="gameTime">Loading...</div>
@@ -1680,6 +1681,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 </div>
             </div>
 
+            <div id="venueWaitlistHome"></div>
             <div class="venue-waitlist-box" id="venueWaitlistBox">
                 <div class="venue-waitlist-header">
                     <div class="venue-waitlist-title">Current Waitlist</div>
@@ -1715,6 +1717,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 </div>
             </div>
         </div>
+        <div id="rosterGameInfoMount"></div>
 
         <!-- Registered Players List -->
         <div class="registered-players-section" id="registeredPlayersSection">
@@ -2874,6 +2877,26 @@ function updateCalculatedRating() {
             }
         }
 
+        function syncVenueWaitlistPlacement(forceRosterReleased = null) {
+            const gameInfoCard = document.getElementById('gameInfoCard');
+            const home = document.getElementById('gameInfoHome');
+            const roster = document.getElementById('rosterDisplay');
+            const mount = document.getElementById('rosterGameInfoMount');
+            const shouldPlaceUnderRoster = forceRosterReleased === null ? !!rosterReleased : !!forceRosterReleased;
+
+            if (!gameInfoCard || !home || !roster || !mount) return;
+
+            if (shouldPlaceUnderRoster) {
+                if (gameInfoCard.parentNode !== mount) {
+                    mount.appendChild(gameInfoCard);
+                }
+            } else {
+                if (gameInfoCard.parentNode !== home.parentNode || gameInfoCard.previousElementSibling !== home) {
+                    home.insertAdjacentElement('afterend', gameInfoCard);
+                }
+            }
+        }
+
         function renderVenueWaitlist(entries) {
             const wrap = document.getElementById('venueWaitlistBox');
             const countEl = document.getElementById('venueWaitlistCount');
@@ -2997,6 +3020,7 @@ function updateCalculatedRating() {
                 } else {
                     document.getElementById('rosterDisplay').classList.remove('active');
                 }
+                syncVenueWaitlistPlacement(rosterReleased);
                 
                 document.getElementById('spotsLeft').innerText = playerSpotsAvailable;
                 const heroJoinBtn = document.getElementById('heroJoinBtn');
