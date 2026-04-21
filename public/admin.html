@@ -3354,7 +3354,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 
 /* Make payment text column match paid pill text size better */
-#playerList td:nth-child(5){
+#playerList td:nth-child(4){
     font-size: 0.76rem !important;
     line-height: 1 !important;
     color:#fff !important;
@@ -3362,7 +3362,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 
 @media (min-width: 601px){
-    #playerList td:nth-child(5){
+    #playerList td:nth-child(4){
         font-size: 0.78rem !important;
     }
 }
@@ -3589,17 +3589,12 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     }
     #playerList td:nth-child(4),
     #playerList th:nth-child(4) {
-        width:60px !important;
+        width:52px !important;
         text-align:center !important;
     }
     #playerList td:nth-child(5),
     #playerList th:nth-child(5) {
-        width:56px !important;
-        text-align:center !important;
-    }
-    #playerList td:nth-child(6),
-    #playerList th:nth-child(6) {
-        width:58px !important;
+        width:48px !important;
         text-align:center !important;
     }
     #playerList .player-name-main {
@@ -3665,46 +3660,80 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 </style>
 
 
-<style id="admin-registered-action-stack-v1">
+<style id="admin-registered-action-stack-v2">
 #playerList .registered-action-stack {
     display:flex !important;
     flex-direction:column !important;
-    gap:3px !important;
+    gap:2px !important;
     align-items:center !important;
     justify-content:center !important;
 }
 #playerList .registered-action-stack .regular-toggle-btn,
 #playerList .registered-action-stack .remove-btn {
-    width:48px !important;
-    min-width:48px !important;
+    width:46px !important;
+    min-width:46px !important;
+    height:17px !important;
+    min-height:17px !important;
     margin:0 !important;
+    padding:0 4px !important;
     text-align:center !important;
     white-space:nowrap !important;
-}
-#playerList .registered-regular-indicator {
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:100% !important;
-    color:#39d353 !important;
-    font-weight:800 !important;
-    font-size:0.95rem !important;
     line-height:1 !important;
+    border-radius:10px !important;
+    font-size:0.56rem !important;
 }
-#playerList .registered-regular-indicator.inactive {
-    color:#666 !important;
-}
+#playerList .registered-action-stack .regular-toggle-btn { background:#2e7d32 !important; }
+#playerList .registered-action-stack .remove-btn { background:#e53935 !important; }
 @media (max-width:600px){
+    #playerList .registered-action-stack {
+        gap:2px !important;
+    }
     #playerList .registered-action-stack .regular-toggle-btn,
     #playerList .registered-action-stack .remove-btn {
         width:44px !important;
         min-width:44px !important;
-        font-size:0.56rem !important;
-        padding:3px 4px !important;
-        border-radius:6px !important;
+        height:16px !important;
+        min-height:16px !important;
+        font-size:0.54rem !important;
+        padding:0 3px !important;
+        border-radius:9px !important;
     }
-    #playerList .registered-regular-indicator {
-        font-size:0.88rem !important;
+}
+</style>
+
+
+<style id="admin-registered-name-room-v1">
+#playerList .player-name-cell {
+    gap:1px !important;
+    line-height:1 !important;
+}
+#playerList tr td {
+    padding-top:2px !important;
+    padding-bottom:2px !important;
+}
+#playerList .player-name-main {
+    font-size:0.84rem !important;
+}
+#playerList .player-phone-sub {
+    font-size:0.64rem !important;
+}
+#playerList .player-time-sub {
+    font-size:0.52rem !important;
+}
+@media (max-width:600px){
+    #playerList td:first-child,
+    #playerList th:first-child {
+        width:auto !important;
+        max-width:none !important;
+    }
+    #playerList .player-name-main {
+        font-size:0.80rem !important;
+    }
+    #playerList .player-phone-sub {
+        font-size:0.62rem !important;
+    }
+    #playerList .player-time-sub {
+        font-size:0.50rem !important;
     }
 }
 </style>
@@ -4205,7 +4234,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <th class="phone-col-hidden">Phone</th>
                     <th>Rating</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
-                    <th>Regular</th>
                     <th>Action</th>
                 </tr>
             </thead>
@@ -6280,7 +6308,7 @@ Date: ${selectedGameDate}`);
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
                         const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
@@ -6324,11 +6352,6 @@ Date: ${selectedGameDate}`);
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-
-                        const regularIndicator = hideAdminPaymentUi
-                            ? ''
-                            : `<span class="registered-regular-indicator ${regularInfo.active ? '' : 'inactive'}">${regularInfo.active ? '✓' : '—'}</span>`;
-
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -6353,7 +6376,6 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${regularIndicator}</td>
                             <td>${actionCell}</td>
                         `;
                         tbody.appendChild(tr);
