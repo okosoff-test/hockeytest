@@ -3267,33 +3267,16 @@ function getCancellationTimingStatus(etNow = getCurrentETTime()) {
     if (!gameStart) {
         return {
             gameStart: null,
-            gameStartIso: null,
-            cancellationDeadline: null,
-            cancellationDeadlineIso: null,
             hoursUntilGame: null,
-            minutesUntilGame: null,
-            minutesUntilDeadline: null,
-            isLateCancelWindow: false,
-            phase: 'unknown'
+            isLateCancelWindow: false
         };
     }
 
-    const cancellationDeadline = new Date(gameStart.getTime() - (3 * 60 * 60 * 1000));
     const hoursUntilGame = (gameStart.getTime() - etNow.getTime()) / (1000 * 60 * 60);
-    const minutesUntilGame = Math.round((gameStart.getTime() - etNow.getTime()) / 60000);
-    const minutesUntilDeadline = Math.round((cancellationDeadline.getTime() - etNow.getTime()) / 60000);
-    const isLateCancelWindow = minutesUntilDeadline < 0;
-
     return {
         gameStart,
-        gameStartIso: gameStart.toISOString(),
-        cancellationDeadline,
-        cancellationDeadlineIso: cancellationDeadline.toISOString(),
         hoursUntilGame,
-        minutesUntilGame,
-        minutesUntilDeadline,
-        isLateCancelWindow,
-        phase: isLateCancelWindow ? 'late' : 'open'
+        isLateCancelWindow: hoursUntilGame < 3
     };
 }
 
@@ -4266,91 +4249,90 @@ function buildPublicRosterPayload() {
 }
 
 app.get('/api/status', (req, res) => {
-    const lockStatus = checkAutoLock();
-    const etTime = getCurrentETTime();
-    const { week, year } = getWeekNumber(etTime);
-    const signupMessageData = getSignupOpenMessageData();
-    
-    const playerCount = getPlayerCount();
-    const goalieCount = getGoalieCount();
-    
-    // STRIP all sensitive data from public players list
-    // Players see: id, name, goalie status, cancel permission ONLY
-    const publicPlayers = players.map(p => ({
-        id: p.id,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        isGoalie: p.isGoalie,
-        // Phan Ly cannot cancel from signup page - only admin can remove
-        canCancel: !p.isGoalie && !(p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly')
-        // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
-    }));
+    try {
+        const lockStatus = checkAutoLock() || {};
+        const etTime = getCurrentETTime();
+        const { week, year } = getWeekNumber(etTime);
+        const signupMessageData = getSignupOpenMessageData() || {};
 
-    const publicWaitlist = waitlist.map((p, index) => ({
-        id: p.id,
-        position: index + 1,
-        firstName: p.firstName,
-        lastName: p.lastName,
-        fullName: `${p.firstName} ${p.lastName}`.trim(),
-        isGoalie: p.isGoalie
-    }));
-    
-    res.json({
-        playerSpotsRemaining: playerSpots > 0 ? playerSpots : 0,
-        goalieCount: goalieCount,
-        goalieSpotsAvailable: MAX_GOALIES - goalieCount,
-        maxGoalies: MAX_GOALIES,
-        totalPlayers: players.length,
-        isFull: playerSpots === 0,
-        waitlistCount: waitlist.length,
-        waitlist: publicWaitlist,
-        requireCode: requirePlayerCode,
-        signupLocked: requirePlayerCode,
-        isLockedWindow: lockStatus.isLockedWindow,
-        manualOverride: lockStatus.manualOverride,
-        manualOverrideState: lockStatus.manualOverrideState,
-        location: gameLocation,
-        time: gameTime,
-        date: gameDate,
-        formattedDate: formatGameDate(gameDate),
-        rosterReleased: getEffectiveRosterReleasedState(),
-        resetArmed: resetArmed,
-        noShowPolicy: NO_SHOW_POLICY_TEXT,
-        rosterReleaseTime: currentWeekData.rosterReleaseTime,
-        currentWeek: week,
-        currentYear: year,
-        rules: GAME_RULES,
-        players: publicPlayers,  // Sanitized - no ratings, no payment info
-        // NEW FIELDS - ADD THESE
-        maintenanceMode: maintenanceMode,
-        customTitle: customTitle,
-        announcementEnabled: announcementEnabled,
-        announcementText: announcementText,
-        announcementImages: announcementImages,
-        paymentEmail: paymentEmail,
-        arenaOptions: ARENA_OPTIONS,
-        dayTimeOptions: DAY_TIME_OPTIONS,
-        gameDayName: signupMessageData.gameDayName,
-        nextOpenAt: signupMessageData.nextOpenAtIso,
-        nextOpenAtLabel: signupMessageData.nextOpenAtLabel,
-        lockNoticeLine: signupMessageData.lockNoticeLine,
-        openLine: signupMessageData.openLine,
-        noCodeLine: signupMessageData.noCodeLine,
-        rosterReleaseAt: signupMessageData.rosterReleaseAtIso,
-        rosterReleaseLabel: signupMessageData.rosterReleaseLabel,
-        rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline,
-        rosterReleaseLine: signupMessageData.rosterReleaseLine,
-        cancellationTiming: {
-            phase: cancellationTiming.phase,
-            isLateCancelWindow: cancellationTiming.isLateCancelWindow,
-            gameStartAt: cancellationTiming.gameStartIso,
-            cancellationDeadlineAt: cancellationTiming.cancellationDeadlineIso,
-            minutesUntilGame: cancellationTiming.minutesUntilGame,
-            minutesUntilDeadline: cancellationTiming.minutesUntilDeadline
-        },
-        noShowPolicy: NO_SHOW_POLICY_TEXT,
-        cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
-    });
+        const playerCount = typeof getPlayerCount === 'function' ? getPlayerCount() : (Array.isArray(players) ? players.filter(p => !p?.isGoalie).length : 0);
+        const goalieCount = typeof getGoalieCount === 'function' ? getGoalieCount() : (Array.isArray(players) ? players.filter(p => !!p?.isGoalie).length : 0);
+
+        const publicPlayers = (Array.isArray(players) ? players : []).map(p => {
+            const firstName = String(p?.firstName || '');
+            const lastName = String(p?.lastName || '');
+            return {
+                id: p?.id,
+                firstName,
+                lastName,
+                isGoalie: !!p?.isGoalie,
+                canCancel: !p?.isGoalie && !(firstName.toLowerCase() === 'phan' && lastName.toLowerCase() === 'ly')
+            };
+        });
+
+        const publicWaitlist = (Array.isArray(waitlist) ? waitlist : []).map((p, index) => ({
+            id: p?.id,
+            position: index + 1,
+            firstName: String(p?.firstName || ''),
+            lastName: String(p?.lastName || ''),
+            fullName: `${String(p?.firstName || '')} ${String(p?.lastName || '')}`.trim(),
+            isGoalie: !!p?.isGoalie
+        }));
+
+        return res.json({
+            playerSpotsRemaining: playerSpots > 0 ? playerSpots : 0,
+            playerCount,
+            goalieCount,
+            goalieSpotsAvailable: MAX_GOALIES - goalieCount,
+            maxGoalies: MAX_GOALIES,
+            totalPlayers: Array.isArray(players) ? players.length : 0,
+            isFull: playerSpots === 0,
+            waitlistCount: Array.isArray(waitlist) ? waitlist.length : 0,
+            waitlist: publicWaitlist,
+            requireCode: !!requirePlayerCode,
+            signupLocked: !!requirePlayerCode,
+            isLockedWindow: !!lockStatus.isLockedWindow,
+            manualOverride: !!lockStatus.manualOverride,
+            manualOverrideState: lockStatus.manualOverrideState || null,
+            location: gameLocation,
+            time: gameTime,
+            date: gameDate,
+            formattedDate: formatGameDate(gameDate),
+            rosterReleased: getEffectiveRosterReleasedState(),
+            resetArmed: !!resetArmed,
+            noShowPolicy: NO_SHOW_POLICY_TEXT,
+            rosterReleaseTime: currentWeekData?.rosterReleaseTime || null,
+            currentWeek: week,
+            currentYear: year,
+            rules: GAME_RULES,
+            players: publicPlayers,
+            maintenanceMode: !!maintenanceMode,
+            customTitle: customTitle,
+            announcementEnabled: !!announcementEnabled,
+            announcementText: announcementText,
+            announcementImages: Array.isArray(announcementImages) ? announcementImages : [],
+            paymentEmail: paymentEmail,
+            arenaOptions: ARENA_OPTIONS,
+            dayTimeOptions: DAY_TIME_OPTIONS,
+            gameDayName: signupMessageData.gameDayName || getGameDayName(),
+            nextOpenAt: signupMessageData.nextOpenAtIso || null,
+            nextOpenAtLabel: signupMessageData.nextOpenAtLabel || null,
+            lockNoticeLine: signupMessageData.lockNoticeLine || '',
+            openLine: signupMessageData.openLine || '',
+            noCodeLine: signupMessageData.noCodeLine || '',
+            rosterReleaseAt: signupMessageData.rosterReleaseAtIso || null,
+            rosterReleaseLabel: signupMessageData.rosterReleaseLabel || null,
+            rosterReleaseHeadline: signupMessageData.rosterReleaseHeadline || null,
+            rosterReleaseLine: signupMessageData.rosterReleaseLine || null,
+            cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
+        });
+    } catch (err) {
+        console.error('[/api/status] error:', err);
+        return res.status(500).json({
+            error: 'Failed to build public status payload.',
+            detail: err && err.message ? err.message : 'Unknown status error'
+        });
+    }
 });
 
 app.get('/api/waitlist', (req, res) => {
