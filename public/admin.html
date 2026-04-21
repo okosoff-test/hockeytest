@@ -340,6 +340,24 @@
             border-bottom: 2px solid #444;
         }
 
+
+        .registered-players-box {
+            background: linear-gradient(135deg, #2a1a1a, #332222);
+            border: 2px solid var(--accent);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        .registered-players-box .section-header {
+            margin: 0 0 15px 0;
+            padding-bottom: 10px;
+        }
+
+        .registered-players-box table {
+            margin-top: 0;
+        }
+
         .waitlist-section {
             background: linear-gradient(135deg, #3a1a1a, #2d1a1a);
             border: 2px solid #ff4444;
@@ -1718,13 +1736,9 @@ button {
 
 <style>
 .compact-pay{
-    display:inline-grid;
-    grid-template-columns: 1fr 20px;
-    grid-template-areas:
-        "main plus"
-        "main minus";
-    align-items:stretch;
-    justify-items:stretch;
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
     border-radius:8px;
     overflow:hidden;
     white-space:nowrap;
@@ -1750,32 +1764,14 @@ button {
     border-radius:0 !important;
 }
 .compact-pay-main{
-    grid-area:main;
     padding:0 8px !important;
     min-width:0;
     min-height:28px;
+    width:100%;
     display:flex;
     align-items:center;
     justify-content:center;
     font-size:0.82rem !important;
-}
-.compact-pay-plus,
-.compact-pay-minus{
-    min-width:20px;
-    width:20px;
-    padding:0 !important;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    font-size:0.74rem !important;
-    border-left:1px solid rgba(255,255,255,0.22);
-}
-.compact-pay-plus{
-    grid-area:plus;
-    border-bottom:1px solid rgba(255,255,255,0.22);
-}
-.compact-pay-minus{
-    grid-area:minus;
 }
 .compact-pay-btn:hover{
     background:rgba(255,255,255,0.08);
@@ -1809,6 +1805,74 @@ button {
     outline:none;
     border-color:#ff6b00 !important;
     box-shadow:0 0 0 1px rgba(255,107,0,0.35);
+}
+
+/* payment slider modal */
+.payment-slider-modal{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.7);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:10000;
+    padding:20px;
+}
+.payment-slider-modal.active{ display:flex; }
+.payment-slider-card{
+    width:min(360px,100%);
+    background:linear-gradient(135deg,#222,#2f2f2f);
+    border:2px solid var(--accent);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.45);
+}
+.payment-slider-title{
+    color:var(--accent);
+    font-weight:bold;
+    text-align:center;
+    margin-bottom:12px;
+}
+.payment-slider-amount{
+    text-align:center;
+    font-size:1.8rem;
+    font-weight:bold;
+    color:#fff;
+    margin-bottom:14px;
+}
+.payment-slider-input{
+    width:100%;
+    margin:0 0 14px 0 !important;
+    accent-color:#ff6b00;
+}
+.payment-slider-presets{
+    display:grid;
+    grid-template-columns:repeat(4,1fr);
+    gap:8px;
+    margin-bottom:14px;
+}
+.payment-slider-preset{
+    padding:8px 0 !important;
+    margin:0 !important;
+    border-radius:10px !important;
+    font-size:0.85rem !important;
+}
+.payment-slider-actions{
+    display:flex;
+    gap:10px;
+}
+.payment-slider-actions button{
+    flex:1;
+    margin:0 !important;
+}
+.payment-slider-clear{
+    background:#b71c1c !important;
+}
+.payment-slider-cancel{
+    background:#666 !important;
+}
+.payment-slider-save{
+    background:#2e7d32 !important;
 }
 </style>
 
@@ -4227,19 +4291,21 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             <button class="add-btn" onclick="addPlayer()">Add Player</button>
         </div>
 
-        <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th class="phone-col-hidden">Phone</th>
-                    <th>Rating</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
-                    <th>Action</th>
-                </tr>
-            </thead>
-            <tbody id="playerList"></tbody>
-        </table>
+        <div class="registered-players-box">
+            <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th class="phone-col-hidden">Phone</th>
+                        <th>Rating</th>
+                        <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody id="playerList"></tbody>
+            </table>
+        </div>
 
         <!-- Payment Summary -->
         <div class="payment-summary-box">
@@ -6341,11 +6407,9 @@ Date: ${selectedGameDate}`);
                                 : 15;
                             paidInput = `
                                 <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid. Tap again to change amount." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         $${compactAmount}
                                     </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
                                 </div>
                             `;
                         }
@@ -7881,6 +7945,8 @@ This backup has fewer records than live data.
 
 
 <script>
+let activePaymentSliderPlayerId = null;
+
 function compactPayFind(playerId){
     return document.querySelector('.compact-pay[data-player-id="' + playerId + '"]');
 }
@@ -7888,25 +7954,54 @@ function compactPayMain(playerId){
     const wrap = compactPayFind(playerId);
     return wrap ? wrap.querySelector('.compact-pay-main') : null;
 }
-async function compactPayAdjust(playerId, delta){
+function getCompactPayAmount(playerId){
     const main = compactPayMain(playerId);
-    const wrap = compactPayFind(playerId);
-    if(!main || !wrap || wrap.dataset.busy === '1') return;
+    let amount = parseFloat(main?.dataset.amount || '15');
+    if(!Number.isFinite(amount) || amount < 0) amount = 15;
+    return amount;
+}
+function setPaymentSliderAmount(amount){
+    const slider = document.getElementById('paymentSliderInput');
+    const valueLabel = document.getElementById('paymentSliderAmount');
+    const numberInput = document.getElementById('paymentSliderNumber');
+    const safe = Math.max(0, Math.min(50, Number(amount) || 0));
+    if(slider) slider.value = String(safe);
+    if(numberInput) numberInput.value = String(safe);
+    if(valueLabel) valueLabel.textContent = '$' + safe;
+}
+function openPaymentSlider(playerId){
+    activePaymentSliderPlayerId = playerId;
+    setPaymentSliderAmount(getCompactPayAmount(playerId));
+    const modal = document.getElementById('paymentSliderModal');
+    if(modal) modal.classList.add('active');
+}
+function closePaymentSlider(){
+    const modal = document.getElementById('paymentSliderModal');
+    if(modal) modal.classList.remove('active');
+    activePaymentSliderPlayerId = null;
+}
+function paymentSliderPreset(amount){
+    setPaymentSliderAmount(amount);
+}
+function handlePaymentSliderInput(value){
+    setPaymentSliderAmount(value);
+}
+async function savePaymentSlider(){
+    if(activePaymentSliderPlayerId == null) return;
+    const wrap = compactPayFind(activePaymentSliderPlayerId);
+    if(wrap && wrap.dataset.busy === '1') return;
 
-    let amount = parseFloat(main.dataset.amount || '15');
-    if(!Number.isFinite(amount) || amount <= 0) amount = 15;
-    amount = Math.max(1, Math.min(99, amount + delta));
-
-    main.dataset.amount = String(amount);
-    main.textContent = '$' + amount;
-
-    if(wrap.classList.contains('is-paid')){
+    const amount = Number(document.getElementById('paymentSliderInput')?.value || 0);
+    if(wrap){
         wrap.dataset.busy = '1';
         wrap.style.opacity = '0.7';
-        try {
-            await updatePaidAmount(playerId, amount);
-            await loadData();
-        } finally {
+    }
+    try {
+        await updatePaidAmount(activePaymentSliderPlayerId, amount);
+        closePaymentSlider();
+        await loadData();
+    } finally {
+        if(wrap){
             delete wrap.dataset.busy;
             wrap.style.opacity = '';
         }
@@ -7917,24 +8012,49 @@ async function compactPayToggle(playerId){
     const wrap = compactPayFind(playerId);
     if(!main || !wrap || wrap.dataset.busy === '1') return;
 
-    const amount = 15;
+    if(wrap.classList.contains('is-paid')){
+        openPaymentSlider(playerId);
+        return;
+    }
+
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
-
     try {
-        if(wrap.classList.contains('is-paid')){
-            await updatePaidAmount(playerId, 0);
-        } else {
-            await updatePaidAmount(playerId, amount);
-        }
+        await updatePaidAmount(playerId, 15);
         await loadData();
     } finally {
         delete wrap.dataset.busy;
         wrap.style.opacity = '';
     }
 }
+document.addEventListener('keydown', function(e){
+    if(e.key === 'Escape'){
+        closePaymentSlider();
+    }
+});
 </script>
 
+
+
+    <div class="payment-slider-modal" id="paymentSliderModal" onclick="if(event.target === this) closePaymentSlider()">
+        <div class="payment-slider-card">
+            <div class="payment-slider-title">Set Payment Amount</div>
+            <div class="payment-slider-amount" id="paymentSliderAmount">$15</div>
+            <input type="range" id="paymentSliderInput" class="payment-slider-input" min="0" max="50" step="1" value="15" oninput="handlePaymentSliderInput(this.value)">
+            <input type="number" id="paymentSliderNumber" min="0" max="50" step="1" value="15" oninput="handlePaymentSliderInput(this.value)">
+            <div class="payment-slider-presets">
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(10)">$10</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(15)">$15</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(20)">$20</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(0)">$0</button>
+            </div>
+            <div class="payment-slider-actions">
+                <button type="button" class="payment-slider-cancel" onclick="closePaymentSlider()">Cancel</button>
+                <button type="button" class="payment-slider-clear" onclick="paymentSliderPreset(0)">Clear</button>
+                <button type="button" class="payment-slider-save" onclick="savePaymentSlider()">Save</button>
+            </div>
+        </div>
+    </div>
 
 <script id="android-mobile-collapsible-sections-script-v3">
 (function() {
