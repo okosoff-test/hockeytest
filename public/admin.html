@@ -2203,6 +2203,21 @@ button {
     font-size:0.62rem !important;
     line-height:1 !important;
 }
+#playerList .locked-time-chip{
+    display:inline-flex;
+    align-items:center;
+    gap:4px;
+    color:#9aa0a6;
+    font-size:0.62rem !important;
+    line-height:1 !important;
+    white-space:nowrap;
+}
+#playerList .locked-time-chip::before{
+    content:"🔒";
+    font-size:0.62rem;
+    line-height:1;
+    opacity:.9;
+}
 table thead tr th.phone-col-hidden,
 #playerList td.phone-col-hidden{display:none !important;}
 table{width:100% !important; table-layout:auto !important;}
@@ -4947,6 +4962,13 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
         }
 
+        function formatLockedSignupTime(value) {
+            if (!value) return '';
+            const d = new Date(value);
+            if (Number.isNaN(d.getTime())) return String(value);
+            return d.toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+        }
+
         async function loadSessionInfo() {
             const el = document.getElementById('securitySessionInfo');
             if (!el || !sessionToken) return;
@@ -6430,7 +6452,7 @@ Date: ${selectedGameDate}`);
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
-                                ${p.registeredAt ? `<span class="player-time-sub">${new Date(p.registeredAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
+                                ${p.registeredAt ? `<span class="player-time-sub"><span class="locked-time-chip" title="Locked signup timestamp — saved when the player registered and does not change">${formatLockedSignupTime(p.registeredAt)}</span></span>` : ``}
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
                             <td>
