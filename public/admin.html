@@ -3739,6 +3739,115 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+
+<style id="registered-players-tight-spacing-v1">
+/* Pull Name and Rating closer together on mobile without adding row height */
+.registered-players-table{
+    width:100% !important;
+    table-layout:fixed !important;
+}
+
+.registered-players-table th,
+.registered-players-table td{
+    padding-left:2px !important;
+    padding-right:2px !important;
+}
+
+.registered-players-table th:nth-child(1),
+.registered-players-table td:nth-child(1){
+    width:auto !important;
+}
+
+.registered-players-table th:nth-child(3),
+.registered-players-table td:nth-child(3){
+    width:40px !important;
+    min-width:40px !important;
+    max-width:40px !important;
+    text-align:center !important;
+}
+
+.registered-players-table th:nth-child(4),
+.registered-players-table td:nth-child(4){
+    width:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    text-align:center !important;
+}
+
+.registered-players-table th:nth-child(5),
+.registered-players-table td:nth-child(5){
+    width:48px !important;
+    min-width:48px !important;
+    max-width:48px !important;
+    text-align:center !important;
+}
+
+#playerList .player-name-cell{
+    padding-right:1px !important;
+}
+
+#playerList td:nth-child(3){
+    padding-left:0 !important;
+    padding-right:1px !important;
+}
+
+#playerList .rating-wrap{
+    width:100% !important;
+    justify-content:center !important;
+}
+
+@media (max-width: 700px){
+    .registered-players-table th,
+    .registered-players-table td{
+        padding-left:1px !important;
+        padding-right:1px !important;
+    }
+
+    .registered-players-table th:nth-child(3),
+    .registered-players-table td:nth-child(3){
+        width:36px !important;
+        min-width:36px !important;
+        max-width:36px !important;
+    }
+
+    .registered-players-table th:nth-child(4),
+    .registered-players-table td:nth-child(4){
+        width:46px !important;
+        min-width:46px !important;
+        max-width:46px !important;
+    }
+
+    .registered-players-table th:nth-child(5),
+    .registered-players-table td:nth-child(5){
+        width:46px !important;
+        min-width:46px !important;
+        max-width:46px !important;
+    }
+
+    #playerList .player-name-cell{
+        padding-right:0 !important;
+    }
+
+    #playerList .player-name-main{
+        font-size:0.79rem !important;
+    }
+
+    #playerList .player-phone-sub{
+        font-size:0.60rem !important;
+    }
+
+    #playerList .player-time-sub{
+        font-size:0.49rem !important;
+    }
+
+    #playerList .rating-pill-input{
+        width:32px !important;
+        margin:0 auto !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -4228,7 +4337,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table>
+        <table class="registered-players-table">
             <thead>
                 <tr>
                     <th>Name</th>
