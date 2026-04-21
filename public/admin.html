@@ -3627,6 +3627,108 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="admin-registered-static-fit-samsung-v1">
+/* Registered Players: static fit like Waitlist, no horizontal scroll */
+.registered-players-table{
+    width:100% !important;
+    table-layout:fixed !important;
+    border-collapse:collapse !important;
+}
+.registered-players-table th,
+.registered-players-table td{
+    text-align:center !important;
+    vertical-align:middle !important;
+}
+.registered-players-table th:nth-child(1),
+.registered-players-table td:nth-child(1){ width:auto !important; }
+.registered-players-table th:nth-child(3),
+.registered-players-table td:nth-child(3){ width:46px !important; }
+.registered-players-table th:nth-child(4),
+.registered-players-table td:nth-child(4),
+.registered-players-table th:nth-child(5),
+.registered-players-table td:nth-child(5){ width:52px !important; }
+#playerList .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    text-align:left !important;
+    line-height:1.05 !important;
+    gap:2px !important;
+    min-width:0 !important;
+}
+#playerList .player-name-main{
+    font-size:0.84rem !important;
+    font-weight:700 !important;
+    color:#fff !important;
+    word-break:break-word !important;
+}
+#playerList .player-phone-sub{
+    font-size:0.60rem !important;
+    color:#aaa !important;
+    line-height:1 !important;
+}
+#playerList .player-time-sub{
+    font-size:0.52rem !important;
+    color:#8e8e8e !important;
+    line-height:1 !important;
+}
+#playerList .rating-wrap{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+}
+#playerList .rating-wrap input.rating-pill-input,
+#playerList input.rating-pill-input,
+#playerList input[id^="rating-"]{
+    width:34px !important;
+    min-width:34px !important;
+    height:22px !important;
+    padding:0 2px !important;
+    font-size:0.72rem !important;
+    border-radius:7px !important;
+}
+#playerList .regular-toggle-btn,
+#playerList .remove-btn,
+#playerList .control-btn{
+    width:48px !important;
+    min-width:48px !important;
+    height:22px !important;
+    padding:3px 2px !important;
+    font-size:0.54rem !important;
+    line-height:1 !important;
+    border-radius:7px !important;
+    white-space:nowrap !important;
+    margin:0 !important;
+}
+#playerList .table-note-muted{
+    display:inline-block !important;
+    width:48px !important;
+    font-size:0.58rem !important;
+    color:#bbb !important;
+    text-align:center !important;
+}
+@media (min-width: 601px){
+  .registered-players-table th:nth-child(3),
+  .registered-players-table td:nth-child(3){ width:54px !important; }
+  .registered-players-table th:nth-child(4),
+  .registered-players-table td:nth-child(4),
+  .registered-players-table th:nth-child(5),
+  .registered-players-table td:nth-child(5){ width:64px !important; }
+  #playerList .player-name-main{ font-size:0.92rem !important; }
+  #playerList .player-phone-sub{ font-size:0.68rem !important; }
+  #playerList .player-time-sub{ font-size:0.58rem !important; }
+  #playerList .rating-wrap input.rating-pill-input,
+  #playerList input.rating-pill-input,
+  #playerList input[id^="rating-"]{ width:40px !important; min-width:40px !important; height:24px !important; font-size:0.82rem !important; }
+  #playerList .regular-toggle-btn,
+  #playerList .remove-btn,
+  #playerList .control-btn{ width:58px !important; min-width:58px !important; font-size:0.66rem !important; height:24px !important; }
+  #playerList .table-note-muted{ width:58px !important; font-size:0.66rem !important; }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
