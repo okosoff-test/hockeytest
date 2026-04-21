@@ -2114,158 +2114,81 @@ button {
 
 
 
-<style id="admin-registered-fit-like-waitlist-v1">
-.registered-players-table {
+<style id="admin-registered-fit-like-waitlist-v2">
+.registered-players-table,
+.waitlist-section table {
     width: 100% !important;
     table-layout: fixed !important;
+    border-collapse: collapse !important;
 }
 .registered-players-table th,
-.registered-players-table td {
+.registered-players-table td,
+.waitlist-section th,
+.waitlist-section td {
     text-align: center !important;
     vertical-align: middle !important;
+    padding: 3px 3px !important;
 }
 .registered-players-table th:nth-child(1),
-.registered-players-table td:nth-child(1) {
-    width: auto;
-}
+.registered-players-table td:nth-child(1) { width: auto !important; }
 .registered-players-table th:nth-child(3),
-.registered-players-table td:nth-child(3) {
-    width: 52px;
-}
+.registered-players-table td:nth-child(3) { width: 50px !important; }
 .registered-players-table th:nth-child(4),
 .registered-players-table td:nth-child(4),
 .registered-players-table th:nth-child(5),
-.registered-players-table td:nth-child(5) {
-    width: 68px;
-}
-#playerList .player-name-cell {
+.registered-players-table td:nth-child(5) { width: 58px !important; }
+#playerList,
+#waitlistList { display: table-row-group !important; }
+#playerList tr,
+#waitlistList tr { display: table-row !important; }
+#playerList td,
+#waitlistList td { display: table-cell !important; }
+#playerList .player-name-cell,
+#waitlistList .player-name-cell {
+    display: flex !important;
+    flex-direction: column !important;
     align-items: flex-start !important;
+    justify-content: center !important;
     text-align: left !important;
+    gap: 2px !important;
+    line-height: 1.05 !important;
+    min-width: 0 !important;
 }
 #playerList .rating-wrap,
-#playerList .paid-wrap,
-#playerList .waitlist-rating-wrap,
-#playerList .waitlist-action-wrap {
+#waitlistList .waitlist-rating-wrap,
+#waitlistList .waitlist-action-wrap {
     display: flex !important;
     align-items: center !important;
     justify-content: center !important;
 }
 #playerList .regular-toggle-btn,
-#playerList .remove-btn {
-    width: 62px !important;
-    min-width: 62px !important;
-    padding: 4px 4px !important;
+#playerList .remove-btn,
+#waitlistList .promote-btn,
+#waitlistList .bypass-btn,
+#waitlistList .remove-btn {
+    margin: 0 !important;
+    white-space: nowrap !important;
 }
-#playerList .table-note-muted {
-    display: inline-block;
-    width: 62px;
-    text-align: center;
-    color: #bbb;
-    font-size: 0.74rem;
-}
-@media (max-width: 600px) {
-    .registered-players-table th,
-    .registered-players-table td {
-        padding: 2px 2px !important;
-    }
-    .registered-players-table th:nth-child(3),
-    .registered-players-table td:nth-child(3) {
-        width: 44px;
-    }
-    .registered-players-table th:nth-child(4),
-    .registered-players-table td:nth-child(4),
-    .registered-players-table th:nth-child(5),
-    .registered-players-table td:nth-child(5) {
-        width: 54px;
-    }
-    #playerList .player-name-main {
-        font-size: 0.84rem !important;
-    }
-    #playerList .player-phone-sub {
-        font-size: 0.62rem !important;
-    }
-    #playerList .player-time-sub {
-        font-size: 0.54rem !important;
-    }
-    #playerList .rating-wrap input.rating-pill-input,
-    #playerList input.rating-pill-input,
-    #playerList input[id^="rating-"] {
-        width: 38px !important;
-        height: 24px !important;
-        font-size: 0.8rem !important;
-        padding: 0 4px !important;
-    }
-    #playerList .regular-toggle-btn,
-    #playerList .remove-btn {
-        width: 50px !important;
-        min-width: 50px !important;
-        font-size: 0.56rem !important;
-        padding: 4px 2px !important;
-        border-radius: 6px !important;
-    }
-    #playerList .table-note-muted {
-        width: 50px;
-        font-size: 0.64rem;
-    }
-}
-</style>
-<style id="admin-safe-mobile-patch-v10">
-#playerList .protected-badge,
-#playerList .goalie-badge{display:none !important;}
-#playerList .player-name-cell{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:flex-start !important;
-    justify-content:center !important;
-    text-align:left !important;
-    gap:2px !important;
-    line-height:1.05 !important;
-    min-width:0 !important;
-}
-#playerList .player-name-main{font-size:0.99rem !important; font-weight:700 !important; color:#ffffff !important;}
-#playerList .player-phone-sub{
-    display:block;
-    color:#b9b9b9;
-    font-size:0.72rem !important;
-    line-height:1 !important;
-}
-#playerList .player-time-sub{
-    display:block;
-    color:#8f8f8f;
-    font-size:0.62rem !important;
-    line-height:1 !important;
-}
+#playerList .regular-toggle-btn,
+#playerList .remove-btn { width: 54px !important; min-width: 54px !important; padding: 4px 2px !important; font-size: 0.58rem !important; }
+#playerList .table-note-muted { display: inline-block !important; width: 54px !important; text-align: center !important; color: #bbb !important; font-size: 0.64rem !important; }
+#waitlistList .action-stack { display:flex !important; flex-direction:column !important; gap:3px !important; align-items:center !important; }
+#waitlistList .promote-btn,
+#waitlistList .remove-btn,
+#waitlistList .bypass-btn { width: 48px !important; min-width: 48px !important; padding: 4px 2px !important; font-size: 0.56rem !important; }
+#playerList .player-name-main,
+#waitlistList .player-name-main { font-size: 0.84rem !important; font-weight: 700 !important; color: #fff !important; }
+#playerList .player-phone-sub,
+#waitlistList .player-phone-sub { display: block !important; color: #b9b9b9 !important; font-size: 0.62rem !important; line-height: 1 !important; }
+#playerList .player-time-sub,
+#waitlistList .player-time-sub { display: block !important; color: #8f8f8f !important; font-size: 0.54rem !important; line-height: 1 !important; }
+#playerList input.rating-pill-input,
+#waitlistList input.rating-pill-input { width: 36px !important; height: 24px !important; font-size: 0.78rem !important; padding: 0 3px !important; }
 table thead tr th.phone-col-hidden,
-#playerList td.phone-col-hidden{display:none !important;}
-table{width:100% !important; table-layout:auto !important;}
-th, td{padding:2px 3px !important;}
-#playerList tr td{padding-top:3px !important; padding-bottom:3px !important; vertical-align:middle !important;}
-#playerList .rating-wrap, #playerList .paid-wrap{gap:0 !important;}
-.rating-pill-input{
-    width:36px !important; height:22px !important; font-size:0.82rem !important;
-    line-height:22px !important; padding:0 4px !important; border-radius:7px !important;
-}
-.compact-pay{
-    width:56px !important; min-height:22px !important; border-radius:6px !important;
-    grid-template-columns:1fr 16px !important;
-}
-.compact-pay-main{min-height:22px !important; padding:0 4px !important; font-size:0.76rem !important; font-weight:700 !important;}
-.compact-pay-plus, .compact-pay-minus{width:16px !important; min-width:16px !important; font-size:0.98rem !important; padding:0 !important;}
-.control-btn, .remove-btn{
-    padding:4px 6px !important; font-size:0.66rem !important; border-radius:7px !important;
-    margin:0 !important; white-space:nowrap !important;
-}
-@media (max-width:600px){
-    .container{padding:12px !important;}
-    th, td{padding:2px 2px !important;}
-    #playerList .player-name-main{font-size:0.88rem !important;}
-    #playerList .player-phone-sub{font-size:0.68rem !important;}
-    #playerList .player-time-sub{font-size:0.58rem !important;}
-    .rating-pill-input{width:34px !important;}
-    .compact-pay{width:54px !important; grid-template-columns:1fr 15px !important;}
-    .compact-pay-plus, .compact-pay-minus{width:15px !important; min-width:15px !important; font-size:0.92rem !important;}
-    .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
-}
+#playerList td.phone-col-hidden { display: none !important; }
+</style>
+<style id="admin-safe-mobile-patch-v11">
+/* neutralized old mobile patch to prevent row rendering issues */
 </style>
 
 
@@ -3056,24 +2979,18 @@ th, td{padding:2px 3px !important;}
 </style>
 
 
-<style id="registered-players-collapsible-overflow-fix-v1">
+<style id="registered-players-collapsible-overflow-fix-v2">
 #registeredPlayersSection {
     overflow: visible !important;
 }
 #registeredPlayersSection .mobile-collapse-body {
-    overflow-x: auto !important;
-    overflow-y: visible !important;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible !important;
 }
-#registeredPlayersSection table {
+#registeredPlayersSection table,
+.waitlist-section table {
     width: 100% !important;
-    min-width: 760px;
-    table-layout: auto !important;
-}
-@media (max-width: 700px) {
-    #registeredPlayersSection table {
-        min-width: 720px;
-    }
+    min-width: 0 !important;
+    table-layout: fixed !important;
 }
 </style>
 
@@ -3624,108 +3541,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         min-height: 17px !important;
         height: 17px !important;
     }
-}
-</style>
-
-
-<style id="admin-registered-static-fit-samsung-v1">
-/* Registered Players: static fit like Waitlist, no horizontal scroll */
-.registered-players-table{
-    width:100% !important;
-    table-layout:fixed !important;
-    border-collapse:collapse !important;
-}
-.registered-players-table th,
-.registered-players-table td{
-    text-align:center !important;
-    vertical-align:middle !important;
-}
-.registered-players-table th:nth-child(1),
-.registered-players-table td:nth-child(1){ width:auto !important; }
-.registered-players-table th:nth-child(3),
-.registered-players-table td:nth-child(3){ width:46px !important; }
-.registered-players-table th:nth-child(4),
-.registered-players-table td:nth-child(4),
-.registered-players-table th:nth-child(5),
-.registered-players-table td:nth-child(5){ width:52px !important; }
-#playerList .player-name-cell{
-    display:flex !important;
-    flex-direction:column !important;
-    align-items:flex-start !important;
-    justify-content:center !important;
-    text-align:left !important;
-    line-height:1.05 !important;
-    gap:2px !important;
-    min-width:0 !important;
-}
-#playerList .player-name-main{
-    font-size:0.84rem !important;
-    font-weight:700 !important;
-    color:#fff !important;
-    word-break:break-word !important;
-}
-#playerList .player-phone-sub{
-    font-size:0.60rem !important;
-    color:#aaa !important;
-    line-height:1 !important;
-}
-#playerList .player-time-sub{
-    font-size:0.52rem !important;
-    color:#8e8e8e !important;
-    line-height:1 !important;
-}
-#playerList .rating-wrap{
-    display:flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-}
-#playerList .rating-wrap input.rating-pill-input,
-#playerList input.rating-pill-input,
-#playerList input[id^="rating-"]{
-    width:34px !important;
-    min-width:34px !important;
-    height:22px !important;
-    padding:0 2px !important;
-    font-size:0.72rem !important;
-    border-radius:7px !important;
-}
-#playerList .regular-toggle-btn,
-#playerList .remove-btn,
-#playerList .control-btn{
-    width:48px !important;
-    min-width:48px !important;
-    height:22px !important;
-    padding:3px 2px !important;
-    font-size:0.54rem !important;
-    line-height:1 !important;
-    border-radius:7px !important;
-    white-space:nowrap !important;
-    margin:0 !important;
-}
-#playerList .table-note-muted{
-    display:inline-block !important;
-    width:48px !important;
-    font-size:0.58rem !important;
-    color:#bbb !important;
-    text-align:center !important;
-}
-@media (min-width: 601px){
-  .registered-players-table th:nth-child(3),
-  .registered-players-table td:nth-child(3){ width:54px !important; }
-  .registered-players-table th:nth-child(4),
-  .registered-players-table td:nth-child(4),
-  .registered-players-table th:nth-child(5),
-  .registered-players-table td:nth-child(5){ width:64px !important; }
-  #playerList .player-name-main{ font-size:0.92rem !important; }
-  #playerList .player-phone-sub{ font-size:0.68rem !important; }
-  #playerList .player-time-sub{ font-size:0.58rem !important; }
-  #playerList .rating-wrap input.rating-pill-input,
-  #playerList input.rating-pill-input,
-  #playerList input[id^="rating-"]{ width:40px !important; min-width:40px !important; height:24px !important; font-size:0.82rem !important; }
-  #playerList .regular-toggle-btn,
-  #playerList .remove-btn,
-  #playerList .control-btn{ width:58px !important; min-width:58px !important; font-size:0.66rem !important; height:24px !important; }
-  #playerList .table-note-muted{ width:58px !important; font-size:0.66rem !important; }
 }
 </style>
 
