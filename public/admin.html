@@ -2960,6 +2960,27 @@ th, td{padding:2px 3px !important;}
 </style>
 
 
+<style id="registered-players-collapsible-overflow-fix-v1">
+#registeredPlayersSection {
+    overflow: visible !important;
+}
+#registeredPlayersSection .mobile-collapse-body {
+    overflow-x: auto !important;
+    overflow-y: visible !important;
+    -webkit-overflow-scrolling: touch;
+}
+#registeredPlayersSection table {
+    width: 100% !important;
+    min-width: 760px;
+    table-layout: auto !important;
+}
+@media (max-width: 700px) {
+    #registeredPlayersSection table {
+        min-width: 720px;
+    }
+}
+</style>
+
 <style id="android-mobile-collapsible-sections-v4">
 .mobile-collapsible {
     overflow: hidden;
@@ -3467,7 +3488,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
     }
 }
 </style>
-
 
 <style id="admin-waitlist-height-reduction-v1">
 /* Reduce waitlist box heights vertically by ~25% while keeping font sizes unchanged */
@@ -4007,7 +4027,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <th class="phone-col-hidden">Phone</th>
                     <th>Rating</th>
                     <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
-                    <th>Payment</th>
                     <th>Regular</th>
                     <th>Action</th>
                 </tr>
@@ -6083,7 +6102,7 @@ Date: ${selectedGameDate}`);
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
                         const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
@@ -6123,11 +6142,6 @@ Date: ${selectedGameDate}`);
                                 </div>
                             `;
                         }
-
-                        const paymentText = hideAdminPaymentUi
-                            ? ''
-                            : (p.paymentMethod === 'E-Transfer' ? 'ET' : (p.paymentMethod || ''));
-
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
@@ -6147,7 +6161,6 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${paymentText}</td>
                             <td>${regularCell}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
