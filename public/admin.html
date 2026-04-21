@@ -3664,6 +3664,51 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
+<style id="admin-registered-action-stack-v1">
+#playerList .registered-action-stack {
+    display:flex !important;
+    flex-direction:column !important;
+    gap:3px !important;
+    align-items:center !important;
+    justify-content:center !important;
+}
+#playerList .registered-action-stack .regular-toggle-btn,
+#playerList .registered-action-stack .remove-btn {
+    width:48px !important;
+    min-width:48px !important;
+    margin:0 !important;
+    text-align:center !important;
+    white-space:nowrap !important;
+}
+#playerList .registered-regular-indicator {
+    display:inline-flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    color:#39d353 !important;
+    font-weight:800 !important;
+    font-size:0.95rem !important;
+    line-height:1 !important;
+}
+#playerList .registered-regular-indicator.inactive {
+    color:#666 !important;
+}
+@media (max-width:600px){
+    #playerList .registered-action-stack .regular-toggle-btn,
+    #playerList .registered-action-stack .remove-btn {
+        width:44px !important;
+        min-width:44px !important;
+        font-size:0.56rem !important;
+        padding:3px 4px !important;
+        border-radius:6px !important;
+    }
+    #playerList .registered-regular-indicator {
+        font-size:0.88rem !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -6280,6 +6325,10 @@ Date: ${selectedGameDate}`);
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
+                        const regularIndicator = hideAdminPaymentUi
+                            ? ''
+                            : `<span class="registered-regular-indicator ${regularInfo.active ? '' : 'inactive'}">${regularInfo.active ? '✓' : '—'}</span>`;
+
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -6304,7 +6353,7 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td></td>
+                            <td>${regularIndicator}</td>
                             <td>${actionCell}</td>
                         `;
                         tbody.appendChild(tr);
