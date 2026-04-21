@@ -2113,82 +2113,63 @@ button {
 </style>
 
 
-
-<style id="admin-registered-fit-like-waitlist-v2">
-.registered-players-table,
-.waitlist-section table {
-    width: 100% !important;
-    table-layout: fixed !important;
-    border-collapse: collapse !important;
+<style id="admin-safe-mobile-patch-v10">
+#playerList .protected-badge,
+#playerList .goalie-badge{display:none !important;}
+#playerList .player-name-cell{
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    text-align:left !important;
+    gap:2px !important;
+    line-height:1.05 !important;
+    min-width:0 !important;
 }
-.registered-players-table th,
-.registered-players-table td,
-.waitlist-section th,
-.waitlist-section td {
-    text-align: center !important;
-    vertical-align: middle !important;
-    padding: 3px 3px !important;
+#playerList .player-name-main{font-size:0.99rem !important; font-weight:700 !important; color:#ffffff !important;}
+#playerList .player-phone-sub{
+    display:block;
+    color:#b9b9b9;
+    font-size:0.72rem !important;
+    line-height:1 !important;
 }
-.registered-players-table th:nth-child(1),
-.registered-players-table td:nth-child(1) { width: auto !important; }
-.registered-players-table th:nth-child(3),
-.registered-players-table td:nth-child(3) { width: 50px !important; }
-.registered-players-table th:nth-child(4),
-.registered-players-table td:nth-child(4),
-.registered-players-table th:nth-child(5),
-.registered-players-table td:nth-child(5) { width: 58px !important; }
-#playerList,
-#waitlistList { display: table-row-group !important; }
-#playerList tr,
-#waitlistList tr { display: table-row !important; }
-#playerList td,
-#waitlistList td { display: table-cell !important; }
-#playerList .player-name-cell,
-#waitlistList .player-name-cell {
-    display: flex !important;
-    flex-direction: column !important;
-    align-items: flex-start !important;
-    justify-content: center !important;
-    text-align: left !important;
-    gap: 2px !important;
-    line-height: 1.05 !important;
-    min-width: 0 !important;
+#playerList .player-time-sub{
+    display:block;
+    color:#8f8f8f;
+    font-size:0.62rem !important;
+    line-height:1 !important;
 }
-#playerList .rating-wrap,
-#waitlistList .waitlist-rating-wrap,
-#waitlistList .waitlist-action-wrap {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-}
-#playerList .regular-toggle-btn,
-#playerList .remove-btn,
-#waitlistList .promote-btn,
-#waitlistList .bypass-btn,
-#waitlistList .remove-btn {
-    margin: 0 !important;
-    white-space: nowrap !important;
-}
-#playerList .regular-toggle-btn,
-#playerList .remove-btn { width: 54px !important; min-width: 54px !important; padding: 4px 2px !important; font-size: 0.58rem !important; }
-#playerList .table-note-muted { display: inline-block !important; width: 54px !important; text-align: center !important; color: #bbb !important; font-size: 0.64rem !important; }
-#waitlistList .action-stack { display:flex !important; flex-direction:column !important; gap:3px !important; align-items:center !important; }
-#waitlistList .promote-btn,
-#waitlistList .remove-btn,
-#waitlistList .bypass-btn { width: 48px !important; min-width: 48px !important; padding: 4px 2px !important; font-size: 0.56rem !important; }
-#playerList .player-name-main,
-#waitlistList .player-name-main { font-size: 0.84rem !important; font-weight: 700 !important; color: #fff !important; }
-#playerList .player-phone-sub,
-#waitlistList .player-phone-sub { display: block !important; color: #b9b9b9 !important; font-size: 0.62rem !important; line-height: 1 !important; }
-#playerList .player-time-sub,
-#waitlistList .player-time-sub { display: block !important; color: #8f8f8f !important; font-size: 0.54rem !important; line-height: 1 !important; }
-#playerList input.rating-pill-input,
-#waitlistList input.rating-pill-input { width: 36px !important; height: 24px !important; font-size: 0.78rem !important; padding: 0 3px !important; }
 table thead tr th.phone-col-hidden,
-#playerList td.phone-col-hidden { display: none !important; }
-</style>
-<style id="admin-safe-mobile-patch-v11">
-/* neutralized old mobile patch to prevent row rendering issues */
+#playerList td.phone-col-hidden{display:none !important;}
+table{width:100% !important; table-layout:auto !important;}
+th, td{padding:2px 3px !important;}
+#playerList tr td{padding-top:3px !important; padding-bottom:3px !important; vertical-align:middle !important;}
+#playerList .rating-wrap, #playerList .paid-wrap{gap:0 !important;}
+.rating-pill-input{
+    width:36px !important; height:22px !important; font-size:0.82rem !important;
+    line-height:22px !important; padding:0 4px !important; border-radius:7px !important;
+}
+.compact-pay{
+    width:56px !important; min-height:22px !important; border-radius:6px !important;
+    grid-template-columns:1fr 16px !important;
+}
+.compact-pay-main{min-height:22px !important; padding:0 4px !important; font-size:0.76rem !important; font-weight:700 !important;}
+.compact-pay-plus, .compact-pay-minus{width:16px !important; min-width:16px !important; font-size:0.98rem !important; padding:0 !important;}
+.control-btn, .remove-btn{
+    padding:4px 6px !important; font-size:0.66rem !important; border-radius:7px !important;
+    margin:0 !important; white-space:nowrap !important;
+}
+@media (max-width:600px){
+    .container{padding:12px !important;}
+    th, td{padding:2px 2px !important;}
+    #playerList .player-name-main{font-size:0.88rem !important;}
+    #playerList .player-phone-sub{font-size:0.68rem !important;}
+    #playerList .player-time-sub{font-size:0.58rem !important;}
+    .rating-pill-input{width:34px !important;}
+    .compact-pay{width:54px !important; grid-template-columns:1fr 15px !important;}
+    .compact-pay-plus, .compact-pay-minus{width:15px !important; min-width:15px !important; font-size:0.92rem !important;}
+    .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
+}
 </style>
 
 
@@ -2979,79 +2960,66 @@ table thead tr th.phone-col-hidden,
 </style>
 
 
-<style id="registered-players-collapsible-overflow-fix-v2">
-#registeredPlayersSection {
-    overflow: visible !important;
-}
-#registeredPlayersSection .mobile-collapse-body {
-    overflow: visible !important;
-}
-#registeredPlayersSection table,
-.waitlist-section table {
-    width: 100% !important;
-    min-width: 0 !important;
-    table-layout: fixed !important;
-}
-</style>
+<style id="android-mobile-collapsible-sections-v3">
+@media (max-width: 700px) {
+    .mobile-collapsible {
+        overflow: hidden;
+    }
 
-<style id="android-mobile-collapsible-sections-v4">
-.mobile-collapsible {
-    overflow: hidden;
-}
+    .mobile-collapse-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        cursor: pointer;
+        user-select: none;
+        margin: 0 !important;
+        padding: 2px 0 !important;
+    }
 
-.mobile-collapse-header {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 10px;
-    cursor: pointer;
-    user-select: none;
-    margin: 0 !important;
-    padding: 2px 0 !important;
-}
+    .mobile-collapse-header h3,
+    .mobile-collapse-header .section-header,
+    .mobile-collapse-header .mobile-collapse-title {
+        margin: 0 !important;
+    }
 
-.mobile-collapse-header h3,
-.mobile-collapse-header .section-header,
-.mobile-collapse-header .mobile-collapse-title {
-    margin: 0 !important;
-}
+    .mobile-collapse-chevron {
+        flex: 0 0 auto;
+        width: 22px;
+        height: 22px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 999px;
+        background: rgba(255,255,255,0.08);
+        font-size: 0.82rem;
+        line-height: 1;
+        transition: transform 0.18s ease;
+    }
 
-.mobile-collapse-chevron {
-    flex: 0 0 auto;
-    width: 22px;
-    height: 22px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    background: rgba(255,255,255,0.08);
-    font-size: 0.82rem;
-    line-height: 1;
-    transition: transform 0.18s ease;
-}
+    .mobile-collapsible.is-collapsed .mobile-collapse-chevron {
+        transform: rotate(-90deg);
+    }
 
-.mobile-collapsible.is-collapsed .mobile-collapse-chevron {
-    transform: rotate(-90deg);
-}
+    .mobile-collapse-body {
+        margin-top: 8px;
+    }
 
-.mobile-collapse-body {
-    margin-top: 8px;
-}
+    .mobile-collapsible.is-collapsed .mobile-collapse-body {
+        display: none !important;
+    }
 
-.mobile-collapsible.is-collapsed .mobile-collapse-body {
-    display: none !important;
-}
+    .mobile-collapse-summary {
+        display: none;
+        margin-top: 6px;
+        color: #bfc8d4;
+        font-size: 0.66rem;
+        line-height: 1.25;
+    }
 
-.mobile-collapse-summary {
-    display: none;
-    margin-top: 6px;
-    color: #bfc8d4;
-    font-size: 0.72rem;
-    line-height: 1.25;
-}
-
-.mobile-collapsible.is-collapsed .mobile-collapse-summary {
-    display: block;
+    .mobile-collapsible.is-collapsed .mobile-collapse-summary {
+        display: block;
+    }
 }
 </style>
 
@@ -3502,6 +3470,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
+
 <style id="admin-waitlist-height-reduction-v1">
 /* Reduce waitlist box heights vertically by ~25% while keeping font sizes unchanged */
 .waitlist-section #waitlistList tr td {
@@ -3541,6 +3510,157 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         min-height: 17px !important;
         height: 17px !important;
     }
+}
+</style>
+
+
+<style id="registered-waitlist-visibility-mobile-fix-v1">
+/* Hard reset so rows always render */
+#playerList,
+#waitlistList,
+#playerList tr,
+#waitlistList tr,
+#playerList td,
+#waitlistList td,
+#playerList .player-name-cell,
+#waitlistList .player-name-cell,
+#playerList .player-name-main,
+#waitlistList .player-name-main,
+#playerList .player-phone-sub,
+#waitlistList .player-phone-sub,
+#playerList .player-time-sub,
+#waitlistList .player-time-sub {
+    display: revert !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+}
+#playerList .player-name-cell,
+#waitlistList .player-name-cell {
+    display:flex !important;
+    flex-direction:column !important;
+    align-items:flex-start !important;
+    justify-content:center !important;
+    line-height:1.05 !important;
+    gap:2px !important;
+    min-width:0 !important;
+}
+#playerList .player-name-main,
+#waitlistList .player-name-main {
+    display:block !important;
+    color:#fff !important;
+    font-weight:700 !important;
+}
+#playerList .player-phone-sub,
+#waitlistList .player-phone-sub,
+#playerList .player-time-sub,
+#waitlistList .player-time-sub {
+    display:block !important;
+    color:#aaa !important;
+}
+
+/* Registered Players: keep static box, no horizontal scroll */
+#playerList td.phone-col-hidden,
+#playerList th.phone-col-hidden {
+    display:none !important;
+}
+
+@media (max-width: 700px) {
+    table {
+        width:100% !important;
+    }
+    #playerList td,
+    #playerList th,
+    #waitlistList td,
+    #waitlistList th {
+        padding:3px 3px !important;
+        font-size:0.72rem !important;
+        white-space:nowrap !important;
+        vertical-align:middle !important;
+    }
+    #playerList td:nth-child(1),
+    #playerList th:nth-child(1) {
+        width:auto !important;
+        white-space:normal !important;
+    }
+    #playerList td:nth-child(3),
+    #playerList th:nth-child(3) {
+        width:44px !important;
+        text-align:center !important;
+    }
+    #playerList td:nth-child(4),
+    #playerList th:nth-child(4) {
+        width:60px !important;
+        text-align:center !important;
+    }
+    #playerList td:nth-child(5),
+    #playerList th:nth-child(5) {
+        width:56px !important;
+        text-align:center !important;
+    }
+    #playerList td:nth-child(6),
+    #playerList th:nth-child(6) {
+        width:58px !important;
+        text-align:center !important;
+    }
+    #playerList .player-name-main {
+        font-size:0.76rem !important;
+        line-height:1.05 !important;
+    }
+    #playerList .player-phone-sub {
+        font-size:0.60rem !important;
+        line-height:1 !important;
+    }
+    #playerList .player-time-sub {
+        font-size:0.54rem !important;
+        line-height:1 !important;
+    }
+    #playerList .rating-pill-input {
+        width:34px !important;
+        height:24px !important;
+        padding:0 4px !important;
+        font-size:0.76rem !important;
+    }
+    #playerList .compact-pay {
+        width:54px !important;
+        min-width:54px !important;
+        grid-template-columns:1fr 15px !important;
+        min-height:24px !important;
+    }
+    #playerList .compact-pay-main {
+        min-height:24px !important;
+        font-size:0.66rem !important;
+        padding:0 2px !important;
+    }
+    #playerList .compact-pay-plus,
+    #playerList .compact-pay-minus {
+        width:15px !important;
+        min-width:15px !important;
+        font-size:0.62rem !important;
+    }
+    #playerList .regular-toggle-btn,
+    #playerList .remove-btn,
+    #waitlistList .promote-btn,
+    #waitlistList .remove-btn,
+    #waitlistList .bypass-btn {
+        padding:3px 4px !important;
+        font-size:0.58rem !important;
+        line-height:1 !important;
+        min-height:18px !important;
+        border-radius:6px !important;
+        margin:0 !important;
+    }
+    #waitlistList td:nth-child(1),
+    #waitlistList th:nth-child(1) { width:24px !important; text-align:center !important; }
+    #waitlistList td:nth-child(3),
+    #waitlistList th:nth-child(3) { width:44px !important; text-align:center !important; }
+    #waitlistList td:nth-child(4),
+    #waitlistList th:nth-child(4) { width:96px !important; text-align:center !important; }
+    #waitlistList .player-name-main {
+        font-size:0.76rem !important;
+        line-height:1.05 !important;
+    }
+    #waitlistList .player-phone-sub { font-size:0.60rem !important; line-height:1 !important; }
+    #waitlistList .player-time-sub { font-size:0.54rem !important; line-height:1 !important; }
 }
 </style>
 
@@ -4033,12 +4153,13 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table class="registered-players-table">
+        <table>
             <thead>
                 <tr>
                     <th>Name</th>
                     <th class="phone-col-hidden">Phone</th>
                     <th>Rating</th>
+                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
                     <th>Regular</th>
                     <th>Action</th>
                 </tr>
@@ -6114,7 +6235,7 @@ Date: ${selectedGameDate}`);
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
                         const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
@@ -6138,8 +6259,25 @@ Date: ${selectedGameDate}`);
                         const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
                         const hideAdminPaymentUi = !!p.isGoalie || isPhan;
 
+                        let paidInput = '';
+                        if (!hideAdminPaymentUi) {
+                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
+                            const compactAmount = isPaid
+                                ? parseFloat(p.paidAmount)
+                                : 15;
+                            paidInput = `
+                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
+                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                        $${compactAmount}
+                                    </button>
+                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
+                                </div>
+                            `;
+                        }
+
                         const regularCell = hideAdminPaymentUi
-                            ? '<span class="table-note-muted">—</span>'
+                            ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
                         tr.innerHTML = `
@@ -6156,6 +6294,7 @@ Date: ${selectedGameDate}`);
 
                                 </div>
                             </td>
+                            <td>${paidInput}</td>
                             <td>${regularCell}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
@@ -7726,24 +7865,6 @@ async function compactPayToggle(playerId){
         return window.innerWidth <= MOBILE_BREAKPOINT;
     }
 
-    function ensureRegisteredPlayersCollapsibleSection() {
-        const existing = document.getElementById('registeredPlayersSection');
-        if (existing) return existing;
-
-        const titleEl = document.querySelector('h3.section-header');
-        const playerTable = titleEl ? titleEl.nextElementSibling : null;
-        if (!titleEl || !playerTable || playerTable.tagName !== 'TABLE') return null;
-
-        const wrapper = document.createElement('div');
-        wrapper.className = 'control-box registered-players-section-admin';
-        wrapper.id = 'registeredPlayersSection';
-
-        titleEl.parentNode.insertBefore(wrapper, titleEl);
-        wrapper.appendChild(titleEl);
-        wrapper.appendChild(playerTable);
-        return wrapper;
-    }
-
     function makeCollapsible(section, opts = {}) {
         if (!section || section.dataset.mobileCollapseReady === '1') return;
 
@@ -7794,7 +7915,7 @@ async function compactPayToggle(playerId){
         section.dataset.mobileCollapseReady = '1';
 
         function applyState(collapsed) {
-            if (collapsed) {
+            if (isMobileViewport() && collapsed) {
                 section.classList.add('is-collapsed');
                 header.setAttribute('aria-expanded', 'false');
             } else {
@@ -7804,6 +7925,7 @@ async function compactPayToggle(playerId){
         }
 
         function toggle() {
+            if (!isMobileViewport()) return;
             const collapsed = !section.classList.contains('is-collapsed');
             applyState(collapsed);
         }
@@ -7821,12 +7943,6 @@ async function compactPayToggle(playerId){
     }
 
     function initMobileCollapsibles() {
-        const registeredPlayersSection = ensureRegisteredPlayersCollapsibleSection();
-        makeCollapsible(registeredPlayersSection, {
-            collapsedByDefault: false,
-            summary: 'Registered players hidden. Tap to expand.'
-        });
-
         makeCollapsible(document.querySelector('.payment-summary-box'), {
             collapsedByDefault: true,
             summary: 'Payment totals hidden. Tap to expand.'
