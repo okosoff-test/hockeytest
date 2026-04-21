@@ -1677,7 +1677,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                     <div class="spot-text" id="spotsText">Player Spots Available</div>
                 </div>
             </div>
-
         </div>
 
         <div class="open-spots-notice" id="openSpotsNotice"></div>
@@ -1707,7 +1706,7 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             </div>
         </div>
 
-            <div class="venue-waitlist-box" id="venueWaitlistBox" style="display:none;">
+<div class="venue-waitlist-box" id="venueWaitlistBox" style="display:none;">
                 <div class="venue-waitlist-header">
                     <div class="venue-waitlist-title">Current Waitlist</div>
                     <div class="venue-waitlist-count"><span id="venueWaitlistCount">0</span></div>
@@ -2897,6 +2896,22 @@ function updateCalculatedRating() {
                 wrap.classList.add('active');
                 return;
             }
+
+            safeEntries.forEach((player, index) => {
+                const li = document.createElement('li');
+                li.className = 'venue-waitlist-item';
+                const goalieBadge = player.isGoalie ? ' <span class="goalie-badge">GOALIE</span>' : '';
+                const displayName = player.fullName || [player.firstName || '', player.lastName || ''].join(' ').trim() || 'Waitlist Player';
+                const position = player.position || (index + 1);
+                li.innerHTML = `
+                    <span class="venue-waitlist-pos">${position}</span>
+                    <div class="venue-waitlist-name">${displayName}${goalieBadge}</div>
+                `;
+                listEl.appendChild(li);
+            });
+
+            wrap.classList.add('active');
+        }
 
             safeEntries.forEach((player, index) => {
                 const li = document.createElement('li');
