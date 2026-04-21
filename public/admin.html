@@ -6280,6 +6280,15 @@ Date: ${selectedGameDate}`);
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
+                        const actionCell = hideAdminPaymentUi
+                            ? `<div class="action-stack registered-action-stack">
+                                    <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
+                               </div>`
+                            : `<div class="action-stack registered-action-stack">
+                                    ${regularCell}
+                                    <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
+                               </div>`;
+
                         tr.innerHTML = `
                             <td class="player-name-cell">
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
@@ -6295,10 +6304,8 @@ Date: ${selectedGameDate}`);
                                 </div>
                             </td>
                             <td>${paidInput}</td>
-                            <td>${regularCell}</td>
-                            <td>
-                                <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
-                            </td>
+                            <td></td>
+                            <td>${actionCell}</td>
                         `;
                         tbody.appendChild(tr);
                     });
