@@ -3757,101 +3757,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
 }
 </style>
 
-
-<style id="compact-pay-modal-v1">
-.compact-pay-modal {
-    position: fixed;
-    inset: 0;
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 18px;
-    background: rgba(0,0,0,0.72);
-    z-index: 20000;
-}
-.compact-pay-modal.active {
-    display: flex;
-}
-.compact-pay-modal-card {
-    width: min(360px, 100%);
-    background: linear-gradient(135deg, #222, #2f2f2f);
-    border: 2px solid var(--accent);
-    border-radius: 16px;
-    padding: 18px;
-    box-shadow: 0 18px 40px rgba(0,0,0,0.45);
-}
-.compact-pay-modal-title {
-    color: var(--accent);
-    font-size: 1.05rem;
-    font-weight: 800;
-    text-align: center;
-    margin-bottom: 6px;
-}
-.compact-pay-modal-subtitle {
-    color: #c7c7c7;
-    text-align: center;
-    font-size: 0.86rem;
-    margin-bottom: 14px;
-}
-.compact-pay-modal-presets {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: 8px;
-    margin-bottom: 12px;
-}
-.compact-pay-preset-btn {
-    margin: 0 !important;
-    padding: 10px 8px !important;
-    border-radius: 10px !important;
-    font-size: 0.86rem !important;
-}
-.compact-pay-preset-btn.active {
-    background: var(--success) !important;
-}
-.compact-pay-modal-field-label {
-    color: #ddd;
-    font-size: 0.84rem;
-    margin-bottom: 4px;
-}
-.compact-pay-modal-input {
-    width: 100%;
-    margin: 0 !important;
-    text-align: center;
-    font-size: 1.05rem !important;
-    font-weight: 700;
-}
-.compact-pay-modal-hint {
-    color: #999;
-    font-size: 0.76rem;
-    text-align: center;
-    margin-top: 8px;
-}
-.compact-pay-modal-actions {
-    display: flex;
-    gap: 10px;
-    margin-top: 14px;
-}
-.compact-pay-modal-actions button {
-    flex: 1;
-    margin: 0 !important;
-}
-.compact-pay-modal-cancel {
-    background: #666 !important;
-}
-.compact-pay-modal-save {
-    background: var(--success) !important;
-}
-@media (max-width: 600px) {
-    .compact-pay-modal-card {
-        padding: 14px;
-        border-radius: 14px;
-    }
-    .compact-pay-modal-presets {
-        grid-template-columns: repeat(2, 1fr);
-    }
-}
-</style>
-
 </head>
 <body class="admin-layout-option-1">
 
@@ -6438,6 +6343,7 @@ Date: ${selectedGameDate}`);
 
                     sortedPlayers.forEach(p => {
                         const tr = document.createElement('tr');
+                        tr.setAttribute('data-player-id', String(p.id));
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
@@ -7995,192 +7901,14 @@ This backup has fewer records than live data.
     </div>
 
 
-
 <script>
-const compactPayHoldState = {
-    timer: null,
-    playerId: null,
-    triggered: false,
-    suppressUntil: {}
-};
-
-const compactPayModalState = {
-    playerId: null
-};
-
-function compactPayClearHoldTimer(){
-    if (compactPayHoldState.timer) {
-        clearTimeout(compactPayHoldState.timer);
-        compactPayHoldState.timer = null;
-    }
-}
-
-function compactPayStartHold(event, playerId){
-    const wrap = compactPayFind(playerId);
-    if (!wrap || wrap.dataset.busy === '1') return;
-    compactPayClearHoldTimer();
-    compactPayHoldState.playerId = playerId;
-    compactPayHoldState.triggered = false;
-    compactPayHoldState.timer = setTimeout(async () => {
-        compactPayHoldState.triggered = true;
-        compactPayHoldState.suppressUntil[playerId] = Date.now() + 1200;
-        await compactPayOpenCustomAmount(playerId);
-    }, 3000);
-}
-
-function compactPayEndHold(event, playerId){
-    compactPayClearHoldTimer();
-}
-
-function compactPayCancelHold(event, playerId){
-    compactPayClearHoldTimer();
-}
-
-function compactPayShouldSuppressClick(playerId){
-    const until = Number(compactPayHoldState.suppressUntil[playerId] || 0);
-    if (until && Date.now() <= until) {
-        return true;
-    }
-    if (until && Date.now() > until) {
-        delete compactPayHoldState.suppressUntil[playerId];
-    }
-    return false;
-}
-
-async function compactPayMainClick(event, playerId){
-    if (compactPayShouldSuppressClick(playerId) || compactPayHoldState.triggered) {
-        compactPayHoldState.triggered = false;
-        if (event) {
-            event.preventDefault();
-            event.stopPropagation();
-        }
-        return;
-    }
-    await compactPayToggle(playerId);
-}
-
 function compactPayFind(playerId){
     return document.querySelector('.compact-pay[data-player-id="' + playerId + '"]');
 }
-
 function compactPayMain(playerId){
     const wrap = compactPayFind(playerId);
     return wrap ? wrap.querySelector('.compact-pay-main') : null;
 }
-
-async function compactPayOpenCustomAmount(playerId){
-    const main = compactPayMain(playerId);
-    const wrap = compactPayFind(playerId);
-    const modal = document.getElementById('compactPayModal');
-    const input = document.getElementById('compactPayModalInput');
-    const title = document.getElementById('compactPayModalPlayerName');
-    if (!main || !wrap || !modal || !input || !title || wrap.dataset.busy === '1') return;
-
-    const row = wrap.closest('tr');
-    const playerName = row && row.querySelector('.player-name-main')
-        ? row.querySelector('.player-name-main').textContent.trim()
-        : 'Player';
-    const currentAmount = parseFloat(main.dataset.amount || '15');
-    const suggestedAmount = Number.isFinite(currentAmount) && currentAmount >= 0 ? currentAmount : 15;
-
-    compactPayModalState.playerId = playerId;
-    title.textContent = playerName;
-    input.value = suggestedAmount;
-    modal.classList.add('active');
-
-    requestAnimationFrame(() => {
-        input.focus();
-        input.select();
-        compactPayHighlightPreset(suggestedAmount);
-    });
-}
-
-function compactPayCloseModal(){
-    const modal = document.getElementById('compactPayModal');
-    const input = document.getElementById('compactPayModalInput');
-    if (modal) modal.classList.remove('active');
-    if (input) input.value = '';
-    compactPayModalState.playerId = null;
-    compactPayHighlightPreset(null);
-}
-
-function compactPayModalBackdrop(event){
-    if (event && event.target && event.target.id === 'compactPayModal') {
-        compactPayCloseModal();
-    }
-}
-
-function compactPayPickPreset(amount){
-    const input = document.getElementById('compactPayModalInput');
-    if (!input) return;
-    input.value = amount;
-    compactPayHighlightPreset(amount);
-    input.focus();
-    input.select();
-}
-
-function compactPayHighlightPreset(amount){
-    const buttons = document.querySelectorAll('.compact-pay-preset-btn');
-    buttons.forEach(btn => {
-        const value = parseFloat(String(btn.textContent || '').replace(/[^\d.]/g, ''));
-        btn.classList.toggle('active', Number.isFinite(amount) && Number.isFinite(value) && Number(amount) === Number(value));
-    });
-}
-
-async function compactPaySaveModal(){
-    const playerId = compactPayModalState.playerId;
-    const input = document.getElementById('compactPayModalInput');
-    const saveBtn = document.getElementById('compactPayModalSaveBtn');
-    if (!playerId || !input || !saveBtn) return;
-
-    const parsed = parseFloat(String(input.value || '').trim());
-    if (!Number.isFinite(parsed) || parsed < 0 || parsed > 999) {
-        alert('Enter a valid amount from 0 to 999.');
-        input.focus();
-        input.select();
-        return;
-    }
-
-    const wrap = compactPayFind(playerId);
-    if (!wrap || wrap.dataset.busy === '1') return;
-
-    wrap.dataset.busy = '1';
-    wrap.style.opacity = '0.7';
-    saveBtn.disabled = true;
-
-    try {
-        await updatePaidAmount(playerId, parsed);
-        compactPayCloseModal();
-        await loadData();
-    } finally {
-        if (wrap) {
-            delete wrap.dataset.busy;
-            wrap.style.opacity = '';
-        }
-        saveBtn.disabled = false;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function(){
-    const compactPayInput = document.getElementById('compactPayModalInput');
-    if (compactPayInput && !compactPayInput.dataset.ready) {
-        compactPayInput.dataset.ready = '1';
-        compactPayInput.addEventListener('input', function(){
-            const parsed = parseFloat(String(this.value || '').trim());
-            compactPayHighlightPreset(Number.isFinite(parsed) ? parsed : null);
-        });
-        compactPayInput.addEventListener('keydown', function(e){
-            if (e.key === 'Enter') {
-                e.preventDefault();
-                compactPaySaveModal();
-            } else if (e.key === 'Escape') {
-                e.preventDefault();
-                compactPayCloseModal();
-            }
-        });
-    }
-});
-
 async function compactPayAdjust(playerId, delta){
     const main = compactPayMain(playerId);
     const wrap = compactPayFind(playerId);
@@ -8205,13 +7933,14 @@ async function compactPayAdjust(playerId, delta){
         }
     }
 }
-
 async function compactPayToggle(playerId){
     const main = compactPayMain(playerId);
     const wrap = compactPayFind(playerId);
     if(!main || !wrap || wrap.dataset.busy === '1') return;
+    if (window.compactPayHoldState && Date.now() < (window.compactPayHoldState.suppressClickUntil || 0)) return;
 
-    const amount = 15;
+    const currentAmount = parseFloat(main.dataset.amount || '15');
+    const amount = Number.isFinite(currentAmount) && currentAmount > 0 ? currentAmount : 15;
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
 
@@ -8376,25 +8105,209 @@ async function compactPayToggle(playerId){
 </script>
 
 
-    <div class="compact-pay-modal" id="compactPayModal" onclick="compactPayModalBackdrop(event)">
-        <div class="compact-pay-modal-card" onclick="event.stopPropagation()">
-            <div class="compact-pay-modal-title">Custom Paid Amount</div>
-            <div class="compact-pay-modal-subtitle" id="compactPayModalPlayerName">Enter amount</div>
-            <div class="compact-pay-modal-presets">
-                <button type="button" class="compact-pay-preset-btn" onclick="compactPayPickPreset(5)">$5</button>
-                <button type="button" class="compact-pay-preset-btn" onclick="compactPayPickPreset(10)">$10</button>
-                <button type="button" class="compact-pay-preset-btn" onclick="compactPayPickPreset(15)">$15</button>
-                <button type="button" class="compact-pay-preset-btn" onclick="compactPayPickPreset(20)">$20</button>
-            </div>
-            <div class="compact-pay-modal-field-label">Amount</div>
-            <input type="number" id="compactPayModalInput" class="compact-pay-modal-input" min="0" max="999" step="1" inputmode="decimal" placeholder="Enter amount">
-            <div class="compact-pay-modal-hint">Tap a preset or enter any amount from 0 to 999.</div>
-            <div class="compact-pay-modal-actions">
-                <button type="button" class="compact-pay-modal-cancel" onclick="compactPayCloseModal()">Cancel</button>
-                <button type="button" class="compact-pay-modal-save" id="compactPayModalSaveBtn" onclick="compactPaySaveModal()">Save</button>
-            </div>
+<style id="compact-pay-modal-style-v1">
+.compact-pay-modal-overlay{
+    position:fixed;
+    inset:0;
+    background:rgba(0,0,0,0.72);
+    display:none;
+    align-items:center;
+    justify-content:center;
+    z-index:100000;
+    padding:18px;
+}
+.compact-pay-modal-overlay.active{ display:flex; }
+.compact-pay-modal{
+    width:min(360px, 100%);
+    background:linear-gradient(135deg, #222, #2f2f2f);
+    border:2px solid var(--accent);
+    border-radius:16px;
+    padding:18px;
+    box-shadow:0 18px 40px rgba(0,0,0,0.45);
+}
+.compact-pay-modal h3{
+    margin:0 0 10px 0;
+    color:var(--accent);
+    text-align:center;
+    font-size:1.05rem;
+}
+.compact-pay-modal-sub{
+    color:#bbb;
+    text-align:center;
+    font-size:0.84rem;
+    margin-bottom:12px;
+}
+.compact-pay-modal-presets{
+    display:grid;
+    grid-template-columns:repeat(4, 1fr);
+    gap:8px;
+    margin-bottom:12px;
+}
+.compact-pay-preset-btn{
+    margin:0 !important;
+    padding:10px 8px !important;
+    min-height:40px !important;
+    border-radius:10px !important;
+    font-size:0.86rem !important;
+}
+.compact-pay-modal .custom-amount-input{
+    width:100%;
+    margin:0 0 12px 0 !important;
+    text-align:center;
+    font-size:1.05rem !important;
+    padding:10px !important;
+}
+.compact-pay-modal-actions{
+    display:flex;
+    gap:10px;
+}
+.compact-pay-modal-actions button{
+    flex:1;
+    margin:0 !important;
+}
+.compact-pay-cancel-btn{
+    background:#666 !important;
+}
+.compact-pay-cancel-btn:hover{
+    background:#777 !important;
+}
+@media (max-width:600px){
+    .compact-pay-modal{ padding:14px; border-radius:14px; }
+    .compact-pay-modal-presets{ grid-template-columns:repeat(2, 1fr); }
+}
+</style>
+
+<div class="compact-pay-modal-overlay" id="compactPayModalOverlay">
+    <div class="compact-pay-modal">
+        <h3>Custom Payment Amount</h3>
+        <div class="compact-pay-modal-sub" id="compactPayModalPlayer">Set payment amount</div>
+        <div class="compact-pay-modal-presets">
+            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(5)">$5</button>
+            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(10)">$10</button>
+            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(15)">$15</button>
+            <button type="button" class="compact-pay-preset-btn" onclick="setCompactPayModalAmount(20)">$20</button>
+        </div>
+        <input type="number" id="compactPayModalAmount" class="custom-amount-input" min="0" max="999" step="1" placeholder="Enter amount">
+        <div class="compact-pay-modal-actions">
+            <button type="button" class="compact-pay-cancel-btn" onclick="closeCompactPayModal()">Cancel</button>
+            <button type="button" onclick="saveCompactPayModal()">Save</button>
         </div>
     </div>
+</div>
+
+<script id="compact-pay-modal-script-v1">
+window.compactPayHoldState = {
+    timer: null,
+    playerId: null,
+    opened: false,
+    suppressClickUntil: 0
+};
+window.compactPayModalState = {
+    playerId: null
+};
+
+function getPlayerNameForCompactPay(playerId){
+    const row = document.querySelector('#playerList tr[data-player-id="' + playerId + '"]');
+    const nameEl = row ? row.querySelector('.player-name-main') : null;
+    return nameEl ? nameEl.textContent.trim() : 'player';
+}
+
+function setCompactPayModalAmount(amount){
+    const input = document.getElementById('compactPayModalAmount');
+    if (input) input.value = amount;
+}
+
+function openCompactPayModal(playerId){
+    const overlay = document.getElementById('compactPayModalOverlay');
+    const input = document.getElementById('compactPayModalAmount');
+    const main = compactPayMain(playerId);
+    const currentAmount = parseFloat((main && main.dataset.amount) || '15');
+    const name = getPlayerNameForCompactPay(playerId);
+
+    window.compactPayModalState.playerId = playerId;
+    document.getElementById('compactPayModalPlayer').textContent = 'Set payment for ' + name;
+    input.value = Number.isFinite(currentAmount) && currentAmount >= 0 ? currentAmount : 15;
+    overlay.classList.add('active');
+    setTimeout(() => {
+        input.focus();
+        input.select();
+    }, 30);
+}
+
+function closeCompactPayModal(){
+    const overlay = document.getElementById('compactPayModalOverlay');
+    overlay.classList.remove('active');
+    window.compactPayModalState.playerId = null;
+}
+
+async function saveCompactPayModal(){
+    const playerId = window.compactPayModalState.playerId;
+    const input = document.getElementById('compactPayModalAmount');
+    const raw = input.value;
+    const amount = parseFloat(raw);
+
+    if (!Number.isFinite(amount) || amount < 0) {
+        alert('Enter a valid amount.');
+        input.focus();
+        return;
+    }
+
+    await updatePaidAmount(playerId, amount);
+    closeCompactPayModal();
+    await loadData();
+}
+
+function clearCompactPayHoldTimer(){
+    if (window.compactPayHoldState.timer) {
+        clearTimeout(window.compactPayHoldState.timer);
+        window.compactPayHoldState.timer = null;
+    }
+}
+
+function compactPayPointerDown(e){
+    const mainBtn = e.target.closest('.compact-pay-main');
+    if (!mainBtn) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+
+    const wrap = mainBtn.closest('.compact-pay');
+    if (!wrap) return;
+    const playerId = wrap.getAttribute('data-player-id');
+    if (!playerId) return;
+
+    clearCompactPayHoldTimer();
+    window.compactPayHoldState.playerId = playerId;
+    window.compactPayHoldState.opened = false;
+    window.compactPayHoldState.timer = setTimeout(() => {
+        window.compactPayHoldState.opened = true;
+        window.compactPayHoldState.suppressClickUntil = Date.now() + 1000;
+        openCompactPayModal(playerId);
+    }, 3000);
+}
+
+function compactPayPointerEnd(){
+    if (window.compactPayHoldState.opened) {
+        window.compactPayHoldState.suppressClickUntil = Date.now() + 1000;
+    }
+    clearCompactPayHoldTimer();
+}
+
+document.addEventListener('pointerdown', compactPayPointerDown);
+document.addEventListener('pointerup', compactPayPointerEnd);
+document.addEventListener('pointercancel', compactPayPointerEnd);
+document.addEventListener('pointerleave', compactPayPointerEnd);
+
+document.addEventListener('keydown', function(e){
+    if (e.key === 'Escape') closeCompactPayModal();
+    if (e.key === 'Enter' && document.getElementById('compactPayModalOverlay').classList.contains('active')) {
+        e.preventDefault();
+        saveCompactPayModal();
+    }
+});
+
+document.getElementById('compactPayModalOverlay').addEventListener('click', function(e){
+    if (e.target === this) closeCompactPayModal();
+});
+</script>
 
 </body>
 </html>
