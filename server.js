@@ -1392,11 +1392,11 @@ async function addAutoPlayers() {
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, rules_agreed, registered_at)
+                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, rules_agreed)
                      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`,
                     [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
                      newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
-                     autoPlayer.isGoalie, null, true, newPlayer.registeredAt]
+                     autoPlayer.isGoalie, null, true]
                 );
             }
 
@@ -2807,16 +2807,16 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
                     id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
                     skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
-                    admin_rating, admin_adjustment, final_rating, is_goalie, team, rules_agreed, registered_at
+                    admin_rating, admin_adjustment, final_rating, is_goalie, team, rules_agreed
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24
                 )`,
                 [
                     player.id, player.firstName, player.lastName, player.phone, player.paymentMethod || null, !!player.paid,
                     toNumericOrNull(player.paidAmount), toNumericOrNull(player.rating),
                     toNumericOrNull(player.skatingRating), toNumericOrNull(player.puckSkillsRating), toNumericOrNull(player.hockeySenseRating), toNumericOrNull(player.conditioningRating), toNumericOrNull(player.effortRating),
                     player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating),
-                    toNumericOrNull(player.adminRating), toNumericOrNull(player.adminAdjustment), toNumericOrNull(player.finalRating), !!player.isGoalie, player.team || null, !!player.rulesAgreed, player.registeredAt || new Date().toISOString()
+                    toNumericOrNull(player.adminRating), toNumericOrNull(player.adminAdjustment), toNumericOrNull(player.finalRating), !!player.isGoalie, player.team || null, !!player.rulesAgreed
                 ]
             );
         }
@@ -2827,14 +2827,14 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
                 `INSERT INTO waitlist (
                     id, first_name, last_name, phone, payment_method, rating,
                     skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
-                    level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote, joined_at
+                    level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19
                 )`,
                 [
                     player.id, player.firstName, player.lastName, player.phone, player.paymentMethod || null, toNumericOrNull(player.rating),
                     toNumericOrNull(player.skatingRating), toNumericOrNull(player.puckSkillsRating), toNumericOrNull(player.hockeySenseRating), toNumericOrNull(player.conditioningRating), toNumericOrNull(player.effortRating),
-                    player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating), toNumericOrNull(player.finalRating), !!player.isGoalie, !!player.bypassAutoPromote, player.joinedAt || new Date().toISOString()
+                    player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating), toNumericOrNull(player.finalRating), !!player.isGoalie, !!player.bypassAutoPromote
                 ]
             );
         }
@@ -4563,15 +4563,15 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
                     `INSERT INTO waitlist (
                         id, first_name, last_name, phone, payment_method, rating,
                         skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
-                        level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote, joined_at
+                        level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote
                     )
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)`,
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)`,
                     [
                         waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
                         waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
                         waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
                         waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
-                        waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false, false, waitlistPlayer.joinedAt
+                        waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false, false
                     ]
                 );
             } catch (err) {
