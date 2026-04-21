@@ -2113,6 +2113,102 @@ button {
 </style>
 
 
+
+<style id="admin-registered-fit-like-waitlist-v1">
+.registered-players-table {
+    width: 100% !important;
+    table-layout: fixed !important;
+}
+.registered-players-table th,
+.registered-players-table td {
+    text-align: center !important;
+    vertical-align: middle !important;
+}
+.registered-players-table th:nth-child(1),
+.registered-players-table td:nth-child(1) {
+    width: auto;
+}
+.registered-players-table th:nth-child(3),
+.registered-players-table td:nth-child(3) {
+    width: 52px;
+}
+.registered-players-table th:nth-child(4),
+.registered-players-table td:nth-child(4),
+.registered-players-table th:nth-child(5),
+.registered-players-table td:nth-child(5) {
+    width: 68px;
+}
+#playerList .player-name-cell {
+    align-items: flex-start !important;
+    text-align: left !important;
+}
+#playerList .rating-wrap,
+#playerList .paid-wrap,
+#playerList .waitlist-rating-wrap,
+#playerList .waitlist-action-wrap {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+}
+#playerList .regular-toggle-btn,
+#playerList .remove-btn {
+    width: 62px !important;
+    min-width: 62px !important;
+    padding: 4px 4px !important;
+}
+#playerList .table-note-muted {
+    display: inline-block;
+    width: 62px;
+    text-align: center;
+    color: #bbb;
+    font-size: 0.74rem;
+}
+@media (max-width: 600px) {
+    .registered-players-table th,
+    .registered-players-table td {
+        padding: 2px 2px !important;
+    }
+    .registered-players-table th:nth-child(3),
+    .registered-players-table td:nth-child(3) {
+        width: 44px;
+    }
+    .registered-players-table th:nth-child(4),
+    .registered-players-table td:nth-child(4),
+    .registered-players-table th:nth-child(5),
+    .registered-players-table td:nth-child(5) {
+        width: 54px;
+    }
+    #playerList .player-name-main {
+        font-size: 0.84rem !important;
+    }
+    #playerList .player-phone-sub {
+        font-size: 0.62rem !important;
+    }
+    #playerList .player-time-sub {
+        font-size: 0.54rem !important;
+    }
+    #playerList .rating-wrap input.rating-pill-input,
+    #playerList input.rating-pill-input,
+    #playerList input[id^="rating-"] {
+        width: 38px !important;
+        height: 24px !important;
+        font-size: 0.8rem !important;
+        padding: 0 4px !important;
+    }
+    #playerList .regular-toggle-btn,
+    #playerList .remove-btn {
+        width: 50px !important;
+        min-width: 50px !important;
+        font-size: 0.56rem !important;
+        padding: 4px 2px !important;
+        border-radius: 6px !important;
+    }
+    #playerList .table-note-muted {
+        width: 50px;
+        font-size: 0.64rem;
+    }
+}
+</style>
 <style id="admin-safe-mobile-patch-v10">
 #playerList .protected-badge,
 #playerList .goalie-badge{display:none !important;}
@@ -4020,13 +4116,12 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
         </div>
 
         <h3 class="section-header">🏒 Registered Players (<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</h3>
-        <table>
+        <table class="registered-players-table">
             <thead>
                 <tr>
                     <th>Name</th>
                     <th class="phone-col-hidden">Phone</th>
                     <th>Rating</th>
-                    <th>Paid ($) <span id="totalPaidDisplay" class="total-paid-display" style="display:none;">($15.00)</span></th>
                     <th>Regular</th>
                     <th>Action</th>
                 </tr>
@@ -6102,7 +6197,7 @@ Date: ${selectedGameDate}`);
                 tbody.innerHTML = '';
 
                 if (data.players.length === 0) {
-                    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
+                    tbody.innerHTML = '<tr><td colspan="4" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
                         const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
@@ -6126,24 +6221,8 @@ Date: ${selectedGameDate}`);
                         const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
                         const hideAdminPaymentUi = !!p.isGoalie || isPhan;
 
-                        let paidInput = '';
-                        if (!hideAdminPaymentUi) {
-                            const isPaid = p.paidAmount && parseFloat(p.paidAmount) > 0;
-                            const compactAmount = isPaid
-                                ? parseFloat(p.paidAmount)
-                                : 15;
-                            paidInput = `
-                                <div class="compact-pay ${isPaid ? 'is-paid' : 'is-unpaid'}" data-player-id="${p.id}">
-                                    <button class="compact-pay-btn compact-pay-minus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, -1)">−</button>
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/unpaid" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
-                                        $${compactAmount}
-                                    </button>
-                                    <button class="compact-pay-btn compact-pay-plus" onclick="event.stopPropagation(); compactPayAdjust(${p.id}, 1)">+</button>
-                                </div>
-                            `;
-                        }
                         const regularCell = hideAdminPaymentUi
-                            ? ''
+                            ? '<span class="table-note-muted">—</span>'
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
 
                         tr.innerHTML = `
@@ -6160,7 +6239,6 @@ Date: ${selectedGameDate}`);
 
                                 </div>
                             </td>
-                            <td>${paidInput}</td>
                             <td>${regularCell}</td>
                             <td>
                                 <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
