@@ -2203,7 +2203,8 @@ button {
     font-size:0.62rem !important;
     line-height:1 !important;
 }
-#playerList .locked-time-chip{
+#playerList .locked-time-chip,
+#waitlistList .locked-time-chip{
     display:inline-flex;
     align-items:center;
     gap:4px;
@@ -2212,7 +2213,8 @@ button {
     line-height:1 !important;
     white-space:nowrap;
 }
-#playerList .locked-time-chip::before{
+#playerList .locked-time-chip::before,
+#waitlistList .locked-time-chip::before{
     content:"🔒";
     font-size:0.62rem;
     line-height:1;
@@ -6485,7 +6487,7 @@ Date: ${selectedGameDate}`);
                                 <span class="player-name-main">${p.firstName} ${p.lastName}</span>
                                 <span class="player-badge-row">${goalieBadge}${bypassBadge}</span>
                                 <span class="player-phone-sub">${p.phone}</span>
-                                ${p.joinedAt ? `<span class="player-time-sub">${new Date(p.joinedAt).toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' })}</span>` : ``}
+                                ${p.joinedAt ? `<span class="player-time-sub"><span class="locked-time-chip" title="Locked signup timestamp — saved when the player joined the waitlist and does not change">${formatLockedSignupTime(p.joinedAt)}</span></span>` : ``}
                             </td>
                             <td>
                                 <div class="waitlist-rating-wrap">
