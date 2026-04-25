@@ -3501,6 +3501,8 @@ function normalizeSkillProfile(input = {}) {
             passingRating: null,
             shootingRating: null,
             defensiveRating: null,
+            backcheckingRating: null,
+            shiftDisciplineRating: null,
             speedBurstRating: null,
             levelPlayed: '',
             positionPlayed: '',
@@ -3523,6 +3525,8 @@ function normalizeSkillProfile(input = {}) {
     const passing = clampRating(input.passingRating);
     const shooting = clampRating(input.shootingRating);
     const speedBurst = clampRating(input.speedBurstRating);
+    const backchecking = clampRating(input.backcheckingRating);
+    const shiftDiscipline = clampRating(input.shiftDisciplineRating);
 
     const levelPlayed = ['beginner', 'intermediate', 'competitive', 'junior'].includes(String(input.levelPlayed || '').toLowerCase())
         ? String(input.levelPlayed).toLowerCase()
@@ -3538,19 +3542,23 @@ function normalizeSkillProfile(input = {}) {
     if (!Number.isFinite(Number(input.speedBurstRating))) missing.push('first 3 strides / speed burst');
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
     if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
+    if (!Number.isFinite(Number(input.backcheckingRating))) missing.push('backchecking / defensive recovery');
+    if (!Number.isFinite(Number(input.shiftDisciplineRating))) missing.push('shift discipline / line changes');
     if (!levelPlayed) missing.push('highest recent level played');
 
     // Phan Friday 1-10 formula: inputs are 1-5, converted to 3.0-9.8.
-    // Weights: skating 20, speed burst 10, conditioning 15, puck 15, IQ 15, passing 10, shooting 10, compete 5.
+    // Weights: skating 16, speed burst 8, conditioning 14, puck 14, IQ 13, passing 9, shooting 8, compete 8, backchecking 5, shift discipline 5.
     const weightedFivePointScore = (
-        (skating * 20) +
-        (speedBurst * 10) +
-        (conditioning * 15) +
-        (puckSkills * 15) +
-        (hockeySense * 15) +
-        (passing * 10) +
-        (shooting * 10) +
-        (effort * 5)
+        (skating * 16) +
+        (speedBurst * 8) +
+        (conditioning * 14) +
+        (puckSkills * 14) +
+        (hockeySense * 13) +
+        (passing * 9) +
+        (shooting * 8) +
+        (effort * 8) +
+        (backchecking * 5) +
+        (shiftDiscipline * 5)
     ) / 100;
 
     const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
@@ -3570,6 +3578,8 @@ function normalizeSkillProfile(input = {}) {
         passingRating: passing,
         shootingRating: shooting,
         defensiveRating: null,
+        backcheckingRating: backchecking,
+        shiftDisciplineRating: shiftDiscipline,
         speedBurstRating: speedBurst,
         levelPlayed,
         positionPlayed: '',
@@ -3601,6 +3611,8 @@ function hydratePlayerRatingProfile(player = {}) {
         passingRating: clampRating(player.passingRating ?? player.puckSkillsRating ?? derivedRating),
         shootingRating: clampRating(player.shootingRating ?? derivedRating),
         defensiveRating: clampRating(player.defensiveRating ?? player.hockeySenseRating ?? derivedRating),
+        backcheckingRating: clampRating(player.backcheckingRating ?? player.defensiveRating ?? player.effortRating ?? derivedRating),
+        shiftDisciplineRating: clampRating(player.shiftDisciplineRating ?? player.hockeySenseRating ?? player.conditioningRating ?? derivedRating),
         speedBurstRating: clampRating(player.speedBurstRating ?? player.skatingRating ?? derivedRating),
         levelPlayed: player.levelPlayed || '',
         positionPlayed: player.positionPlayed || '',
@@ -3627,6 +3639,8 @@ function buildPlayerFromSkillProfile(basePlayer, skillProfile = {}) {
         passingRating: profile.passingRating,
         shootingRating: profile.shootingRating,
         defensiveRating: profile.defensiveRating,
+        backcheckingRating: profile.backcheckingRating,
+        shiftDisciplineRating: profile.shiftDisciplineRating,
         speedBurstRating: profile.speedBurstRating,
         levelPlayed: profile.levelPlayed,
         positionPlayed: profile.positionPlayed,
@@ -3678,6 +3692,8 @@ function buildPromotedRosterPlayer(waitlistPlayer, team = null, metadata = {}) {
         passingRating: waitlistPlayer.passingRating,
         shootingRating: waitlistPlayer.shootingRating,
         defensiveRating: waitlistPlayer.defensiveRating,
+        backcheckingRating: waitlistPlayer.backcheckingRating,
+        shiftDisciplineRating: waitlistPlayer.shiftDisciplineRating,
         speedBurstRating: waitlistPlayer.speedBurstRating,
         levelPlayed: waitlistPlayer.levelPlayed,
         positionPlayed: waitlistPlayer.positionPlayed,
@@ -4701,6 +4717,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         shootingRating,
         defensiveRating,
         speedBurstRating,
+        backcheckingRating,
+        shiftDisciplineRating,
         levelPlayed,
         positionPlayed,
         peerComparison,
@@ -4738,6 +4756,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         shootingRating,
         defensiveRating,
         speedBurstRating,
+        backcheckingRating,
+        shiftDisciplineRating,
         levelPlayed,
         positionPlayed,
         peerComparison,
@@ -4776,6 +4796,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             shootingRating: skillProfile.shootingRating,
             defensiveRating: skillProfile.defensiveRating,
             speedBurstRating: skillProfile.speedBurstRating,
+            backcheckingRating: skillProfile.backcheckingRating,
+            shiftDisciplineRating: skillProfile.shiftDisciplineRating,
             levelPlayed: skillProfile.levelPlayed,
             positionPlayed: skillProfile.positionPlayed,
             peerComparison: skillProfile.peerComparison,
@@ -4848,6 +4870,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             shootingRating: skillProfile.shootingRating,
             defensiveRating: skillProfile.defensiveRating,
             speedBurstRating: skillProfile.speedBurstRating,
+            backcheckingRating: skillProfile.backcheckingRating,
+            shiftDisciplineRating: skillProfile.shiftDisciplineRating,
             levelPlayed: skillProfile.levelPlayed,
             positionPlayed: skillProfile.positionPlayed,
             peerComparison: skillProfile.peerComparison,

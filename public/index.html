@@ -1955,6 +1955,28 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                         </select>
                     </div>
                     <div class="rating-card">
+                        <label for="backcheckingRating">Backchecking / defensive recovery</label>
+                        <select id="backcheckingRating" required style="margin:0;">
+                            <option value="">Select one</option>
+                            <option value="1">Rarely backcheck / slow to recover</option>
+                            <option value="2">Backcheck when convenient</option>
+                            <option value="3">Average defensive effort</option>
+                            <option value="4">Usually backcheck hard</option>
+                            <option value="5">Relentless backchecker / shuts rushes down</option>
+                        </select>
+                    </div>
+                    <div class="rating-card">
+                        <label for="shiftDisciplineRating">Shift discipline / line changes</label>
+                        <select id="shiftDisciplineRating" required style="margin:0;">
+                            <option value="">Select one</option>
+                            <option value="1">Stay out way too long / late changes</option>
+                            <option value="2">Sometimes overstay shifts</option>
+                            <option value="3">Average shift discipline</option>
+                            <option value="4">Usually short smart shifts</option>
+                            <option value="5">Excellent changes / team-first shifts</option>
+                        </select>
+                    </div>
+                    <div class="rating-card">
                         <label for="levelPlayed">Highest recent level played</label>
                         <select id="levelPlayed" required style="margin:0;">
                             <option value="">Select one</option>
@@ -2135,6 +2157,11 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 hockeySenseRating: profile.hockeySenseRating || '',
                 conditioningRating: profile.conditioningRating || '',
                 effortRating: profile.effortRating || '',
+                passingRating: profile.passingRating || '',
+                shootingRating: profile.shootingRating || '',
+                speedBurstRating: profile.speedBurstRating || '',
+                backcheckingRating: profile.backcheckingRating || '',
+                shiftDisciplineRating: profile.shiftDisciplineRating || '',
                 levelPlayed: profile.levelPlayed || '',
                 peerComparison: profile.peerComparison || '',
                 confidenceLevel: profile.confidenceLevel || '',
@@ -2178,6 +2205,11 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
             document.getElementById('hockeySenseRating').value = sanitized.hockeySenseRating || '';
             document.getElementById('conditioningRating').value = sanitized.conditioningRating || '';
             document.getElementById('effortRating').value = sanitized.effortRating || '';
+            document.getElementById('passingRating').value = sanitized.passingRating || '';
+            document.getElementById('shootingRating').value = sanitized.shootingRating || '';
+            document.getElementById('speedBurstRating').value = sanitized.speedBurstRating || '';
+            document.getElementById('backcheckingRating').value = sanitized.backcheckingRating || '';
+            document.getElementById('shiftDisciplineRating').value = sanitized.shiftDisciplineRating || '';
             document.getElementById('levelPlayed').value = sanitized.levelPlayed || '';
             document.getElementById('rating').value = sanitized.rating || '';
 
@@ -2469,6 +2501,8 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 'speedBurstRating',
                 'conditioningRating',
                 'effortRating',
+                'backcheckingRating',
+                'shiftDisciplineRating',
                 'levelPlayed',
             ];
 
@@ -2503,6 +2537,8 @@ function buildRatingProfilePayload() {
             passingRating: null,
             shootingRating: null,
             defensiveRating: null,
+            backcheckingRating: null,
+            shiftDisciplineRating: null,
             speedBurstRating: null,
             levelPlayed: '',
             positionPlayed: '',
@@ -2522,23 +2558,27 @@ function buildRatingProfilePayload() {
     const passing = clampRatingInput(document.getElementById('passingRating')?.value);
     const shooting = clampRatingInput(document.getElementById('shootingRating')?.value);
     const speedBurst = clampRatingInput(document.getElementById('speedBurstRating')?.value);
+    const backchecking = clampRatingInput(document.getElementById('backcheckingRating')?.value);
+    const shiftDiscipline = clampRatingInput(document.getElementById('shiftDisciplineRating')?.value);
     const levelPlayed = document.getElementById('levelPlayed')?.value || '';
 
-    if ([skating, puck, sense, conditioning, effort, passing, shooting, speedBurst].some(v => v === null) || !levelPlayed) {
+    if ([skating, puck, sense, conditioning, effort, passing, shooting, speedBurst, backchecking, shiftDiscipline].some(v => v === null) || !levelPlayed) {
         return null;
     }
 
     // Phan Friday 1-10 formula: answers are 1-5, converted to 3.0-9.8.
-    // Weights: skating 20, speed burst 10, conditioning 15, puck 15, IQ 15, passing 10, shooting 10, compete 5.
+    // Weights: skating 16, speed burst 8, conditioning 14, puck 14, IQ 13, passing 9, shooting 8, compete 8, backchecking 5, shift discipline 5.
     const weightedFivePointScore = (
-        (skating * 20) +
-        (speedBurst * 10) +
-        (conditioning * 15) +
-        (puck * 15) +
-        (sense * 15) +
-        (passing * 10) +
-        (shooting * 10) +
-        (effort * 5)
+        (skating * 16) +
+        (speedBurst * 8) +
+        (conditioning * 14) +
+        (puck * 14) +
+        (sense * 13) +
+        (passing * 9) +
+        (shooting * 8) +
+        (effort * 8) +
+        (backchecking * 5) +
+        (shiftDiscipline * 5)
     ) / 100;
 
     let derivedRating = roundRatingValue(weightedFivePointScore * 2);
@@ -2558,6 +2598,8 @@ function buildRatingProfilePayload() {
         passingRating: passing,
         shootingRating: shooting,
         defensiveRating: null,
+        backcheckingRating: backchecking,
+        shiftDisciplineRating: shiftDiscipline,
         speedBurstRating: speedBurst,
         levelPlayed,
         positionPlayed: '',
@@ -2621,6 +2663,8 @@ function updateCalculatedRating() {
                 document.getElementById('speedBurstRating').value = data.speedBurstRating || '';
                 document.getElementById('conditioningRating').value = data.conditioningRating || '';
                 document.getElementById('effortRating').value = data.effortRating || '';
+                document.getElementById('backcheckingRating').value = data.backcheckingRating || '';
+                document.getElementById('shiftDisciplineRating').value = data.shiftDisciplineRating || '';
                 document.getElementById('levelPlayed').value = data.levelPlayed || '';
                 document.getElementById('rating').value = data.rating || '';
                 if (data.paymentMethod) {
@@ -2649,6 +2693,8 @@ function updateCalculatedRating() {
                 speedBurstRating: document.getElementById('speedBurstRating').value,
                 conditioningRating: document.getElementById('conditioningRating').value,
                 effortRating: document.getElementById('effortRating').value,
+                backcheckingRating: document.getElementById('backcheckingRating').value,
+                shiftDisciplineRating: document.getElementById('shiftDisciplineRating').value,
                 levelPlayed: document.getElementById('levelPlayed').value,
                 rating: document.getElementById('rating').value,
                 paymentMethod: document.querySelector('input[name="payment"]:checked')?.value
@@ -3591,6 +3637,8 @@ function updateCalculatedRating() {
                 passingRating: skillProfile.passingRating,
                 shootingRating: skillProfile.shootingRating,
                 speedBurstRating: skillProfile.speedBurstRating,
+                backcheckingRating: skillProfile.backcheckingRating,
+                shiftDisciplineRating: skillProfile.shiftDisciplineRating,
                 levelPlayed: skillProfile.levelPlayed,
                 positionPlayed: skillProfile.positionPlayed,
                 peerComparison: skillProfile.peerComparison,
@@ -3659,7 +3707,7 @@ function updateCalculatedRating() {
                 });
             }
             
-            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'passingRating', 'shootingRating', 'speedBurstRating', 'conditioningRating', 'effortRating'];
+            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'passingRating', 'shootingRating', 'speedBurstRating', 'conditioningRating', 'effortRating', 'backcheckingRating', 'shiftDisciplineRating'];
             inputs.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
@@ -3676,7 +3724,7 @@ function updateCalculatedRating() {
                 });
             });
 
-            ['levelPlayed', 'effortRating'].forEach(id => {
+            ['levelPlayed', 'effortRating', 'backcheckingRating', 'shiftDisciplineRating'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener('change', updateCalculatedRating);
