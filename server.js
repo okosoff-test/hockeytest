@@ -3527,9 +3527,7 @@ function normalizeSkillProfile(input = {}) {
     const levelPlayed = ['beginner', 'intermediate', 'competitive', 'junior'].includes(String(input.levelPlayed || '').toLowerCase())
         ? String(input.levelPlayed).toLowerCase()
         : '';
-    const positionPlayed = ['forward', 'defence', 'both', 'utility'].includes(String(input.positionPlayed || '').toLowerCase())
-        ? String(input.positionPlayed).toLowerCase()
-        : '';
+    const positionPlayed = '';
 
     const missing = [];
     if (!Number.isFinite(Number(input.skatingRating))) missing.push('skating');
@@ -3541,20 +3539,25 @@ function normalizeSkillProfile(input = {}) {
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
     if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
     if (!levelPlayed) missing.push('highest recent level played');
-    if (!positionPlayed) missing.push('typical position played');
 
-    const weightedSkill = roundRating(
-        (skating * 0.17) +
-        (speedBurst * 0.09) +
-        (puckSkills * 0.13) +
-        (passing * 0.15) +
-        (shooting * 0.11) +
-        (hockeySense * 0.22) +
-        (conditioning * 0.05) +
-        (effort * 0.08)
-    );
-    const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
-    const derivedRating = roundRating((weightedSkill * 0.94) + (levelMapped * 0.06));
+    // Phan Friday 1-10 formula: inputs are 1-5, converted to 3.0-9.8.
+    // Weights: skating 20, speed burst 10, conditioning 15, puck 15, IQ 15, passing 10, shooting 10, compete 5.
+    const weightedFivePointScore = (
+        (skating * 20) +
+        (speedBurst * 10) +
+        (conditioning * 15) +
+        (puckSkills * 15) +
+        (hockeySense * 15) +
+        (passing * 10) +
+        (shooting * 10) +
+        (effort * 5)
+    ) / 100;
+
+    const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
+    let derivedRating = roundRating(weightedFivePointScore * 2);
+    if (levelMinimums[levelPlayed]) derivedRating = Math.max(derivedRating, levelMinimums[levelPlayed]);
+    derivedRating = roundRating(Math.max(3.0, Math.min(9.8, derivedRating)));
+    const weightedSkill = derivedRating;
 
     return {
         ratingMode: 'profile',
@@ -3569,7 +3572,7 @@ function normalizeSkillProfile(input = {}) {
         defensiveRating: null,
         speedBurstRating: speedBurst,
         levelPlayed,
-        positionPlayed,
+        positionPlayed: '',
         peerComparison: '',
         confidenceLevel: '',
         selfRatingRaw: weightedSkill,
