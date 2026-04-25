@@ -1919,17 +1919,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                         </select>
                     </div>
                     <div class="rating-card">
-                        <label for="defensiveRating">Defensive reliability</label>
-                        <select id="defensiveRating" required style="margin:0;">
-                            <option value="">Select one</option>
-                            <option value="3">I often lose coverage</option>
-                            <option value="5">I play basic defense only</option>
-                            <option value="7">I’m a responsible two-way player</option>
-                            <option value="8.5">I’m a strong shutdown defender</option>
-                            <option value="9.5">Elite defender</option>
-                        </select>
-                    </div>
-                    <div class="rating-card">
                         <label for="speedBurstRating">First 3 strides / speed burst</label>
                         <select id="speedBurstRating" required style="margin:0;">
                             <option value="">Select one</option>
@@ -2482,7 +2471,6 @@ html.has-preview-toolbar .preview-toolbar{display:block;}
                 'hockeySenseRating',
                 'passingRating',
                 'shootingRating',
-                'defensiveRating',
                 'speedBurstRating',
                 'conditioningRating',
                 'effortRating',
@@ -2539,25 +2527,23 @@ function buildRatingProfilePayload() {
     const effort = clampRatingInput(document.getElementById('effortRating')?.value);
     const passing = clampRatingInput(document.getElementById('passingRating')?.value);
     const shooting = clampRatingInput(document.getElementById('shootingRating')?.value);
-    const defensive = clampRatingInput(document.getElementById('defensiveRating')?.value);
     const speedBurst = clampRatingInput(document.getElementById('speedBurstRating')?.value);
     const levelPlayed = document.getElementById('levelPlayed')?.value || '';
     const positionPlayed = document.getElementById('positionPlayed')?.value || '';
 
-    if ([skating, puck, sense, conditioning, effort, passing, shooting, defensive, speedBurst].some(v => v === null) || !levelPlayed || !positionPlayed) {
+    if ([skating, puck, sense, conditioning, effort, passing, shooting, speedBurst].some(v => v === null) || !levelPlayed || !positionPlayed) {
         return null;
     }
 
     const weightedSkill = roundRatingValue(
-        (skating * 0.15) +
-        (speedBurst * 0.08) +
-        (puck * 0.12) +
-        (passing * 0.13) +
-        (shooting * 0.10) +
-        (defensive * 0.12) +
-        (sense * 0.18) +
+        (skating * 0.17) +
+        (speedBurst * 0.09) +
+        (puck * 0.13) +
+        (passing * 0.15) +
+        (shooting * 0.11) +
+        (sense * 0.22) +
         (conditioning * 0.05) +
-        (effort * 0.07)
+        (effort * 0.08)
     );
     const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
     const derivedRating = roundRatingValue((weightedSkill * 0.94) + (levelMapped * 0.06));
@@ -2572,7 +2558,7 @@ function buildRatingProfilePayload() {
         effortRating: effort,
         passingRating: passing,
         shootingRating: shooting,
-        defensiveRating: defensive,
+        defensiveRating: null,
         speedBurstRating: speedBurst,
         levelPlayed,
         positionPlayed,
@@ -2633,7 +2619,6 @@ function updateCalculatedRating() {
                 document.getElementById('hockeySenseRating').value = data.hockeySenseRating || '';
                 document.getElementById('passingRating').value = data.passingRating || '';
                 document.getElementById('shootingRating').value = data.shootingRating || '';
-                document.getElementById('defensiveRating').value = data.defensiveRating || '';
                 document.getElementById('speedBurstRating').value = data.speedBurstRating || '';
                 document.getElementById('conditioningRating').value = data.conditioningRating || '';
                 document.getElementById('effortRating').value = data.effortRating || '';
@@ -2663,7 +2648,6 @@ function updateCalculatedRating() {
                 hockeySenseRating: document.getElementById('hockeySenseRating').value,
                 passingRating: document.getElementById('passingRating').value,
                 shootingRating: document.getElementById('shootingRating').value,
-                defensiveRating: document.getElementById('defensiveRating').value,
                 speedBurstRating: document.getElementById('speedBurstRating').value,
                 conditioningRating: document.getElementById('conditioningRating').value,
                 effortRating: document.getElementById('effortRating').value,
@@ -3609,7 +3593,6 @@ function updateCalculatedRating() {
                 effortRating: skillProfile.effortRating,
                 passingRating: skillProfile.passingRating,
                 shootingRating: skillProfile.shootingRating,
-                defensiveRating: skillProfile.defensiveRating,
                 speedBurstRating: skillProfile.speedBurstRating,
                 levelPlayed: skillProfile.levelPlayed,
                 positionPlayed: skillProfile.positionPlayed,
@@ -3679,7 +3662,7 @@ function updateCalculatedRating() {
                 });
             }
             
-            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'passingRating', 'shootingRating', 'defensiveRating', 'speedBurstRating', 'conditioningRating', 'effortRating'];
+            const inputs = ['firstName', 'lastName', 'phone', 'directRating', 'skatingRating', 'puckSkillsRating', 'hockeySenseRating', 'passingRating', 'shootingRating', 'speedBurstRating', 'conditioningRating', 'effortRating'];
             inputs.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {

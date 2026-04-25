@@ -3522,7 +3522,6 @@ function normalizeSkillProfile(input = {}) {
     const effort = clampRating(input.effortRating);
     const passing = clampRating(input.passingRating);
     const shooting = clampRating(input.shootingRating);
-    const defensive = clampRating(input.defensiveRating);
     const speedBurst = clampRating(input.speedBurstRating);
 
     const levelPlayed = ['beginner', 'intermediate', 'competitive', 'junior'].includes(String(input.levelPlayed || '').toLowerCase())
@@ -3538,7 +3537,6 @@ function normalizeSkillProfile(input = {}) {
     if (!Number.isFinite(Number(input.hockeySenseRating))) missing.push('hockey IQ');
     if (!Number.isFinite(Number(input.passingRating))) missing.push('passing / playmaking');
     if (!Number.isFinite(Number(input.shootingRating))) missing.push('shooting / finishing');
-    if (!Number.isFinite(Number(input.defensiveRating))) missing.push('defensive reliability');
     if (!Number.isFinite(Number(input.speedBurstRating))) missing.push('first 3 strides / speed burst');
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
     if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
@@ -3546,15 +3544,14 @@ function normalizeSkillProfile(input = {}) {
     if (!positionPlayed) missing.push('typical position played');
 
     const weightedSkill = roundRating(
-        (skating * 0.15) +
-        (speedBurst * 0.08) +
-        (puckSkills * 0.12) +
-        (passing * 0.13) +
-        (shooting * 0.10) +
-        (defensive * 0.12) +
-        (hockeySense * 0.18) +
+        (skating * 0.17) +
+        (speedBurst * 0.09) +
+        (puckSkills * 0.13) +
+        (passing * 0.15) +
+        (shooting * 0.11) +
+        (hockeySense * 0.22) +
         (conditioning * 0.05) +
-        (effort * 0.07)
+        (effort * 0.08)
     );
     const levelMapped = LEVEL_PLAY_RATING_MAP[levelPlayed] || 5.5;
     const derivedRating = roundRating((weightedSkill * 0.94) + (levelMapped * 0.06));
@@ -3569,7 +3566,7 @@ function normalizeSkillProfile(input = {}) {
         effortRating: effort,
         passingRating: passing,
         shootingRating: shooting,
-        defensiveRating: defensive,
+        defensiveRating: null,
         speedBurstRating: speedBurst,
         levelPlayed,
         positionPlayed,
@@ -3745,15 +3742,14 @@ function getLevelPlayedBoost(levelPlayed) {
 function getPlayerProfileScore(player) {
     const profile = hydratePlayerRatingProfile(player);
     return roundRating(
-        (profile.skatingRating * 0.15) +
-        (profile.speedBurstRating * 0.08) +
-        (profile.puckSkillsRating * 0.12) +
-        (profile.passingRating * 0.13) +
-        (profile.shootingRating * 0.10) +
-        (profile.defensiveRating * 0.12) +
-        (profile.hockeySenseRating * 0.18) +
+        (profile.skatingRating * 0.17) +
+        (profile.speedBurstRating * 0.09) +
+        (profile.puckSkillsRating * 0.13) +
+        (profile.passingRating * 0.15) +
+        (profile.shootingRating * 0.11) +
+        (profile.hockeySenseRating * 0.22) +
         (profile.conditioningRating * 0.05) +
-        (profile.effortRating * 0.07) +
+        (profile.effortRating * 0.08) +
         (getLevelPlayedBoost(profile.levelPlayed) * 0.06)
     );
 }
@@ -3782,7 +3778,6 @@ function summarizeTeamMetrics(team = []) {
         effort: sumField(skaters, p => p.effortRating),
         passing: sumField(skaters, p => p.passingRating),
         shooting: sumField(skaters, p => p.shootingRating),
-        defensive: sumField(skaters, p => p.defensiveRating),
         speedBurst: sumField(skaters, p => p.speedBurstRating),
         defenceCount: skaters.filter(p => ['defence','both','utility'].includes(String(p.positionPlayed || '').toLowerCase())).length,
         forwardCount: skaters.filter(p => ['forward','both','utility'].includes(String(p.positionPlayed || '').toLowerCase())).length,
@@ -3803,7 +3798,6 @@ function computeTeamBalanceObjective(whiteTeam = [], darkTeam = []) {
         Math.abs(white.puckSkills - dark.puckSkills) * 0.45 +
         Math.abs(white.passing - dark.passing) * 0.65 +
         Math.abs(white.shooting - dark.shooting) * 0.6 +
-        Math.abs(white.defensive - dark.defensive) * 0.75 +
         Math.abs(white.speedBurst - dark.speedBurst) * 0.55 +
         Math.abs(white.conditioning - dark.conditioning) * 0.35 +
         Math.abs(white.defenceCount - dark.defenceCount) * 1.25 +
