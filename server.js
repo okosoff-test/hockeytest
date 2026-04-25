@@ -3501,7 +3501,6 @@ function normalizeSkillProfile(input = {}) {
             passingRating: null,
             shootingRating: null,
             defensiveRating: null,
-            backcheckingRating: null,
             shiftDisciplineRating: null,
             speedBurstRating: null,
             levelPlayed: '',
@@ -3525,7 +3524,6 @@ function normalizeSkillProfile(input = {}) {
     const passing = clampRating(input.passingRating);
     const shooting = clampRating(input.shootingRating);
     const speedBurst = clampRating(input.speedBurstRating);
-    const backchecking = clampRating(input.backcheckingRating);
     const shiftDiscipline = clampRating(input.shiftDisciplineRating);
 
     const levelPlayed = ['beginner', 'intermediate', 'competitive', 'junior'].includes(String(input.levelPlayed || '').toLowerCase())
@@ -3542,22 +3540,20 @@ function normalizeSkillProfile(input = {}) {
     if (!Number.isFinite(Number(input.speedBurstRating))) missing.push('first 3 strides / speed burst');
     if (!Number.isFinite(Number(input.conditioningRating))) missing.push('conditioning');
     if (!Number.isFinite(Number(input.effortRating))) missing.push('compete / effort');
-    if (!Number.isFinite(Number(input.backcheckingRating))) missing.push('backchecking / defensive recovery');
     if (!Number.isFinite(Number(input.shiftDisciplineRating))) missing.push('shift discipline / line changes');
     if (!levelPlayed) missing.push('highest recent level played');
 
     // Phan Friday 1-10 formula: inputs are 1-5, converted to 3.0-9.8.
-    // Weights: skating 16, speed burst 8, conditioning 14, puck 14, IQ 13, passing 9, shooting 8, compete 8, backchecking 5, shift discipline 5.
+    // Weights: skating 17, speed burst 8, conditioning 15, puck 14, IQ 14, passing 10, shooting 8, compete 9, shift discipline 5.
     const weightedFivePointScore = (
-        (skating * 16) +
+        (skating * 17) +
         (speedBurst * 8) +
-        (conditioning * 14) +
+        (conditioning * 15) +
         (puckSkills * 14) +
-        (hockeySense * 13) +
-        (passing * 9) +
+        (hockeySense * 14) +
+        (passing * 10) +
         (shooting * 8) +
-        (effort * 8) +
-        (backchecking * 5) +
+        (effort * 9) +
         (shiftDiscipline * 5)
     ) / 100;
 
@@ -3578,7 +3574,6 @@ function normalizeSkillProfile(input = {}) {
         passingRating: passing,
         shootingRating: shooting,
         defensiveRating: null,
-        backcheckingRating: backchecking,
         shiftDisciplineRating: shiftDiscipline,
         speedBurstRating: speedBurst,
         levelPlayed,
@@ -3611,7 +3606,6 @@ function hydratePlayerRatingProfile(player = {}) {
         passingRating: clampRating(player.passingRating ?? player.puckSkillsRating ?? derivedRating),
         shootingRating: clampRating(player.shootingRating ?? derivedRating),
         defensiveRating: clampRating(player.defensiveRating ?? player.hockeySenseRating ?? derivedRating),
-        backcheckingRating: clampRating(player.backcheckingRating ?? player.defensiveRating ?? player.effortRating ?? derivedRating),
         shiftDisciplineRating: clampRating(player.shiftDisciplineRating ?? player.hockeySenseRating ?? player.conditioningRating ?? derivedRating),
         speedBurstRating: clampRating(player.speedBurstRating ?? player.skatingRating ?? derivedRating),
         levelPlayed: player.levelPlayed || '',
@@ -3639,7 +3633,6 @@ function buildPlayerFromSkillProfile(basePlayer, skillProfile = {}) {
         passingRating: profile.passingRating,
         shootingRating: profile.shootingRating,
         defensiveRating: profile.defensiveRating,
-        backcheckingRating: profile.backcheckingRating,
         shiftDisciplineRating: profile.shiftDisciplineRating,
         speedBurstRating: profile.speedBurstRating,
         levelPlayed: profile.levelPlayed,
@@ -3692,7 +3685,6 @@ function buildPromotedRosterPlayer(waitlistPlayer, team = null, metadata = {}) {
         passingRating: waitlistPlayer.passingRating,
         shootingRating: waitlistPlayer.shootingRating,
         defensiveRating: waitlistPlayer.defensiveRating,
-        backcheckingRating: waitlistPlayer.backcheckingRating,
         shiftDisciplineRating: waitlistPlayer.shiftDisciplineRating,
         speedBurstRating: waitlistPlayer.speedBurstRating,
         levelPlayed: waitlistPlayer.levelPlayed,
@@ -4717,7 +4709,6 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         shootingRating,
         defensiveRating,
         speedBurstRating,
-        backcheckingRating,
         shiftDisciplineRating,
         levelPlayed,
         positionPlayed,
@@ -4756,7 +4747,6 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         shootingRating,
         defensiveRating,
         speedBurstRating,
-        backcheckingRating,
         shiftDisciplineRating,
         levelPlayed,
         positionPlayed,
@@ -4796,7 +4786,6 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             shootingRating: skillProfile.shootingRating,
             defensiveRating: skillProfile.defensiveRating,
             speedBurstRating: skillProfile.speedBurstRating,
-            backcheckingRating: skillProfile.backcheckingRating,
             shiftDisciplineRating: skillProfile.shiftDisciplineRating,
             levelPlayed: skillProfile.levelPlayed,
             positionPlayed: skillProfile.positionPlayed,
@@ -4870,7 +4859,6 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             shootingRating: skillProfile.shootingRating,
             defensiveRating: skillProfile.defensiveRating,
             speedBurstRating: skillProfile.speedBurstRating,
-            backcheckingRating: skillProfile.backcheckingRating,
             shiftDisciplineRating: skillProfile.shiftDisciplineRating,
             levelPlayed: skillProfile.levelPlayed,
             positionPlayed: skillProfile.positionPlayed,
