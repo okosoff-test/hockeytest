@@ -3736,83 +3736,6 @@ th, td{padding:2px 3px !important;}
     display:none !important;
 }
 </style>
-
-
-<style id="announcement-mini-switch-v2">
-/* Compact mini ON/OFF slider for Announcement */
-.compact-announcement-control .announcement-topbar{
-    display:flex !important;
-    align-items:center !important;
-    justify-content:space-between !important;
-    gap:12px !important;
-    flex-wrap:nowrap !important;
-}
-.compact-announcement-control .announcement-topbar h3{
-    margin:0 !important;
-}
-.compact-announcement-control .announcement-status.announcement-mini-switch{
-    position:relative !important;
-    display:inline-flex !important;
-    align-items:center !important;
-    justify-content:center !important;
-    width:78px !important;
-    min-width:78px !important;
-    max-width:78px !important;
-    height:34px !important;
-    min-height:34px !important;
-    padding:0 !important;
-    margin:0 !important;
-    border-radius:999px !important;
-    cursor:pointer !important;
-    user-select:none !important;
-    box-shadow:0 6px 14px rgba(0,0,0,.28) !important;
-    border:1px solid rgba(255,255,255,.18) !important;
-    transition:background .18s ease, box-shadow .18s ease !important;
-}
-.compact-announcement-control .announcement-status.announcement-mini-switch.active{
-    background:linear-gradient(135deg,#2e7d32,#43a047) !important;
-}
-.compact-announcement-control .announcement-status.announcement-mini-switch.inactive{
-    background:linear-gradient(135deg,#b71c1c,#e53935) !important;
-}
-.compact-announcement-control .announcement-switch-knob{
-    position:absolute !important;
-    top:4px !important;
-    left:4px !important;
-    width:26px !important;
-    height:26px !important;
-    border-radius:50% !important;
-    background:#fff !important;
-    box-shadow:0 3px 8px rgba(0,0,0,.35) !important;
-    transition:left .18s ease !important;
-}
-.compact-announcement-control .announcement-status.announcement-mini-switch.active .announcement-switch-knob{
-    left:47px !important;
-}
-.compact-announcement-control .announcement-switch-text{
-    position:absolute !important;
-    right:10px !important;
-    color:#fff !important;
-    font-weight:900 !important;
-    font-size:.72rem !important;
-    letter-spacing:.35px !important;
-    line-height:1 !important;
-}
-.compact-announcement-control .announcement-status.announcement-mini-switch.active .announcement-switch-text{
-    left:10px !important;
-    right:auto !important;
-}
-@media (max-width:420px){
-    .compact-announcement-control .announcement-status.announcement-mini-switch{
-        width:72px !important;
-        min-width:72px !important;
-        max-width:72px !important;
-    }
-    .compact-announcement-control .announcement-status.announcement-mini-switch.active .announcement-switch-knob{
-        left:41px !important;
-    }
-}
-</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -3924,12 +3847,10 @@ th, td{padding:2px 3px !important;}
         <div class="announcement-control compact-announcement-control">
             <div class="announcement-topbar">
                 <h3>📢 Announcement</h3>
-                <input type="checkbox" id="announcementCheckbox" class="maintenance-checkbox">
-                <div class="announcement-status announcement-mini-switch inactive" id="announcementStatus" role="button" tabindex="0" aria-label="Toggle announcement" onclick="toggleAnnouncementEnabled()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAnnouncementEnabled();}">
-                    <span class="announcement-switch-knob"></span>
-                    <span class="announcement-switch-text">OFF</span>
-                </div>
             </div>
+
+            <input type="checkbox" id="announcementCheckbox" class="maintenance-checkbox">
+            <div class="announcement-status inactive" id="announcementStatus" role="button" tabindex="0" onclick="toggleAnnouncementEnabled()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAnnouncementEnabled();}">ANNOUNCEMENT OFF</div>
 
             <div class="announcement-compact-grid">
                 <div class="message-box message-box-main">
@@ -5352,9 +5273,7 @@ th, td{padding:2px 3px !important;}
                     announcementCheckbox.checked = !!data.announcementEnabled;
                 }
                 if (announcementStatus) {
-                    const announcementSwitchText = announcementStatus.querySelector('.announcement-switch-text');
-                    if (announcementSwitchText) announcementSwitchText.textContent = data.announcementEnabled ? 'ON' : 'OFF';
-                    else announcementStatus.textContent = data.announcementEnabled ? 'ON' : 'OFF';
+                    announcementStatus.innerText = data.announcementEnabled ? 'ANNOUNCEMENT ON' : 'ANNOUNCEMENT OFF';
                     announcementStatus.className = 'announcement-status ' + (data.announcementEnabled ? 'active' : 'inactive');
                     announcementStatus.setAttribute('aria-pressed', data.announcementEnabled ? 'true' : 'false');
                     announcementStatus.title = data.announcementEnabled ? 'Click to turn announcement OFF' : 'Click to turn announcement ON';
@@ -7343,9 +7262,7 @@ Continue?`;
             const nextEnabled = !(checkbox && checkbox.checked);
             if (checkbox) checkbox.checked = nextEnabled;
             if (status) {
-                const switchText = status.querySelector('.announcement-switch-text');
-                if (switchText) switchText.textContent = nextEnabled ? 'ON' : 'OFF';
-                else status.textContent = nextEnabled ? 'ON' : 'OFF';
+                status.innerText = nextEnabled ? 'ANNOUNCEMENT ON' : 'ANNOUNCEMENT OFF';
                 status.className = 'announcement-status ' + (nextEnabled ? 'active' : 'inactive');
                 status.setAttribute('aria-pressed', nextEnabled ? 'true' : 'false');
             }
