@@ -360,7 +360,10 @@
 
                 // Page title
                 const titleEl = document.getElementById('pageTitle');
-                if (titleEl && status.customTitle) titleEl.textContent = status.customTitle;
+                if (titleEl && status.customTitle) {
+                    titleEl.textContent = status.customTitle;
+                    document.title = `Team Roster - ${status.customTitle}`;
+                }
 
                 // "Check back" message
                 const strongEl = document.getElementById('checkBackStrong');

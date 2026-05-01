@@ -3836,6 +3836,10 @@ th, td{padding:2px 3px !important;}
             </div>
             <div class="game-setup-grid">
                 <div class="title-control-group">
+                    <label for="customTitleInput">Title shown on public pages</label>
+                    <input type="text" id="customTitleInput" class="control-input" placeholder="Phan's Friday Hockey" oninput="updateTitlePreview()">
+                </div>
+                <div class="title-control-group">
                     <label for="titleDayTime">Day and time</label>
                     <input type="datetime-local" id="titleDayTime" class="control-input" onchange="updateTitlePreview()">
 
@@ -5139,6 +5143,8 @@ th, td{padding:2px 3px !important;}
                     }
                 }
                 if (data.customTitle) {
+                    const customTitleInput = document.getElementById('customTitleInput');
+                    if (customTitleInput) customTitleInput.value = data.customTitle;
                     document.getElementById('titlePreview').innerText = data.customTitle;
                     document.getElementById('dynamicTitlePreview').innerText = data.customTitle;
                     updateGameSetupPreview();
@@ -5258,10 +5264,17 @@ th, td{padding:2px 3px !important;}
         }
 
         // Update title preview based on selection
+        function getCustomTitleFromAdminInput(fallbackTitle = "Phan's Hockey") {
+            const customTitleInput = document.getElementById('customTitleInput');
+            const customTitle = customTitleInput ? String(customTitleInput.value || '').trim() : '';
+            return customTitle || fallbackTitle;
+        }
+
         function updateTitlePreview() {
             const parts = getEnhancedControlParts('titleDayTime');
             if (!parts) return;
-            const newTitle = `Phan's ${parts.weekday} Hockey`;
+            const defaultTitle = `Phan's ${parts.weekday} Hockey`;
+            const newTitle = getCustomTitleFromAdminInput(defaultTitle);
             document.getElementById('dynamicTitlePreview').innerText = newTitle;
 
             const wrapper = document.querySelector('.enhanced-datetime[data-target="titleDayTime"]');
@@ -5295,7 +5308,8 @@ th, td{padding:2px 3px !important;}
                 }
 
                 const arena = document.getElementById('arenaSelect').value;
-                const newTitle = `Phan's ${parts.weekday} Hockey`;
+                const defaultTitle = `Phan's ${parts.weekday} Hockey`;
+                const newTitle = getCustomTitleFromAdminInput(defaultTitle);
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
 
@@ -5351,7 +5365,8 @@ Date: ${selectedGameDate}`);
                     return;
                 }
 
-                const newTitle = `Phan's ${parts.weekday} Hockey`;
+                const defaultTitle = `Phan's ${parts.weekday} Hockey`;
+                const newTitle = getCustomTitleFromAdminInput(defaultTitle);
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
 
