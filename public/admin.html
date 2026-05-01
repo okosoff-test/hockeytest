@@ -3706,6 +3706,36 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="announcement-toggle-polish-v1">
+/* Announcement ON/OFF bar: replaces separate green Enable button */
+.compact-announcement-control .announcement-topbar{
+    align-items: stretch !important;
+}
+.compact-announcement-control .announcement-status{
+    display:flex !important;
+    align-items:center !important;
+    justify-content:center !important;
+    width:100% !important;
+    min-height:36px !important;
+    border-radius:999px !important;
+    font-weight:900 !important;
+    letter-spacing:.2px !important;
+    cursor:pointer !important;
+    user-select:none !important;
+    border:0 !important;
+    box-shadow:0 8px 20px rgba(0,0,0,.25) !important;
+}
+.compact-announcement-control .announcement-status.active{
+    background:linear-gradient(135deg,#2e7d32,#43a047) !important;
+}
+.compact-announcement-control .announcement-status.inactive{
+    background:linear-gradient(135deg,#b71c1c,#e53935) !important;
+}
+.compact-announcement-control .announcement-toggle-row{
+    display:none !important;
+}
+</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -3817,13 +3847,10 @@ th, td{padding:2px 3px !important;}
         <div class="announcement-control compact-announcement-control">
             <div class="announcement-topbar">
                 <h3>📢 Announcement</h3>
-                <div class="announcement-status inactive" id="announcementStatus">OFF</div>
             </div>
 
-            <div class="announcement-toggle-row">
-                <input type="checkbox" id="announcementCheckbox" class="maintenance-checkbox">
-                <label for="announcementCheckbox" class="maintenance-label">Enable</label>
-            </div>
+            <input type="checkbox" id="announcementCheckbox" class="maintenance-checkbox">
+            <div class="announcement-status inactive" id="announcementStatus" role="button" tabindex="0" onclick="toggleAnnouncementEnabled()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();toggleAnnouncementEnabled();}">ANNOUNCEMENT OFF</div>
 
             <div class="announcement-compact-grid">
                 <div class="message-box message-box-main">
@@ -5246,8 +5273,10 @@ th, td{padding:2px 3px !important;}
                     announcementCheckbox.checked = !!data.announcementEnabled;
                 }
                 if (announcementStatus) {
-                    announcementStatus.innerText = data.announcementEnabled ? 'ANNOUNCEMENT LIVE' : 'ANNOUNCEMENT OFF';
+                    announcementStatus.innerText = data.announcementEnabled ? 'ANNOUNCEMENT ON' : 'ANNOUNCEMENT OFF';
                     announcementStatus.className = 'announcement-status ' + (data.announcementEnabled ? 'active' : 'inactive');
+                    announcementStatus.setAttribute('aria-pressed', data.announcementEnabled ? 'true' : 'false');
+                    announcementStatus.title = data.announcementEnabled ? 'Click to turn announcement OFF' : 'Click to turn announcement ON';
                 }
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
@@ -7226,7 +7255,21 @@ Continue?`;
             }
         }
 
-        async function saveAnnouncementSettings() {
+
+        async function toggleAnnouncementEnabled() {
+            const checkbox = document.getElementById('announcementCheckbox');
+            const status = document.getElementById('announcementStatus');
+            const nextEnabled = !(checkbox && checkbox.checked);
+            if (checkbox) checkbox.checked = nextEnabled;
+            if (status) {
+                status.innerText = nextEnabled ? 'ANNOUNCEMENT ON' : 'ANNOUNCEMENT OFF';
+                status.className = 'announcement-status ' + (nextEnabled ? 'active' : 'inactive');
+                status.setAttribute('aria-pressed', nextEnabled ? 'true' : 'false');
+            }
+            await saveAnnouncementSettings({ silent: true });
+        }
+
+        async function saveAnnouncementSettings(options = {}) {
             const button = document.getElementById('saveAnnouncementBtn');
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
@@ -7257,9 +7300,11 @@ Continue?`;
                     }
 
                     await loadAppSettings();
-                    alert(enabled
-                        ? '📢 Announcement saved and enabled on signup page.'
-                        : '✅ Announcement saved and hidden from signup page.');
+                    if (!options.silent) {
+                        alert(enabled
+                            ? '📢 Announcement saved and enabled on signup page.'
+                            : '✅ Announcement saved and hidden from signup page.');
+                    }
                 } catch (err) {
                     console.error('Save announcement error:', err);
                     alert(err.message || 'Failed to save announcement');
