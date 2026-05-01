@@ -1576,7 +1576,7 @@
         <!-- Roster Display Section -->
         <div class="roster-display-section" id="rosterDisplay">
             <div class="roster-header">
-                <h2>🏒 Team Roster Released!</h2>
+                <h2>🏒 Team Roster</h2>
                 <p id="rosterGameInfo">--</p>
             </div>
             <div class="teams-container">
@@ -2635,10 +2635,23 @@ function updateCalculatedRating() {
         }
 
         function formatRosterHeaderHtml(dateValue, formattedDate, gameTimeValue, locationValue) {
-            const fullLine = formatPremiumRosterLine(dateValue, formattedDate, gameTimeValue, locationValue);
-            const parts = fullLine.split(' • ');
-            const locationText = String(locationValue || parts.pop() || '').trim();
-            const dateTimeText = parts.length ? parts.join(' • ') : fullLine;
+            const monthNames = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
+            let dateText = String(formattedDate || dateValue || '').trim();
+            const rawDate = String(dateValue || '').trim();
+
+            if (/^\d{4}-\d{2}-\d{2}$/.test(rawDate)) {
+                const parts = rawDate.split('-').map(Number);
+                const localDate = new Date(parts[0], parts[1] - 1, parts[2]);
+                const dayName = localDate.toLocaleDateString('en-US', { weekday: 'long' }).toUpperCase();
+                dateText = `${dayName} ${monthNames[localDate.getMonth()]} ${localDate.getDate()}`;
+            } else {
+                dateText = dateText.replace(/,?\s*\d{4}\b/g, '').replace(/,/g, '').trim().toUpperCase();
+            }
+
+            const timeText = String(gameTimeValue || '').replace(/^[A-Za-z]+\s+/, '').replace(/\s+/g, ' ').trim();
+            const locationText = String(locationValue || '').trim();
+            const dateTimeText = [dateText, timeText].filter(Boolean).join(' • ');
+
             if (!locationText) return escapeHtml(dateTimeText);
             return `<span class="roster-date-time-line">${escapeHtml(dateTimeText)}</span><span class="roster-location-line">${escapeHtml(locationText)}</span>`;
         }
