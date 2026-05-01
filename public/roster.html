@@ -240,7 +240,7 @@
 
 
 
-        /* Clean 2-line roster page header: date/time on line 1, arena on line 2 */
+        /* Clean two-line roster page header */
         #gameDate {
             font-size: clamp(0.95rem, 3vw, 1.22rem);
             font-weight: 800;
@@ -251,21 +251,17 @@
             overflow: visible;
             text-overflow: unset;
         }
-        #gameLocationTime {
+        #gameDate .roster-date-time-line,
+        #gameDate .roster-location-line {
             display: block;
-            margin-top: 4px;
-            font-size: clamp(0.9rem, 2.8vw, 1.12rem);
-            font-weight: 800;
-            letter-spacing: 0.35px;
-            color: #f2f2f2;
-            line-height: 1.35;
-            white-space: normal;
-            overflow: visible;
-            text-overflow: unset;
         }
+        #gameDate .roster-location-line {
+            margin-top: 2px;
+            color: var(--accent);
+        }
+        #gameLocationTime { display: none; }
         @media (max-width: 420px) {
             #gameDate { font-size: 0.86rem; letter-spacing: 0.15px; }
-            #gameLocationTime { font-size: 0.84rem; letter-spacing: 0.12px; }
         }
 
         @media (max-width: 600px) {
@@ -392,7 +388,7 @@
         loadScheduleInfo();
 
 
-        function formatPremiumRosterParts(dateValue, formattedDate, gameTimeValue, locationValue) {
+        function formatPremiumRosterLine(dateValue, formattedDate, gameTimeValue, locationValue) {
             const monthNames = ['JANUARY','FEBRUARY','MARCH','APRIL','MAY','JUNE','JULY','AUGUST','SEPTEMBER','OCTOBER','NOVEMBER','DECEMBER'];
             let dateText = String(formattedDate || dateValue || '').trim();
             const rawDate = String(dateValue || '').trim();
@@ -406,10 +402,22 @@
             }
             const timeText = String(gameTimeValue || '').replace(/^[A-Za-z]+\s+/, '').replace(/\s+/g, ' ').trim();
             const locationText = String(locationValue || '').trim();
-            return {
-                dateTime: [dateText, timeText].filter(Boolean).join(' • '),
-                location: locationText
-            };
+            return [dateText, timeText, locationText].filter(Boolean).join(' • ');
+        }
+
+        function escapeHtml(value) {
+            return String(value || '').replace(/[&<>"']/g, function(char) {
+                return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char];
+            });
+        }
+
+        function formatRosterHeaderHtml(dateValue, formattedDate, gameTimeValue, locationValue) {
+            const fullLine = formatPremiumRosterLine(dateValue, formattedDate, gameTimeValue, locationValue);
+            const parts = fullLine.split(' • ');
+            const locationText = String(locationValue || parts.pop() || '').trim();
+            const dateTimeText = parts.length ? parts.join(' • ') : fullLine;
+            if (!locationText) return escapeHtml(dateTimeText);
+            return `<span class="roster-date-time-line">${escapeHtml(dateTimeText)}</span><span class="roster-location-line">${escapeHtml(locationText)}</span>`;
         }
 
         async function loadRoster() {
@@ -418,9 +426,8 @@
                 const data = await res.json();
 
                 if (data.location && data.time) {
-                    const rosterHeaderParts = formatPremiumRosterParts(data.date, data.formattedDate, data.time, data.location);
-                    document.getElementById('gameDate').innerText = rosterHeaderParts.dateTime;
-                    document.getElementById('gameLocationTime').innerText = rosterHeaderParts.location;
+                    document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, data.location);
+                    document.getElementById('gameLocationTime').innerText = '';
                 }
 
                 if (!data.released) {
