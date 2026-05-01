@@ -4849,18 +4849,27 @@ th, td{padding:2px 3px !important;}
                 .replace(/\w/g, ch => ch.toUpperCase());
         }
 
+        function formatManual12HourTime(date) {
+            const hours24 = date.getHours();
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            const ampm = hours24 >= 12 ? 'PM' : 'AM';
+            const hours12 = hours24 % 12 || 12;
+            return `${hours12}:${minutes} ${ampm}`;
+        }
+
         function formatDateTime(value) {
             if (!value) return '—';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
-            return d.toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+            const month = d.toLocaleDateString('en-US', { month: 'short' });
+            return `${month} ${d.getDate()}, ${d.getFullYear()}, ${formatManual12HourTime(d)}`;
         }
 
         function formatLockedSignupTime(value) {
             if (!value) return '';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return String(value);
-            return d.toLocaleString('en-US', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
+            return `${d.getMonth() + 1}/${d.getDate()}, ${formatManual12HourTime(d)}`;
         }
 
         async function loadSessionInfo() {
