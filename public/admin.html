@@ -4853,14 +4853,14 @@ th, td{padding:2px 3px !important;}
             if (!value) return '—';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return value;
-            return d.toLocaleString([], { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+            return d.toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
         }
 
         function formatLockedSignupTime(value) {
             if (!value) return '';
             const d = new Date(value);
             if (Number.isNaN(d.getTime())) return String(value);
-            return d.toLocaleString([], { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit' });
+            return d.toLocaleString('en-US', { month:'numeric', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
         }
 
         async function loadSessionInfo() {
@@ -6463,7 +6463,7 @@ Date: ${selectedGameDate}`);
                             : item.action === 'late_cancel_no_show_owed'
                                 ? '<span class="cancelled-badge" style="background:#ff4444;">NO-SHOW OWES</span>'
                                 : '<span class="cancelled-badge">PLAYER CANCELLED</span>';
-                        const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString() : '--';
+                        const when = item.cancelledAt ? new Date(item.cancelledAt).toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true }) : '--';
                         tr.innerHTML = `
                             <td>${item.firstName || ''} ${item.lastName || ''} ${goalieBadge}${item.notes ? `<div style="color:#ffb366; font-size:0.9rem; margin-top:4px;">${item.notes}</div>` : ''}</td>
                             <td>${typeBadge}</td>
@@ -6845,14 +6845,14 @@ Date: ${selectedGameDate}`);
                 data.reports.forEach(report => {
                     const option = document.createElement('option');
                     option.value = report.id;
-                    const created = new Date(report.created_at).toLocaleString();
+                    const created = new Date(report.created_at).toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true });
                     const trigger = (report.trigger_source || 'snapshot').replace(/_/g, ' ');
                     option.text = `#${report.id} • Week ${report.week_number || '--'}, ${report.year || '--'} • ${trigger} • ${created}`;
                     select.appendChild(option);
                 });
 
                 const latest = data.reports[0];
-                status.innerText = `Latest saved report: ${new Date(latest.created_at).toLocaleString()} (${(latest.trigger_source || 'snapshot').replace(/_/g, ' ')})`;
+                status.innerText = `Latest saved report: ${new Date(latest.created_at).toLocaleString('en-US', { year:'numeric', month:'short', day:'numeric', hour:'numeric', minute:'2-digit', hour12:true })} (${(latest.trigger_source || 'snapshot').replace(/_/g, ' ')})`;
             } catch (err) {
                 console.error('Error loading payment report snapshots:', err);
                 status.innerText = 'Error loading saved reports.';
@@ -6978,7 +6978,7 @@ Continue?`;
                         const dateValue = week.created || week.releaseDate || week.gameDate;
                         const date = dateValue ? new Date(dateValue) : null;
                         const dateText = date && !Number.isNaN(date.getTime())
-                            ? date.toLocaleDateString()
+                            ? date.toLocaleDateString('en-US')
                             : 'No date';
                         option.textContent = `Week ${week.weekNumber}, ${week.year} (${dateText})`;
                         select.appendChild(option);
