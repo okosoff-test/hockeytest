@@ -3738,6 +3738,43 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="late-player-upgrade-v1">
+.late-roster-admin-panel{
+    display:none;
+    background:linear-gradient(135deg,#12331f,#244a2f);
+    border:3px solid #4CAF50;
+    border-radius:14px;
+    padding:16px;
+    margin-bottom:18px;
+    box-shadow:0 10px 24px rgba(0,0,0,.24);
+}
+.late-roster-admin-panel.active{display:block;}
+.late-roster-admin-panel h3{margin:0 0 8px 0;color:#7ee28a;font-size:1.15rem;}
+.late-roster-admin-panel p{margin:0 0 10px 0;color:#d8ffd8;font-size:.92rem;line-height:1.35;}
+.late-roster-admin-panel .late-team-hint{
+    background:rgba(0,0,0,.22);
+    border:1px solid rgba(255,255,255,.12);
+    border-radius:10px;
+    padding:10px;
+    color:#fff;
+    font-weight:700;
+    margin-top:8px;
+}
+.late-badge{
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    padding:2px 7px;
+    border-radius:999px;
+    background:#4a90e2;
+    color:#fff;
+    font-size:.62rem;
+    font-weight:800;
+    margin-top:3px;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -4189,9 +4226,16 @@ th, td{padding:2px 3px !important;}
             <div id="deleteResult" class="delete-result"></div>
         </div>
 
+
+        <div id="lateRosterAdminPanel" class="late-roster-admin-panel">
+            <h3>🚀 Add Late Player to Released Roster</h3>
+            <p>Roster is already released. Use the Add Player form below, choose Team White or Team Dark, then click Add Player. This adds the player directly to the posted roster without rebalancing teams.</p>
+            <div id="lateRosterTeamHint" class="late-team-hint">Suggested team: —</div>
+        </div>
+
         <!-- Add Player Form -->
         <div class="add-player-form">
-            <h3>➕ Add Player Manually</h3>
+            <h3 id="manualAddPlayerHeading">➕ Add Player Manually</h3>
             <div class="form-row">
                 <input type="text" id="newFirstName" placeholder="First Name">
                 <input type="text" id="newLastName" placeholder="Last Name">
@@ -4233,13 +4277,13 @@ th, td{padding:2px 3px !important;}
             <div id="latePlayerTeamWrap" style="display:none; margin:10px 0; padding:12px; border:1px solid #4CAF50; border-radius:10px; background:rgba(76,175,80,0.12);">
                 <label style="display:block; color:#8fd18f; font-weight:700; margin-bottom:6px;">Roster released — place late player on team:</label>
                 <select id="latePlayerTeam">
-                    <option value="">Choose Team</option>
+                    <option value="">Auto-suggest / choose team</option>
                     <option value="White">Team White</option>
                     <option value="Dark">Team Dark</option>
                 </select>
                 <div style="color:#b8d8b8; font-size:0.82rem; margin-top:6px;">This adds the player directly to the released roster without regenerating teams.</div>
             </div>
-            <button class="add-btn" onclick="addPlayer()">Add Player</button>
+            <button class="add-btn" id="manualAddPlayerBtn" onclick="addPlayer()">Add Player</button>
         </div>
 
         <div class="registered-players-box">
@@ -6814,14 +6858,42 @@ Date: ${selectedGameDate}`);
             toggleManualGoalieMode();
         }
 
+        function getLatePlayerSuggestedTeam() {
+            const playerValues = Object.values(adminPlayersById || {});
+            const white = playerValues.filter(p => p && p.team === 'White');
+            const dark = playerValues.filter(p => p && p.team === 'Dark');
+            const whiteCount = white.length;
+            const darkCount = dark.length;
+            const whiteRating = white.reduce((sum, p) => sum + (parseFloat(p.rating) || 0), 0);
+            const darkRating = dark.reduce((sum, p) => sum + (parseFloat(p.rating) || 0), 0);
+            if (whiteCount < darkCount) return { team: 'White', reason: `White has fewer players (${whiteCount} vs ${darkCount})` };
+            if (darkCount < whiteCount) return { team: 'Dark', reason: `Dark has fewer players (${darkCount} vs ${whiteCount})` };
+            if (whiteRating <= darkRating) return { team: 'White', reason: `Teams are even; White has lower/equal rating total (${whiteRating.toFixed(1)} vs ${darkRating.toFixed(1)})` };
+            return { team: 'Dark', reason: `Teams are even; Dark has lower rating total (${darkRating.toFixed(1)} vs ${whiteRating.toFixed(1)})` };
+        }
+
         function updateLatePlayerTeamUI() {
             const wrap = document.getElementById('latePlayerTeamWrap');
             const waitlistBox = document.getElementById('addToWaitlist');
             const teamSelect = document.getElementById('latePlayerTeam');
+            const panel = document.getElementById('lateRosterAdminPanel');
+            const hint = document.getElementById('lateRosterTeamHint');
+            const heading = document.getElementById('manualAddPlayerHeading');
+            const button = document.getElementById('manualAddPlayerBtn');
             if (!wrap) return;
             const show = !!currentRosterReleased && !(waitlistBox && waitlistBox.checked);
             wrap.style.display = show ? 'block' : 'none';
-            if (!show && teamSelect) teamSelect.value = '';
+            if (panel) panel.classList.toggle('active', !!currentRosterReleased);
+            if (heading) heading.textContent = currentRosterReleased ? '🚀 Add Late Player to Roster' : '➕ Add Player Manually';
+            if (button) button.textContent = currentRosterReleased && !show ? 'Add Player to Waitlist' : (currentRosterReleased ? 'Add Late Player to Roster' : 'Add Player');
+            if (show) {
+                const suggested = getLatePlayerSuggestedTeam();
+                if (hint) hint.textContent = `Suggested team: Team ${suggested.team} — ${suggested.reason}`;
+                if (teamSelect && !teamSelect.value) teamSelect.value = suggested.team;
+            } else if (!show && teamSelect) {
+                teamSelect.value = '';
+                if (hint) hint.textContent = 'Suggested team: —';
+            }
         }
 
         async function addPlayer() {
