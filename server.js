@@ -4564,6 +4564,7 @@ function buildPublicRosterPayload() {
             owes: cancelled,
             canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
             promotedFromWaitlist: !!p.promotedFromWaitlist,
+            lateAddedAfterRelease: !!p.lateAddedAfterRelease,
             subbedInForName: p.subbedInForName || null,
             subbedInForPlayerId: p.subbedInForPlayerId ?? null,
             subbedInAt: p.subbedInAt || null

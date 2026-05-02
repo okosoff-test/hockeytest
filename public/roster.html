@@ -477,7 +477,7 @@
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                     const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
-                    const lateAddedBadge = player.lateAddedAfterRelease ? '<span class="late-added-badge">LATE ADD</span>' : '';
+                    const lateAddedBadge = player.promotedFromWaitlist ? '<span class="late-added-badge">WAITLIST ADD</span>' : (player.lateAddedAfterRelease ? '<span class="late-added-badge">LATE ADD</span>' : '');
                     
                     li.innerHTML = `
                         <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge} ${lateCancelBadge} ${lateAddedBadge}</span>
@@ -494,7 +494,7 @@
                     
                     const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                     const lateCancelBadge = player.lateCancelOwes ? '<span class="late-cancel-badge">CANCEL</span>' : '';
-                    const lateAddedBadge = player.lateAddedAfterRelease ? '<span class="late-added-badge">LATE ADD</span>' : '';
+                    const lateAddedBadge = player.promotedFromWaitlist ? '<span class="late-added-badge">WAITLIST ADD</span>' : (player.lateAddedAfterRelease ? '<span class="late-added-badge">LATE ADD</span>' : '');
                     
                     li.innerHTML = `
                         <span class="player-name">${player.firstName} ${player.lastName} ${goalieBadge} ${lateCancelBadge} ${lateAddedBadge}</span>
