@@ -4226,9 +4226,19 @@ th, td{padding:2px 3px !important;}
             </div>
 
             <label style="display:flex; align-items:center; gap:10px; margin:10px 0; color:#aaa;">
-                <input type="checkbox" id="addToWaitlist" style="width:auto;">
+                <input type="checkbox" id="addToWaitlist" style="width:auto;" onchange="updateLatePlayerTeamUI()">
                 Add to Waitlist
             </label>
+
+            <div id="latePlayerTeamWrap" style="display:none; margin:10px 0; padding:12px; border:1px solid #4CAF50; border-radius:10px; background:rgba(76,175,80,0.12);">
+                <label style="display:block; color:#8fd18f; font-weight:700; margin-bottom:6px;">Roster released — place late player on team:</label>
+                <select id="latePlayerTeam">
+                    <option value="">Choose Team</option>
+                    <option value="White">Team White</option>
+                    <option value="Dark">Team Dark</option>
+                </select>
+                <div style="color:#b8d8b8; font-size:0.82rem; margin-top:6px;">This adds the player directly to the released roster without regenerating teams.</div>
+            </div>
             <button class="add-btn" onclick="addPlayer()">Add Player</button>
         </div>
 
@@ -4859,6 +4869,7 @@ th, td{padding:2px 3px !important;}
         let currentGoalies = 15;
         let playersCount = 15;
         let currentTotalPaid = 15;
+        let currentRosterReleased = false;
         let backupGoaliesData = [];
         let snapshotCatalog = [];
         let filteredSnapshotCatalog = [];
@@ -6316,6 +6327,8 @@ Date: ${selectedGameDate}`);
                 }
                 
                 const data = await res.json();
+                currentRosterReleased = !!data.rosterReleased;
+                updateLatePlayerTeamUI();
 
                 adminPlayersById = Object.fromEntries((data.players || []).map(p => [String(p.id), p]));
                 const serverRegularMap = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
@@ -6729,6 +6742,7 @@ Date: ${selectedGameDate}`);
                 return;
             }
 
+
             try {
                 const res = await fetch(`${API_URL}/api/admin/update-rating`, {
                     method: 'POST',
@@ -6800,6 +6814,16 @@ Date: ${selectedGameDate}`);
             toggleManualGoalieMode();
         }
 
+        function updateLatePlayerTeamUI() {
+            const wrap = document.getElementById('latePlayerTeamWrap');
+            const waitlistBox = document.getElementById('addToWaitlist');
+            const teamSelect = document.getElementById('latePlayerTeam');
+            if (!wrap) return;
+            const show = !!currentRosterReleased && !(waitlistBox && waitlistBox.checked);
+            wrap.style.display = show ? 'block' : 'none';
+            if (!show && teamSelect) teamSelect.value = '';
+        }
+
         async function addPlayer() {
             const firstName = document.getElementById('newFirstName').value.trim();
             const lastName = document.getElementById('newLastName').value.trim();
@@ -6808,9 +6832,15 @@ Date: ${selectedGameDate}`);
             const isGoalie = !!document.getElementById('newIsGoalie').checked;
             const paymentMethod = isGoalie ? 'FREE' : document.getElementById('newPayment').value;
             const toWaitlist = document.getElementById('addToWaitlist').checked;
+            const assignTeam = document.getElementById('latePlayerTeam') ? document.getElementById('latePlayerTeam').value : '';
 
             if (!firstName || !lastName || !phone || !rating) {
                 alert("Please fill in all required fields");
+                return;
+            }
+
+            if (currentRosterReleased && !toWaitlist && assignTeam !== 'White' && assignTeam !== 'Dark') {
+                alert('Roster is already released. Choose Team White or Team Dark for this late player.');
                 return;
             }
 
@@ -6826,7 +6856,8 @@ Date: ${selectedGameDate}`);
                         rating,
                         paymentMethod,
                         isGoalie,
-                        toWaitlist 
+                        toWaitlist,
+                        assignTeam
                     })
                 });
                 
@@ -6837,9 +6868,12 @@ Date: ${selectedGameDate}`);
                     document.getElementById('newRating').value = '';
                     document.getElementById('newIsGoalie').checked = false;
                     document.getElementById('addToWaitlist').checked = false;
+                    const lateTeamSelect = document.getElementById('latePlayerTeam');
+                    if (lateTeamSelect) lateTeamSelect.value = '';
                     const goalieSelect = document.getElementById('goalieQuickSelect');
                     if (goalieSelect) goalieSelect.value = '';
                     toggleManualGoalieMode();
+                    updateLatePlayerTeamUI();
                     loadData();
                 } else if (res.status === 401) {
                     logout();
