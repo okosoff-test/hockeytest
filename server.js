@@ -712,8 +712,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim();
     return email
-        ? `Please E-transfer to ${email} or cash. 3-hour cancel window. No-show owes.`
-        : 'Please E-Transfer or cash. 3-hour cancel window. No-show owes.';
+        ? `Please E-transfer to ${email} or cash. 3-hour cancel window. No-show owes. Contact Phan to join if there's spots available.`
+        : 'Please E-Transfer or cash. 3-hour cancel window. No-show owes. Contact Phan to join if there's spots available.';
 }
 
 function clearAnnouncementState() {
