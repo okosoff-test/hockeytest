@@ -412,7 +412,10 @@ let resetWeekSchedule = {
     at: null
 };
 
-
+// Controls whether schedules may be auto rebuilt from game date/time.
+// 'manual' means admin-saved schedules are preserved across weekly resets and game-date changes.
+// 'auto' means schedules can be rebuilt from the selected game day/time.
+let scheduleMode = 'auto';
 
 function hasConfiguredAdminPassword() {
     return !!ADMIN_PASSWORD;
@@ -1265,6 +1268,14 @@ function shouldAutoBuildMissingSchedules(scheduleSettings = {}) {
     return !hasStoredSignupLockSchedule && !hasStoredRosterReleaseSchedule && !hasStoredResetWeekSchedule;
 }
 
+function isManualScheduleMode() {
+    return String(scheduleMode || 'auto').toLowerCase() === 'manual';
+}
+
+function canAutoRebuildSchedules() {
+    return AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && !isManualScheduleMode();
+}
+
 function buildAutoSchedulesFromGameTime(selectedGameTime = gameTime, anchorDate = gameDate) {
     const parsed = parseGameTimeString(selectedGameTime);
     const gameDow = parsed.dayIndex;
@@ -1694,6 +1705,7 @@ function buildPersistedStateFingerprint(snapshot = null) {
         cancelledRegistrations: payload.cancelledRegistrations,
         regularSkatersByDay: payload.regularSkatersByDay,
         customSignupCode: payload.customSignupCode,
+        scheduleMode: payload.scheduleMode,
         gameLocation: payload.gameLocation,
         gameTime: payload.gameTime,
         gameDate: payload.gameDate,
@@ -2002,6 +2014,7 @@ async function loadDataFromDB() {
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
+        if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
         if (settings.signupLockEndAt !== undefined) signupLockEndAt = settings.signupLockEndAt || '';
         if (settings.rosterReleaseAt !== undefined) rosterReleaseAt = settings.rosterReleaseAt || '';
@@ -2013,7 +2026,7 @@ async function loadDataFromDB() {
         if (settings.signupLockSchedule) signupLockSchedule = settings.signupLockSchedule;
         if (settings.rosterReleaseSchedule) rosterReleaseSchedule = settings.rosterReleaseSchedule;
         if (settings.resetWeekSchedule) resetWeekSchedule = settings.resetWeekSchedule;
-        if (shouldAutoBuildMissingSchedules(settings)) {
+        if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(settings)) {
             buildAutoSchedulesFromGameTime(gameTime, gameDate);
         }
         refreshDynamicSignupCode();
@@ -2620,6 +2633,7 @@ function applySnapshotToMemory(snapshot) {
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
+    scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
         weekNumber: null,
         year: null,
@@ -2939,6 +2953,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
             ['customSignupCode', customSignupCode],
+            ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
             ['signupLockEndAt', signupLockEndAt],
             ['rosterReleaseAt', rosterReleaseAt],
@@ -3163,6 +3178,7 @@ function buildFullDataSnapshot() {
         cancelledRegistrations,
         regularSkatersByDay,
         customSignupCode,
+        scheduleMode,
         gameLocation,
         gameTime,
         gameDate,
@@ -3285,6 +3301,7 @@ function getSettingsSnapshot() {
         cancelledRegistrations,
         regularSkatersByDay,
         customSignupCode,
+        scheduleMode,
         lastExactResetMinuteKey,
         lastExactRosterReleaseMinuteKey
     };
@@ -3385,6 +3402,7 @@ function loadDataFromFile() {
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             customSignupCode = String(data.customSignupCode || '').trim();
+            scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
                 weekNumber: null,
                 year: null,
@@ -3398,7 +3416,7 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
-            if (shouldAutoBuildMissingSchedules(data)) {
+            if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
             refreshDynamicSignupCode();
@@ -5376,7 +5394,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             }
             if (selectedDayTime) {
                 gameTime = selectedDayTime;
-                if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                if (canAutoRebuildSchedules()) {
                     gameDate = newGameDate || calculateNextGameDate();
                     buildAutoSchedulesFromGameTime(gameTime, gameDate);
                     const guardTime = getCurrentETTime();
@@ -5391,7 +5409,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (selectedArena) gameLocation = selectedArena;
             if (newGameDate) {
                 gameDate = newGameDate;
-                if (AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME) {
+                if (canAutoRebuildSchedules()) {
                     buildAutoSchedulesFromGameTime(gameTime, gameDate);
                 }
             }
@@ -6100,6 +6118,7 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockEndAt,
         rosterReleaseAt,
         resetWeekAt,
+        scheduleMode,
         customSignupCode,
         usingCustomSignupCode: /^\d{4}$/.test(String(customSignupCode || '').trim()),
         regularSkatersByDay,
@@ -6201,6 +6220,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
 
     try {
         await runProtectedMutation('update-schedules', req, async () => {
+            scheduleMode = 'manual';
             signupLockStartAt = signupLockStart || '';
             signupLockEndAt = signupLockEnd || '';
             rosterReleaseAt = rosterReleaseAtInput || '';
@@ -6238,6 +6258,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
         signupLockEndAt,
         rosterReleaseAt,
         resetWeekAt,
+        scheduleMode,
         resetArmed,
         requireCode: requirePlayerCode,
         isLockedWindow: lockStatus.isLockedWindow
@@ -6278,8 +6299,10 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
     
     try {
         await runProtectedMutation('reset-schedule', req, async () => {
+            scheduleMode = 'auto';
             manualOverride = false;
             manualOverrideState = null;
+            buildAutoSchedulesFromGameTime(gameTime, gameDate || calculateNextGameDate());
             checkAutoLock();
         });
     } catch (err) {
@@ -6291,6 +6314,14 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
         requireCode: requirePlayerCode,
         manualOverride: manualOverride,
         manualOverrideState: manualOverrideState,
+        scheduleMode,
+        signupLockSchedule,
+        rosterReleaseSchedule,
+        resetWeekSchedule,
+        signupLockStartAt,
+        signupLockEndAt,
+        rosterReleaseAt,
+        resetWeekAt,
         message: "Auto-schedule restored"
     });
 });
