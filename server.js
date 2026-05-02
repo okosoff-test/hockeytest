@@ -391,6 +391,10 @@ const AUTO_SCHEDULE_LOCK_MINUTE = 0;
 const AUTO_SCHEDULE_RESET_HOUR = 0;
 const AUTO_SCHEDULE_RESET_MINUTE = 0;
 
+// Reset catch-up: Render/external cron may not hit the exact minute, especially around midnight.
+// Use Eastern Time and allow a safe post-game catch-up window so the reset still runs once.
+const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = Math.max(1, Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 720));
+
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
     enabled: false,
@@ -1040,17 +1044,19 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
         return { ok: false, reason: 'Blocked weekly reset because no reset schedule is configured.' };
     }
 
-    if (!sameDowHourMinute(resetAt, getEtDowHourMinute(etTime))) {
+    const maxCatchUpMinutes = WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT;
+    const minutesAfterScheduledReset = minutesSinceLatestWeeklyOccurrence(resetAt, etTime);
+    if (!Number.isFinite(minutesAfterScheduledReset) || minutesAfterScheduledReset < 0 || minutesAfterScheduledReset > maxCatchUpMinutes) {
         return {
             ok: false,
-            reason: `Blocked weekly reset because current ET time is not the exact scheduled reset minute (${formatScheduleDowTime(resetAt)}).`
+            reason: `Blocked weekly reset because current ET time is outside the ${maxCatchUpMinutes}-minute catch-up window after the scheduled reset (${formatScheduleDowTime(resetAt)}).`
         };
     }
 
-    if (resetCheck && resetCheck.reason !== 'exact_minute') {
+    if (resetCheck && !['exact_minute', 'catchup'].includes(resetCheck.reason)) {
         return {
             ok: false,
-            reason: `Blocked weekly reset because scheduler reason was ${resetCheck.reason || 'unknown'} instead of exact_minute.`
+            reason: `Blocked weekly reset because scheduler reason was ${resetCheck.reason || 'unknown'}.`
         };
     }
 
@@ -1106,7 +1112,7 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
 
     return {
         ok: true,
-        reason: `Reset allowed: exact scheduled ET minute, roster released, reset arm ON, ${registeredPlayerCount} player(s) and ${waitlistCount} waitlist record(s) ready to clear.`
+        reason: `Reset allowed: scheduled ET reset window, roster released, reset arm ON, ${registeredPlayerCount} player(s) and ${waitlistCount} waitlist record(s) ready to clear.`
     };
 }
 
@@ -1594,17 +1600,17 @@ async function checkWeeklyReset() {
         resetWeekSchedule.at,
         lastExactResetRunAt,
         etTime,
-        Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 0),
-        { exactMinuteOnly: true }
+        WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT,
+        { exactMinuteOnly: false }
     );
     if (!resetCheck.shouldRun) return false;
 
     const resetSafety = canSafelyRunWeeklyReset(etTime, resetWeekSchedule.at, resetCheck);
     if (!resetSafety.ok) {
-        console.warn(`[FRIDAY-KILLER SAFETY] Weekly reset skipped at ${resetCheck.minuteKey}: ${resetSafety.reason}`);
+        console.warn(`[ET SCHEDULER] Weekly reset skipped at ${resetCheck.minuteKey}: ${resetSafety.reason}`);
         return false;
     }
-    console.log(`[FRIDAY-KILLER SAFETY] Weekly reset approved at ${resetCheck.minuteKey}: ${resetSafety.reason}`);
+    console.log(`[ET SCHEDULER] Weekly reset approved at ${resetCheck.minuteKey}: ${resetSafety.reason}`);
 
     lastExactResetRunAt = resetCheck.occurrenceKey;
     lastExactResetMinuteKey = resetCheck.minuteKey;
@@ -1665,8 +1671,8 @@ async function checkWeeklyReset() {
     return true;
 }
 
-const BACKGROUND_SCHEDULER_ENABLED = String(process.env.BACKGROUND_SCHEDULER_ENABLED || 'false').toLowerCase() === 'true';
-const ENABLE_INTERNAL_SCHEDULER_CRON = String(process.env.ENABLE_INTERNAL_SCHEDULER_CRON || 'false').toLowerCase() === 'true';
+const BACKGROUND_SCHEDULER_ENABLED = String(process.env.BACKGROUND_SCHEDULER_ENABLED || 'true').toLowerCase() === 'true';
+const ENABLE_INTERNAL_SCHEDULER_CRON = String(process.env.ENABLE_INTERNAL_SCHEDULER_CRON || 'true').toLowerCase() === 'true';
 const WARM_TICK_ENABLED = String(process.env.WARM_TICK_ENABLED || 'false').toLowerCase() === 'true';
 const WARM_TICK_MS = Number(process.env.WARM_TICK_MS || 60000);
 let schedulerRunning = false;
@@ -4333,24 +4339,59 @@ app.get('/api/debug-time', (req, res) => {
     const now = new Date();
     const etTime = getCurrentETTime();
     const shouldLock = shouldBeLocked();
+    const resetCheck = resetWeekSchedule && resetWeekSchedule.at
+        ? shouldRunScheduledAction(resetWeekSchedule.at, lastExactResetRunAt, etTime, WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT, { exactMinuteOnly: false })
+        : { shouldRun: false, reason: 'missing_schedule' };
+    const resetSafety = resetWeekSchedule && resetWeekSchedule.at
+        ? canSafelyRunWeeklyReset(etTime, resetWeekSchedule.at, resetCheck)
+        : { ok: false, reason: 'No reset schedule configured.' };
     
     res.json({
-        systemTime: now.toISOString(),
-        etTime: etTime.toISOString(),
+        systemTimeUtc: now.toISOString(),
+        easternTime: formatETDateTimeLong({
+            year: etTime.getFullYear(),
+            month: etTime.getMonth() + 1,
+            day: etTime.getDate(),
+            hour: etTime.getHours(),
+            minute: etTime.getMinutes()
+        }),
+        etIsoWallClock: etTime.toISOString(),
         etDay: etTime.getDay(),
         etHour: etTime.getHours(),
+        etMinute: etTime.getMinutes(),
         shouldBeLocked: shouldLock,
-        "schedule": "Locked: Fri 5pm - Mon 6pm, Reset: Sat 12am",
+        signupLockSchedule,
+        rosterReleaseSchedule,
+        resetWeekSchedule,
+        resetCatchupMinutes: WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT,
+        resetCheck,
+        resetSafety,
         requirePlayerCode: requirePlayerCode,
         manualOverride: manualOverride,
-        rosterReleased: rosterReleased
+        manualOverrideState: manualOverrideState,
+        rosterReleased: rosterReleased,
+        resetArmed: resetArmed,
+        lastExactResetRunAt,
+        lastExactResetMinuteKey,
+        scheduler: {
+            lastSchedulerRunAt,
+            lastSchedulerMinuteKey,
+            lastSchedulerError,
+            backgroundEnabled: BACKGROUND_SCHEDULER_ENABLED,
+            internalCronEnabled: ENABLE_INTERNAL_SCHEDULER_CRON,
+            internalCron: process.env.INTERNAL_SCHEDULER_CRON || '* * * * *'
+        }
     });
 });
 
-app.get('/api/force-check', (req, res) => {
+app.get('/api/force-check', async (req, res) => {
+    const before = { rosterReleased, players: players.length, waitlist: waitlist.length, requirePlayerCode };
+    await runSchedulerTick();
     const result = checkAutoLock();
     res.json({ 
-        message: 'Lock check forced',
+        message: 'Full Eastern-time scheduler check forced',
+        before,
+        after: { rosterReleased, players: players.length, waitlist: waitlist.length, requirePlayerCode },
         ...result,
         timestamp: new Date().toISOString()
     });
@@ -6833,7 +6874,7 @@ initDatabase().then(async () => {
     await runSchedulerTick();
 
     if (BACKGROUND_SCHEDULER_ENABLED && ENABLE_INTERNAL_SCHEDULER_CRON) {
-        cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '*/15 7-23 * * *', async () => {
+        cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
             await runSchedulerTick();
         }, {
             timezone: 'America/New_York'
@@ -6855,8 +6896,8 @@ initDatabase().then(async () => {
         console.log(`Auto-add goalies for ${getGameDayName()}: ${getWeeklyAutoAddPlayers().filter(p => p.isGoalie).map(p => `${p.firstName} ${p.lastName}`).join(', ')}`);
         console.log(`Current players registered: ${players.length}`);
         console.log(`Background scheduler: ${BACKGROUND_SCHEDULER_ENABLED ? 'enabled' : 'disabled (request-driven mode)'}`);
-        console.log(`Recommended external keepalive cron: */15 7-23 * * * -> /health (lightweight, add ?db=1 only for full checks)`);
-        console.log(`Recommended external keepalive cron: */15 7-23 * * * -> /health (lightweight, add ?db=1 only for full checks)`);
+        console.log(`Recommended external keepalive cron: * * * * * -> /api/cron/heartbeat (Eastern scheduler-safe)`);
+        console.log(`Recommended external keepalive cron: * * * * * -> /api/cron/heartbeat (Eastern scheduler-safe)`);
     });
 }).catch(err => {
     console.error('Failed to initialize database, starting with file fallback:', err);
@@ -6867,7 +6908,7 @@ initDatabase().then(async () => {
     runSchedulerTick();
     
     if (BACKGROUND_SCHEDULER_ENABLED && ENABLE_INTERNAL_SCHEDULER_CRON) {
-        cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '*/15 7-23 * * *', async () => {
+        cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
             await runSchedulerTick();
         }, {
             timezone: 'America/New_York'
