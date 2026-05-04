@@ -729,6 +729,16 @@ function clearAnnouncementState() {
     announcementImages = [];
 }
 
+function syncActiveRosterReleaseAnnouncement() {
+    // Once the roster is released, the public yellow announcement banner should
+    // always use the saved roster-release announcement text. This keeps the
+    // message persistent even after admin edits/re-saves settings post-release.
+    if (!getEffectiveRosterReleasedState()) return false;
+    announcementEnabled = true;
+    announcementText = buildEffectiveRosterReleaseAnnouncement();
+    return true;
+}
+
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
     {
@@ -4773,8 +4783,8 @@ app.get('/api/status', (req, res) => {
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
         customTitle: customTitle,
-        announcementEnabled: announcementEnabled,
-        announcementText: announcementText,
+        announcementEnabled: getEffectiveRosterReleasedState() ? true : announcementEnabled,
+        announcementText: getEffectiveRosterReleasedState() ? buildEffectiveRosterReleaseAnnouncement() : announcementText,
         announcementImages: announcementImages,
         paymentEmail: paymentEmail,
         rosterReleaseAnnouncementText,
@@ -5503,6 +5513,9 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
             if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim();
+            if (getEffectiveRosterReleasedState()) {
+                syncActiveRosterReleaseAnnouncement();
+            }
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
