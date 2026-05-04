@@ -965,6 +965,17 @@
             line-height: 1.4;
         }
 
+        .announcement-spots-inline {
+            display: inline-block;
+            color: #1f7a2e;
+            font-weight: 900;
+            white-space: nowrap;
+        }
+
+        .announcement-spots-inline.full {
+            color: #c62828;
+        }
+
     
         .rating-grid {
             display: grid;
@@ -2749,7 +2760,27 @@ function updateCalculatedRating() {
             if (!bulletin || !textEl || !thumbEl) return;
 
             const enabled = !!data.announcementEnabled;
-            const text = (data.announcementText || '').trim();
+            const rawText = (data.announcementText || '').trim();
+            const spotsRemaining = Math.max(0, Number(data.playerSpotsRemaining || data.spotsRemaining || 0));
+            const spotsLabel = spotsRemaining > 0
+                ? `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} left`
+                : 'FULL';
+            const spotsHtml = spotsRemaining > 0
+                ? `<strong class="announcement-spots-inline">${spotsLabel}</strong>`
+                : `<strong class="announcement-spots-inline full">${spotsLabel}</strong>`;
+            let text = rawText;
+
+            // Admin can type {spots} anywhere in the message.
+            // If they do not use the placeholder, automatically add the live count
+            // after the phrase "spots are available".
+            if (text) {
+                if (/\{spots\}/i.test(text)) {
+                    text = text.replace(/\{spots\}/gi, spotsHtml);
+                } else {
+                    text = text.replace(/spots are available/i, (match) => `${match} ${spotsHtml}`);
+                }
+            }
+
             const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             const image = images.length ? String(images[0] || '').trim() : '';
             const email = String(data.paymentEmail || '').trim();
@@ -2775,8 +2806,12 @@ function updateCalculatedRating() {
                 const matchedEmail = text.slice(emailIndex, emailIndex + email.length);
                 const after = text.slice(emailIndex + email.length);
                 const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                const preserveSpotsMarkup = (value) => escapeHtml(value)
+                    .replace(/&lt;strong class="announcement-spots-inline"&gt;/g, '<strong class="announcement-spots-inline">')
+                    .replace(/&lt;strong class="announcement-spots-inline full"&gt;/g, '<strong class="announcement-spots-inline full">')
+                    .replace(/&lt;\/strong&gt;/g, '</strong>');
                 const safeEmail = escapeHtml(matchedEmail);
-                textEl.innerHTML = `${escapeHtml(before)}<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>${escapeHtml(after)}`;
+                textEl.innerHTML = `${preserveSpotsMarkup(before)}<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>${preserveSpotsMarkup(after)}`;
                 const copyTarget = textEl.querySelector('[data-copy-payment-email]');
                 if (copyTarget) {
                     copyTarget.addEventListener('click', (event) => {
@@ -2790,7 +2825,11 @@ function updateCalculatedRating() {
                     hintEl.textContent = 'Tap email to copy';
                 }
             } else {
-                textEl.textContent = text || 'Attention';
+                const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+                textEl.innerHTML = escapeHtml(text || 'Attention')
+                    .replace(/&lt;strong class="announcement-spots-inline"&gt;/g, '<strong class="announcement-spots-inline">')
+                    .replace(/&lt;strong class="announcement-spots-inline full"&gt;/g, '<strong class="announcement-spots-inline full">')
+                    .replace(/&lt;\/strong&gt;/g, '</strong>');
                 if (hintEl) {
                     hintEl.style.display = 'none';
                     hintEl.textContent = 'Tap email to copy';
