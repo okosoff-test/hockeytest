@@ -3917,12 +3917,13 @@ th, td{padding:2px 3px !important;}
                     <label for="announcementText">Message</label>
                     <textarea id="announcementText" rows="4" placeholder="Type announcement..."></textarea>
                 </div>
-                <div class="message-box message-box-main">
-                    <label for="rosterReleaseAnnouncementText">Roster Release Announcement</label>
-                    <textarea id="rosterReleaseAnnouncementText" rows="3" placeholder="Message used automatically when roster is released. Leave blank to use default payment/no-show message."></textarea>
-                </div>
 
                 <div class="announcement-side-stack">
+                    <div class="message-box">
+                        <label for="paymentEmail">E-transfer Email</label>
+                        <input type="email" id="paymentEmail" placeholder="Enter payment email">
+                    </div>
+
                     <div class="message-box">
                         <label for="announcementImageUpload">Upload Image</label>
                         <input type="file" id="announcementImageUpload" accept="image/*">
@@ -5370,7 +5371,7 @@ th, td{padding:2px 3px !important;}
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
-                const rosterReleaseAnnouncementText = document.getElementById('rosterReleaseAnnouncementText');
+                const paymentEmail = document.getElementById('paymentEmail');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
 
                 updateAnnouncementToggleUI(!!data.announcementEnabled);
@@ -5378,8 +5379,8 @@ th, td{padding:2px 3px !important;}
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
                 }
-                if (rosterReleaseAnnouncementText) {
-                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || '';
+                if (paymentEmail) {
+                    paymentEmail.value = data.paymentEmail || '';
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -7510,11 +7511,11 @@ Continue?`;
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
-                const rosterReleaseAnnouncementInput = document.getElementById('rosterReleaseAnnouncementText');
+                const paymentEmailInput = document.getElementById('paymentEmail');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
-                const rosterReleaseAnnouncementValue = rosterReleaseAnnouncementInput ? rosterReleaseAnnouncementInput.value.trim() : '';
+                const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -7525,7 +7526,7 @@ Continue?`;
                             sessionToken,
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
-                            rosterReleaseAnnouncementText: rosterReleaseAnnouncementValue,
+                            paymentEmail: paymentEmailValue,
                             announcementImages
                         })
                     });
