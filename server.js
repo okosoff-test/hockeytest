@@ -651,64 +651,6 @@ const DEFAULT_REGULAR_SKATERS_BY_DAY = {
 
 let regularSkatersByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
 
-// Admin-set ratings are the source of truth once saved.
-// Keyed by normalized phone when available, otherwise normalized full name.
-// This survives weekly resets because it is saved in settings/data snapshots, not just the weekly players table.
-let adminRatingOverrides = {};
-
-
-function getPlayerRatingOverrideKeys(player = {}) {
-    const firstName = String(player.firstName || player.first_name || '').trim().toLowerCase();
-    const lastName = String(player.lastName || player.last_name || '').trim().toLowerCase();
-    const phoneDigits = normalizePhoneDigits(player.phone || '');
-    const keys = [];
-    if (phoneDigits) keys.push(`phone:${phoneDigits}`);
-    if (firstName || lastName) keys.push(`name:${firstName}|${lastName}`);
-    return keys;
-}
-
-function normalizeAdminRatingOverrides(input = {}) {
-    const normalized = {};
-    if (!input || typeof input !== 'object') return normalized;
-    for (const [rawKey, rawValue] of Object.entries(input)) {
-        const rating = roundRating(Number(rawValue));
-        if (!Number.isFinite(rating) || rating < 1 || rating > 10) continue;
-        const key = String(rawKey || '').trim().toLowerCase();
-        if (key.startsWith('phone:') || key.startsWith('name:')) {
-            normalized[key] = rating;
-        }
-    }
-    return normalized;
-}
-
-function getAdminRatingOverrideForPlayer(player = {}) {
-    const overrides = normalizeAdminRatingOverrides(adminRatingOverrides || {});
-    for (const key of getPlayerRatingOverrideKeys(player)) {
-        if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
-    }
-    return null;
-}
-
-function rememberAdminRatingOverride(player = {}, ratingValue) {
-    const rating = roundRating(Number(ratingValue));
-    if (!Number.isFinite(rating) || rating < 1 || rating > 10) return null;
-    adminRatingOverrides = normalizeAdminRatingOverrides(adminRatingOverrides || {});
-    const keys = getPlayerRatingOverrideKeys(player);
-    keys.forEach(key => { adminRatingOverrides[key] = rating; });
-    return rating;
-}
-
-function applyAdminRatingOverrideToPlayer(player = {}) {
-    const overrideRating = getAdminRatingOverrideForPlayer(player);
-    if (overrideRating == null) return player;
-    const derivedRating = roundRating(player.derivedRating ?? player.finalRating ?? player.rating ?? overrideRating);
-    player.adminRating = overrideRating;
-    player.adminAdjustment = roundRating(overrideRating - derivedRating);
-    player.finalRating = overrideRating;
-    player.rating = overrideRating;
-    return player;
-}
-
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
     const lastName = String(input.lastName || '').trim();
@@ -764,7 +706,7 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
     const goalieList = REGULAR_GOALIES_BY_DAY[dayKey] || REGULAR_GOALIES_BY_DAY.friday;
     const skaterList = getRegularSkatersForDay(dayKey);
-    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => applyAdminRatingOverrideToPlayer({ ...player }));
+    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
 }
 
 function buildRosterReleasePaymentAnnouncement() {
@@ -772,6 +714,11 @@ function buildRosterReleasePaymentAnnouncement() {
     return email
         ? `Please E-transfer to ${email} or cash. 3-hour cancel window. No-show owes. Contact Phan to join if spots are available.`
         : 'Please E-Transfer or cash. 3-hour cancel window. No-show owes. Contact Phan to join if spots are available.';
+}
+
+function buildEffectiveRosterReleaseAnnouncement() {
+    const custom = String(rosterReleaseAnnouncementText || '').trim();
+    return custom || buildRosterReleasePaymentAnnouncement();
 }
 
 function clearAnnouncementState() {
@@ -839,6 +786,7 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || '').trim();
+let rosterReleaseAnnouncementText = '';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1530,7 +1478,7 @@ async function autoReleaseRoster() {
         resetArmed = true;
 
         announcementEnabled = true;
-        announcementText = buildRosterReleasePaymentAnnouncement();
+        announcementText = buildEffectiveRosterReleaseAnnouncement();
 
         currentWeekData = {
             weekNumber: week,
@@ -1601,7 +1549,6 @@ async function addAutoPlayers() {
             rulesAgreed: true,
             protected: autoPlayer.protected || false
         };
-        applyAdminRatingOverrideToPlayer(newPlayer);
 
         try {
             if (pool) {
@@ -1792,7 +1739,8 @@ function buildPersistedStateFingerprint(snapshot = null) {
         announcementEnabled: payload.announcementEnabled,
         announcementText: payload.announcementText,
         announcementImages: payload.announcementImages,
-        paymentEmail: payload.paymentEmail
+        paymentEmail: payload.paymentEmail,
+        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText
     });
 }
 
@@ -2077,7 +2025,6 @@ async function loadDataFromDB() {
         if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
-        if (settings.adminRatingOverrides !== undefined) adminRatingOverrides = normalizeAdminRatingOverrides(settings.adminRatingOverrides || {});
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
@@ -2184,19 +2131,13 @@ async function loadDataFromDB() {
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
+        if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim();
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
                 if (!Array.isArray(announcementImages)) announcementImages = [];
             } catch {
                 announcementImages = [];
-            }
-        }
-        if (appSettings.adminRatingOverrides !== undefined) {
-            try {
-                adminRatingOverrides = normalizeAdminRatingOverrides(JSON.parse(appSettings.adminRatingOverrides || '{}'));
-            } catch (err) {
-                adminRatingOverrides = normalizeAdminRatingOverrides({});
             }
         }
         if (appSettings.regularSkatersByDay !== undefined) {
@@ -2709,7 +2650,6 @@ function applySnapshotToMemory(snapshot) {
     resetWeekSchedule = snapshot.resetWeekSchedule ?? resetWeekSchedule;
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
-    adminRatingOverrides = normalizeAdminRatingOverrides(snapshot.adminRatingOverrides || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
     scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
@@ -2804,6 +2744,7 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.announcementText === 'string') announcementText = s.announcementText;
         if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
         if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
     }
@@ -3030,7 +2971,6 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
-            ['adminRatingOverrides', adminRatingOverrides],
             ['customSignupCode', customSignupCode],
             ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
@@ -3059,6 +2999,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementText', announcementText],
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
+            ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
             ['gameDate', gameDate]
@@ -3258,7 +3199,6 @@ function buildFullDataSnapshot() {
         waitlist,
         cancelledRegistrations,
         regularSkatersByDay,
-        adminRatingOverrides,
         customSignupCode,
         scheduleMode,
         gameLocation,
@@ -3289,6 +3229,7 @@ function buildFullDataSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         summary: {
             gameLocation,
             gameTime,
@@ -3304,6 +3245,7 @@ function buildFullDataSnapshot() {
             announcementText,
             announcementImages,
             paymentEmail,
+            rosterReleaseAnnouncementText,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
             requirePlayerCode,
@@ -3364,6 +3306,7 @@ function getSettingsSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         gameTime,
         gameLocation,
         gameDate,
@@ -3382,7 +3325,6 @@ function getSettingsSnapshot() {
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
-        adminRatingOverrides,
         customSignupCode,
         scheduleMode,
         lastExactResetMinuteKey,
@@ -3484,7 +3426,6 @@ function loadDataFromFile() {
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
-            adminRatingOverrides = normalizeAdminRatingOverrides(data.adminRatingOverrides || {});
             customSignupCode = String(data.customSignupCode || '').trim();
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -3500,6 +3441,7 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            rosterReleaseAnnouncementText = String(data.rosterReleaseAnnouncementText || '').trim();
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
@@ -3748,12 +3690,9 @@ function normalizeSkillProfile(input = {}) {
 
 function hydratePlayerRatingProfile(player = {}) {
     const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? 5);
-    const overrideRating = getAdminRatingOverrideForPlayer(player);
-    const derivedRating = roundRating(player.derivedRating ?? player.finalRating ?? player.rating ?? overrideRating ?? fallbackRating);
-    const adminRating = overrideRating != null
-        ? overrideRating
-        : (player.adminRating == null ? null : roundRating(player.adminRating));
-    const finalRating = roundRating(adminRating ?? player.finalRating ?? player.rating ?? player.derivedRating ?? fallbackRating);
+    const finalRating = roundRating(player.finalRating ?? player.rating ?? player.adminRating ?? player.derivedRating ?? fallbackRating);
+    const derivedRating = roundRating(player.derivedRating ?? finalRating);
+    const adminRating = player.adminRating == null ? null : roundRating(player.adminRating);
     const adminAdjustment = roundRating(player.adminAdjustment ?? ((adminRating == null ? finalRating : adminRating) - derivedRating));
 
     return {
@@ -4754,6 +4693,8 @@ app.get('/api/status', (req, res) => {
         announcementText: announcementText,
         announcementImages: announcementImages,
         paymentEmail: paymentEmail,
+        rosterReleaseAnnouncementText,
+        effectiveRosterReleaseAnnouncement: buildEffectiveRosterReleaseAnnouncement(),
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -5126,7 +5067,6 @@ app.post('/api/register-final', async (req, res) => {
         registeredAt: new Date().toISOString(),
         rulesAgreed: true
     });
-    applyAdminRatingOverrideToPlayer(newPlayer);
 
     try {
         await runProtectedMutation('player-signup', req, async () => {
@@ -5449,6 +5389,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -5463,7 +5404,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
+            paymentEmail: newPaymentEmail, rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, selectedDayTime, selectedArena, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -5477,6 +5418,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
+            if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim();
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
@@ -5514,6 +5456,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled,
             announcementText,
             announcementImages,
+            rosterReleaseAnnouncementText,
             regularSkatersByDay,
             gameTime,
             gameLocation,
@@ -5815,6 +5758,7 @@ app.post('/api/admin/download-backup', async (req, res) => {
                 announcementEnabled,
                 announcementText,
                 announcementImages,
+                rosterReleaseAnnouncementText,
                 playerSpots,
                 requirePlayerCode,
                 playerSignupCode
@@ -6092,6 +6036,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
             }
@@ -6625,7 +6570,6 @@ app.post('/api/admin/update-rating', async (req, res) => {
     const derivedRating = roundRating(player.derivedRating ?? oldRating);
     try {
         await runProtectedMutation('update-rating', req, async () => {
-            rememberAdminRatingOverride(player, ratingNum);
             player.adminRating = ratingNum;
             player.adminAdjustment = roundRating(ratingNum - derivedRating);
             player.finalRating = ratingNum;
@@ -6651,7 +6595,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             resetArmed = true;
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
-            announcementText = buildRosterReleasePaymentAnnouncement();
+            announcementText = buildEffectiveRosterReleaseAnnouncement();
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
