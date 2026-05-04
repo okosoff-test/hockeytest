@@ -393,9 +393,7 @@ const AUTO_SCHEDULE_RESET_MINUTE = 0;
 
 // Reset catch-up: Render/external cron may not hit the exact minute, especially around midnight.
 // Use Eastern Time and allow a safe post-game catch-up window so the reset still runs once.
-const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = Math.max(1, Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 90));
-const MIN_RESET_MINUTES_AFTER_GAME = Math.max(0, Number(process.env.MIN_RESET_MINUTES_AFTER_GAME || 180));
-const MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE = Math.max(0, Number(process.env.MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE || 60));
+const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = Math.max(1, Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 720));
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -417,7 +415,7 @@ let resetWeekSchedule = {
 // Controls whether schedules may be auto rebuilt from game date/time.
 // 'manual' means admin-saved schedules are preserved across weekly resets and game-date changes.
 // 'auto' means schedules can be rebuilt from the selected game day/time.
-let scheduleMode = 'manual';
+let scheduleMode = 'auto';
 
 function hasConfiguredAdminPassword() {
     return !!ADMIN_PASSWORD;
@@ -718,25 +716,10 @@ function buildRosterReleasePaymentAnnouncement() {
         : 'Please E-Transfer or cash. 3-hour cancel window. No-show owes. Contact Phan to join if spots are available.';
 }
 
-function buildEffectiveRosterReleaseAnnouncement() {
-    const custom = String(rosterReleaseAnnouncementText || '').trim();
-    return custom || buildRosterReleasePaymentAnnouncement();
-}
-
 function clearAnnouncementState() {
     announcementEnabled = false;
     announcementText = '';
     announcementImages = [];
-}
-
-function syncActiveRosterReleaseAnnouncement() {
-    // Once the roster is released, the public yellow announcement banner should
-    // always use the saved roster-release announcement text. This keeps the
-    // message persistent even after admin edits/re-saves settings post-release.
-    if (!getEffectiveRosterReleasedState()) return false;
-    announcementEnabled = true;
-    announcementText = buildEffectiveRosterReleaseAnnouncement();
-    return true;
 }
 
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
@@ -798,7 +781,6 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || '').trim();
-let rosterReleaseAnnouncementText = '';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -991,33 +973,6 @@ function getGameSchedulePointFromGameTime(selectedGameTime = gameTime) {
     };
 }
 
-function getConfiguredGameEtParts(dateStr = gameDate, selectedGameTime = gameTime) {
-    const safeDate = String(dateStr || '').trim();
-    const match = safeDate.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (!match) return null;
-
-    const parsedTime = parseGameTimeString(selectedGameTime);
-    const year = Number(match[1]);
-    const month = Number(match[2]);
-    const day = Number(match[3]);
-    if (![year, month, day].every(Number.isFinite)) return null;
-
-    return {
-        year,
-        month,
-        day,
-        hour: parsedTime.hour24,
-        minute: parsedTime.minute,
-        label: `${safeDate} ${String(((parsedTime.hour24 + 11) % 12) + 1)}:${String(parsedTime.minute).padStart(2, '0')} ${parsedTime.hour24 >= 12 ? 'PM' : 'AM'} ET`
-    };
-}
-
-function minutesSinceEtWallClockParts(parts, etDate = getCurrentETTime()) {
-    if (!parts) return null;
-    const target = new Date(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, 0, 0);
-    return Math.floor((etDate.getTime() - target.getTime()) / 60000);
-}
-
 function getForwardMinutesBetweenWeeklyPoints(fromPoint, toPoint) {
     if (!fromPoint || !toPoint) return null;
     const fromMin = minuteOfWeekFromParts(fromPoint.dow, fromPoint.hour, fromPoint.minute);
@@ -1037,13 +992,6 @@ function validateResetScheduleAgainstGame(resetAt, selectedGameTime = gameTime) 
         return {
             ok: false,
             reason: `Blocked weekly reset because the reset time is not after the configured game time (${gamePoint.label}).`
-        };
-    }
-
-    if (minutesAfterGame < MIN_RESET_MINUTES_AFTER_GAME) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because it is only ${minutesAfterGame} minutes after the configured game time. Reset must be at least ${MIN_RESET_MINUTES_AFTER_GAME} minutes after ${gamePoint.label}.`
         };
     }
 
@@ -1070,13 +1018,6 @@ function validateResetScheduleAgainstRosterRelease(resetAt) {
         return {
             ok: false,
             reason: 'Blocked weekly reset because the reset time is not after the configured roster release time.'
-        };
-    }
-
-    if (minutesAfterRelease < MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because it is only ${minutesAfterRelease} minutes after roster release. Reset must be at least ${MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE} minutes after roster release.`
         };
     }
 
@@ -1130,30 +1071,6 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
         };
     }
 
-    const configuredGameParts = getConfiguredGameEtParts(gameDate, gameTime);
-    if (configuredGameParts && !isEtTimeOnOrAfterParts(etTime, configuredGameParts)) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because the configured game has not happened yet (${configuredGameParts.label}).`
-        };
-    }
-
-    const minutesAfterConfiguredGame = minutesSinceEtWallClockParts(configuredGameParts, etTime);
-    if (configuredGameParts && Number.isFinite(minutesAfterConfiguredGame) && minutesAfterConfiguredGame < MIN_RESET_MINUTES_AFTER_GAME) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because it is only ${minutesAfterConfiguredGame} minutes after the configured game. Minimum is ${MIN_RESET_MINUTES_AFTER_GAME} minutes.`
-        };
-    }
-
-    const maxResetHoursAfterConfiguredGame = Math.max(1, Number(process.env.MAX_RESET_HOURS_AFTER_GAME || 72));
-    if (configuredGameParts && (!Number.isFinite(minutesAfterConfiguredGame) || minutesAfterConfiguredGame > maxResetHoursAfterConfiguredGame * 60)) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because it is outside the ${maxResetHoursAfterConfiguredGame}-hour reset window after the configured game (${configuredGameParts.label}).`
-        };
-    }
-
     const gameScheduleSafety = validateResetScheduleAgainstGame(resetAt, gameTime);
     if (!gameScheduleSafety.ok) {
         return gameScheduleSafety;
@@ -1193,14 +1110,6 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
         return {
             ok: false,
             reason: 'Blocked weekly reset because there is no recorded roster release timestamp for this week.'
-        };
-    }
-
-    const minutesAfterActualRosterRelease = Math.floor((Date.now() - releaseTimeMs) / 60000);
-    if (!Number.isFinite(minutesAfterActualRosterRelease) || minutesAfterActualRosterRelease < MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE) {
-        return {
-            ok: false,
-            reason: `Blocked weekly reset because roster was released only ${minutesAfterActualRosterRelease} minutes ago. Minimum is ${MIN_RESET_MINUTES_AFTER_ROSTER_RELEASE} minutes.`
         };
     }
 
@@ -1363,17 +1272,8 @@ function isManualScheduleMode() {
     return String(scheduleMode || 'auto').toLowerCase() === 'manual';
 }
 
-function hasSavedScheduleConfiguration() {
-    return !!(signupLockStartAt || signupLockEndAt || rosterReleaseAt || resetWeekAt ||
-        (signupLockSchedule && (signupLockSchedule.start || signupLockSchedule.end || signupLockSchedule.enabled)) ||
-        (rosterReleaseSchedule && (rosterReleaseSchedule.at || rosterReleaseSchedule.enabled)) ||
-        (resetWeekSchedule && (resetWeekSchedule.at || resetWeekSchedule.enabled)));
-}
-
 function canAutoRebuildSchedules() {
-    // Never rebuild over admin-saved schedules. This prevents a game-date/time save, weekly reset,
-    // or server reload from wiping the exact schedule selected in the admin panel.
-    return AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && !isManualScheduleMode() && !hasSavedScheduleConfiguration();
+    return AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME && !isManualScheduleMode();
 }
 
 function buildAutoSchedulesFromGameTime(selectedGameTime = gameTime, anchorDate = gameDate) {
@@ -1572,7 +1472,7 @@ async function autoReleaseRoster() {
         resetArmed = true;
 
         announcementEnabled = true;
-        announcementText = buildEffectiveRosterReleaseAnnouncement();
+        announcementText = buildRosterReleasePaymentAnnouncement();
 
         currentWeekData = {
             weekNumber: week,
@@ -1833,8 +1733,7 @@ function buildPersistedStateFingerprint(snapshot = null) {
         announcementEnabled: payload.announcementEnabled,
         announcementText: payload.announcementText,
         announcementImages: payload.announcementImages,
-        paymentEmail: payload.paymentEmail,
-        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText
+        paymentEmail: payload.paymentEmail
     });
 }
 
@@ -2120,7 +2019,7 @@ async function loadDataFromDB() {
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
-        if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'manual').toLowerCase() === 'auto' ? 'auto' : 'manual';
+        if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
         if (settings.signupLockEndAt !== undefined) signupLockEndAt = settings.signupLockEndAt || '';
         if (settings.rosterReleaseAt !== undefined) rosterReleaseAt = settings.rosterReleaseAt || '';
@@ -2225,7 +2124,6 @@ async function loadDataFromDB() {
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
-        if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim();
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
@@ -2745,7 +2643,7 @@ function applySnapshotToMemory(snapshot) {
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
-    scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'manual').toLowerCase() === 'auto' ? 'auto' : 'manual';
+    scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
         weekNumber: null,
         year: null,
@@ -2838,7 +2736,6 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.announcementText === 'string') announcementText = s.announcementText;
         if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
         if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
-        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
     }
@@ -3093,7 +2990,6 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementText', announcementText],
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
-            ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
             ['gameDate', gameDate]
@@ -3323,7 +3219,6 @@ function buildFullDataSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
-        rosterReleaseAnnouncementText,
         summary: {
             gameLocation,
             gameTime,
@@ -3339,7 +3234,6 @@ function buildFullDataSnapshot() {
             announcementText,
             announcementImages,
             paymentEmail,
-            rosterReleaseAnnouncementText,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
             requirePlayerCode,
@@ -3400,7 +3294,6 @@ function getSettingsSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
-        rosterReleaseAnnouncementText,
         gameTime,
         gameLocation,
         gameDate,
@@ -3521,7 +3414,7 @@ function loadDataFromFile() {
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             customSignupCode = String(data.customSignupCode || '').trim();
-            scheduleMode = String(data.scheduleMode || scheduleMode || 'manual').toLowerCase() === 'auto' ? 'auto' : 'manual';
+            scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
                 weekNumber: null,
                 year: null,
@@ -3535,7 +3428,6 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
-            rosterReleaseAnnouncementText = String(data.rosterReleaseAnnouncementText || '').trim();
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
@@ -4783,12 +4675,10 @@ app.get('/api/status', (req, res) => {
         // NEW FIELDS - ADD THESE
         maintenanceMode: maintenanceMode,
         customTitle: customTitle,
-        announcementEnabled: getEffectiveRosterReleasedState() ? true : announcementEnabled,
-        announcementText: getEffectiveRosterReleasedState() ? buildEffectiveRosterReleaseAnnouncement() : announcementText,
+        announcementEnabled: announcementEnabled,
+        announcementText: announcementText,
         announcementImages: announcementImages,
         paymentEmail: paymentEmail,
-        rosterReleaseAnnouncementText,
-        effectiveRosterReleaseAnnouncement: buildEffectiveRosterReleaseAnnouncement(),
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -5483,7 +5373,6 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementText,
         announcementImages,
         paymentEmail,
-        rosterReleaseAnnouncementText,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -5498,7 +5387,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            paymentEmail: newPaymentEmail, rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, selectedDayTime, selectedArena, gameDate: newGameDate,
+            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -5512,10 +5401,6 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
-            if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim();
-            if (getEffectiveRosterReleasedState()) {
-                syncActiveRosterReleaseAnnouncement();
-            }
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
@@ -5553,7 +5438,6 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled,
             announcementText,
             announcementImages,
-            rosterReleaseAnnouncementText,
             regularSkatersByDay,
             gameTime,
             gameLocation,
@@ -5855,7 +5739,6 @@ app.post('/api/admin/download-backup', async (req, res) => {
                 announcementEnabled,
                 announcementText,
                 announcementImages,
-                rosterReleaseAnnouncementText,
                 playerSpots,
                 requirePlayerCode,
                 playerSignupCode
@@ -6133,7 +6016,6 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
-        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
             }
@@ -6432,11 +6314,10 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
     
     try {
         await runProtectedMutation('reset-schedule', req, async () => {
-            // Clear the manual lock/open override only. Do not rebuild admin-saved schedules.
-            // Keeping scheduleMode manual protects Friday/Sunday custom schedule settings.
-            scheduleMode = 'manual';
+            scheduleMode = 'auto';
             manualOverride = false;
             manualOverrideState = null;
+            buildAutoSchedulesFromGameTime(gameTime, gameDate || calculateNextGameDate());
             checkAutoLock();
         });
     } catch (err) {
@@ -6456,7 +6337,7 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
         signupLockEndAt,
         rosterReleaseAt,
         resetWeekAt,
-        message: "Manual override cleared. Saved schedules were preserved."
+        message: "Auto-schedule restored"
     });
 });
 
@@ -6693,7 +6574,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             resetArmed = true;
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
-            announcementText = buildEffectiveRosterReleaseAnnouncement();
+            announcementText = buildRosterReleasePaymentAnnouncement();
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
