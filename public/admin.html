@@ -3924,11 +3924,6 @@ th, td{padding:2px 3px !important;}
 
                 <div class="announcement-side-stack">
                     <div class="message-box">
-                        <label for="paymentEmail">E-transfer Email</label>
-                        <input type="email" id="paymentEmail" placeholder="Enter payment email">
-                    </div>
-
-                    <div class="message-box">
                         <label for="announcementImageUpload">Upload Image</label>
                         <input type="file" id="announcementImageUpload" accept="image/*">
                     </div>
@@ -5375,7 +5370,6 @@ th, td{padding:2px 3px !important;}
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
-                const paymentEmail = document.getElementById('paymentEmail');
                 const rosterReleaseAnnouncementText = document.getElementById('rosterReleaseAnnouncementText');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
 
@@ -5383,9 +5377,6 @@ th, td{padding:2px 3px !important;}
                 bindAnnouncementToggleUI();
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
-                }
-                if (paymentEmail) {
-                    paymentEmail.value = data.paymentEmail || '';
                 }
                 if (rosterReleaseAnnouncementText) {
                     rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || '';
@@ -7519,12 +7510,10 @@ Continue?`;
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
-                const paymentEmailInput = document.getElementById('paymentEmail');
                 const rosterReleaseAnnouncementInput = document.getElementById('rosterReleaseAnnouncementText');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
-                const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
                 const rosterReleaseAnnouncementValue = rosterReleaseAnnouncementInput ? rosterReleaseAnnouncementInput.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
@@ -7536,7 +7525,6 @@ Continue?`;
                             sessionToken,
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
-                            paymentEmail: paymentEmailValue,
                             rosterReleaseAnnouncementText: rosterReleaseAnnouncementValue,
                             announcementImages
                         })
