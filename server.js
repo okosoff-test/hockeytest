@@ -716,6 +716,18 @@ function buildRosterReleasePaymentAnnouncement() {
         : 'Please E-Transfer or cash. 3-hour cancel window. No-show owes. Contact Phan to join if spots are available.';
 }
 
+function buildEffectiveRosterReleaseAnnouncement() {
+    // No forced default. Admin controls this field completely.
+    return String(rosterReleaseAnnouncementText || '').trim();
+}
+
+function applyRosterReleaseAnnouncementState() {
+    const message = buildEffectiveRosterReleaseAnnouncement();
+    announcementEnabled = !!message;
+    announcementText = message;
+    return message;
+}
+
 function clearAnnouncementState() {
     announcementEnabled = false;
     announcementText = '';
@@ -781,6 +793,7 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || '').trim();
+let rosterReleaseAnnouncementText = '';
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1471,8 +1484,7 @@ async function autoReleaseRoster() {
         rosterReleased = true;
         resetArmed = true;
 
-        announcementEnabled = true;
-        announcementText = buildRosterReleasePaymentAnnouncement();
+        applyRosterReleaseAnnouncementState();
 
         currentWeekData = {
             weekNumber: week,
@@ -1733,7 +1745,8 @@ function buildPersistedStateFingerprint(snapshot = null) {
         announcementEnabled: payload.announcementEnabled,
         announcementText: payload.announcementText,
         announcementImages: payload.announcementImages,
-        paymentEmail: payload.paymentEmail
+        paymentEmail: payload.paymentEmail,
+        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText
     });
 }
 
@@ -2124,6 +2137,7 @@ async function loadDataFromDB() {
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
+        if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim();
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
@@ -2657,6 +2671,7 @@ function applySnapshotToMemory(snapshot) {
     announcementText = snapshot.announcementText ?? announcementText;
     announcementImages = Array.isArray(snapshot.announcementImages) ? snapshot.announcementImages : [];
     paymentEmail = typeof snapshot.paymentEmail === 'string' ? snapshot.paymentEmail : paymentEmail;
+    rosterReleaseAnnouncementText = typeof snapshot.rosterReleaseAnnouncementText === 'string' ? snapshot.rosterReleaseAnnouncementText.trim() : rosterReleaseAnnouncementText;
     refreshDynamicSignupCode();
 }
 
@@ -2736,6 +2751,7 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.announcementText === 'string') announcementText = s.announcementText;
         if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
         if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
     }
@@ -2990,6 +3006,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementText', announcementText],
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
+            ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
             ['gameDate', gameDate]
@@ -3219,6 +3236,7 @@ function buildFullDataSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         summary: {
             gameLocation,
             gameTime,
@@ -3234,6 +3252,7 @@ function buildFullDataSnapshot() {
             announcementText,
             announcementImages,
             paymentEmail,
+            rosterReleaseAnnouncementText,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
             requirePlayerCode,
@@ -3294,6 +3313,7 @@ function getSettingsSnapshot() {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         gameTime,
         gameLocation,
         gameDate,
@@ -3428,6 +3448,7 @@ function loadDataFromFile() {
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            rosterReleaseAnnouncementText = typeof data.rosterReleaseAnnouncementText === 'string' ? data.rosterReleaseAnnouncementText.trim() : '';
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
@@ -4679,6 +4700,7 @@ app.get('/api/status', (req, res) => {
         announcementText: announcementText,
         announcementImages: announcementImages,
         paymentEmail: paymentEmail,
+        rosterReleaseAnnouncementText: rosterReleaseAnnouncementText,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
@@ -5373,6 +5395,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementText,
         announcementImages,
         paymentEmail,
+        rosterReleaseAnnouncementText,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -5387,7 +5410,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
+            paymentEmail: newPaymentEmail, rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, rosterReleaseAnnouncement: newRosterReleaseAnnouncement, selectedDayTime, selectedArena, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -5401,6 +5424,8 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
+            const incomingRosterReleaseAnnouncement = newRosterReleaseAnnouncementText !== undefined ? newRosterReleaseAnnouncementText : newRosterReleaseAnnouncement;
+            if (incomingRosterReleaseAnnouncement !== undefined) rosterReleaseAnnouncementText = String(incomingRosterReleaseAnnouncement || '').trim();
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
@@ -6016,6 +6041,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim();
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
             }
@@ -6573,8 +6599,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
             rosterReleased = true;
             resetArmed = true;
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
-            announcementEnabled = true;
-            announcementText = buildRosterReleasePaymentAnnouncement();
+            applyRosterReleaseAnnouncementState();
             currentWeekData = { weekNumber: week, year, releaseDate: new Date().toISOString(), rosterReleaseTime: Date.now(), whiteTeam: teams.whiteTeam, darkTeam: teams.darkTeam };
         }, { week, year });
         await saveWeekHistory(year, week, teams.whiteTeam, teams.darkTeam);
