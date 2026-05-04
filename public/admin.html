@@ -3917,6 +3917,10 @@ th, td{padding:2px 3px !important;}
                     <label for="announcementText">Message</label>
                     <textarea id="announcementText" rows="4" placeholder="Type announcement..."></textarea>
                 </div>
+                <div class="message-box message-box-main">
+                    <label for="rosterReleaseAnnouncementText">Roster Release Announcement</label>
+                    <textarea id="rosterReleaseAnnouncementText" rows="3" placeholder="Message used automatically when roster is released. Leave blank to use default payment/no-show message."></textarea>
+                </div>
 
                 <div class="announcement-side-stack">
                     <div class="message-box">
@@ -5372,6 +5376,7 @@ th, td{padding:2px 3px !important;}
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
                 const paymentEmail = document.getElementById('paymentEmail');
+                const rosterReleaseAnnouncementText = document.getElementById('rosterReleaseAnnouncementText');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
 
                 updateAnnouncementToggleUI(!!data.announcementEnabled);
@@ -5381,6 +5386,9 @@ th, td{padding:2px 3px !important;}
                 }
                 if (paymentEmail) {
                     paymentEmail.value = data.paymentEmail || '';
+                }
+                if (rosterReleaseAnnouncementText) {
+                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || '';
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -7512,10 +7520,12 @@ Continue?`;
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
                 const paymentEmailInput = document.getElementById('paymentEmail');
+                const rosterReleaseAnnouncementInput = document.getElementById('rosterReleaseAnnouncementText');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
                 const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
+                const rosterReleaseAnnouncementValue = rosterReleaseAnnouncementInput ? rosterReleaseAnnouncementInput.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -7527,6 +7537,7 @@ Continue?`;
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
                             paymentEmail: paymentEmailValue,
+                            rosterReleaseAnnouncementText: rosterReleaseAnnouncementValue,
                             announcementImages
                         })
                     });
