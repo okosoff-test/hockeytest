@@ -2796,18 +2796,11 @@ function updateCalculatedRating() {
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
             let text = rawText;
-
             if (text.includes('{spots}')) {
-                text = text.replaceAll('{spots}', spotsToken);
-            } else {
-                text = text.replace(
-                    /You\s+can\s+['\u2019\u2018\"]?Join Game['\u2019\u2018\"]?\s+if\s+spots\s+are\s+available/i,
-                    `${spotsToken} — you can 'Join Game'`
-                );
+                text = text.split('{spots}').join(spotsToken);
             }
 
-            let html = escapeHtml(text).replaceAll(
-                spotsToken,
+            let html = escapeHtml(text).split(spotsToken).join(
                 `<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`
             );
 
