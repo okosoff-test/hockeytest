@@ -965,17 +965,6 @@
             line-height: 1.4;
         }
 
-        .announcement-spots-inline {
-            display: inline-block;
-            color: #1f7a2e;
-            font-weight: 900;
-            white-space: nowrap;
-        }
-
-        .announcement-spots-inline.full {
-            color: #c62828;
-        }
-
     
         .rating-grid {
             display: grid;
@@ -1021,6 +1010,20 @@
             margin-top: 6px;
             font-size: 0.82rem;
             color: #6b5310;
+        }
+
+
+        .announcement-spots-inline {
+            font-weight: 800;
+            white-space: nowrap;
+        }
+
+        .announcement-spots-inline.available {
+            color: #2e7d32;
+        }
+
+        .announcement-spots-inline.full {
+            color: #c62828;
         }
 
 
@@ -2760,27 +2763,7 @@ function updateCalculatedRating() {
             if (!bulletin || !textEl || !thumbEl) return;
 
             const enabled = !!data.announcementEnabled;
-            const rawText = (data.announcementText || '').trim();
-            const spotsRemaining = Math.max(0, Number(data.playerSpotsRemaining || data.spotsRemaining || 0));
-            const spotsLabel = spotsRemaining > 0
-                ? `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} left`
-                : 'FULL';
-            const spotsHtml = spotsRemaining > 0
-                ? `<strong class="announcement-spots-inline">${spotsLabel}</strong>`
-                : `<strong class="announcement-spots-inline full">${spotsLabel}</strong>`;
-            let text = rawText;
-
-            // Admin can type {spots} anywhere in the message.
-            // If they do not use the placeholder, automatically add the live count
-            // after the phrase "spots are available".
-            if (text) {
-                if (/\{spots\}/i.test(text)) {
-                    text = text.replace(/\{spots\}/gi, spotsHtml);
-                } else {
-                    text = text.replace(/spots are available/i, (match) => `${match} ${spotsHtml}`);
-                }
-            }
-
+            const text = (data.announcementText || '').trim();
             const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             const image = images.length ? String(images[0] || '').trim() : '';
             const email = String(data.paymentEmail || '').trim();
@@ -2800,40 +2783,67 @@ function updateCalculatedRating() {
                 return;
             }
 
-            const emailIndex = email ? text.toLowerCase().indexOf(email.toLowerCase()) : -1;
-            if (email && emailIndex !== -1) {
-                const before = text.slice(0, emailIndex);
-                const matchedEmail = text.slice(emailIndex, emailIndex + email.length);
-                const after = text.slice(emailIndex + email.length);
-                const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                const preserveSpotsMarkup = (value) => escapeHtml(value)
-                    .replace(/&lt;strong class="announcement-spots-inline"&gt;/g, '<strong class="announcement-spots-inline">')
-                    .replace(/&lt;strong class="announcement-spots-inline full"&gt;/g, '<strong class="announcement-spots-inline full">')
-                    .replace(/&lt;\/strong&gt;/g, '</strong>');
-                const safeEmail = escapeHtml(matchedEmail);
-                textEl.innerHTML = `${preserveSpotsMarkup(before)}<span class="announcement-copy-email" data-copy-payment-email="${safeEmail}">${safeEmail}</span>${preserveSpotsMarkup(after)}`;
-                const copyTarget = textEl.querySelector('[data-copy-payment-email]');
-                if (copyTarget) {
-                    copyTarget.addEventListener('click', (event) => {
-                        event.preventDefault();
-                        event.stopPropagation();
-                        copyTextToClipboard(email);
-                    });
-                }
-                if (hintEl) {
-                    hintEl.style.display = 'block';
-                    hintEl.textContent = 'Tap email to copy';
-                }
-            } else {
-                const escapeHtml = (value) => String(value || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-                textEl.innerHTML = escapeHtml(text || 'Attention')
-                    .replace(/&lt;strong class="announcement-spots-inline"&gt;/g, '<strong class="announcement-spots-inline">')
-                    .replace(/&lt;strong class="announcement-spots-inline full"&gt;/g, '<strong class="announcement-spots-inline full">')
-                    .replace(/&lt;\/strong&gt;/g, '</strong>');
-                if (hintEl) {
-                    hintEl.style.display = 'none';
-                    hintEl.textContent = 'Tap email to copy';
-                }
+            const escapeHtml = (value) => String(value || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+
+            const spotsRemaining = Math.max(0, Number(data.playerSpotsRemaining ?? data.spotsRemaining ?? 0));
+            const spotsLabel = spotsRemaining > 0
+                ? `${spotsRemaining} spot${spotsRemaining === 1 ? '' : 's'} left`
+                : 'FULL';
+            const spotsClass = spotsRemaining > 0 ? 'available' : 'full';
+            const spotsHtml = `<strong class="announcement-spots-inline ${spotsClass}">${escapeHtml(spotsLabel)}</strong>`;
+
+            function buildAnnouncementHtml(rawText) {
+                const source = String(rawText || '').trim() || 'Attention';
+                const parts = source.split('{spots}');
+                let html = '';
+
+                parts.forEach((part, index) => {
+                    let remaining = String(part || '');
+                    if (email) {
+                        const lowerEmail = email.toLowerCase();
+                        while (remaining) {
+                            const emailIndex = remaining.toLowerCase().indexOf(lowerEmail);
+                            if (emailIndex === -1) {
+                                html += escapeHtml(remaining);
+                                remaining = '';
+                            } else {
+                                const before = remaining.slice(0, emailIndex);
+                                const matchedEmail = remaining.slice(emailIndex, emailIndex + email.length);
+                                html += escapeHtml(before);
+                                html += `<span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(matchedEmail)}">${escapeHtml(matchedEmail)}</span>`;
+                                remaining = remaining.slice(emailIndex + email.length);
+                            }
+                        }
+                    } else {
+                        html += escapeHtml(remaining);
+                    }
+
+                    if (index < parts.length - 1) {
+                        html += spotsHtml;
+                    }
+                });
+
+                return html;
+            }
+
+            textEl.innerHTML = buildAnnouncementHtml(text);
+            const copyTargets = textEl.querySelectorAll('[data-copy-payment-email]');
+            copyTargets.forEach(copyTarget => {
+                copyTarget.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    copyTextToClipboard(email);
+                });
+            });
+
+            if (hintEl) {
+                hintEl.style.display = copyTargets.length ? 'block' : 'none';
+                hintEl.textContent = 'Tap email to copy';
             }
 
             if (image) {
@@ -2843,195 +2853,8 @@ function updateCalculatedRating() {
                 thumbEl.src = '';
                 thumbEl.classList.remove('visible');
             }
+
             bulletin.classList.add('active');
-        }
-
-
-        function formatCountdown(msRemaining) {
-            const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
-            const days = Math.floor(totalSeconds / 86400);
-            const hours = Math.floor((totalSeconds % 86400) / 3600);
-            const minutes = Math.floor((totalSeconds % 3600) / 60);
-            const seconds = totalSeconds % 60;
-
-            if (days > 0) {
-                return `${days}d ${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-            }
-            return `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m ${String(seconds).padStart(2, '0')}s`;
-        }
-
-        function stopRosterCountdown() {
-            if (rosterCountdownTimer) {
-                clearInterval(rosterCountdownTimer);
-                rosterCountdownTimer = null;
-            }
-        }
-
-        function formatEliteRosterHeadline(releaseIso, fallbackHeadline) {
-            if (!releaseIso) return fallbackHeadline || '📅 Check Back for roster release';
-
-            const releaseDate = new Date(releaseIso);
-            if (Number.isNaN(releaseDate.getTime())) {
-                return fallbackHeadline || '📅 Check Back for roster release';
-            }
-
-            const datePart = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/New_York',
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric'
-            }).format(releaseDate);
-
-            const timePart = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/New_York',
-                hour: 'numeric',
-                minute: '2-digit',
-                hour12: true
-            }).format(releaseDate);
-
-            return `📅 Check Back ${datePart} • Roster Release ${timePart} ET`;
-        }
-
-        function renderRosterCountdown() {
-            const countdownWrap = document.getElementById('rosterCountdown');
-            const countdownValue = document.getElementById('rosterCountdownValue');
-            const countdownLabel = document.getElementById('rosterCountdownLabel');
-            const placeholder = document.getElementById('rosterCountdownPlaceholder');
-
-            if (!currentRosterReleaseAt || rosterReleased) {
-                stopRosterCountdown();
-                countdownWrap.style.display = 'none';
-                placeholder.style.display = rosterReleased ? 'none' : 'block';
-                placeholder.textContent = rosterReleased
-                    ? ''
-                    : 'Countdown will appear once a roster release time is scheduled.';
-                return;
-            }
-
-            const releaseMs = Date.parse(currentRosterReleaseAt);
-            if (!Number.isFinite(releaseMs)) {
-                stopRosterCountdown();
-                countdownWrap.style.display = 'none';
-                placeholder.style.display = 'block';
-                placeholder.textContent = 'Countdown will appear once a roster release time is scheduled.';
-                return;
-            }
-
-            const tick = () => {
-                const remaining = releaseMs - Date.now();
-                if (remaining <= 0) {
-                    countdownWrap.style.display = 'none';
-                    placeholder.style.display = 'block';
-                    placeholder.textContent = 'Roster release time has arrived. Refresh if teams are not shown yet.';
-                    stopRosterCountdown();
-                    return;
-                }
-                countdownValue.textContent = formatCountdown(remaining);
-                countdownLabel.textContent = 'until roster release';
-                countdownWrap.style.display = 'flex';
-                placeholder.style.display = 'none';
-            };
-
-            tick();
-            stopRosterCountdown();
-            rosterCountdownTimer = setInterval(tick, 1000);
-        }
-
-
-        function jumpToSignupArea() {
-            const codeSection = document.getElementById('codeSection');
-            const signupForm = document.getElementById('signupForm');
-            const quickReturn = document.getElementById('quickReturnSection');
-            const target =
-                (codeSection && getComputedStyle(codeSection).display !== 'none') ? codeSection :
-                (quickReturn && getComputedStyle(quickReturn).display !== 'none') ? quickReturn :
-                (signupForm && getComputedStyle(signupForm).display !== 'none') ? signupForm :
-                document.getElementById('registrationArea');
-
-            if (target) {
-                target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-        }
-
-
-        function getCurrentGameCardLockValue() {
-            return String(localStorage.getItem(GAME_CARD_POSITION_LOCK_KEY) || '').trim();
-        }
-
-        function getGameCardLockToken() {
-            return [String(currentGameDateValue || '').trim(), String(currentLocation || '').trim(), String(currentTime || '').trim()].filter(Boolean).join('|');
-        }
-
-        function clearGameCardPositionLockIfNeeded() {
-            const stored = getCurrentGameCardLockValue();
-            const token = getGameCardLockToken();
-            if (stored && token && stored !== token) {
-                localStorage.removeItem(GAME_CARD_POSITION_LOCK_KEY);
-            }
-        }
-
-        function lockGameCardUnderRoster() {
-            const token = getGameCardLockToken();
-            if (!token) return;
-            localStorage.setItem(GAME_CARD_POSITION_LOCK_KEY, token);
-        }
-
-        function isKnownViewerPlayer(player) {
-            const playerName = `${String(player?.firstName || '').trim().toLowerCase()} ${String(player?.lastName || '').trim().toLowerCase()}`.trim();
-            if (!playerName) return false;
-            const storedProfiles = getStoredQuickPlayers().map(sanitizeQuickPlayerProfile).filter(Boolean);
-            if (storedProfiles.some(profile => `${profile.firstName} ${profile.lastName}`.trim().toLowerCase() === playerName)) {
-                return true;
-            }
-            const formFirst = String(document.getElementById('firstName')?.value || '').trim().toLowerCase();
-            const formLast = String(document.getElementById('lastName')?.value || '').trim().toLowerCase();
-            return !!formFirst && !!formLast && `${formFirst} ${formLast}` === playerName;
-        }
-
-        function triggerWaitlistPromotionLiveAnimation() {
-            const wrap = document.getElementById('venueWaitlistBox');
-            if (!wrap) return;
-            wrap.classList.remove('live-promotion-flash');
-            void wrap.offsetWidth;
-            wrap.classList.add('live-promotion-flash');
-            setTimeout(() => wrap.classList.remove('live-promotion-flash'), 1800);
-        }
-
-        function markPromotedRosterEntry(li, player) {
-            if (!li || !player || !player.promotedFromWaitlist || player.id == null) return;
-            const playerId = String(player.id);
-            if (seenPromotedRosterIds[playerId]) return;
-            seenPromotedRosterIds[playerId] = true;
-            li.classList.add('live-promoted');
-            setTimeout(() => li.classList.remove('live-promoted'), 4200);
-        }
-
-        function syncVenueWaitlistPlacement(forceRosterReleased = null) {
-            const gameInfoCard = document.getElementById('gameInfoCard');
-            const home = document.getElementById('gameInfoHome');
-            const roster = document.getElementById('rosterDisplay');
-            const mount = document.getElementById('rosterGameInfoMount');
-            const releaseState = forceRosterReleased === null ? !!rosterReleased : !!forceRosterReleased;
-            const shouldPlaceUnderRoster = releaseState || getCurrentGameCardLockValue() === getGameCardLockToken();
-
-            if (!gameInfoCard || !home || !roster || !mount) return;
-
-            if (releaseState) {
-                lockGameCardUnderRoster();
-            }
-
-            if (shouldPlaceUnderRoster) {
-                gameInfoCard.classList.add('position-locked-after-release');
-                if (gameInfoCard.parentNode !== mount) {
-                    mount.appendChild(gameInfoCard);
-                }
-            } else {
-                gameInfoCard.classList.remove('position-locked-after-release');
-                if (gameInfoCard.parentNode !== home.parentNode || gameInfoCard.previousElementSibling !== home) {
-                    home.insertAdjacentElement('afterend', gameInfoCard);
-                }
-            }
         }
 
         function renderVenueWaitlist(entries) {
