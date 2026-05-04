@@ -651,6 +651,64 @@ const DEFAULT_REGULAR_SKATERS_BY_DAY = {
 
 let regularSkatersByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
 
+// Admin-set ratings are the source of truth once saved.
+// Keyed by normalized phone when available, otherwise normalized full name.
+// This survives weekly resets because it is saved in settings/data snapshots, not just the weekly players table.
+let adminRatingOverrides = {};
+
+
+function getPlayerRatingOverrideKeys(player = {}) {
+    const firstName = String(player.firstName || player.first_name || '').trim().toLowerCase();
+    const lastName = String(player.lastName || player.last_name || '').trim().toLowerCase();
+    const phoneDigits = normalizePhoneDigits(player.phone || '');
+    const keys = [];
+    if (phoneDigits) keys.push(`phone:${phoneDigits}`);
+    if (firstName || lastName) keys.push(`name:${firstName}|${lastName}`);
+    return keys;
+}
+
+function normalizeAdminRatingOverrides(input = {}) {
+    const normalized = {};
+    if (!input || typeof input !== 'object') return normalized;
+    for (const [rawKey, rawValue] of Object.entries(input)) {
+        const rating = roundRating(Number(rawValue));
+        if (!Number.isFinite(rating) || rating < 1 || rating > 10) continue;
+        const key = String(rawKey || '').trim().toLowerCase();
+        if (key.startsWith('phone:') || key.startsWith('name:')) {
+            normalized[key] = rating;
+        }
+    }
+    return normalized;
+}
+
+function getAdminRatingOverrideForPlayer(player = {}) {
+    const overrides = normalizeAdminRatingOverrides(adminRatingOverrides || {});
+    for (const key of getPlayerRatingOverrideKeys(player)) {
+        if (Object.prototype.hasOwnProperty.call(overrides, key)) return overrides[key];
+    }
+    return null;
+}
+
+function rememberAdminRatingOverride(player = {}, ratingValue) {
+    const rating = roundRating(Number(ratingValue));
+    if (!Number.isFinite(rating) || rating < 1 || rating > 10) return null;
+    adminRatingOverrides = normalizeAdminRatingOverrides(adminRatingOverrides || {});
+    const keys = getPlayerRatingOverrideKeys(player);
+    keys.forEach(key => { adminRatingOverrides[key] = rating; });
+    return rating;
+}
+
+function applyAdminRatingOverrideToPlayer(player = {}) {
+    const overrideRating = getAdminRatingOverrideForPlayer(player);
+    if (overrideRating == null) return player;
+    const derivedRating = roundRating(player.derivedRating ?? player.finalRating ?? player.rating ?? overrideRating);
+    player.adminRating = overrideRating;
+    player.adminAdjustment = roundRating(overrideRating - derivedRating);
+    player.finalRating = overrideRating;
+    player.rating = overrideRating;
+    return player;
+}
+
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
     const lastName = String(input.lastName || '').trim();
@@ -706,7 +764,7 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
     const goalieList = REGULAR_GOALIES_BY_DAY[dayKey] || REGULAR_GOALIES_BY_DAY.friday;
     const skaterList = getRegularSkatersForDay(dayKey);
-    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
+    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => applyAdminRatingOverrideToPlayer({ ...player }));
 }
 
 function buildRosterReleasePaymentAnnouncement() {
@@ -1543,6 +1601,7 @@ async function addAutoPlayers() {
             rulesAgreed: true,
             protected: autoPlayer.protected || false
         };
+        applyAdminRatingOverrideToPlayer(newPlayer);
 
         try {
             if (pool) {
@@ -2018,6 +2077,7 @@ async function loadDataFromDB() {
         if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
+        if (settings.adminRatingOverrides !== undefined) adminRatingOverrides = normalizeAdminRatingOverrides(settings.adminRatingOverrides || {});
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
@@ -2130,6 +2190,13 @@ async function loadDataFromDB() {
                 if (!Array.isArray(announcementImages)) announcementImages = [];
             } catch {
                 announcementImages = [];
+            }
+        }
+        if (appSettings.adminRatingOverrides !== undefined) {
+            try {
+                adminRatingOverrides = normalizeAdminRatingOverrides(JSON.parse(appSettings.adminRatingOverrides || '{}'));
+            } catch (err) {
+                adminRatingOverrides = normalizeAdminRatingOverrides({});
             }
         }
         if (appSettings.regularSkatersByDay !== undefined) {
@@ -2642,6 +2709,7 @@ function applySnapshotToMemory(snapshot) {
     resetWeekSchedule = snapshot.resetWeekSchedule ?? resetWeekSchedule;
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
+    adminRatingOverrides = normalizeAdminRatingOverrides(snapshot.adminRatingOverrides || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
     scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
@@ -2962,6 +3030,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
+            ['adminRatingOverrides', adminRatingOverrides],
             ['customSignupCode', customSignupCode],
             ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
@@ -3189,6 +3258,7 @@ function buildFullDataSnapshot() {
         waitlist,
         cancelledRegistrations,
         regularSkatersByDay,
+        adminRatingOverrides,
         customSignupCode,
         scheduleMode,
         gameLocation,
@@ -3312,6 +3382,7 @@ function getSettingsSnapshot() {
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
+        adminRatingOverrides,
         customSignupCode,
         scheduleMode,
         lastExactResetMinuteKey,
@@ -3413,6 +3484,7 @@ function loadDataFromFile() {
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
+            adminRatingOverrides = normalizeAdminRatingOverrides(data.adminRatingOverrides || {});
             customSignupCode = String(data.customSignupCode || '').trim();
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -3676,9 +3748,12 @@ function normalizeSkillProfile(input = {}) {
 
 function hydratePlayerRatingProfile(player = {}) {
     const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? 5);
-    const finalRating = roundRating(player.finalRating ?? player.rating ?? player.adminRating ?? player.derivedRating ?? fallbackRating);
-    const derivedRating = roundRating(player.derivedRating ?? finalRating);
-    const adminRating = player.adminRating == null ? null : roundRating(player.adminRating);
+    const overrideRating = getAdminRatingOverrideForPlayer(player);
+    const derivedRating = roundRating(player.derivedRating ?? player.finalRating ?? player.rating ?? overrideRating ?? fallbackRating);
+    const adminRating = overrideRating != null
+        ? overrideRating
+        : (player.adminRating == null ? null : roundRating(player.adminRating));
+    const finalRating = roundRating(adminRating ?? player.finalRating ?? player.rating ?? player.derivedRating ?? fallbackRating);
     const adminAdjustment = roundRating(player.adminAdjustment ?? ((adminRating == null ? finalRating : adminRating) - derivedRating));
 
     return {
@@ -5051,6 +5126,7 @@ app.post('/api/register-final', async (req, res) => {
         registeredAt: new Date().toISOString(),
         rulesAgreed: true
     });
+    applyAdminRatingOverrideToPlayer(newPlayer);
 
     try {
         await runProtectedMutation('player-signup', req, async () => {
@@ -6549,6 +6625,7 @@ app.post('/api/admin/update-rating', async (req, res) => {
     const derivedRating = roundRating(player.derivedRating ?? oldRating);
     try {
         await runProtectedMutation('update-rating', req, async () => {
+            rememberAdminRatingOverride(player, ratingNum);
             player.adminRating = ratingNum;
             player.adminAdjustment = roundRating(ratingNum - derivedRating);
             player.finalRating = ratingNum;
