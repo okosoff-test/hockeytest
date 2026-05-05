@@ -709,6 +709,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
 }
 
+const DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT = "Etransfer: okosoff@outlook.com\n{spots}\nYou can still 'Join Game', message Phan after joining.";
+
 function buildRosterReleasePaymentAnnouncement() {
     const email = String(paymentEmail || '').trim() || 'okosoff@outlook.com';
     return `Etransfer: ${email}
