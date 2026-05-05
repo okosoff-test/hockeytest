@@ -1550,7 +1550,6 @@
         <div class="announcement-copy">
             <strong>Attention:</strong>
             <span id="announcementText">&nbsp;</span>
-            <small id="announcementCopyHint" class="announcement-copy-hint" style="display:none;">Tap email to copy</small>
         </div>
     </div>
 
@@ -2735,15 +2734,7 @@ function updateCalculatedRating() {
             const value = String(text || '').trim();
             if (!value) return;
 
-            const onCopied = () => {
-                const hintEl = document.getElementById('announcementCopyHint');
-                if (!hintEl) return;
-                hintEl.textContent = 'Copied payment email';
-                hintEl.style.display = 'block';
-                setTimeout(() => {
-                    hintEl.textContent = 'Tap email to copy';
-                }, 1600);
-            };
+            const onCopied = () => {};
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
                 navigator.clipboard.writeText(value).then(onCopied).catch(() => {
@@ -2759,7 +2750,6 @@ function updateCalculatedRating() {
             const bulletin = document.getElementById('announcementBulletin');
             const textEl = document.getElementById('announcementText');
             const thumbEl = document.getElementById('announcementThumb');
-            const hintEl = document.getElementById('announcementCopyHint');
             if (!bulletin || !textEl || !thumbEl) return;
 
             const enabled = !!data.announcementEnabled;
@@ -2776,10 +2766,6 @@ function updateCalculatedRating() {
                 textEl.removeAttribute('role');
                 thumbEl.src = '';
                 thumbEl.classList.remove('visible');
-                if (hintEl) {
-                    hintEl.style.display = 'none';
-                    hintEl.textContent = 'Tap email to copy';
-                }
                 return;
             }
 
@@ -2795,7 +2781,9 @@ function updateCalculatedRating() {
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
-            let text = rawText;
+            let text = rawText
+                .replace(/\s+[–—-]\s+(You can still ['’‘"]?Join Game['’‘"]?, message Phan after joining\.)/i, ' $1')
+                .replace(/^[–—-]\s+(You can still ['’‘"]?Join Game['’‘"]?, message Phan after joining\.)/im, '$1');
             if (text.includes('{spots}')) {
                 text = text.split('{spots}').join(spotsToken);
             }
@@ -2821,11 +2809,6 @@ function updateCalculatedRating() {
                     event.stopPropagation();
                     copyTextToClipboard(email);
                 });
-            }
-
-            if (hintEl) {
-                hintEl.style.display = copyTarget ? 'block' : 'none';
-                hintEl.textContent = 'Tap email to copy';
             }
 
             if (image) {
