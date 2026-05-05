@@ -2791,11 +2791,9 @@ function updateCalculatedRating() {
             } else if (data.rosterReleased && /E\s*-?transfer\s*:/i.test(text)) {
                 // Roster-release announcements should always show dynamic spots.
                 // If the admin forgot the {spots} token, insert it as its own line after the E-transfer line.
-                const lines = text.split(/?
-/);
+                const lines = text.split(/\r?\n/);
                 lines.splice(1, 0, spotsToken);
-                text = lines.join('
-');
+                text = lines.join('\n');
             }
 
             let html = escapeHtml(text).split(spotsToken).join(
