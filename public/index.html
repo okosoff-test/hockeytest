@@ -1007,6 +1007,7 @@
 
 
         .announcement-spots {
+            display: block;
             font-weight: 800;
             white-space: nowrap;
         }
@@ -1550,7 +1551,7 @@
         <div class="announcement-copy">
             <strong>Attention:</strong>
             <span id="announcementText">&nbsp;</span>
-            <small id="announcementCopyHint" class="announcement-copy-hint" style="display:none;">Tap email to copy</small>
+            <small id="announcementCopyHint" class="announcement-copy-hint" style="display:none;"></small>
         </div>
     </div>
 
@@ -2738,11 +2739,8 @@ function updateCalculatedRating() {
             const onCopied = () => {
                 const hintEl = document.getElementById('announcementCopyHint');
                 if (!hintEl) return;
-                hintEl.textContent = 'Copied payment email';
-                hintEl.style.display = 'block';
-                setTimeout(() => {
-                    hintEl.textContent = 'Tap email to copy';
-                }, 1600);
+                hintEl.textContent = '';
+                hintEl.style.display = 'none';
             };
 
             if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -2803,13 +2801,15 @@ function updateCalculatedRating() {
             let html = '';
 
             if (/^\s*Etransfer:/i.test(rawText) && rawText.includes('{spots}')) {
+                const emailMatch = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
+                const displayEmail = email || (emailMatch ? emailMatch[0] : '');
                 const afterSpots = String(rawText.split('{spots}').slice(1).join('{spots}') || '')
                     .replace(/^[\s\-–—]+/, '')
                     .trim();
                 const messageLine = afterSpots || "You can still 'Join Game', message Phan after joining.";
-                const emailLine = email
-                    ? `Etransfer: <span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(email)}">${escapeHtml(email)}</span>`
-                    : escapeHtml(String(rawText.split('{spots}')[0] || 'Etransfer:').trim());
+                const emailLine = displayEmail
+                    ? `Etransfer: <span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(displayEmail)}">${escapeHtml(displayEmail)}</span>`
+                    : 'Etransfer:';
 
                 html = `
                     <span>${emailLine}</span>
@@ -2836,7 +2836,7 @@ function updateCalculatedRating() {
                 copyTarget.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    copyTextToClipboard(email);
+                    copyTextToClipboard(copyTarget.getAttribute('data-copy-payment-email') || email);
                 });
             }
 
