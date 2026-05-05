@@ -2046,7 +2046,7 @@ button {
 }
 .compact-announcement-control .announcement-compact-grid{
     display:grid;
-    grid-template-columns:1.15fr 0.85fr;
+    grid-template-columns:1fr 1fr 0.85fr;
     gap:12px;
     align-items:start;
 }
@@ -3793,14 +3793,6 @@ th, td{padding:2px 3px !important;}
 @media(max-width:700px){.waitlist-to-roster-grid{grid-template-columns:1fr;}}
 </style>
 
-
-<style id="roster-release-announcement-editor-layout-v1">
-@media (min-width: 981px) {
-    .compact-announcement-control .announcement-compact-grid {
-        grid-template-columns: 1fr 1fr 0.85fr !important;
-    }
-}
-</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -4465,7 +4457,6 @@ th, td{padding:2px 3px !important;}
 
     <script>
         const API_URL = window.location.origin;
-        const DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT = "Etransfer: okosoff@outlook.com {spots} – You can still 'Join Game', message Phan after joining.";
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -5395,7 +5386,7 @@ th, td{padding:2px 3px !important;}
                     announcementText.value = data.announcementText || '';
                 }
                 if (rosterReleaseAnnouncementText) {
-                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || `Etransfer: ${data.paymentEmail || 'okosoff@outlook.com'} {spots} – You can still 'Join Game', message Phan after joining.`;
                 }
                 if (paymentEmail) {
                     paymentEmail.value = data.paymentEmail || '';
@@ -7529,13 +7520,15 @@ Continue?`;
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
-                const paymentEmailInput = document.getElementById('paymentEmail');
                 const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
+                const paymentEmailInput = document.getElementById('paymentEmail');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
-                const rosterReleaseAnnouncementTextValue = rosterReleaseText ? (rosterReleaseText.value.trim() || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT) : DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
                 const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
+                const rosterReleaseAnnouncementTextValue = rosterReleaseText
+                    ? rosterReleaseText.value.trim()
+                    : `Etransfer: ${paymentEmailValue || 'okosoff@outlook.com'} {spots} – You can still 'Join Game', message Phan after joining.`;
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -7573,10 +7566,8 @@ Continue?`;
             if (!confirm('Clear custom announcement, remove picture, and turn announcement off?')) return;
             const checkbox = document.getElementById('announcementCheckbox');
             const text = document.getElementById('announcementText');
-            const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
             updateAnnouncementToggleUI(false);
             if (text) text.value = '';
-            if (rosterReleaseText) rosterReleaseText.value = DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
             window.announcementImageData = '';
             clearAnnouncementImage();
 
@@ -7588,7 +7579,6 @@ Continue?`;
                         sessionToken,
                         announcementEnabled: false,
                         announcementText: '',
-                        rosterReleaseAnnouncementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
                         announcementImages: []
                     })
                 });
