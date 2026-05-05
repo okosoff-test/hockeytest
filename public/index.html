@@ -933,13 +933,13 @@
 
         .announcement-bulletin.active {
             display: flex;
-            align-items: center;
-            gap: 14px;
+            align-items: flex-start;
+            gap: 12px;
         }
 
         .announcement-thumb {
-            width: 96px;
-            height: 96px;
+            width: 88px;
+            height: 88px;
             object-fit: contain;
             border-radius: 10px;
             background: rgba(255,255,255,0.55);
@@ -951,18 +951,51 @@
             display: block;
         }
 
+        .announcement-copy {
+            min-width: 0;
+            line-height: 1.28;
+        }
+
         .announcement-copy strong {
             display: block;
-            font-size: 1.05rem;
-            margin-bottom: 2px;
+            font-size: clamp(1rem, 4.2vw, 1.12rem);
+            margin: 0 0 4px 0;
             letter-spacing: 0.2px;
             color: #5a4306;
         }
 
         .announcement-copy span {
             color: #2f2410;
-            font-size: 1rem;
-            line-height: 1.4;
+            font-size: clamp(0.95rem, 3.7vw, 1.02rem);
+            line-height: 1.28;
+        }
+
+        #announcementText {
+            display: block;
+        }
+
+        #announcementText br {
+            display: block;
+            content: '';
+            margin: 1px 0;
+        }
+
+        @media (max-width: 600px) {
+            .announcement-bulletin {
+                padding: 12px 14px;
+                border-radius: 12px;
+                margin-bottom: 14px;
+            }
+            .announcement-bulletin.active {
+                gap: 10px;
+            }
+            .announcement-thumb.visible {
+                width: 64px;
+                height: 64px;
+            }
+            .announcement-copy {
+                line-height: 1.22;
+            }
         }
 
     
@@ -2798,7 +2831,15 @@ function updateCalculatedRating() {
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
-            let text = rawText.split('{spots}').join(spotsToken);
+            let text = rawText
+                .replace(/
+/g, '
+')
+                .replace(/
+{2,}/g, '
+')
+                .trim()
+                .split('{spots}').join(spotsToken);
             let html = escapeHtml(text)
                 .replace(/\r?\n/g, '<br>')
                 .split(spotsToken)
