@@ -728,6 +728,8 @@ function isLegacyAutoRosterAnnouncement(text = '') {
 }
 
 function getRosterReleaseAnnouncementText() {
+    const rosterText = String(rosterReleaseAnnouncementText || '').trim();
+    if (rosterText) return rosterText;
     const current = String(announcementText || '').trim();
     return isLegacyAutoRosterAnnouncement(current) ? buildRosterReleasePaymentAnnouncement() : current;
 }
@@ -797,6 +799,7 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || 'okosoff@outlook.com').trim();
+let rosterReleaseAnnouncementText = buildRosterReleasePaymentAnnouncement();
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1748,6 +1751,7 @@ function buildPersistedStateFingerprint(snapshot = null) {
         customTitle: payload.customTitle,
         announcementEnabled: payload.announcementEnabled,
         announcementText: payload.announcementText,
+        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText,
         announcementImages: payload.announcementImages,
         paymentEmail: payload.paymentEmail
     });
@@ -2139,6 +2143,7 @@ async function loadDataFromDB() {
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
+        if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
         if (appSettings.announcementImages !== undefined) {
             try {
@@ -2671,6 +2676,7 @@ function applySnapshotToMemory(snapshot) {
     customTitle = snapshot.customTitle ?? customTitle;
     announcementEnabled = snapshot.announcementEnabled ?? announcementEnabled;
     announcementText = snapshot.announcementText ?? announcementText;
+    rosterReleaseAnnouncementText = typeof snapshot.rosterReleaseAnnouncementText === 'string' ? (snapshot.rosterReleaseAnnouncementText.trim() || buildRosterReleasePaymentAnnouncement()) : rosterReleaseAnnouncementText;
     announcementImages = Array.isArray(snapshot.announcementImages) ? snapshot.announcementImages : [];
     paymentEmail = typeof snapshot.paymentEmail === 'string' ? snapshot.paymentEmail : paymentEmail;
     refreshDynamicSignupCode();
@@ -3446,6 +3452,7 @@ function loadDataFromFile() {
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
+            rosterReleaseAnnouncementText = typeof data.rosterReleaseAnnouncementText === 'string' ? (data.rosterReleaseAnnouncementText.trim() || buildRosterReleasePaymentAnnouncement()) : buildRosterReleasePaymentAnnouncement();
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
@@ -6037,6 +6044,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.customTitle === 'string') customTitle = s.customTitle;
                 if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+                if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim() || buildRosterReleasePaymentAnnouncement();
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
