@@ -956,12 +956,21 @@
             line-height: 1.28;
         }
 
-        .announcement-copy strong {
+        .announcement-copy > strong {
             display: block;
             font-size: clamp(1rem, 4.2vw, 1.12rem);
-            margin: 0 0 4px 0;
+            margin: 0 0 6px 0;
             letter-spacing: 0.2px;
             color: #5a4306;
+        }
+
+        .announcement-line {
+            display: block;
+            margin: 0;
+            padding: 0;
+            color: #2f2410;
+            font-size: clamp(0.95rem, 3.7vw, 1.02rem);
+            line-height: 1.22;
         }
 
         .announcement-copy span {
@@ -975,9 +984,7 @@
         }
 
         #announcementText br {
-            display: block;
-            content: '';
-            margin: 1px 0;
+            display: none;
         }
 
         @media (max-width: 600px) {
@@ -1042,6 +1049,7 @@
         .announcement-spots {
             font-weight: 800;
             white-space: nowrap;
+            display: inline;
         }
 
         .announcement-spots.available {
@@ -2836,17 +2844,21 @@ function updateCalculatedRating() {
                 .replace(/\n{2,}/g, '\n')
                 .trim()
                 .split('{spots}').join(spotsToken);
-            let html = escapeHtml(text)
-                .replace(/\r?\n/g, '<br>')
-                .split(spotsToken)
-                .join(`<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`);
-
-            // Auto-detect email addresses in the editable announcement text and make them tap/click-to-copy.
-            // This is applied after escaping admin text, so the announcement remains safe HTML.
-            html = html.replace(
+            const wrapEmails = (safeLine) => safeLine.replace(
                 /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
-                (email) => `<span class="announcement-copy-email" data-copy-email="${escapeHtml(email)}" role="button" tabindex="0" title="Tap to copy email">${escapeHtml(email)}</span>`
+                (email) => `<span class="announcement-copy-email" data-copy-email="${email}" role="button" tabindex="0" title="Tap to copy email">${email}</span>`
             );
+
+            const html = text
+                .split('\n')
+                .map((line) => {
+                    let safeLine = wrapEmails(escapeHtml(line));
+                    safeLine = safeLine
+                        .split(spotsToken)
+                        .join(`<span class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</span>`);
+                    return `<div class="announcement-line">${safeLine || '&nbsp;'}</div>`;
+                })
+                .join('');
 
             textEl.innerHTML = html || 'Attention';
 
