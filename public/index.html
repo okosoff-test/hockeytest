@@ -2781,9 +2781,7 @@ function updateCalculatedRating() {
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
-            let text = rawText
-                .replace(/\s+[–—-]\s+(You can still ['’‘"]?Join Game['’‘"]?, message Phan after joining\.)/i, ' $1')
-                .replace(/^[–—-]\s+(You can still ['’‘"]?Join Game['’‘"]?, message Phan after joining\.)/im, '$1');
+            let text = rawText;
             if (text.includes('{spots}')) {
                 text = text.split('{spots}').join(spotsToken);
             }

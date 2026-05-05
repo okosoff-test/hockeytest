@@ -3793,6 +3793,14 @@ th, td{padding:2px 3px !important;}
 @media(max-width:700px){.waitlist-to-roster-grid{grid-template-columns:1fr;}}
 </style>
 
+
+<style id="roster-release-announcement-editor-layout-v1">
+@media (min-width: 981px) {
+    .compact-announcement-control .announcement-compact-grid {
+        grid-template-columns: 1fr 1fr 0.85fr !important;
+    }
+}
+</style>
 </head>
 <body class="admin-layout-option-1">
 
@@ -3914,8 +3922,13 @@ th, td{padding:2px 3px !important;}
 
             <div class="announcement-compact-grid">
                 <div class="message-box message-box-main">
-                    <label for="announcementText">Message</label>
+                    <label for="announcementText">Message Announcement</label>
                     <textarea id="announcementText" rows="4" placeholder="Type announcement..."></textarea>
+                </div>
+
+                <div class="message-box message-box-main">
+                    <label for="rosterReleaseAnnouncementText">Roster Release Announcement</label>
+                    <textarea id="rosterReleaseAnnouncementText" rows="4" placeholder="Etransfer: okosoff@outlook.com {spots} – You can still 'Join Game', message Phan after joining."></textarea>
                 </div>
 
                 <div class="announcement-side-stack">
@@ -4452,6 +4465,7 @@ th, td{padding:2px 3px !important;}
 
     <script>
         const API_URL = window.location.origin;
+        const DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT = "Etransfer: okosoff@outlook.com {spots} – You can still 'Join Game', message Phan after joining.";
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -5371,6 +5385,7 @@ th, td{padding:2px 3px !important;}
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
+                const rosterReleaseAnnouncementText = document.getElementById('rosterReleaseAnnouncementText');
                 const paymentEmail = document.getElementById('paymentEmail');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
 
@@ -5378,6 +5393,9 @@ th, td{padding:2px 3px !important;}
                 bindAnnouncementToggleUI();
                 if (announcementText) {
                     announcementText.value = data.announcementText || '';
+                }
+                if (rosterReleaseAnnouncementText) {
+                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
                 }
                 if (paymentEmail) {
                     paymentEmail.value = data.paymentEmail || '';
@@ -7512,9 +7530,11 @@ Continue?`;
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
                 const paymentEmailInput = document.getElementById('paymentEmail');
+                const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
                 const announcementTextValue = text ? text.value.trim() : '';
+                const rosterReleaseAnnouncementTextValue = rosterReleaseText ? (rosterReleaseText.value.trim() || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT) : DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
                 const paymentEmailValue = paymentEmailInput ? paymentEmailInput.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
@@ -7526,6 +7546,7 @@ Continue?`;
                             sessionToken,
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
+                            rosterReleaseAnnouncementText: rosterReleaseAnnouncementTextValue,
                             paymentEmail: paymentEmailValue,
                             announcementImages
                         })
@@ -7552,8 +7573,10 @@ Continue?`;
             if (!confirm('Clear custom announcement, remove picture, and turn announcement off?')) return;
             const checkbox = document.getElementById('announcementCheckbox');
             const text = document.getElementById('announcementText');
+            const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
             updateAnnouncementToggleUI(false);
             if (text) text.value = '';
+            if (rosterReleaseText) rosterReleaseText.value = DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
             window.announcementImageData = '';
             clearAnnouncementImage();
 
@@ -7565,6 +7588,7 @@ Continue?`;
                         sessionToken,
                         announcementEnabled: false,
                         announcementText: '',
+                        rosterReleaseAnnouncementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
                         announcementImages: []
                     })
                 });
