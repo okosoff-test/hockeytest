@@ -2800,20 +2800,37 @@ function updateCalculatedRating() {
                 text = text.split('{spots}').join(spotsToken);
             }
 
-            let html = escapeHtml(text).split(spotsToken).join(
-                `<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`
-            );
+            let html = '';
 
-            if (email) {
-                const escapedEmail = escapeHtml(email);
-                const emailRegex = new RegExp(escapedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
-                html = html.replace(emailRegex, (matchedEmail) =>
-                    `<span class="announcement-copy-email" data-copy-payment-email="${matchedEmail}">${matchedEmail}</span>`
+            if (/^\s*Etransfer:/i.test(rawText) && rawText.includes('{spots}')) {
+                const afterSpots = String(rawText.split('{spots}').slice(1).join('{spots}') || '')
+                    .replace(/^[\s\-–—]+/, '')
+                    .trim();
+                const messageLine = afterSpots || "You can still 'Join Game', message Phan after joining.";
+                const emailLine = email
+                    ? `Etransfer: <span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(email)}">${escapeHtml(email)}</span>`
+                    : escapeHtml(String(rawText.split('{spots}')[0] || 'Etransfer:').trim());
+
+                html = `
+                    <span>${emailLine}</span>
+                    <strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>
+                    <span>${escapeHtml(messageLine)}</span>
+                `;
+            } else {
+                html = escapeHtml(text).split(spotsToken).join(
+                    `<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`
                 );
+
+                if (email) {
+                    const escapedEmail = escapeHtml(email);
+                    const emailRegex = new RegExp(escapedEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+                    html = html.replace(emailRegex, (matchedEmail) =>
+                        `<span class="announcement-copy-email" data-copy-payment-email="${matchedEmail}">${matchedEmail}</span>`
+                    );
+                }
             }
 
             textEl.innerHTML = html || 'Attention';
-
             const copyTarget = textEl.querySelector('[data-copy-payment-email]');
             if (copyTarget) {
                 copyTarget.addEventListener('click', (event) => {
@@ -2824,8 +2841,8 @@ function updateCalculatedRating() {
             }
 
             if (hintEl) {
-                hintEl.style.display = copyTarget ? 'block' : 'none';
-                hintEl.textContent = 'Tap email to copy';
+                hintEl.style.display = 'none';
+                hintEl.textContent = '';
             }
 
             if (image) {
