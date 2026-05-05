@@ -2832,12 +2832,8 @@ function updateCalculatedRating() {
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
             let text = rawText
-                .replace(/
-/g, '
-')
-                .replace(/
-{2,}/g, '
-')
+                .replace(/\r?\n/g, '\n')
+                .replace(/\n{2,}/g, '\n')
                 .trim()
                 .split('{spots}').join(spotsToken);
             let html = escapeHtml(text)
