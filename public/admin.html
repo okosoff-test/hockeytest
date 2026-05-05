@@ -3934,13 +3934,8 @@ th, td{padding:2px 3px !important;}
             <div class="announcement-compact-grid">
                 <div class="announcement-message-stack">
                     <div class="message-box message-box-main">
-                        <label for="announcementText">Message Announcement</label>
-                        <textarea id="announcementText" rows="4" placeholder="Type general announcement..."></textarea>
-                    </div>
-
-                    <div class="message-box message-box-main roster-release-message-box">
-                        <label for="rosterReleaseAnnouncementText">Roster Release Announcement</label>
-                        <textarea id="rosterReleaseAnnouncementText" rows="5" placeholder="Etransfer: okosoff@outlook.com&#10;{spots}&#10;You can still 'Join Game', message Phan after joining."></textarea>
+                        <label for="announcementText">Announcement <span style="color:#9fc7ff; font-size:0.85rem;">(use {spots} for dynamic open spots)</span></label>
+                        <textarea id="announcementText" rows="6" placeholder="Etransfer: okosoff@outlook.com&#10;{spots}&#10;You can still 'Join Game', message Phan after joining."></textarea>
                     </div>
                 </div>
 
@@ -5393,16 +5388,12 @@ th, td{padding:2px 3px !important;}
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
                 const announcementStatus = document.getElementById('announcementStatus');
                 const announcementText = document.getElementById('announcementText');
-                const rosterReleaseAnnouncementText = document.getElementById('rosterReleaseAnnouncementText');
                 const announcementImagePreview = document.getElementById('announcementImagePreview');
 
                 updateAnnouncementToggleUI(!!data.announcementEnabled);
                 bindAnnouncementToggleUI();
                 if (announcementText) {
-                    announcementText.value = data.announcementText || '';
-                }
-                if (rosterReleaseAnnouncementText) {
-                    rosterReleaseAnnouncementText.value = data.rosterReleaseAnnouncementText || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+                    announcementText.value = data.announcementText || data.rosterReleaseAnnouncementText || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -7533,11 +7524,10 @@ Continue?`;
             return withBusyButton(button, 'Saving...', async () => {
                 const checkbox = document.getElementById('announcementCheckbox');
                 const text = document.getElementById('announcementText');
-                const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
-                const announcementTextValue = text ? text.value.trim() : '';
-                const rosterReleaseAnnouncementTextValue = rosterReleaseText ? (rosterReleaseText.value.trim() || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT) : DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+                const announcementTextValue = text ? (text.value.trim() || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT) : DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+                const rosterReleaseAnnouncementTextValue = announcementTextValue;
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -7574,10 +7564,8 @@ Continue?`;
             if (!confirm('Clear custom announcement, remove picture, and turn announcement off?')) return;
             const checkbox = document.getElementById('announcementCheckbox');
             const text = document.getElementById('announcementText');
-            const rosterReleaseText = document.getElementById('rosterReleaseAnnouncementText');
             updateAnnouncementToggleUI(false);
-            if (text) text.value = '';
-            if (rosterReleaseText) rosterReleaseText.value = DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+            if (text) text.value = DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
             window.announcementImageData = '';
             clearAnnouncementImage();
 
@@ -7588,7 +7576,7 @@ Continue?`;
                     body: JSON.stringify({
                         sessionToken,
                         announcementEnabled: false,
-                        announcementText: '',
+                        announcementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
                         rosterReleaseAnnouncementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
                         announcementImages: []
                     })
