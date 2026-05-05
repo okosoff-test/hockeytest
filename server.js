@@ -710,9 +710,8 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
 }
 
 function buildRosterReleasePaymentAnnouncement() {
-    const email = String(paymentEmail || '').trim();
-    const emailLine = email ? `Etransfer: ${email}` : 'Etransfer:';
-    return `${emailLine} {spots} – You can still 'Join Game', message Phan after joining.`;
+    const email = String(paymentEmail || '').trim() || 'okosoff@outlook.com';
+    return `Etransfer: ${email} {spots} – You can still 'Join Game', message Phan after joining.`;
 }
 
 function isLegacyAutoRosterAnnouncement(text = '') {
@@ -727,6 +726,8 @@ function isLegacyAutoRosterAnnouncement(text = '') {
 }
 
 function getRosterReleaseAnnouncementText() {
+    const rosterReleaseText = String(rosterReleaseAnnouncementText || '').trim();
+    if (rosterReleaseText) return rosterReleaseText;
     const current = String(announcementText || '').trim();
     return isLegacyAutoRosterAnnouncement(current) ? buildRosterReleasePaymentAnnouncement() : current;
 }
@@ -796,6 +797,7 @@ let announcementEnabled = false;
 let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || 'okosoff@outlook.com').trim();
+let rosterReleaseAnnouncementText = buildRosterReleasePaymentAnnouncement();
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1747,6 +1749,7 @@ function buildPersistedStateFingerprint(snapshot = null) {
         customTitle: payload.customTitle,
         announcementEnabled: payload.announcementEnabled,
         announcementText: payload.announcementText,
+        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText,
         announcementImages: payload.announcementImages,
         paymentEmail: payload.paymentEmail
     });
@@ -2138,6 +2141,7 @@ async function loadDataFromDB() {
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
+        if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim();
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
         if (appSettings.announcementImages !== undefined) {
             try {
@@ -2670,6 +2674,7 @@ function applySnapshotToMemory(snapshot) {
     customTitle = snapshot.customTitle ?? customTitle;
     announcementEnabled = snapshot.announcementEnabled ?? announcementEnabled;
     announcementText = snapshot.announcementText ?? announcementText;
+    rosterReleaseAnnouncementText = snapshot.rosterReleaseAnnouncementText ?? rosterReleaseAnnouncementText;
     announcementImages = Array.isArray(snapshot.announcementImages) ? snapshot.announcementImages : [];
     paymentEmail = typeof snapshot.paymentEmail === 'string' ? snapshot.paymentEmail : paymentEmail;
     refreshDynamicSignupCode();
@@ -3003,6 +3008,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['customTitle', customTitle],
             ['announcementEnabled', announcementEnabled.toString()],
             ['announcementText', announcementText],
+            ['rosterReleaseAnnouncementText', String(rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement()],
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
             ['selectedDayTime', gameTime],
@@ -3232,6 +3238,7 @@ function buildFullDataSnapshot() {
         customTitle,
         announcementEnabled,
         announcementText,
+        rosterReleaseAnnouncementText: String(rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement(),
         announcementImages,
         paymentEmail,
         summary: {
@@ -3247,6 +3254,7 @@ function buildFullDataSnapshot() {
             customTitle,
             announcementEnabled,
             announcementText,
+            rosterReleaseAnnouncementText: String(rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement(),
             announcementImages,
             paymentEmail,
             selectedDayTime: gameTime,
@@ -3442,6 +3450,7 @@ function loadDataFromFile() {
             customTitle = data.customTitle ?? `Phan's ${getGameDayName()} Hockey`;
             announcementEnabled = data.announcementEnabled ?? false;
             announcementText = data.announcementText ?? '';
+            rosterReleaseAnnouncementText = String(data.rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
@@ -5386,6 +5395,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         customTitle,
         announcementEnabled,
         announcementText,
+        rosterReleaseAnnouncementText: String(rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement(),
         announcementImages,
         paymentEmail,
         selectedDayTime: gameTime,
@@ -5401,7 +5411,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 // Update app settings
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
-            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
+            announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, announcementImages: newAnnouncementImages,
             paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay } = req.body;
 
@@ -5415,6 +5425,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newTitle !== undefined) customTitle = String(newTitle || '').trim() || customTitle;
             if (newAnnouncementEnabled !== undefined) announcementEnabled = !!newAnnouncementEnabled;
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
+            if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
@@ -5452,6 +5463,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             customTitle,
             announcementEnabled,
             announcementText,
+            rosterReleaseAnnouncementText,
             announcementImages,
             regularSkatersByDay,
             gameTime,
@@ -5753,6 +5765,7 @@ app.post('/api/admin/download-backup', async (req, res) => {
                 customTitle,
                 announcementEnabled,
                 announcementText,
+                rosterReleaseAnnouncementText: String(rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement(),
                 announcementImages,
                 playerSpots,
                 requirePlayerCode,
@@ -6029,6 +6042,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.customTitle === 'string') customTitle = s.customTitle;
                 if (typeof s.announcementEnabled === 'boolean') announcementEnabled = s.announcementEnabled;
                 if (typeof s.announcementText === 'string') announcementText = s.announcementText;
+                if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim() || buildRosterReleasePaymentAnnouncement();
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
