@@ -965,6 +965,11 @@
             line-height: 1.4;
         }
 
+        .announcement-copy > span,
+        .announcement-copy > strong {
+            display: block;
+        }
+
     
         .rating-grid {
             display: grid;
@@ -1003,6 +1008,7 @@
             font-weight: 800;
             text-decoration: underline;
             cursor: pointer;
+            display: inline !important;
         }
 
 
@@ -2800,13 +2806,19 @@ function updateCalculatedRating() {
 
             let html = '';
 
-            if (/^\s*Etransfer:/i.test(rawText) && rawText.includes('{spots}')) {
+            if (/^\s*Etransfer:/i.test(rawText)) {
                 const emailMatch = rawText.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/i);
                 const displayEmail = email || (emailMatch ? emailMatch[0] : '');
-                const afterSpots = String(rawText.split('{spots}').slice(1).join('{spots}') || '')
-                    .replace(/^[\s\-–—]+/, '')
-                    .trim();
-                const messageLine = afterSpots || "You can still 'Join Game', message Phan after joining.";
+
+                let messageLine = rawText;
+                messageLine = messageLine.replace(/^\s*Etransfer:\s*/i, '').trim();
+                if (displayEmail) {
+                    messageLine = messageLine.replace(new RegExp(displayEmail.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'), '').trim();
+                }
+                messageLine = messageLine.replace(/\{spots\}/gi, '').trim();
+                messageLine = messageLine.replace(/^[-–—()\s]+/, '').replace(/[()\s]+$/g, '').trim();
+                messageLine = messageLine || "You can still 'Join Game', message Phan after joining.";
+
                 const emailLine = displayEmail
                     ? `Etransfer: <span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(displayEmail)}">${escapeHtml(displayEmail)}</span>`
                     : 'Etransfer:';
