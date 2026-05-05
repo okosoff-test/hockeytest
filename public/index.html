@@ -2798,24 +2798,38 @@ function updateCalculatedRating() {
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
-            const wrapEmailsForCopy = (htmlValue) => String(htmlValue || '').replace(
-                /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
-                (email) => `<span class="announcement-copy-email" data-email="${escapeHtml(email)}" title="Tap to copy">${escapeHtml(email)}</span>`
-            );
-
             let text = rawText.split('{spots}').join(spotsToken);
             let html = escapeHtml(text)
-                .replace(/?
-/g, '<br>')
+                .replace(/\r?\n/g, '<br>')
                 .split(spotsToken)
                 .join(`<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`);
 
-            html = wrapEmailsForCopy(html);
+            // Auto-detect email addresses in the editable announcement text and make them tap/click-to-copy.
+            // This is applied after escaping admin text, so the announcement remains safe HTML.
+            html = html.replace(
+                /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
+                (email) => `<span class="announcement-copy-email" data-copy-email="${escapeHtml(email)}" role="button" tabindex="0" title="Tap to copy email">${escapeHtml(email)}</span>`
+            );
+
             textEl.innerHTML = html || 'Attention';
-            textEl.onclick = (event) => {
-                const emailEl = event.target && event.target.closest ? event.target.closest('.announcement-copy-email') : null;
-                if (!emailEl) return;
-                copyTextToClipboard(emailEl.dataset.email || emailEl.textContent || '');
+
+            const handleEmailCopy = (event) => {
+                const target = event.target && event.target.closest
+                    ? event.target.closest('.announcement-copy-email')
+                    : null;
+                if (!target) return;
+                copyTextToClipboard(target.getAttribute('data-copy-email') || target.textContent || '');
+            };
+            textEl.onclick = handleEmailCopy;
+            textEl.onkeydown = (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    const target = event.target && event.target.closest
+                        ? event.target.closest('.announcement-copy-email')
+                        : null;
+                    if (!target) return;
+                    event.preventDefault();
+                    copyTextToClipboard(target.getAttribute('data-copy-email') || target.textContent || '');
+                }
             };
 
             if (hintEl) {
