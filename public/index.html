@@ -2798,13 +2798,25 @@ function updateCalculatedRating() {
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
+            const wrapEmailsForCopy = (htmlValue) => String(htmlValue || '').replace(
+                /([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi,
+                (email) => `<span class="announcement-copy-email" data-email="${escapeHtml(email)}" title="Tap to copy">${escapeHtml(email)}</span>`
+            );
+
             let text = rawText.split('{spots}').join(spotsToken);
             let html = escapeHtml(text)
-                .replace(/\r?\n/g, '<br>')
+                .replace(/?
+/g, '<br>')
                 .split(spotsToken)
                 .join(`<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`);
 
+            html = wrapEmailsForCopy(html);
             textEl.innerHTML = html || 'Attention';
+            textEl.onclick = (event) => {
+                const emailEl = event.target && event.target.closest ? event.target.closest('.announcement-copy-email') : null;
+                if (!emailEl) return;
+                copyTextToClipboard(emailEl.dataset.email || emailEl.textContent || '');
+            };
 
             if (hintEl) {
                 hintEl.style.display = 'none';
