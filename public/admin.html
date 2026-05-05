@@ -1658,25 +1658,6 @@
 
 
 .regular-summary-section{display:none !important;}
-
-/* Clean announcement editor: message + roster-release controls on the left, image tools on the right */
-.compact-announcement-control .announcement-message-stack{
-    display:grid;
-    gap:12px;
-}
-.compact-announcement-control .roster-release-message-box{
-    border-color: rgba(83, 194, 124, 0.35);
-    background: rgba(0,0,0,0.20);
-}
-.compact-announcement-control #rosterReleaseAnnouncementText{
-    min-height:110px;
-}
-@media (max-width: 820px){
-    .compact-announcement-control .announcement-message-stack{
-        gap:10px;
-    }
-}
-
 </style>
 
 <style>
@@ -3932,14 +3913,15 @@ th, td{padding:2px 3px !important;}
             </div>
 
             <div class="announcement-compact-grid">
-                <div class="announcement-message-stack">
-                    <div class="message-box message-box-main">
-                        <label for="announcementText">Announcement <span style="color:#9fc7ff; font-size:0.85rem;">(use {spots} for dynamic open spots)</span></label>
-                        <textarea id="announcementText" rows="6" placeholder="Etransfer: okosoff@outlook.com&#10;{spots}&#10;You can still 'Join Game', message Phan after joining."></textarea>
-                    </div>
+                <div class="message-box message-box-main">
+                    <label for="announcementText">Announcement / Roster Release Message</label>
+                    <textarea id="announcementText" rows="5" placeholder="Etransfer: okosoff@outlook.com
+{spots}
+You can still 'Join Game', message Phan after joining."></textarea>
                 </div>
 
                 <div class="announcement-side-stack">
+
                     <div class="message-box">
                         <label for="announcementImageUpload">Upload Image</label>
                         <input type="file" id="announcementImageUpload" accept="image/*">
@@ -4468,7 +4450,6 @@ th, td{padding:2px 3px !important;}
 
     <script>
         const API_URL = window.location.origin;
-        const DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT = "Etransfer: okosoff@outlook.com\n{spots}\nYou can still 'Join Game', message Phan after joining.";
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -5393,7 +5374,7 @@ th, td{padding:2px 3px !important;}
                 updateAnnouncementToggleUI(!!data.announcementEnabled);
                 bindAnnouncementToggleUI();
                 if (announcementText) {
-                    announcementText.value = data.announcementText || data.rosterReleaseAnnouncementText || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+                    announcementText.value = data.announcementText || '';
                 }
                 if (announcementImagePreview) {
                     const firstImage = Array.isArray(data.announcementImages) && data.announcementImages.length ? data.announcementImages[0] : '';
@@ -7526,8 +7507,7 @@ Continue?`;
                 const text = document.getElementById('announcementText');
                 const checkboxEnabled = !!(checkbox && checkbox.checked);
                 const enabled = checkboxEnabled;
-                const announcementTextValue = text ? (text.value.trim() || DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT) : DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
-                const rosterReleaseAnnouncementTextValue = announcementTextValue;
+                const announcementTextValue = text ? text.value.trim() : '';
                 const announcementImages = window.announcementImageData ? [window.announcementImageData] : [];
 
                 try {
@@ -7538,7 +7518,6 @@ Continue?`;
                             sessionToken,
                             announcementEnabled: checkboxEnabled,
                             announcementText: announcementTextValue,
-                            rosterReleaseAnnouncementText: rosterReleaseAnnouncementTextValue,
                             announcementImages
                         })
                     });
@@ -7565,7 +7544,7 @@ Continue?`;
             const checkbox = document.getElementById('announcementCheckbox');
             const text = document.getElementById('announcementText');
             updateAnnouncementToggleUI(false);
-            if (text) text.value = DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT;
+            if (text) text.value = '';
             window.announcementImageData = '';
             clearAnnouncementImage();
 
@@ -7576,8 +7555,7 @@ Continue?`;
                     body: JSON.stringify({
                         sessionToken,
                         announcementEnabled: false,
-                        announcementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
-                        rosterReleaseAnnouncementText: DEFAULT_ROSTER_RELEASE_ANNOUNCEMENT_TEXT,
+                        announcementText: '',
                         announcementImages: []
                     })
                 });

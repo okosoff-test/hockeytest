@@ -1018,17 +1018,6 @@
         .announcement-spots.full {
             color: #c62828;
         }
-        /* Clean roster release announcement layout */
-        #announcementText {
-            display: block;
-            line-height: 1.45;
-        }
-        #announcementText .announcement-spots {
-            display: inline-block;
-            margin: 2px 0;
-            font-size: 1.05rem;
-        }
-
 
         .announcement-copy-hint {
             display: block;
@@ -2744,10 +2733,24 @@ function updateCalculatedRating() {
         function copyTextToClipboard(text) {
             const value = String(text || '').trim();
             if (!value) return;
+
+            const onCopied = () => {
+                const hintEl = document.getElementById('announcementCopyHint');
+                if (!hintEl) return;
+                hintEl.textContent = 'Copied payment email';
+                hintEl.style.display = 'block';
+                setTimeout(() => {
+                    hintEl.textContent = 'Tap email to copy';
+                }, 1600);
+            };
+
             if (navigator.clipboard && navigator.clipboard.writeText) {
-                navigator.clipboard.writeText(value).catch(() => window.prompt('Copy payment email:', value));
+                navigator.clipboard.writeText(value).then(onCopied).catch(() => {
+                    window.prompt('Copy payment email:', value);
+                });
                 return;
             }
+
             window.prompt('Copy payment email:', value);
         }
 
@@ -2758,10 +2761,13 @@ function updateCalculatedRating() {
             if (!bulletin || !textEl || !thumbEl) return;
 
             const enabled = !!data.announcementEnabled;
+            const rosterReleased = !!data.rosterReleased;
             const rawText = (data.announcementText || '').trim();
             const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
             const image = images.length ? String(images[0] || '').trim() : '';
-            const shouldShow = enabled && (!!rawText || !!image);
+
+            // Show when manually enabled, and also after roster release because the server turns it on at release.
+            const shouldShow = (enabled || rosterReleased) && (!!rawText || !!image);
 
             if (!shouldShow) {
                 bulletin.classList.remove('active');
@@ -2779,29 +2785,26 @@ function updateCalculatedRating() {
                 .replace(/>/g, '&gt;')
                 .replace(/"/g, '&quot;');
 
-            const spots = Number(data.playerSpotsRemaining ?? data.spotsRemaining ?? 0);
+            const spots = Number(data.playerSpotsRemaining ?? data.spotsRemaining ?? data.playerSpots ?? 0);
             const hasSpots = Number.isFinite(spots) && spots > 0;
             const spotsText = hasSpots ? `${spots} spot${spots === 1 ? '' : 's'} left` : 'FULL';
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
-            let text = rawText || '';
+            let text = rawText;
             if (text.includes('{spots}')) {
                 text = text.split('{spots}').join(spotsToken);
-            } else if (data.rosterReleased && /E\s*-?transfer\s*:/i.test(text)) {
-                // Roster-release announcements should always show dynamic spots.
-                // If the admin forgot the {spots} token, insert it as its own line after the E-transfer line.
-                const lines = text.split(/\r?\n/);
-                lines.splice(1, 0, spotsToken);
-                text = lines.join('\n');
             }
 
-            let html = escapeHtml(text).split(spotsToken).join(
-                `<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`
-            );
-            html = html.replace(/\r?\n/g, '<br>');
-            html = html.replace(/([A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,})/gi, (matchedEmail) =>
-                `<span class="announcement-copy-email" data-copy-payment-email="${escapeHtml(matchedEmail)}">${escapeHtml(matchedEmail)}</span>`
+            // Preserve admin-entered line breaks and replace {spots} with styled dynamic text.
+            let html = escapeHtml(text)
+                .replace(/\r\n|\r|\n/g, '<br>')
+                .split(spotsToken).join(`<strong class="announcement-spots ${spotsClass}">${escapeHtml(spotsText)}</strong>`);
+
+            // Make any email written in the announcement clickable to copy; no separate hardcoded email field required.
+            html = html.replace(
+                /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
+                (matchedEmail) => `<span class="announcement-copy-email" data-copy-payment-email="${matchedEmail}">${matchedEmail}</span>`
             );
 
             textEl.innerHTML = html || 'Attention';
@@ -2810,7 +2813,7 @@ function updateCalculatedRating() {
                 copyTarget.addEventListener('click', (event) => {
                     event.preventDefault();
                     event.stopPropagation();
-                    copyTextToClipboard(copyTarget.getAttribute('data-copy-payment-email'));
+                    copyTextToClipboard(copyTarget.getAttribute('data-copy-payment-email') || copyTarget.textContent || '');
                 });
             });
 
@@ -2823,7 +2826,6 @@ function updateCalculatedRating() {
             }
             bulletin.classList.add('active');
         }
-
 
         function formatCountdown(msRemaining) {
             const totalSeconds = Math.max(0, Math.floor(msRemaining / 1000));
