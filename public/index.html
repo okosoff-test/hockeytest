@@ -2830,7 +2830,7 @@ function updateCalculatedRating() {
             // - Show the join instruction conditionally based on available spots.
             const joinMessage = hasSpots
                 ? "You can still 'Join Game', message Phan after joining."
-                : "You can still 'Join Game' — I’ll notify you if a player cancels last minute.";
+                : "You can still 'Join Game', you will be notified if someone cancels last minute.";
 
             if (isRosterReleased) {
                 if (text.includes('{joinMessage}')) {
