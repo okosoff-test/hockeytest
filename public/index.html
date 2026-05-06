@@ -2816,15 +2816,27 @@ function updateCalculatedRating() {
 
             const spots = Number(data.playerSpotsRemaining ?? data.spotsRemaining ?? 0);
             const hasSpots = Number.isFinite(spots) && spots > 0;
-            const spotsText = hasSpots ? `${spots} spot${spots === 1 ? '' : 's'} left` : 'FULL';
+            const spotsText = hasSpots ? `${spots} spot${spots === 1 ? '' : 's'} left` : '0 spots';
             const spotsClass = hasSpots ? 'available' : 'full';
             const spotsToken = '%%ANNOUNCEMENT_SPOTS_TOKEN%%';
 
             let text = rawText
                 .replace(/\r?\n/g, '\n')
                 .replace(/\n{2,}/g, '\n')
-                .trim()
-                .split('{spots}').join(spotsToken);
+                .trim();
+
+            // Roster-release announcement rule:
+            // - Always show the dynamic spot count as "0 spots" when full.
+            // - Only show the "You can still Join Game" line when a cancellation/open spot exists.
+            if (isRosterReleased && !hasSpots) {
+                text = text
+                    .split('\n')
+                    .filter(line => !/You\s+can\s+still\s+['’‘"]?Join Game['’‘"]?/i.test(line))
+                    .join('\n')
+                    .trim();
+            }
+
+            text = text.split('{spots}').join(spotsToken);
             const wrapEmails = (safeLine) => safeLine.replace(
                 /\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b/gi,
                 (email) => `<span class="announcement-copy-email" data-copy-email="${email}" role="button" tabindex="0" title="Copy email">${email}</span>`
