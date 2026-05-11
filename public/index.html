@@ -1658,7 +1658,7 @@
                 🏒 Registered Players (<span id="registeredCount">0</span>)
             </h3>
             <div style="text-align:center; color:#ffb366; margin: 0 0 14px 0; font-size: 0.95rem; font-weight: 700;">
-                Cancel anytime. Last minute cancellations must be done 3 hours before game time. No show owes!
+                Cancel anytime. Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.
             </div>
             <div class="players-grid" id="playersGrid">
                 <!-- Players will be loaded here -->
@@ -1953,7 +1953,7 @@
         <div class="modal-content">
             <h3>⚠️ Cancel Registration</h3>
             <p>Enter the phone number you used to register to confirm cancellation.</p>
-            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Last minute cancellation must be done 3 hours before game time. No show owes!</p>
+            <p style="color:#ffb3b3; font-weight:bold; margin-top:-6px;">Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.</p>
             <input type="tel" id="cancelPhoneInput" placeholder="Phone Number" inputmode="numeric" autocomplete="tel" maxlength="14" style="margin-bottom: 15px;">
             <div class="cancel-error" id="cancelError"></div>
             <div class="cancel-success" id="cancelSuccess"></div>
@@ -2735,12 +2735,11 @@ function updateCalculatedRating() {
                     if (!Array.isArray(team)) return;
                     team.forEach(player => {
                         const li = document.createElement('li');
-                        const isLateAddition = !!(player.isLateAddition || player.promotedFromWaitlist || player.lateAddedAfterRelease);
-                        li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled-player' : '') + (isLateAddition ? ' promoted-from-waitlist' : '');
+                        li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled-player' : '') + (player.promotedFromWaitlist ? ' promoted-from-waitlist' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
                         const isViewer = isKnownViewerPlayer(player);
-                        const subBadge = isLateAddition
+                        const subBadge = player.promotedFromWaitlist
                             ? (isViewer
                                 ? '<span class="you-were-subbed-badge">LATE ADDITION</span>'
                                 : '<span class="subbed-in-badge">LATE ADDITION</span>')
@@ -3048,8 +3047,7 @@ function updateCalculatedRating() {
         }
 
         function markPromotedRosterEntry(li, player) {
-            const isLateAddition = !!(player && (player.isLateAddition || player.promotedFromWaitlist || player.lateAddedAfterRelease));
-            if (!li || !player || !isLateAddition || player.id == null) return;
+            if (!li || !player || !player.promotedFromWaitlist || player.id == null) return;
             const playerId = String(player.id);
             if (seenPromotedRosterIds[playerId]) return;
             seenPromotedRosterIds[playerId] = true;
@@ -3451,7 +3449,7 @@ function updateCalculatedRating() {
                 if (res.ok && data.success) {
                     errorDiv.style.display = 'none';
                     let successMsg = data.lateCancel
-                        ? `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s cancellation was recorded.<br><br>Late cancel / no-show owes.`
+                        ? `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s cancellation was recorded.<br><br>Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.`
                         : `✅ ${playerToCancel.firstName} ${playerToCancel.lastName}'s registration has been cancelled.`;
                     if (data.promotedPlayer) {
                         successMsg += `<br><br>🎉 ${data.promotedPlayer.firstName} ${data.promotedPlayer.lastName} has been promoted from the waitlist!`;
