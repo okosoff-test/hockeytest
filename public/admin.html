@@ -4908,16 +4908,12 @@ th, td{padding:2px 3px !important;}
             const resetLine = resetEnabled && sData.resetWeekAt
                 ? formatDayTimeFromDatetimeLocal(sData.resetWeekAt)
                 : "OFF";
-            const nextResetLine = resetEnabled
-                ? (sData.nextResetLabel || sData.nextResetScheduleInfo?.label || resetLine)
-                : "OFF";
 
             return `
                 <strong>🔒 Signup Lock Window:</strong> ${lockLine}<br>
                 <strong>📋 Auto Roster Release:</strong> ${rrLine}<br>
                 <strong>♻️ Weekly Reset:</strong> ${resetLine}<br>
-                <strong>⏭️ Next Reset Will Run:</strong> ${nextResetLine}<br>
-                <span style="color:#aaa;">Schedule times repeat weekly in ET. Signup locking is controlled by the lock window above, not by weekly reset.</span>
+                <span style="color:#aaa;">V51 auto-schedule: times repeat weekly in ET based on the weekday and time you saved.</span>
             `;
         }
 
