@@ -575,7 +575,7 @@ const GAME_RULES = [
     "No excessive aggression. It’s pickup.",
     "Don’t be “that guy.” You know who you are.",
     "Handshake/fist bump after the game. Have fun.",
-    "Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.",
+    "Last minute cancellations must be done 3 hours before game time. This gives waitlist players a chance for a spot. No-show owes.",
     "Respect the game and players — or you’re done."
 ];
 
@@ -650,74 +650,6 @@ const DEFAULT_REGULAR_SKATERS_BY_DAY = {
 };
 
 let regularSkatersByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
-
-// Admin rating overrides are keyed by phone number when available.
-// This makes an admin-edited rating the durable source of truth for future signups/quick-return profiles.
-let playerRatingOverrides = {};
-
-function normalizePlayerRatingOverridesMap(input = {}) {
-    const normalized = {};
-    if (!input || typeof input !== 'object') return normalized;
-
-    for (const [rawKey, rawValue] of Object.entries(input)) {
-        const key = String(rawKey || '').trim().toLowerCase();
-        const rating = roundRating(rawValue && typeof rawValue === 'object' ? rawValue.rating : rawValue);
-        if (!key || !Number.isFinite(rating) || rating < 1 || rating > 10) continue;
-        normalized[key] = {
-            rating,
-            updatedAt: rawValue && rawValue.updatedAt ? String(rawValue.updatedAt) : new Date().toISOString(),
-            updatedBy: rawValue && rawValue.updatedBy ? String(rawValue.updatedBy) : 'admin'
-        };
-    }
-
-    return normalized;
-}
-
-function getPlayerRatingOverrideKeys(player = {}) {
-    const keys = [];
-    const phoneDigits = normalizePhoneDigits(player.phone);
-    if (phoneDigits && phoneDigits.length === 10) keys.push(`phone:${phoneDigits}`);
-
-    const nameKey = `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}`;
-    if (nameKey !== '|') keys.push(`name:${nameKey}`);
-
-    return keys;
-}
-
-function getStaticAdminRatingOverride(player = {}) {
-    const overrides = normalizePlayerRatingOverridesMap(playerRatingOverrides);
-    for (const key of getPlayerRatingOverrideKeys(player)) {
-        if (overrides[key] && Number.isFinite(Number(overrides[key].rating))) {
-            return roundRating(overrides[key].rating);
-        }
-    }
-    return null;
-}
-
-function rememberStaticAdminRatingOverride(player = {}, rating) {
-    const ratingNum = roundRating(rating);
-    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) return;
-
-    playerRatingOverrides = normalizePlayerRatingOverridesMap(playerRatingOverrides);
-    const entry = { rating: ratingNum, updatedAt: new Date().toISOString(), updatedBy: 'admin' };
-    for (const key of getPlayerRatingOverrideKeys(player)) {
-        playerRatingOverrides[key] = entry;
-    }
-}
-
-function applyStaticAdminRatingOverride(player = {}) {
-    const overrideRating = getStaticAdminRatingOverride(player);
-    if (overrideRating == null) return player;
-
-    const derivedRating = roundRating(player.derivedRating ?? player.finalRating ?? player.rating ?? overrideRating);
-    return {
-        ...player,
-        adminRating: overrideRating,
-        adminAdjustment: roundRating(overrideRating - derivedRating),
-        finalRating: overrideRating,
-        rating: overrideRating
-    };
-}
 
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
@@ -1243,35 +1175,6 @@ function getCurrentOrNextOccurrenceEtParts(scheduleAt, etDate = getCurrentETTime
 function etPartsToDatetimeLocal(parts) {
     if (!parts) return '';
     return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
-}
-
-function formatEtPartsLong(parts) {
-    if (!parts) return '';
-    const dayName = weekdayNameEtParts(parts);
-    const hour24 = Number(parts.hour) || 0;
-    const minute = Number(parts.minute) || 0;
-    const hour12 = ((hour24 + 11) % 12) + 1;
-    const ampm = hour24 >= 12 ? 'PM' : 'AM';
-    return `${dayName} ${String(parts.month).padStart(2, '0')}/${String(parts.day).padStart(2, '0')}/${String(parts.year)} ${hour12}:${String(minute).padStart(2, '0')} ${ampm} ET`;
-}
-
-function weekdayNameEtParts(parts) {
-    if (!parts) return '';
-    const d = new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
-    return INDEX_TO_DAY_NAME[d.getDay()] || '';
-}
-
-function getNextResetScheduleInfo(etDate = getCurrentETTime()) {
-    if (!resetWeekSchedule || !resetWeekSchedule.enabled || !resetWeekSchedule.at) {
-        return { enabled: false, at: null, label: 'OFF', datetimeLocal: '' };
-    }
-    const parts = getCurrentOrNextOccurrenceEtParts(resetWeekSchedule.at, etDate);
-    return {
-        enabled: true,
-        at: parts,
-        label: formatEtPartsLong(parts),
-        datetimeLocal: etPartsToDatetimeLocal(parts)
-    };
 }
 
 function addMinutesToEtParts(parts, minutesToAdd = 0) {
@@ -1814,11 +1717,9 @@ async function checkWeeklyReset() {
         darkTeam: []
     };
 
-    // Weekly reset no longer creates a manual reset-lock.
-    // Signup locking is controlled only by the configured lock schedule unless admin manually overrides it.
-    manualOverride = false;
-    manualOverrideState = null;
-    requirePlayerCode = shouldBeLocked();
+    manualOverride = true;
+    manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`;
+    requirePlayerCode = true;
     maintenanceMode = false;
     clearAnnouncementState();
     refreshDynamicSignupCode();
@@ -2178,7 +2079,6 @@ async function loadDataFromDB() {
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
-        if (settings.playerRatingOverrides !== undefined) playerRatingOverrides = normalizePlayerRatingOverridesMap(settings.playerRatingOverrides || {});
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
         if (settings.signupLockEndAt !== undefined) signupLockEndAt = settings.signupLockEndAt || '';
         if (settings.rosterReleaseAt !== undefined) rosterReleaseAt = settings.rosterReleaseAt || '';
@@ -2196,7 +2096,7 @@ async function loadDataFromDB() {
         refreshDynamicSignupCode();
         
         const playersRes = await pool.query('SELECT * FROM players ORDER BY registered_at');
-        players = playersRes.rows.map(p => hydratePlayerRatingProfile(applyStaticAdminRatingOverride({
+        players = playersRes.rows.map(p => hydratePlayerRatingProfile({
             id: Number(p.id),
             firstName: p.first_name,
             lastName: p.last_name,
@@ -2232,14 +2132,14 @@ async function loadDataFromDB() {
             subbedInForPlayerId: p.subbed_in_for_player_id == null ? null : Number(p.subbed_in_for_player_id),
             subbedInForName: p.subbed_in_for_name || null,
             subbedInAt: p.subbed_in_at || null
-        })));
+        }));
         
         // FIX: Recalculate playerSpots based on actual player count
         const nonGoalieCount = players.filter(p => !p.isGoalie).length;
         playerSpots = Math.max(0, 20 - nonGoalieCount);
                 
         const waitlistRes = await pool.query('SELECT * FROM waitlist ORDER BY joined_at');
-        waitlist = waitlistRes.rows.map(p => hydratePlayerRatingProfile(applyStaticAdminRatingOverride({
+        waitlist = waitlistRes.rows.map(p => hydratePlayerRatingProfile({
             id: Number(p.id),
             firstName: p.first_name,
             lastName: p.last_name,
@@ -2265,7 +2165,7 @@ async function loadDataFromDB() {
             isGoalie: !!p.is_goalie,
             bypassAutoPromote: !!p.bypass_auto_promote,
             joinedAt: p.joined_at
-        })));
+        }));
         
         // ============================================
         // ADD THIS: Load app settings
@@ -3122,7 +3022,6 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
-            ['playerRatingOverrides', playerRatingOverrides],
             ['customSignupCode', customSignupCode],
             ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
@@ -3351,7 +3250,6 @@ function buildFullDataSnapshot() {
         waitlist,
         cancelledRegistrations,
         regularSkatersByDay,
-        playerRatingOverrides,
         customSignupCode,
         scheduleMode,
         gameLocation,
@@ -3478,7 +3376,6 @@ function getSettingsSnapshot() {
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
-        playerRatingOverrides,
         customSignupCode,
         scheduleMode,
         lastExactResetMinuteKey,
@@ -3580,9 +3477,6 @@ function loadDataFromFile() {
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
-            playerRatingOverrides = normalizePlayerRatingOverridesMap(data.playerRatingOverrides || {});
-            players = players.map(applyStaticAdminRatingOverride).map(hydratePlayerRatingProfile);
-            waitlist = waitlist.map(applyStaticAdminRatingOverride).map(hydratePlayerRatingProfile);
             customSignupCode = String(data.customSignupCode || '').trim();
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -3846,7 +3740,6 @@ function normalizeSkillProfile(input = {}) {
 }
 
 function hydratePlayerRatingProfile(player = {}) {
-    player = applyStaticAdminRatingOverride(player);
     const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? 5);
     const finalRating = roundRating(player.finalRating ?? player.rating ?? player.adminRating ?? player.derivedRating ?? fallbackRating);
     const derivedRating = roundRating(player.derivedRating ?? finalRating);
@@ -4795,7 +4688,6 @@ app.get('/api/status', (req, res) => {
     const { week, year } = getWeekNumber(etTime);
     const signupMessageData = getSignupOpenMessageData();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues(etTime);
-    const nextResetScheduleInfo = getNextResetScheduleInfo(etTime);
     
     const playerCount = getPlayerCount();
     const goalieCount = getGoalieCount();
@@ -4874,9 +4766,6 @@ app.get('/api/status', (req, res) => {
         signupLockEndAt: dynamicScheduleDates.signupLockEndAt,
         rosterReleaseAtLocal: dynamicScheduleDates.rosterReleaseAt,
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
-        nextResetAt: nextResetScheduleInfo.datetimeLocal,
-        nextResetLabel: nextResetScheduleInfo.label,
-        nextResetScheduleInfo,
         scheduleMode,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
@@ -4997,10 +4886,6 @@ app.delete('/api/admin/history/:year/:week', async (req, res) => {
 app.post('/api/verify-code', verifyCodeLimiter, (req, res) => {
     refreshDynamicSignupCode();
     checkAutoLock();
-
-    if (maintenanceMode) {
-        return res.status(503).json({ valid: false, error: 'Portal is down for maintenance. Please try again later.' });
-    }
     
     const { code } = req.body;
     
@@ -5018,10 +4903,6 @@ app.post('/api/verify-code', verifyCodeLimiter, (req, res) => {
 app.post('/api/register-init', registrationLimiter, async (req, res) => {
     refreshDynamicSignupCode();
     checkAutoLock();
-
-    if (maintenanceMode) {
-        return res.status(503).json({ error: 'Portal is down for maintenance. Please try again later.' });
-    }
 
     const {
         firstName,
@@ -5091,10 +4972,6 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         return res.status(400).json({ error: `Please complete: ${skillProfile.missing.join(', ')}.` });
     }
 
-    const staticAdminRating = getStaticAdminRatingOverride({ firstName: cleanFirstName, lastName: cleanLastName, phone: cleanPhone });
-    const effectiveFinalRating = staticAdminRating == null ? skillProfile.finalRating : staticAdminRating;
-    const effectiveAdminAdjustment = staticAdminRating == null ? null : roundRating(staticAdminRating - skillProfile.derivedRating);
-
     const submittedRating = Number(rating);
     if (Number.isFinite(submittedRating) && Math.abs(submittedRating - skillProfile.derivedRating) > 0.2) {
         return res.status(400).json({ error: "Skill profile changed. Please review your calculated rating and try again." });
@@ -5107,10 +4984,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             lastName: cleanLastName,
             phone: cleanPhone,
             paymentMethod,
-            rating: effectiveFinalRating,
-            finalRating: effectiveFinalRating,
-            adminRating: staticAdminRating,
-            adminAdjustment: effectiveAdminAdjustment,
+            rating: skillProfile.finalRating,
+            finalRating: skillProfile.finalRating,
             derivedRating: skillProfile.derivedRating,
             selfRatingRaw: skillProfile.selfRatingRaw,
             skatingRating: skillProfile.skatingRating,
@@ -5182,10 +5057,8 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             lastName: cleanLastName,
             phone: cleanPhone,
             paymentMethod,
-            rating: effectiveFinalRating,
-            finalRating: effectiveFinalRating,
-            adminRating: staticAdminRating,
-            adminAdjustment: effectiveAdminAdjustment,
+            rating: skillProfile.finalRating,
+            finalRating: skillProfile.finalRating,
             derivedRating: skillProfile.derivedRating,
             selfRatingRaw: skillProfile.selfRatingRaw,
             skatingRating: skillProfile.skatingRating,
@@ -5204,63 +5077,35 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             confidenceLevel: skillProfile.confidenceLevel,
             ratingMode: skillProfile.ratingMode,
             directRating: skillProfile.directRating,
-            signupCodeVerified: !requirePlayerCode || signupCode === playerSignupCode,
-            registrationStartedAt: new Date().toISOString(),
             isGoalie: false
         }
     });
 });
 
 app.post('/api/register-final', async (req, res) => {
-    refreshDynamicSignupCode();
-    checkAutoLock();
-
     const { tempData, rulesAgreed } = req.body;
-
-    if (maintenanceMode) {
-        return res.status(503).json({ error: 'Portal is down for maintenance. Please try again later.' });
-    }
-
+    
     if (!rulesAgreed) {
         return res.status(400).json({ error: "You must agree to the rules to register." });
     }
-
-    if (!tempData || !tempData.firstName || !tempData.lastName || !tempData.phone || !tempData.paymentMethod) {
-        return res.status(400).json({ error: "Registration data missing. Please start registration again." });
+    
+    if (!tempData || !tempData.firstName) {
+        return res.status(400).json({ error: "Registration data missing." });
     }
-
-    const cleanFirstName = capitalizeFullName(tempData.firstName);
-    const cleanLastName = capitalizeFullName(tempData.lastName);
-    const cleanPhone = formatPhoneNumber(tempData.phone);
-
-    if (!validatePhoneNumber(cleanPhone)) {
-        return res.status(400).json({ error: "Please enter a valid 10-digit phone number." });
-    }
-
-    if (isDuplicatePlayer(cleanFirstName, cleanLastName, cleanPhone)) {
+    
+    if (isDuplicatePlayer(tempData.firstName, tempData.lastName, tempData.phone)) {
         return res.status(400).json({ error: "A player with this name or phone number is already registered." });
     }
-
-    // Final server-side lock check. This prevents someone from bypassing the lock/rules step
-    // by editing browser sessionStorage or submitting stale registration data.
-    if (requirePlayerCode && !tempData.signupCodeVerified) {
-        return res.status(401).json({ error: "Signup is currently locked. Please go back and enter the current signup code." });
-    }
-
-    const staticAdminRating = getStaticAdminRatingOverride({ firstName: cleanFirstName, lastName: cleanLastName, phone: cleanPhone });
-    const submittedDerived = roundRating(tempData.derivedRating ?? tempData.rating ?? 5);
-    const finalRating = staticAdminRating == null ? roundRating(tempData.finalRating ?? tempData.rating ?? submittedDerived) : staticAdminRating;
-    const adminAdjustment = staticAdminRating == null ? tempData.adminAdjustment : roundRating(staticAdminRating - submittedDerived);
-
-    const basePlayer = hydratePlayerRatingProfile({
+    
+    const newPlayer = hydratePlayerRatingProfile({
         id: Date.now(),
-        firstName: cleanFirstName,
-        lastName: cleanLastName,
-        phone: cleanPhone,
+        firstName: tempData.firstName,
+        lastName: tempData.lastName,
+        phone: tempData.phone,
         paymentMethod: tempData.paymentMethod,
         paid: false,
         paidAmount: null,
-        rating: finalRating,
+        rating: tempData.rating,
         skatingRating: tempData.skatingRating,
         puckSkillsRating: tempData.puckSkillsRating,
         hockeySenseRating: tempData.hockeySenseRating,
@@ -5270,90 +5115,35 @@ app.post('/api/register-final', async (req, res) => {
         shootingRating: tempData.shootingRating,
         defensiveRating: tempData.defensiveRating,
         speedBurstRating: tempData.speedBurstRating,
-        shiftDisciplineRating: tempData.shiftDisciplineRating,
         levelPlayed: tempData.levelPlayed,
         positionPlayed: tempData.positionPlayed,
         peerComparison: tempData.peerComparison,
         confidenceLevel: tempData.confidenceLevel,
         selfRatingRaw: tempData.selfRatingRaw,
-        derivedRating: submittedDerived,
-        adminRating: staticAdminRating,
-        adminAdjustment,
-        finalRating,
+        derivedRating: tempData.derivedRating,
+        finalRating: tempData.finalRating,
         isGoalie: false,
         team: null,
         registeredAt: new Date().toISOString(),
         rulesAgreed: true
     });
 
-    const effectiveRosterReleased = getEffectiveRosterReleasedState();
-
     try {
-        if (effectiveRosterReleased || playerSpots <= 0) {
-            const waitlistPlayer = {
-                ...basePlayer,
-                bypassAutoPromote: false,
-                joinedAt: new Date().toISOString()
-            };
-            delete waitlistPlayer.registeredAt;
-            delete waitlistPlayer.rulesAgreed;
-            delete waitlistPlayer.team;
-            delete waitlistPlayer.paid;
-            delete waitlistPlayer.paidAmount;
-
-            await runProtectedMutation('waitlist-final', req, async () => {
-                waitlist.push(waitlistPlayer);
-                if (pool) {
-                    await pool.query(
-                        `INSERT INTO waitlist (
-                            id, first_name, last_name, phone, payment_method, rating,
-                            skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
-                            passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
-                            level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote, joined_at
-                        )
-                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
-                        [
-                            waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
-                            waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
-                            waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
-                            waitlistPlayer.passingRating, waitlistPlayer.shootingRating, waitlistPlayer.defensiveRating, waitlistPlayer.speedBurstRating, waitlistPlayer.positionPlayed,
-                            waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
-                            waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false, false, waitlistPlayer.joinedAt
-                        ]
-                    );
-                }
-            }, {
-                playerId: waitlistPlayer.id,
-                firstName: waitlistPlayer.firstName,
-                lastName: waitlistPlayer.lastName,
-                reason: effectiveRosterReleased ? 'roster_released' : 'full'
-            });
-
-            return res.json({
-                success: true,
-                inWaitlist: true,
-                waitlistPosition: waitlist.length,
-                message: effectiveRosterReleased
-                    ? "Roster has already been released. You have been added to the waitlist."
-                    : "Game is full. You have been added to the waitlist."
-            });
-        }
-
-        await runProtectedMutation('player-signup-final', req, async () => {
-            players.push(basePlayer);
+        await runProtectedMutation('player-signup', req, async () => {
+            players.push(newPlayer);
             playerSpots = Math.max(0, playerSpots - 1);
         }, {
-            playerId: basePlayer.id,
-            firstName: basePlayer.firstName,
-            lastName: basePlayer.lastName
+            playerId: newPlayer.id,
+            firstName: newPlayer.firstName,
+            lastName: newPlayer.lastName
         });
     } catch (err) {
-        console.error('Error saving final registration:', err.message);
+        console.error('Error saving player registration:', err.message);
         return res.status(500).json({ error: "Registration could not be saved safely. Please try again." });
     }
 
-    res.json({
-        success: true,
+    res.json({ 
+        success: true, 
         inWaitlist: false,
         message: `You're registered! E-Transfer payment must be received before stepping on the ice.`,
         paymentDeadline: "Before stepping on the ice",
@@ -5666,9 +5456,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
-        regularSkatersByDay,
-        nextResetScheduleInfo: getNextResetScheduleInfo(),
-        nextResetLabel: getNextResetScheduleInfo().label
+        regularSkatersByDay
     });
 });
 
@@ -6407,7 +6195,6 @@ app.post('/api/admin/settings', (req, res) => {
     
     const lockStatus = checkAutoLock();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues();
-    const nextResetScheduleInfo = getNextResetScheduleInfo();
     
     res.json({
         code: playerSignupCode,
@@ -6427,9 +6214,6 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockEndAt: dynamicScheduleDates.signupLockEndAt,
         rosterReleaseAt: dynamicScheduleDates.rosterReleaseAt,
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
-        nextResetAt: nextResetScheduleInfo.datetimeLocal,
-        nextResetLabel: nextResetScheduleInfo.label,
-        nextResetScheduleInfo,
         storedSignupLockStartAt: signupLockStartAt,
         storedSignupLockEndAt: signupLockEndAt,
         storedRosterReleaseAt: rosterReleaseAt,
@@ -6565,7 +6349,6 @@ app.post('/api/admin/update-schedules', async (req, res) => {
     }
     const lockStatus = checkAutoLock();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues();
-    const nextResetScheduleInfo = getNextResetScheduleInfo();
 
     res.json({
         success: true,
@@ -6748,7 +6531,27 @@ app.post('/api/admin/add-player', async (req, res) => {
         return res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
     }
     if (isGoalieBool && !isGoalieSpotsAvailable()) return res.status(400).json({ error: "Goalie spots are full (maximum 2)." });
-    const newPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', paid: isGoalieBool ? true : false, paidAmount: isGoalieBool ? 0 : null, rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, team: teamForLateAdd, registeredAt: new Date().toISOString(), lateAddedAfterRelease: !!teamForLateAdd });
+    const nowIso = new Date().toISOString();
+    const isLateRosterAddition = !!(rosterReleased && teamForLateAdd);
+    const newPlayer = hydratePlayerRatingProfile({
+        id: Date.now(),
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        phone: formattedPhone,
+        paymentMethod: paymentMethod || 'Cash',
+        paid: isGoalieBool ? true : false,
+        paidAmount: isGoalieBool ? 0 : null,
+        rating: ratingNum,
+        derivedRating: ratingNum,
+        finalRating: ratingNum,
+        selfRatingRaw: ratingNum,
+        isGoalie: isGoalieBool,
+        team: teamForLateAdd,
+        registeredAt: nowIso,
+        lateAddedAfterRelease: isLateRosterAddition,
+        isLateAddition: isLateRosterAddition,
+        subbedInAt: isLateRosterAddition ? nowIso : null
+    });
     try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; if (rosterReleased) syncCurrentWeekTeamsFromPlayers(); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false, assignTeam: teamForLateAdd, rosterReleased });
@@ -6862,7 +6665,6 @@ app.post('/api/admin/update-rating', async (req, res) => {
     const derivedRating = roundRating(player.derivedRating ?? oldRating);
     try {
         await runProtectedMutation('update-rating', req, async () => {
-            rememberStaticAdminRatingOverride(player, ratingNum);
             player.adminRating = ratingNum;
             player.adminAdjustment = roundRating(ratingNum - derivedRating);
             player.finalRating = ratingNum;
@@ -6912,8 +6714,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             playerSpots = 20; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            // Manual reset follows the normal signup lock schedule; it does not force a reset-lock.
-            manualOverride = false; manualOverrideState = null; requirePlayerCode = shouldBeLocked(); clearAnnouncementState();
+            manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             await addAutoPlayers();
