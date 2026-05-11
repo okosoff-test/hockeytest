@@ -651,6 +651,10 @@ const DEFAULT_REGULAR_SKATERS_BY_DAY = {
 
 let regularSkatersByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
 
+// Admin-set player ratings that must survive weekly reset / auto re-add.
+// Keyed primarily by normalized 10-digit phone number, with a name fallback.
+let persistentAdminRatings = {};
+
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
     const lastName = String(input.lastName || '').trim();
@@ -1618,13 +1622,16 @@ async function addAutoPlayers() {
             protected: autoPlayer.protected || false
         };
 
+        applyPersistentAdminRating(newPlayer);
+
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating, is_goalie, team, registered_at, rules_agreed)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
                     [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
                      newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), newPlayer.rating,
+                     toNumericOrNull(newPlayer.adminRating), toNumericOrNull(newPlayer.adminAdjustment), toNumericOrNull(newPlayer.finalRating),
                      autoPlayer.isGoalie, null, newPlayer.registeredAt, true]
                 );
             }
@@ -1763,6 +1770,7 @@ function buildPersistedStateFingerprint(snapshot = null) {
         waitlist: payload.waitlist,
         cancelledRegistrations: payload.cancelledRegistrations,
         regularSkatersByDay: payload.regularSkatersByDay,
+        persistentAdminRatings: payload.persistentAdminRatings,
         customSignupCode: payload.customSignupCode,
         scheduleMode: payload.scheduleMode,
         gameLocation: payload.gameLocation,
@@ -2080,6 +2088,7 @@ async function loadDataFromDB() {
         if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
+        if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
@@ -2201,6 +2210,13 @@ async function loadDataFromDB() {
                 regularSkatersByDay = normalizeRegularSkatersByDayMap(JSON.parse(appSettings.regularSkatersByDay || '{}'));
             } catch {
                 regularSkatersByDay = normalizeRegularSkatersByDayMap({});
+            }
+        }
+        if (appSettings.persistentAdminRatings !== undefined) {
+            try {
+                persistentAdminRatings = normalizePersistentAdminRatings(JSON.parse(appSettings.persistentAdminRatings || '{}'));
+            } catch {
+                persistentAdminRatings = normalizePersistentAdminRatings(persistentAdminRatings);
             }
         }
 
@@ -3062,6 +3078,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
             ['regularSkatersByDay', regularSkatersByDay],
+            ['persistentAdminRatings', persistentAdminRatings],
             ['customSignupCode', customSignupCode],
             ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
@@ -3091,6 +3108,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
             ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
+            ['persistentAdminRatings', JSON.stringify(persistentAdminRatings)],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
             ['gameDate', gameDate]
@@ -3290,6 +3308,7 @@ function buildFullDataSnapshot() {
         waitlist,
         cancelledRegistrations,
         regularSkatersByDay,
+        persistentAdminRatings,
         customSignupCode,
         scheduleMode,
         gameLocation,
@@ -3416,6 +3435,7 @@ function getSettingsSnapshot() {
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
+        persistentAdminRatings,
         customSignupCode,
         scheduleMode,
         lastExactResetMinuteKey,
@@ -3517,6 +3537,7 @@ function loadDataFromFile() {
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
+            persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             customSignupCode = String(data.customSignupCode || '').trim();
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -3636,6 +3657,69 @@ function appendCancellationLog(entry) {
 function validatePhoneNumber(phone) {
     const cleaned = normalizePhoneDigits(phone);
     return cleaned.length === 10;
+}
+
+
+function getPersistentRatingKeyForPlayer(player = {}) {
+    const phoneKey = normalizePhoneDigits(player.phone || '');
+    if (phoneKey && phoneKey.length === 10) return `phone:${phoneKey}`;
+
+    const first = String(player.firstName || '').trim().toLowerCase();
+    const last = String(player.lastName || '').trim().toLowerCase();
+    if (first || last) return `name:${first}|${last}`;
+    return '';
+}
+
+function normalizePersistentAdminRatings(input = {}) {
+    const output = {};
+    if (!input || typeof input !== 'object') return output;
+    for (const [rawKey, rawValue] of Object.entries(input)) {
+        const value = Number(rawValue);
+        if (!Number.isFinite(value)) continue;
+        const rating = Math.max(1, Math.min(10, Math.round(value * 10) / 10));
+        const key = String(rawKey || '').trim();
+        if (key) output[key] = rating;
+    }
+    return output;
+}
+
+function rememberPersistentAdminRating(player = {}, ratingValue) {
+    const key = getPersistentRatingKeyForPlayer(player);
+    const value = Number(ratingValue);
+    if (!key || !Number.isFinite(value)) return false;
+    persistentAdminRatings = normalizePersistentAdminRatings(persistentAdminRatings);
+    persistentAdminRatings[key] = Math.max(1, Math.min(10, Math.round(value * 10) / 10));
+    return true;
+}
+
+function getPersistentAdminRating(player = {}) {
+    persistentAdminRatings = normalizePersistentAdminRatings(persistentAdminRatings);
+    const primaryKey = getPersistentRatingKeyForPlayer(player);
+    if (primaryKey && persistentAdminRatings[primaryKey] != null) return Number(persistentAdminRatings[primaryKey]);
+
+    const phoneKey = normalizePhoneDigits(player.phone || '');
+    if (phoneKey && persistentAdminRatings[`phone:${phoneKey}`] != null) return Number(persistentAdminRatings[`phone:${phoneKey}`]);
+
+    const first = String(player.firstName || '').trim().toLowerCase();
+    const last = String(player.lastName || '').trim().toLowerCase();
+    const nameKey = `name:${first}|${last}`;
+    if ((first || last) && persistentAdminRatings[nameKey] != null) return Number(persistentAdminRatings[nameKey]);
+
+    return null;
+}
+
+function applyPersistentAdminRating(player = {}) {
+    if (!player || typeof player !== 'object') return player;
+    const savedRating = getPersistentAdminRating(player);
+    if (savedRating == null || !Number.isFinite(Number(savedRating))) return player;
+
+    const rating = Math.max(1, Math.min(10, Math.round(Number(savedRating) * 10) / 10));
+    const derived = Number.isFinite(Number(player.derivedRating)) ? Math.round(Number(player.derivedRating) * 10) / 10 : rating;
+    player.adminRating = rating;
+    player.adminAdjustment = Math.round((rating - derived) * 10) / 10;
+    player.finalRating = rating;
+    player.rating = rating;
+    return player;
 }
 
 function formatPhoneNumber(phone) {
@@ -3781,9 +3865,10 @@ function normalizeSkillProfile(input = {}) {
 
 function hydratePlayerRatingProfile(player = {}) {
     const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? 5);
-    const finalRating = roundRating(player.finalRating ?? player.rating ?? player.adminRating ?? player.derivedRating ?? fallbackRating);
+    const savedPersistentRating = getPersistentAdminRating(player);
+    const finalRating = roundRating(savedPersistentRating ?? player.adminRating ?? player.finalRating ?? player.rating ?? player.derivedRating ?? fallbackRating);
     const derivedRating = roundRating(player.derivedRating ?? finalRating);
-    const adminRating = player.adminRating == null ? null : roundRating(player.adminRating);
+    const adminRating = savedPersistentRating == null ? (player.adminRating == null ? null : roundRating(player.adminRating)) : roundRating(savedPersistentRating);
     const adminAdjustment = roundRating(player.adminAdjustment ?? ((adminRating == null ? finalRating : adminRating) - derivedRating));
 
     return {
@@ -6567,6 +6652,7 @@ app.post('/api/admin/add-player', async (req, res) => {
     }
     if (toWaitlist) {
         const waitlistPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, bypassAutoPromote: false, joinedAt: new Date() });
+        applyPersistentAdminRating(waitlistPlayer);
         try { await runProtectedMutation('admin-add-waitlist-player', req, async () => { waitlist.push(waitlistPlayer); }, { playerId: waitlistPlayer.id }); }
         catch (err) { console.error('Error adding to waitlist:', err); return res.status(500).json({ error: "Failed to add waitlist player safely" }); }
         return res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
@@ -6594,6 +6680,7 @@ app.post('/api/admin/add-player', async (req, res) => {
         isLateAddition: isLateRosterAddition,
         subbedInAt: isLateRosterAddition ? nowIso : null
     });
+    applyPersistentAdminRating(newPlayer);
     try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; if (rosterReleased) syncCurrentWeekTeamsFromPlayers(); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false, assignTeam: teamForLateAdd, rosterReleased });
@@ -6754,6 +6841,7 @@ app.post('/api/admin/update-rating', async (req, res) => {
     try {
         await runProtectedMutation('update-rating', req, async () => {
             player.adminRating = ratingNum;
+            rememberPersistentAdminRating(player, ratingNum);
             player.adminAdjustment = roundRating(ratingNum - derivedRating);
             player.finalRating = ratingNum;
             player.rating = ratingNum;
