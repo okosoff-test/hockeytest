@@ -575,7 +575,7 @@ const GAME_RULES = [
     "No excessive aggression. It’s pickup.",
     "Don’t be “that guy.” You know who you are.",
     "Handshake/fist bump after the game. Have fun.",
-    "Last minute cancellations must be done 3 hours before game time. This gives waitlist players a chance for a spot. No-show owes.",
+    "Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.",
     "Respect the game and players — or you’re done."
 ];
 
@@ -1243,6 +1243,35 @@ function getCurrentOrNextOccurrenceEtParts(scheduleAt, etDate = getCurrentETTime
 function etPartsToDatetimeLocal(parts) {
     if (!parts) return '';
     return `${String(parts.year).padStart(4, '0')}-${String(parts.month).padStart(2, '0')}-${String(parts.day).padStart(2, '0')}T${String(parts.hour).padStart(2, '0')}:${String(parts.minute).padStart(2, '0')}`;
+}
+
+function formatEtPartsLong(parts) {
+    if (!parts) return '';
+    const dayName = weekdayNameEtParts(parts);
+    const hour24 = Number(parts.hour) || 0;
+    const minute = Number(parts.minute) || 0;
+    const hour12 = ((hour24 + 11) % 12) + 1;
+    const ampm = hour24 >= 12 ? 'PM' : 'AM';
+    return `${dayName} ${String(parts.month).padStart(2, '0')}/${String(parts.day).padStart(2, '0')}/${String(parts.year)} ${hour12}:${String(minute).padStart(2, '0')} ${ampm} ET`;
+}
+
+function weekdayNameEtParts(parts) {
+    if (!parts) return '';
+    const d = new Date(Number(parts.year), Number(parts.month) - 1, Number(parts.day));
+    return INDEX_TO_DAY_NAME[d.getDay()] || '';
+}
+
+function getNextResetScheduleInfo(etDate = getCurrentETTime()) {
+    if (!resetWeekSchedule || !resetWeekSchedule.enabled || !resetWeekSchedule.at) {
+        return { enabled: false, at: null, label: 'OFF', datetimeLocal: '' };
+    }
+    const parts = getCurrentOrNextOccurrenceEtParts(resetWeekSchedule.at, etDate);
+    return {
+        enabled: true,
+        at: parts,
+        label: formatEtPartsLong(parts),
+        datetimeLocal: etPartsToDatetimeLocal(parts)
+    };
 }
 
 function addMinutesToEtParts(parts, minutesToAdd = 0) {
@@ -4766,6 +4795,7 @@ app.get('/api/status', (req, res) => {
     const { week, year } = getWeekNumber(etTime);
     const signupMessageData = getSignupOpenMessageData();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues(etTime);
+    const nextResetScheduleInfo = getNextResetScheduleInfo(etTime);
     
     const playerCount = getPlayerCount();
     const goalieCount = getGoalieCount();
@@ -4844,6 +4874,9 @@ app.get('/api/status', (req, res) => {
         signupLockEndAt: dynamicScheduleDates.signupLockEndAt,
         rosterReleaseAtLocal: dynamicScheduleDates.rosterReleaseAt,
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
+        nextResetAt: nextResetScheduleInfo.datetimeLocal,
+        nextResetLabel: nextResetScheduleInfo.label,
+        nextResetScheduleInfo,
         scheduleMode,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
@@ -4964,6 +4997,10 @@ app.delete('/api/admin/history/:year/:week', async (req, res) => {
 app.post('/api/verify-code', verifyCodeLimiter, (req, res) => {
     refreshDynamicSignupCode();
     checkAutoLock();
+
+    if (maintenanceMode) {
+        return res.status(503).json({ valid: false, error: 'Portal is down for maintenance. Please try again later.' });
+    }
     
     const { code } = req.body;
     
@@ -4981,6 +5018,10 @@ app.post('/api/verify-code', verifyCodeLimiter, (req, res) => {
 app.post('/api/register-init', registrationLimiter, async (req, res) => {
     refreshDynamicSignupCode();
     checkAutoLock();
+
+    if (maintenanceMode) {
+        return res.status(503).json({ error: 'Portal is down for maintenance. Please try again later.' });
+    }
 
     const {
         firstName,
@@ -5163,35 +5204,63 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             confidenceLevel: skillProfile.confidenceLevel,
             ratingMode: skillProfile.ratingMode,
             directRating: skillProfile.directRating,
+            signupCodeVerified: !requirePlayerCode || signupCode === playerSignupCode,
+            registrationStartedAt: new Date().toISOString(),
             isGoalie: false
         }
     });
 });
 
 app.post('/api/register-final', async (req, res) => {
+    refreshDynamicSignupCode();
+    checkAutoLock();
+
     const { tempData, rulesAgreed } = req.body;
-    
+
+    if (maintenanceMode) {
+        return res.status(503).json({ error: 'Portal is down for maintenance. Please try again later.' });
+    }
+
     if (!rulesAgreed) {
         return res.status(400).json({ error: "You must agree to the rules to register." });
     }
-    
-    if (!tempData || !tempData.firstName) {
-        return res.status(400).json({ error: "Registration data missing." });
+
+    if (!tempData || !tempData.firstName || !tempData.lastName || !tempData.phone || !tempData.paymentMethod) {
+        return res.status(400).json({ error: "Registration data missing. Please start registration again." });
     }
-    
-    if (isDuplicatePlayer(tempData.firstName, tempData.lastName, tempData.phone)) {
+
+    const cleanFirstName = capitalizeFullName(tempData.firstName);
+    const cleanLastName = capitalizeFullName(tempData.lastName);
+    const cleanPhone = formatPhoneNumber(tempData.phone);
+
+    if (!validatePhoneNumber(cleanPhone)) {
+        return res.status(400).json({ error: "Please enter a valid 10-digit phone number." });
+    }
+
+    if (isDuplicatePlayer(cleanFirstName, cleanLastName, cleanPhone)) {
         return res.status(400).json({ error: "A player with this name or phone number is already registered." });
     }
-    
-    const newPlayer = hydratePlayerRatingProfile({
+
+    // Final server-side lock check. This prevents someone from bypassing the lock/rules step
+    // by editing browser sessionStorage or submitting stale registration data.
+    if (requirePlayerCode && !tempData.signupCodeVerified) {
+        return res.status(401).json({ error: "Signup is currently locked. Please go back and enter the current signup code." });
+    }
+
+    const staticAdminRating = getStaticAdminRatingOverride({ firstName: cleanFirstName, lastName: cleanLastName, phone: cleanPhone });
+    const submittedDerived = roundRating(tempData.derivedRating ?? tempData.rating ?? 5);
+    const finalRating = staticAdminRating == null ? roundRating(tempData.finalRating ?? tempData.rating ?? submittedDerived) : staticAdminRating;
+    const adminAdjustment = staticAdminRating == null ? tempData.adminAdjustment : roundRating(staticAdminRating - submittedDerived);
+
+    const basePlayer = hydratePlayerRatingProfile({
         id: Date.now(),
-        firstName: tempData.firstName,
-        lastName: tempData.lastName,
-        phone: tempData.phone,
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        phone: cleanPhone,
         paymentMethod: tempData.paymentMethod,
         paid: false,
         paidAmount: null,
-        rating: tempData.rating,
+        rating: finalRating,
         skatingRating: tempData.skatingRating,
         puckSkillsRating: tempData.puckSkillsRating,
         hockeySenseRating: tempData.hockeySenseRating,
@@ -5201,37 +5270,90 @@ app.post('/api/register-final', async (req, res) => {
         shootingRating: tempData.shootingRating,
         defensiveRating: tempData.defensiveRating,
         speedBurstRating: tempData.speedBurstRating,
+        shiftDisciplineRating: tempData.shiftDisciplineRating,
         levelPlayed: tempData.levelPlayed,
         positionPlayed: tempData.positionPlayed,
         peerComparison: tempData.peerComparison,
         confidenceLevel: tempData.confidenceLevel,
         selfRatingRaw: tempData.selfRatingRaw,
-        derivedRating: tempData.derivedRating,
-        adminRating: tempData.adminRating,
-        adminAdjustment: tempData.adminAdjustment,
-        finalRating: tempData.finalRating,
+        derivedRating: submittedDerived,
+        adminRating: staticAdminRating,
+        adminAdjustment,
+        finalRating,
         isGoalie: false,
         team: null,
         registeredAt: new Date().toISOString(),
         rulesAgreed: true
     });
 
+    const effectiveRosterReleased = getEffectiveRosterReleasedState();
+
     try {
-        await runProtectedMutation('player-signup', req, async () => {
-            players.push(newPlayer);
+        if (effectiveRosterReleased || playerSpots <= 0) {
+            const waitlistPlayer = {
+                ...basePlayer,
+                bypassAutoPromote: false,
+                joinedAt: new Date().toISOString()
+            };
+            delete waitlistPlayer.registeredAt;
+            delete waitlistPlayer.rulesAgreed;
+            delete waitlistPlayer.team;
+            delete waitlistPlayer.paid;
+            delete waitlistPlayer.paidAmount;
+
+            await runProtectedMutation('waitlist-final', req, async () => {
+                waitlist.push(waitlistPlayer);
+                if (pool) {
+                    await pool.query(
+                        `INSERT INTO waitlist (
+                            id, first_name, last_name, phone, payment_method, rating,
+                            skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
+                            passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
+                            level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating, final_rating, is_goalie, bypass_auto_promote, joined_at
+                        )
+                         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25)`,
+                        [
+                            waitlistPlayer.id, waitlistPlayer.firstName, waitlistPlayer.lastName,
+                            waitlistPlayer.phone, waitlistPlayer.paymentMethod, waitlistPlayer.rating,
+                            waitlistPlayer.skatingRating, waitlistPlayer.puckSkillsRating, waitlistPlayer.hockeySenseRating, waitlistPlayer.conditioningRating, waitlistPlayer.effortRating,
+                            waitlistPlayer.passingRating, waitlistPlayer.shootingRating, waitlistPlayer.defensiveRating, waitlistPlayer.speedBurstRating, waitlistPlayer.positionPlayed,
+                            waitlistPlayer.levelPlayed, waitlistPlayer.peerComparison, waitlistPlayer.confidenceLevel,
+                            waitlistPlayer.selfRatingRaw, waitlistPlayer.derivedRating, waitlistPlayer.finalRating, false, false, waitlistPlayer.joinedAt
+                        ]
+                    );
+                }
+            }, {
+                playerId: waitlistPlayer.id,
+                firstName: waitlistPlayer.firstName,
+                lastName: waitlistPlayer.lastName,
+                reason: effectiveRosterReleased ? 'roster_released' : 'full'
+            });
+
+            return res.json({
+                success: true,
+                inWaitlist: true,
+                waitlistPosition: waitlist.length,
+                message: effectiveRosterReleased
+                    ? "Roster has already been released. You have been added to the waitlist."
+                    : "Game is full. You have been added to the waitlist."
+            });
+        }
+
+        await runProtectedMutation('player-signup-final', req, async () => {
+            players.push(basePlayer);
             playerSpots = Math.max(0, playerSpots - 1);
         }, {
-            playerId: newPlayer.id,
-            firstName: newPlayer.firstName,
-            lastName: newPlayer.lastName
+            playerId: basePlayer.id,
+            firstName: basePlayer.firstName,
+            lastName: basePlayer.lastName
         });
     } catch (err) {
-        console.error('Error saving player registration:', err.message);
+        console.error('Error saving final registration:', err.message);
         return res.status(500).json({ error: "Registration could not be saved safely. Please try again." });
     }
 
-    res.json({ 
-        success: true, 
+    res.json({
+        success: true,
         inWaitlist: false,
         message: `You're registered! E-Transfer payment must be received before stepping on the ice.`,
         paymentDeadline: "Before stepping on the ice",
@@ -5544,7 +5666,9 @@ app.post('/api/admin/app-settings', (req, res) => {
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
-        regularSkatersByDay
+        regularSkatersByDay,
+        nextResetScheduleInfo: getNextResetScheduleInfo(),
+        nextResetLabel: getNextResetScheduleInfo().label
     });
 });
 
@@ -6283,6 +6407,7 @@ app.post('/api/admin/settings', (req, res) => {
     
     const lockStatus = checkAutoLock();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues();
+    const nextResetScheduleInfo = getNextResetScheduleInfo();
     
     res.json({
         code: playerSignupCode,
@@ -6302,6 +6427,9 @@ app.post('/api/admin/settings', (req, res) => {
         signupLockEndAt: dynamicScheduleDates.signupLockEndAt,
         rosterReleaseAt: dynamicScheduleDates.rosterReleaseAt,
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
+        nextResetAt: nextResetScheduleInfo.datetimeLocal,
+        nextResetLabel: nextResetScheduleInfo.label,
+        nextResetScheduleInfo,
         storedSignupLockStartAt: signupLockStartAt,
         storedSignupLockEndAt: signupLockEndAt,
         storedRosterReleaseAt: rosterReleaseAt,
@@ -6437,6 +6565,7 @@ app.post('/api/admin/update-schedules', async (req, res) => {
     }
     const lockStatus = checkAutoLock();
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues();
+    const nextResetScheduleInfo = getNextResetScheduleInfo();
 
     res.json({
         success: true,
