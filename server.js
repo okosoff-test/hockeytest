@@ -1718,9 +1718,9 @@ async function checkWeeklyReset() {
         darkTeam: []
     };
 
-    manualOverride = true;
-    manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`;
-    requirePlayerCode = true;
+    manualOverride = false;
+    manualOverrideState = null;
+    requirePlayerCode = shouldBeLocked();
     maintenanceMode = false;
     clearAnnouncementState();
     refreshDynamicSignupCode();
@@ -3778,11 +3778,15 @@ function normalizeSkillProfile(input = {}) {
 }
 
 function hydratePlayerRatingProfile(player = {}) {
-    const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? 5);
-    const finalRating = roundRating(player.finalRating ?? player.rating ?? player.adminRating ?? player.derivedRating ?? fallbackRating);
-    const derivedRating = roundRating(player.derivedRating ?? finalRating);
+    // Admin override must be the source of truth once it exists.
+    // Previously, a saved player/self rating could win over adminRating during reload/hydration.
     const adminRating = player.adminRating == null ? null : roundRating(player.adminRating);
-    const adminAdjustment = roundRating(player.adminAdjustment ?? ((adminRating == null ? finalRating : adminRating) - derivedRating));
+    const fallbackRating = roundRating(player.rating ?? player.finalRating ?? player.derivedRating ?? adminRating ?? 5);
+    const derivedRating = roundRating(player.derivedRating ?? fallbackRating);
+    const finalRating = roundRating(adminRating ?? player.finalRating ?? player.rating ?? player.derivedRating ?? fallbackRating);
+    const adminAdjustment = adminRating == null
+        ? roundRating(player.adminAdjustment ?? (finalRating - derivedRating))
+        : roundRating(adminRating - derivedRating);
 
     return {
         ...player,
@@ -6755,8 +6759,10 @@ app.post('/api/admin/update-rating', async (req, res) => {
             player.adminAdjustment = roundRating(ratingNum - derivedRating);
             player.finalRating = ratingNum;
             player.rating = ratingNum;
-        }, { playerId, oldRating, newRating: ratingNum });
-        res.json({ success: true, player: hydratePlayerRatingProfile(player), oldRating, newRating: ratingNum });
+            const lockedProfile = hydratePlayerRatingProfile(player);
+            Object.assign(player, lockedProfile);
+        }, { playerId, oldRating, newRating: ratingNum, adminRatingLocked: true });
+        res.json({ success: true, player: hydratePlayerRatingProfile(player), oldRating, newRating: ratingNum, adminRatingLocked: true });
     } catch (err) {
         console.error('Error updating rating:', err);
         res.status(500).json({ error: "Failed to update rating safely" });
@@ -6800,7 +6806,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             playerSpots = 20; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
-            manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
+            manualOverride = false; manualOverrideState = null; requirePlayerCode = shouldBeLocked(); clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             await addAutoPlayers();
