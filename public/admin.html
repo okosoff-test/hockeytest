@@ -6517,9 +6517,9 @@ Date: ${selectedGameDate}`);
                                 : (p.paidAmount && parseFloat(p.paidAmount) > 0 ? 'paid' : 'owes');
                             const isPaid = paymentStatus === 'paid';
                             const isPia = paymentStatus === 'pia';
-                            const compactAmount = isPaid
-                                ? parseFloat(p.paidAmount)
-                                : (isPia ? 0 : 15);
+                            const compactAmount = isPia
+                                ? 0
+                                : (isPaid ? parseFloat(p.paidAmount) : 15);
                             const compactLabel = isPia ? 'PIA' : (isPaid ? `$${compactAmount}` : 'OWES');
                             const compactClass = isPia ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
                             paidInput = `

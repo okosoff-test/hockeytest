@@ -3022,7 +3022,9 @@ function applyPaymentStatusToPlayer(player, status, options = {}) {
 
     if (normalized === 'pia') {
         player.paid = true;
-        if (player.paidAmount == null || player.paidAmount === '') player.paidAmount = 0;
+        // PIA means paid in advance and must always carry a $0 collected amount.
+        // Do not preserve a prior $15/default payment when switching to PIA.
+        player.paidAmount = 0;
     } else if (normalized === 'paid') {
         player.paid = true;
         const amount = Number(player.paidAmount);
