@@ -1609,6 +1609,7 @@ async function addAutoPlayers() {
             paymentMethod: autoPlayer.paymentMethod,
             paid: autoPlayer.isFree ? true : false,
             paidAmount: autoPlayer.isFree ? 0 : null,
+            paymentStatus: autoPlayer.isFree ? 'paid' : 'owes',
             rating: autoPlayer.rating,
             isGoalie: autoPlayer.isGoalie,
             team: null,
@@ -1620,10 +1621,10 @@ async function addAutoPlayers() {
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, rating, is_goalie, team, registered_at, rules_agreed)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`,
+                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating, is_goalie, team, registered_at, rules_agreed)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
                     [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
-                     newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, newPlayer.rating,
+                     newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), newPlayer.rating,
                      autoPlayer.isGoalie, null, newPlayer.registeredAt, true]
                 );
             }
@@ -1860,6 +1861,7 @@ async function initDatabase() {
                 payment_method VARCHAR(20),
                 paid BOOLEAN DEFAULT false,
                 paid_amount NUMERIC(10,2),
+                payment_status VARCHAR(20) DEFAULT 'owes',
                 rating NUMERIC(4,1) NOT NULL,
                 skating_rating NUMERIC(4,1),
                 puck_skills_rating NUMERIC(4,1),
@@ -1903,6 +1905,7 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS admin_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS admin_adjustment NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS final_rating NUMERIC(4,1)`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'owes'`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS promoted_from_waitlist BOOLEAN DEFAULT false`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS late_added_after_release BOOLEAN DEFAULT false`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS subbed_in_for_player_id BIGINT`);
@@ -2104,6 +2107,7 @@ async function loadDataFromDB() {
             paymentMethod: p.payment_method,
             paid: !!p.paid,
             paidAmount: p.paid_amount == null ? null : Number(p.paid_amount),
+            paymentStatus: normalizePaymentStatus(p.payment_status, { paid: !!p.paid, paidAmount: p.paid_amount == null ? null : Number(p.paid_amount) }),
             rating: p.rating == null ? null : Number(p.rating),
             skatingRating: p.skating_rating == null ? null : Number(p.skating_rating),
             puckSkillsRating: p.puck_skills_rating == null ? null : Number(p.puck_skills_rating),
@@ -2999,6 +3003,40 @@ function toNumericOrNull(value) {
     return Number.isFinite(num) ? num : null;
 }
 
+function normalizePaymentStatus(status, player = {}) {
+    const raw = String(status || player.paymentStatus || '').trim().toLowerCase();
+    if (raw === 'pia' || raw === 'paid_in_advance') return 'pia';
+    if (raw === 'paid') return 'paid';
+    if (raw === 'owes' || raw === 'unpaid') return 'owes';
+
+    const amount = Number(player.paidAmount);
+    if (Number.isFinite(amount) && amount > 0) return 'paid';
+    if (player.paid === true) return 'paid';
+    return 'owes';
+}
+
+function applyPaymentStatusToPlayer(player, status, options = {}) {
+    if (!player) return player;
+    const normalized = normalizePaymentStatus(status, player);
+    player.paymentStatus = normalized;
+
+    if (normalized === 'pia') {
+        player.paid = true;
+        if (player.paidAmount == null || player.paidAmount === '') player.paidAmount = 0;
+    } else if (normalized === 'paid') {
+        player.paid = true;
+        const amount = Number(player.paidAmount);
+        if (options.ensureAmount && (!Number.isFinite(amount) || amount <= 0)) {
+            player.paidAmount = Number(options.defaultAmount || 15);
+        }
+    } else {
+        player.paid = false;
+        if (options.clearAmount !== false) player.paidAmount = null;
+    }
+
+    return player;
+}
+
 async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = null) {
     if (!pool) return { ok: true, mode: 'file' };
     const payload = snapshot || buildFullDataSnapshot();
@@ -3066,18 +3104,18 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
         for (const player of players) {
             await client.query(
                 `INSERT INTO players (
-                    id, first_name, last_name, phone, payment_method, paid, paid_amount, rating,
+                    id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating,
                     skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed,
                     promoted_from_waitlist, late_added_after_release, subbed_in_for_player_id, subbed_in_for_name, subbed_in_at
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36
                 )`,
                 [
                     player.id, player.firstName, player.lastName, player.phone, player.paymentMethod || null, !!player.paid,
-                    toNumericOrNull(player.paidAmount), toNumericOrNull(player.rating),
+                    toNumericOrNull(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), toNumericOrNull(player.rating),
                     toNumericOrNull(player.skatingRating), toNumericOrNull(player.puckSkillsRating), toNumericOrNull(player.hockeySenseRating), toNumericOrNull(player.conditioningRating), toNumericOrNull(player.effortRating),
                     toNumericOrNull(player.passingRating), toNumericOrNull(player.shootingRating), toNumericOrNull(player.defensiveRating), toNumericOrNull(player.speedBurstRating), player.positionPlayed || null,
                     player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating),
@@ -4178,8 +4216,8 @@ function buildPaymentReportCsv() {
     });
 
     const totalCollected = players.reduce((sum, p) => sum + (parseFloat(p.paidAmount) || 0), 0);
-    const paidCount = players.filter(p => p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
 
     csvRows.push('');
     csvRows.push([escapeCsvValue('SUMMARY'), '', '', '', '', '', '', '', '', ''].join(','));
@@ -5105,6 +5143,7 @@ app.post('/api/register-final', async (req, res) => {
         paymentMethod: tempData.paymentMethod,
         paid: false,
         paidAmount: null,
+        paymentStatus: 'owes',
         rating: tempData.rating,
         skatingRating: tempData.skatingRating,
         puckSkillsRating: tempData.puckSkillsRating,
@@ -5706,7 +5745,7 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
     const normalizedPhone = backupGoalie.phone.replace(/\D/g, '');
     const exists = players.find(p => p.phone.replace(/\D/g, '') === normalizedPhone);
     if (exists) return res.status(400).json({ error: "This goalie is already registered" });
-    const newGoalie = { id: Date.now(), firstName: backupGoalie.firstName, lastName: backupGoalie.lastName, phone: backupGoalie.phone, paymentMethod: "N/A", paid: true, paidAmount: 0, rating: backupGoalie.rating, isGoalie: true, team: null, registeredAt: new Date().toISOString(), rulesAgreed: true };
+    const newGoalie = { id: Date.now(), firstName: backupGoalie.firstName, lastName: backupGoalie.lastName, phone: backupGoalie.phone, paymentMethod: "N/A", paid: true, paidAmount: 0, paymentStatus: 'paid', rating: backupGoalie.rating, isGoalie: true, team: null, registeredAt: new Date().toISOString(), rulesAgreed: true };
     try {
         await runProtectedMutation('add-backup-goalie', req, async () => { players.push(newGoalie); }, { goalieIndex, playerId: newGoalie.id });
         res.json({ success: true, goalie: newGoalie, message: `${backupGoalie.firstName} ${backupGoalie.lastName} added as substitute goalie` });
@@ -5737,8 +5776,8 @@ app.post('/api/admin/players-full', (req, res) => {
         return sum;
     }, 0);
     
-    const paidCount = players.filter(p => p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
     
     // Return FULL data including payment info AND ratings (admin only)
     res.json({ 
@@ -6531,9 +6570,28 @@ app.post('/api/admin/add-player', async (req, res) => {
         return res.json({ success: true, player: waitlistPlayer, inWaitlist: true });
     }
     if (isGoalieBool && !isGoalieSpotsAvailable()) return res.status(400).json({ error: "Goalie spots are full (maximum 2)." });
-    const normalizedPaymentMethod = isGoalieBool ? 'FREE' : (paymentMethod || 'Cash');
-    const isPaidInAdvance = String(normalizedPaymentMethod || '').trim().toUpperCase() === 'PIA';
-    const newPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: normalizedPaymentMethod, paid: isGoalieBool || isPaidInAdvance ? true : false, paidAmount: (isGoalieBool || isPaidInAdvance) ? 0 : null, rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, team: teamForLateAdd, registeredAt: new Date().toISOString(), lateAddedAfterRelease: !!teamForLateAdd });
+    const nowIso = new Date().toISOString();
+    const isLateRosterAddition = !!(rosterReleased && teamForLateAdd);
+    const newPlayer = hydratePlayerRatingProfile({
+        id: Date.now(),
+        firstName: cleanFirstName,
+        lastName: cleanLastName,
+        phone: formattedPhone,
+        paymentMethod: paymentMethod || 'Cash',
+        paid: isGoalieBool ? true : false,
+        paidAmount: isGoalieBool ? 0 : null,
+        paymentStatus: isGoalieBool ? 'paid' : 'owes',
+        rating: ratingNum,
+        derivedRating: ratingNum,
+        finalRating: ratingNum,
+        selfRatingRaw: ratingNum,
+        isGoalie: isGoalieBool,
+        team: teamForLateAdd,
+        registeredAt: nowIso,
+        lateAddedAfterRelease: isLateRosterAddition,
+        isLateAddition: isLateRosterAddition,
+        subbedInAt: isLateRosterAddition ? nowIso : null
+    });
     try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; if (rosterReleased) syncCurrentWeekTeamsFromPlayers(); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false, assignTeam: teamForLateAdd, rosterReleased });
@@ -6593,44 +6651,36 @@ app.post('/api/admin/update-spots', async (req, res) => {
 
 // Update paid amount endpoint
 app.post('/api/admin/update-paid-amount', async (req, res) => {
-    const { password, sessionToken, playerId, amount, paymentStatus } = req.body;
+    const { password, sessionToken, playerId, amount } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
     const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId);
     if (!player) return res.status(404).json({ error: "Player not found" });
 
-    const status = String(paymentStatus || '').trim().toUpperCase();
     let paidAmount = null;
-    let paid = false;
-    let paymentMethod = player.paymentMethod || 'Cash';
-
-    if (status === 'PIA') {
-        paidAmount = 0;
-        paid = true;
-        paymentMethod = 'PIA';
-    } else if (amount !== '' && amount !== null && amount !== undefined) {
+    if (amount !== '' && amount !== null && amount !== undefined) {
         const parsed = parseFloat(amount);
         if (!isNaN(parsed) && parsed >= 0) {
             paidAmount = parsed;
-            paid = parsed > 0;
-            if (status === 'PAID' || paidAmount > 0) {
-                if (String(paymentMethod || '').trim().toUpperCase() === 'PIA') paymentMethod = 'E-Transfer';
-            } else if (status === 'OWES' && String(paymentMethod || '').trim().toUpperCase() === 'PIA') {
-                paymentMethod = 'Cash';
-            }
         }
     }
 
     try {
         player.paidAmount = paidAmount;
-        player.paid = paid;
-        player.paymentMethod = paymentMethod;
+
+        if (paidAmount !== null && paidAmount > 0) {
+            applyPaymentStatusToPlayer(player, 'paid');
+        } else if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
+            applyPaymentStatusToPlayer(player, 'pia');
+        } else {
+            applyPaymentStatusToPlayer(player, 'owes');
+        }
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_method = $3 WHERE id = $4',
-                [paid, paidAmount, paymentMethod, normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
             );
         }
 
@@ -6645,6 +6695,47 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
     } catch (err) {
         console.error('Error updating paid amount:', err);
         res.status(500).json({ error: "Failed to update payment safely" });
+    }
+});
+
+// Update payment status endpoint: paid / pia / owes without adding another admin-table column
+app.post('/api/admin/update-payment-status', async (req, res) => {
+    const { password, sessionToken, playerId, status } = req.body;
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+
+    const normalizedPlayerId = parseInt(playerId, 10);
+    const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId);
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const paymentStatus = normalizePaymentStatus(status, player);
+
+    try {
+        if (paymentStatus === 'paid') {
+            applyPaymentStatusToPlayer(player, 'paid', { ensureAmount: true, defaultAmount: 15 });
+        } else if (paymentStatus === 'pia') {
+            applyPaymentStatusToPlayer(player, 'pia');
+        } else {
+            applyPaymentStatusToPlayer(player, 'owes');
+        }
+
+        if (pool) {
+            await pool.query(
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
+            );
+        }
+
+        await saveData();
+
+        const totalPaid = players.reduce((sum, p) => {
+            const value = parseFloat(p && p.paidAmount);
+            return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+
+        res.json({ success: true, player, totalPaid: totalPaid.toFixed(2) });
+    } catch (err) {
+        console.error('Error updating payment status:', err);
+        res.status(500).json({ error: "Failed to update payment status safely" });
     }
 });
 

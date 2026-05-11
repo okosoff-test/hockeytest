@@ -1909,6 +1909,9 @@ button {
 .payment-slider-save{
     background:#2e7d32 !important;
 }
+.payment-slider-pia{
+    background:#1565c0 !important;
+}
 </style>
 
 
@@ -6509,20 +6512,19 @@ Date: ${selectedGameDate}`);
 
                         let paidInput = '';
                         if (!hideAdminPaymentUi) {
-                            const paymentMethodText = String(p.paymentMethod || '').trim().toUpperCase();
-                            const isPIA = paymentMethodText === 'PIA';
-                            const paidAmountNumber = parseFloat(p.paidAmount);
-                            const isPaid = isPIA || (Number.isFinite(paidAmountNumber) && paidAmountNumber > 0);
-                            const compactAmount = isPIA
-                                ? 0
-                                : (isPaid ? paidAmountNumber : 15);
-                            const compactLabel = isPIA
-                                ? 'PIA'
-                                : `$${Number.isInteger(compactAmount) ? compactAmount : compactAmount.toFixed(2)}`;
-                            const compactClass = isPIA ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
+                            const paymentStatus = String(p.paymentStatus || '').toLowerCase() === 'pia'
+                                ? 'pia'
+                                : (p.paidAmount && parseFloat(p.paidAmount) > 0 ? 'paid' : 'owes');
+                            const isPaid = paymentStatus === 'paid';
+                            const isPia = paymentStatus === 'pia';
+                            const compactAmount = isPaid
+                                ? parseFloat(p.paidAmount)
+                                : (isPia && p.paidAmount != null && !isNaN(parseFloat(p.paidAmount)) ? parseFloat(p.paidAmount) : 15);
+                            const compactLabel = isPia ? 'PIA' : (isPaid ? `$${compactAmount}` : 'OWES');
+                            const compactClass = isPia ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
                             paidInput = `
-                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-method="${paymentMethodText}">
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap unpaid to mark $15. Tap paid/PIA to change amount." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}">
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/open payment options. PIA is paid in advance." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         ${compactLabel}
                                     </button>
                                 </div>
@@ -6707,7 +6709,7 @@ Date: ${selectedGameDate}`);
             loadData();
         }
 
-        async function updatePaidAmount(playerId, amount, paymentStatus = '') {
+        async function updatePaidAmount(playerId, amount) {
             try {
                 const res = await fetch(`${API_URL}/api/admin/update-paid-amount`, {
                     method: 'POST',
@@ -6715,8 +6717,7 @@ Date: ${selectedGameDate}`);
                     body: JSON.stringify({ 
                         sessionToken: sessionToken, 
                         playerId: playerId, 
-                        amount: amount,
-                        paymentStatus: paymentStatus
+                        amount: amount 
                     })
                 });
 
@@ -6736,6 +6737,39 @@ Date: ${selectedGameDate}`);
             } catch (err) {
                 console.error("Update paid amount error:", err);
                 alert("Error: " + (err.message || "Failed to update payment"));
+                throw err;
+            }
+        }
+
+
+        async function updatePaymentStatus(playerId, status) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-payment-status`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({
+                        sessionToken: sessionToken,
+                        playerId: playerId,
+                        status: status
+                    })
+                });
+
+                if (res.status === 401) {
+                    logout();
+                    throw new Error('Unauthorized');
+                }
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    document.getElementById('totalPaidDisplay').innerText = `($${data.totalPaid})`;
+                    return data;
+                } else {
+                    throw new Error(data.error || 'Failed to update payment status');
+                }
+            } catch (err) {
+                console.error("Update payment status error:", err);
+                alert("Error: " + (err.message || "Failed to update payment status"));
                 throw err;
             }
         }
@@ -8270,27 +8304,7 @@ async function savePaymentSlider(){
         wrap.style.opacity = '0.7';
     }
     try {
-        await updatePaidAmount(activePaymentSliderPlayerId, amount, amount > 0 ? 'PAID' : 'OWES');
-        closePaymentSlider();
-        await loadData();
-    } finally {
-        if(wrap){
-            delete wrap.dataset.busy;
-            wrap.style.opacity = '';
-        }
-    }
-}
-async function savePaymentPIA(){
-    if(activePaymentSliderPlayerId == null) return;
-    const wrap = compactPayFind(activePaymentSliderPlayerId);
-    if(wrap && wrap.dataset.busy === '1') return;
-    if(wrap){
-        wrap.dataset.busy = '1';
-        wrap.style.opacity = '0.7';
-    }
-    try {
-        setPaymentSliderAmount(0);
-        await updatePaidAmount(activePaymentSliderPlayerId, 0, 'PIA');
+        await updatePaidAmount(activePaymentSliderPlayerId, amount);
         closePaymentSlider();
         await loadData();
     } finally {
@@ -8313,11 +8327,41 @@ async function compactPayToggle(playerId){
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
     try {
-        await updatePaidAmount(playerId, 15, 'PAID');
+        await updatePaymentStatus(playerId, 'paid');
         await loadData();
     } finally {
         delete wrap.dataset.busy;
         wrap.style.opacity = '';
+    }
+}
+
+async function markPaymentPia(){
+    if(activePaymentSliderPlayerId == null) return;
+    const playerId = activePaymentSliderPlayerId;
+    const wrap = compactPayFind(playerId);
+    if(wrap && wrap.dataset.busy === '1') return;
+    if(wrap){ wrap.dataset.busy = '1'; wrap.style.opacity = '0.7'; }
+    try {
+        await updatePaymentStatus(playerId, 'pia');
+        closePaymentSlider();
+        await loadData();
+    } finally {
+        if(wrap){ delete wrap.dataset.busy; wrap.style.opacity = ''; }
+    }
+}
+
+async function markPaymentOwes(){
+    if(activePaymentSliderPlayerId == null) return;
+    const playerId = activePaymentSliderPlayerId;
+    const wrap = compactPayFind(playerId);
+    if(wrap && wrap.dataset.busy === '1') return;
+    if(wrap){ wrap.dataset.busy = '1'; wrap.style.opacity = '0.7'; }
+    try {
+        await updatePaymentStatus(playerId, 'owes');
+        closePaymentSlider();
+        await loadData();
+    } finally {
+        if(wrap){ delete wrap.dataset.busy; wrap.style.opacity = ''; }
     }
 }
 document.addEventListener('keydown', function(e){
@@ -8339,11 +8383,12 @@ document.addEventListener('keydown', function(e){
                 <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(10)">$10</button>
                 <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(15)">$15</button>
                 <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(20)">$20</button>
-                <button type="button" class="payment-slider-preset" onclick="savePaymentPIA()">PIA</button>
+                <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(0)">$0</button>
             </div>
             <div class="payment-slider-actions">
                 <button type="button" class="payment-slider-cancel" onclick="closePaymentSlider()">Cancel</button>
-                <button type="button" class="payment-slider-clear" onclick="paymentSliderPreset(0)">Clear</button>
+                <button type="button" class="payment-slider-clear" onclick="markPaymentOwes()">OWES</button>
+                <button type="button" class="payment-slider-pia" onclick="markPaymentPia()">PIA</button>
                 <button type="button" class="payment-slider-save" onclick="savePaymentSlider()">Save</button>
             </div>
         </div>
