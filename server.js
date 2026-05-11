@@ -4757,8 +4757,13 @@ function buildPublicRosterPayload() {
         return nameA.localeCompare(nameB);
     };
 
+    const cancellationTiming = getCancellationTimingStatus();
+    const cancellationAllowedNow = !cancellationTiming.isLateCancelWindow;
+
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
+        const protectedPlayer = String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly';
+        const canCancel = !cancelled && cancellationAllowedNow && !p.isGoalie && !protectedPlayer;
         return {
             id: p.id,
             firstName: p.firstName,
@@ -4766,7 +4771,9 @@ function buildPublicRosterPayload() {
             isGoalie: !!p.isGoalie,
             cancelled,
             owes: cancelled,
-            canCancel: !cancelled && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
+            lateCancelOwes: cancelled,
+            canCancel,
+            cancellationAllowedNow,
             promotedFromWaitlist: !!p.promotedFromWaitlist,
             lateAddedAfterRelease: !!p.lateAddedAfterRelease,
             isLateAddition: !!(p.promotedFromWaitlist || p.lateAddedAfterRelease),
@@ -4940,6 +4947,9 @@ app.get('/api/roster', (req, res) => {
         darkActiveCount: rosterPayload.darkActiveCount,
         whiteRating: rosterPayload.whiteRating,
         darkRating: rosterPayload.darkRating,
+        cancellationPolicy: NO_SHOW_POLICY_TEXT,
+        cancellationAllowedNow: !getCancellationTimingStatus().isLateCancelWindow,
+        hoursUntilGame: getCancellationTimingStatus().hoursUntilGame,
         location: gameLocation,
         time: gameTime,
         date: gameDate,
