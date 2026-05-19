@@ -1536,35 +1536,45 @@
         }
 
 
+/* Compact mobile-friendly SUBBED IN layout */
+.subbed-in-label,
+.subbed-in-badge {
+    display: inline-block !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin-left: 6px !important;
+    color: #ff9f1c !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0.2px !important;
+    box-shadow: none !important;
+}
 
-        /* Plain subbed-in text; no blue bar/pill */
-        .subbed-in-text-label {
-            display: block;
-            background: transparent !important;
-            color: #ffb347;
-            font-size: 0.7rem;
-            font-weight: 800;
-            line-height: 1.15;
-            margin-top: 4px;
-            padding: 0;
-            border: 0;
-            border-radius: 0;
-            text-transform: uppercase;
-            letter-spacing: 0.25px;
-        }
+.subbed-in-for {
+    display: block !important;
+    margin-top: 2px !important;
+    margin-left: 0 !important;
+    color: #dcdcdc !important;
+    font-size: 0.74rem !important;
+    line-height: 1.1 !important;
+}
 
-        .subbed-in-text-note {
-            display: block;
-            background: transparent !important;
-            color: #ccc;
-            font-size: 0.76rem;
-            font-weight: 600;
-            line-height: 1.15;
-            margin-top: 2px;
-            padding: 0;
-            border: 0;
-            border-radius: 0;
-        }
+.player-info-simple {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 1px !important;
+}
+
+.player-name-simple {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    line-height: 1.1 !important;
+}
 
 </style>
 <base target="_blank">
@@ -1591,10 +1601,7 @@
         color: #fff;
     }
     .subbed-in-badge {
-        background: transparent;
-        color: #ffb347;
-        padding-left: 0;
-        padding-right: 0;
+        background: #1976d2;
     }
     .you-were-subbed-badge {
         background: #2e7d32;
@@ -1621,6 +1628,47 @@
         35% { box-shadow: 0 0 0 3px rgba(255,107,0,0.45), 0 0 22px rgba(255,107,0,0.32); }
         100% { box-shadow: 0 0 0 rgba(255,107,0,0); }
     }
+
+/* Compact mobile-friendly SUBBED IN layout */
+.subbed-in-label,
+.subbed-in-badge {
+    display: inline-block !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    margin-left: 6px !important;
+    color: #ff9f1c !important;
+    font-size: 0.72rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    letter-spacing: 0.2px !important;
+    box-shadow: none !important;
+}
+
+.subbed-in-for {
+    display: block !important;
+    margin-top: 2px !important;
+    margin-left: 0 !important;
+    color: #dcdcdc !important;
+    font-size: 0.74rem !important;
+    line-height: 1.1 !important;
+}
+
+.player-info-simple {
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 1px !important;
+}
+
+.player-name-simple {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 4px !important;
+    line-height: 1.1 !important;
+}
+
 </style>
 
 </head>
@@ -2781,7 +2829,7 @@ function updateCalculatedRating() {
                     team.forEach(player => {
                         const li = document.createElement('li');
                         const isLateAddition = !!(player.isLateAddition || player.lateAddedAfterRelease);
-                        const isSubbedIn = !!(player.subbedInForName && !isLateAddition);
+                        const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !isLateAddition);
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled-player' : '') + ((isLateAddition || isSubbedIn) ? ' promoted-from-waitlist' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
@@ -3403,9 +3451,9 @@ function updateCalculatedRating() {
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
                 const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
-                const isSubbedIn = !!(player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
-                const subbedInLabel = isSubbedIn ? '<div class="subbed-in-text-label">SUBBED IN</div>' : '';
-                const subbedInNote = isSubbedIn ? `<div class="subbed-in-text-note">for ${player.subbedInForName}</div>` : '';
+                const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
+                const subbedInLabel = isSubbedIn ? '<div class="goalie-label" style="background:#1976d2;">SUBBED IN</div>' : '';
+                const subbedInNote = isSubbedIn ? `<div style="font-size:0.78rem;color:#a8d3ff;margin-top:4px;">for ${player.subbedInForName}</div>` : '';
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && player.canCancel !== false) {
