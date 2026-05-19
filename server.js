@@ -760,6 +760,28 @@ function clearAnnouncementState() {
     announcementImages = [];
 }
 
+
+function ensureReplacementDisplayFields(player) {
+    if (!player || typeof player !== 'object') return player;
+    const replacementName =
+        player.subbedInForName ||
+        player.replacementForName ||
+        player.cancelledPlayerName ||
+        player.replacedPlayerName ||
+        '';
+    if (replacementName) {
+        player.subbedInForName = replacementName;
+        player.replacementForName = replacementName;
+        player.promotedFromWaitlist = true;
+        if (!rosterReleased) {
+            player.isLateAddition = false;
+            player.lateAddedAfterRelease = false;
+        }
+    }
+    return player;
+}
+
+
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
     {
@@ -5906,7 +5928,7 @@ app.post('/api/admin/players-full', (req, res) => {
         totalPaid: totalPaid.toFixed(2),
         paidCount: paidCount,
         unpaidCount: unpaidCount,
-        players: players,  // Full data with payment AND rating
+        players: players.map(player => ensureReplacementDisplayFields(player)),  // Full data with payment AND rating
         waitlist: waitlist, // Full waitlist data
         cancellations: cancelledRegistrations,
         customSignupCode,
