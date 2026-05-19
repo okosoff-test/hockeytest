@@ -1536,45 +1536,37 @@
         }
 
 
-        /* Subbed-in text: keep label, remove blue pill/highlight bar */
-        .subbed-in-label,
-        .player-info-simple .subbed-in-label,
-        .player-info-simple .subbed-in-badge,
-        .subbed-in-badge {
-            display: block !important;
+
+        /* Plain subbed-in text; no blue bar/pill */
+        .subbed-in-text-label {
+            display: block;
             background: transparent !important;
-            border: 0 !important;
-            border-radius: 0 !important;
-            padding: 0 !important;
-            margin-top: 3px !important;
-            color: #ffb347 !important;
-            font-size: 0.68rem !important;
-            font-weight: 800 !important;
-            line-height: 1.15 !important;
-            text-transform: uppercase !important;
-            letter-spacing: 0.25px !important;
-            width: auto !important;
-            box-shadow: none !important;
+            color: #ffb347;
+            font-size: 0.7rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin-top: 4px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.25px;
         }
 
-        .subbed-in-for,
-        .player-info-simple .subbed-in-for {
-            display: block !important;
+        .subbed-in-text-note {
+            display: block;
             background: transparent !important;
-            border: 0 !important;
-            padding: 0 !important;
-            margin-top: 1px !important;
-            color: #d8d8d8 !important;
-            font-size: 0.68rem !important;
-            font-weight: 600 !important;
-            line-height: 1.15 !important;
-            text-transform: none !important;
-            letter-spacing: 0 !important;
-            width: auto !important;
-            box-shadow: none !important;
+            color: #ccc;
+            font-size: 0.76rem;
+            font-weight: 600;
+            line-height: 1.15;
+            margin-top: 2px;
+            padding: 0;
+            border: 0;
+            border-radius: 0;
         }
 
-    </style>
+</style>
 <base target="_blank">
 <style id="game-card-lock-and-live-promo-v1">
     .game-info.position-locked-after-release {
@@ -1599,7 +1591,10 @@
         color: #fff;
     }
     .subbed-in-badge {
-        background: #1976d2;
+        background: transparent;
+        color: #ffb347;
+        padding-left: 0;
+        padding-right: 0;
     }
     .you-were-subbed-badge {
         background: #2e7d32;
@@ -3409,8 +3404,8 @@ function updateCalculatedRating() {
                 const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
                 const isSubbedIn = !!(player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
-                const subbedInLabel = isSubbedIn ? '<div class="goalie-label" style="background:#1976d2;">SUBBED IN</div>' : '';
-                const subbedInNote = isSubbedIn ? `<div style="font-size:0.78rem;color:#a8d3ff;margin-top:4px;">for ${player.subbedInForName}</div>` : '';
+                const subbedInLabel = isSubbedIn ? '<div class="subbed-in-text-label">SUBBED IN</div>' : '';
+                const subbedInNote = isSubbedIn ? `<div class="subbed-in-text-note">for ${player.subbedInForName}</div>` : '';
 
                 let cancelButton = '';
                 if (!isGoalie && !isProtected && player.canCancel !== false) {
