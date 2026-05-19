@@ -760,6 +760,28 @@ function clearAnnouncementState() {
     announcementImages = [];
 }
 
+
+function ensureReplacementDisplayFields(player) {
+    if (!player || typeof player !== 'object') return player;
+    const replacementName =
+        player.subbedInForName ||
+        player.replacementForName ||
+        player.cancelledPlayerName ||
+        player.replacedPlayerName ||
+        '';
+    if (replacementName) {
+        player.subbedInForName = replacementName;
+        player.replacementForName = replacementName;
+        player.promotedFromWaitlist = true;
+        if (!rosterReleased) {
+            player.isLateAddition = false;
+            player.lateAddedAfterRelease = false;
+        }
+    }
+    return player;
+}
+
+
 // --- BACKUP GOALIES FOR SUBSTITUTION ---
 const BACKUP_GOALIES = [
     {
@@ -4851,14 +4873,7 @@ app.get('/api/status', (req, res) => {
         lastName: p.lastName,
         isGoalie: p.isGoalie,
         // Phan Ly cannot cancel from signup page - only admin can remove
-        canCancel: !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
-        // Public replacement display fields only. Still excludes rating, payment, and phone.
-        promotedFromWaitlist: !!p.promotedFromWaitlist,
-        lateAddedAfterRelease: !!p.lateAddedAfterRelease,
-        isLateAddition: !!p.lateAddedAfterRelease,
-        subbedInForName: p.subbedInForName || null,
-        subbedInForPlayerId: p.subbedInForPlayerId ?? null,
-        subbedInAt: p.subbedInAt || null
+        canCancel: !p.isGoalie && !(p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly')
         // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
     }));
 
@@ -5463,10 +5478,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
             message: "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
                 firstName: promotedPlayer.firstName,
-                lastName: promotedPlayer.lastName,
-                subbedInForName: promotedPlayer.subbedInForName || null,
-                lateAddedAfterRelease: !!promotedPlayer.lateAddedAfterRelease,
-                promotedFromWaitlist: !!promotedPlayer.promotedFromWaitlist
+                lastName: promotedPlayer.lastName
             } : null,
             spotsAvailable: playerSpots
         });
@@ -5916,7 +5928,7 @@ app.post('/api/admin/players-full', (req, res) => {
         totalPaid: totalPaid.toFixed(2),
         paidCount: paidCount,
         unpaidCount: unpaidCount,
-        players: players,  // Full data with payment AND rating
+        players: players.map(player => ensureReplacementDisplayFields(player)),  // Full data with payment AND rating
         waitlist: waitlist, // Full waitlist data
         cancellations: cancelledRegistrations,
         customSignupCode,
