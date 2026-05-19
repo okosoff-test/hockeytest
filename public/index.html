@@ -32,7 +32,7 @@
             display: none;
             background: linear-gradient(90deg, #ff4444, #ff6b00, #ff4444);
             background-size: 200% 100%;
-            color: #7ec8ff;
+            color: white;
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 25px;
@@ -753,13 +753,13 @@
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            background: transparent;
+            background: #2196f3;
             color: white;
             font-size: 0.62rem;
             font-weight: 800;
             line-height: 1;
             padding: 3px 6px;
-            border-radius: 0;
+            border-radius: 999px;
             margin-top: 4px;
             width: fit-content;
             letter-spacing: 0.3px;
@@ -1535,7 +1535,46 @@
             border-top: 1px solid rgba(255,255,255,0.1);
         }
 
-</style>
+
+        /* Subbed-in text: keep label, remove blue pill/highlight bar */
+        .subbed-in-label,
+        .player-info-simple .subbed-in-label,
+        .player-info-simple .subbed-in-badge,
+        .subbed-in-badge {
+            display: block !important;
+            background: transparent !important;
+            border: 0 !important;
+            border-radius: 0 !important;
+            padding: 0 !important;
+            margin-top: 3px !important;
+            color: #ffb347 !important;
+            font-size: 0.68rem !important;
+            font-weight: 800 !important;
+            line-height: 1.15 !important;
+            text-transform: uppercase !important;
+            letter-spacing: 0.25px !important;
+            width: auto !important;
+            box-shadow: none !important;
+        }
+
+        .subbed-in-for,
+        .player-info-simple .subbed-in-for {
+            display: block !important;
+            background: transparent !important;
+            border: 0 !important;
+            padding: 0 !important;
+            margin-top: 1px !important;
+            color: #d8d8d8 !important;
+            font-size: 0.68rem !important;
+            font-weight: 600 !important;
+            line-height: 1.15 !important;
+            text-transform: none !important;
+            letter-spacing: 0 !important;
+            width: auto !important;
+            box-shadow: none !important;
+        }
+
+    </style>
 <base target="_blank">
 <style id="game-card-lock-and-live-promo-v1">
     .game-info.position-locked-after-release {
@@ -2747,7 +2786,7 @@ function updateCalculatedRating() {
                     team.forEach(player => {
                         const li = document.createElement('li');
                         const isLateAddition = !!(player.isLateAddition || player.lateAddedAfterRelease);
-                        const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !isLateAddition);
+                        const isSubbedIn = !!(player.subbedInForName && !isLateAddition);
                         li.className = 'player-item' + (player.isGoalie ? ' goalie' : '') + (player.cancelled ? ' cancelled-player' : '') + ((isLateAddition || isSubbedIn) ? ' promoted-from-waitlist' : '');
                         const goalieBadge = player.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const cancelBadge = player.cancelled ? '<span class="cancel-badge">CANCEL</span>' : '';
@@ -3369,7 +3408,7 @@ function updateCalculatedRating() {
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
                 const goalieLabel = isGoalie ? '<div class="goalie-label">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
-                const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
+                const isSubbedIn = !!(player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
                 const subbedInLabel = isSubbedIn ? '<div class="goalie-label" style="background:#1976d2;">SUBBED IN</div>' : '';
                 const subbedInNote = isSubbedIn ? `<div style="font-size:0.78rem;color:#a8d3ff;margin-top:4px;">for ${player.subbedInForName}</div>` : '';
 
