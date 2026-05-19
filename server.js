@@ -1,3 +1,17 @@
+/*
+========================================================
+Phan Hockey Registration System
+Copyright © 2026 Phan Anthony Ly
+All Rights Reserved.
+
+Unauthorized copying, modification, distribution,
+reverse engineering, or commercial reuse prohibited
+without written permission.
+
+Created and maintained by Phan Anthony Ly.
+========================================================
+*/
+
 const express = require('express');
 const cors = require('cors');
 const helmet = require('helmet');
@@ -394,6 +408,11 @@ const AUTO_SCHEDULE_RESET_MINUTE = 0;
 // Weekly reset is intentionally exact-minute only.
 // This prevents restored snapshots or Render wake-ups from replaying a missed reset via catch-up.
 const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = 0;
+
+// Scheduled weekly reset must happen soon after the configured game.
+// 18 hours covers Friday 9:30 PM -> Saturday 12:00 AM and Sunday morning/day -> Monday 12:00 AM,
+// but blocks stale cross-event resets such as Friday data being cleared Monday morning.
+const DEFAULT_MAX_RESET_HOURS_AFTER_GAME = 18;
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -1017,7 +1036,7 @@ function validateResetScheduleAgainstGame(resetAt, selectedGameTime = gameTime) 
 
     // A weekly reset should happen after that week's game, not almost a full week later before the next game.
     // This blocks stale Friday reset settings such as Friday afternoon/evening for Friday hockey.
-    const maxResetHoursAfterGame = Math.max(1, Number(process.env.MAX_RESET_HOURS_AFTER_GAME || 72));
+    const maxResetHoursAfterGame = Math.max(1, Number(process.env.MAX_RESET_HOURS_AFTER_GAME || DEFAULT_MAX_RESET_HOURS_AFTER_GAME));
     if (minutesAfterGame > maxResetHoursAfterGame * 60) {
         return {
             ok: false,
@@ -1101,7 +1120,7 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
 
     const gamePoint = getGameSchedulePointFromGameTime(gameTime);
     const minutesAfterLatestGame = minutesSinceLatestWeeklyOccurrence(gamePoint, etTime);
-    const maxResetHoursAfterGame = Math.max(1, Number(process.env.MAX_RESET_HOURS_AFTER_GAME || 72));
+    const maxResetHoursAfterGame = Math.max(1, Number(process.env.MAX_RESET_HOURS_AFTER_GAME || DEFAULT_MAX_RESET_HOURS_AFTER_GAME));
     if (!Number.isFinite(minutesAfterLatestGame) || minutesAfterLatestGame <= 0 || minutesAfterLatestGame > maxResetHoursAfterGame * 60) {
         return {
             ok: false,
@@ -7282,3 +7301,13 @@ initDatabase().then(async () => {
         console.log(`Background scheduler: ${BACKGROUND_SCHEDULER_ENABLED ? 'enabled' : 'disabled (request-driven mode)'}`);
     });
 });
+
+/* Copyright Footer */
+.copyright-footer {
+    text-align: center;
+    font-size: 12px;
+    color: #888;
+    padding: 15px 10px;
+    margin-top: 20px;
+    border-top: 1px solid rgba(255,255,255,0.1);
+}
