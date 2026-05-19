@@ -3994,7 +3994,7 @@ function buildPromotedRosterPlayer(waitlistPlayer, team = null, metadata = {}) {
         registeredAt: waitlistPlayer.registeredAt || waitlistPlayer.joinedAt || new Date().toISOString(),
         rulesAgreed: true,
         promotedFromWaitlist: !!metadata.promotedFromWaitlist,
-        lateAddedAfterRelease: !!metadata.promotedFromWaitlist,
+        lateAddedAfterRelease: !!metadata.lateAddedAfterRelease,
         subbedInForPlayerId: metadata.subbedInForPlayerId ?? null,
         subbedInForName: subbedInForName || null,
         subbedInAt: metadata.subbedInAt || new Date().toISOString()
@@ -4795,7 +4795,7 @@ function buildPublicRosterPayload() {
             cancellationAllowedNow,
             promotedFromWaitlist: !!p.promotedFromWaitlist,
             lateAddedAfterRelease: !!p.lateAddedAfterRelease,
-            isLateAddition: !!(p.promotedFromWaitlist || p.lateAddedAfterRelease),
+            isLateAddition: !!p.lateAddedAfterRelease,
             subbedInForName: p.subbedInForName || null,
             subbedInForPlayerId: p.subbedInForPlayerId ?? null,
             subbedInAt: p.subbedInAt || null
@@ -5426,6 +5426,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
                     promotedPlayer = buildPromotedRosterPlayer(waitlistPlayer, assignedTeam, {
                         promotedFromWaitlist: true,
+                        lateAddedAfterRelease: rosterWasReleased,
                         subbedInForPlayerId: player.id,
                         subbedInForName: `${player.firstName || ''} ${player.lastName || ''}`.trim(),
                         subbedInAt: new Date().toISOString()
@@ -6627,6 +6628,7 @@ app.post('/api/admin/promote-waitlist', async (req, res) => {
     const teamForPromotion = rosterReleased ? requestedTeam : null;
     const newPlayer = buildPromotedRosterPlayer(player, teamForPromotion, {
         promotedFromWaitlist: !!rosterReleased,
+        lateAddedAfterRelease: !!rosterReleased,
         subbedInAt: new Date().toISOString()
     });
 
@@ -6739,6 +6741,7 @@ app.post('/api/admin/remove-player', async (req, res) => {
                         removedPlayer.team === 'White' || removedPlayer.team === 'Dark' ? removedPlayer.team : null,
                         {
                             promotedFromWaitlist: true,
+                            lateAddedAfterRelease: true,
                             subbedInForPlayerId: removedPlayer.id,
                             subbedInForName: `${removedPlayer.firstName || ''} ${removedPlayer.lastName || ''}`.trim(),
                             subbedInAt: new Date().toISOString()
