@@ -4850,6 +4850,13 @@ app.get('/api/status', (req, res) => {
         firstName: p.firstName,
         lastName: p.lastName,
         isGoalie: p.isGoalie,
+        // Replacement-display metadata is safe to expose publicly because it only contains names already shown on the signup page.
+        promotedFromWaitlist: !!p.promotedFromWaitlist,
+        lateAddedAfterRelease: !!(p.lateAddedAfterRelease || p.isLateAddition),
+        isLateAddition: !!(p.isLateAddition || p.lateAddedAfterRelease),
+        subbedInForPlayerId: p.subbedInForPlayerId || null,
+        subbedInForName: p.subbedInForName || null,
+        subbedInAt: p.subbedInAt || null,
         // Phan Ly cannot cancel from signup page - only admin can remove
         canCancel: !p.isGoalie && !(p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly')
         // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
@@ -5455,8 +5462,15 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
             lateCancel: false,
             message: "Registration cancelled successfully.",
             promotedPlayer: promotedPlayer ? {
+                id: promotedPlayer.id,
                 firstName: promotedPlayer.firstName,
-                lastName: promotedPlayer.lastName
+                lastName: promotedPlayer.lastName,
+                promotedFromWaitlist: !!promotedPlayer.promotedFromWaitlist,
+                lateAddedAfterRelease: !!promotedPlayer.lateAddedAfterRelease,
+                isLateAddition: !!(promotedPlayer.isLateAddition || promotedPlayer.lateAddedAfterRelease),
+                subbedInForPlayerId: promotedPlayer.subbedInForPlayerId || null,
+                subbedInForName: promotedPlayer.subbedInForName || null,
+                subbedInAt: promotedPlayer.subbedInAt || null
             } : null,
             spotsAvailable: playerSpots
         });
