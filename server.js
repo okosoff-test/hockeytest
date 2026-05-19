@@ -7301,13 +7301,3 @@ initDatabase().then(async () => {
         console.log(`Background scheduler: ${BACKGROUND_SCHEDULER_ENABLED ? 'enabled' : 'disabled (request-driven mode)'}`);
     });
 });
-
-/* Copyright Footer */
-.copyright-footer {
-    text-align: center;
-    font-size: 12px;
-    color: #888;
-    padding: 15px 10px;
-    margin-top: 20px;
-    border-top: 1px solid rgba(255,255,255,0.1);
-}
