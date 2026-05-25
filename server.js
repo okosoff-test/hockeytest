@@ -4034,6 +4034,26 @@ function syncCurrentWeekTeamsFromPlayers() {
     };
 }
 
+function rebalanceReleasedRoster(reason = 'roster-change') {
+    if (!getEffectiveRosterReleasedState()) {
+        syncCurrentWeekTeamsFromPlayers();
+        return null;
+    }
+
+    rosterReleased = true;
+    const teams = generateFairTeams();
+    currentWeekData = {
+        ...(currentWeekData || {}),
+        releaseDate: currentWeekData?.releaseDate || new Date().toISOString(),
+        rosterReleaseTime: currentWeekData?.rosterReleaseTime || Date.now(),
+        whiteTeam: teams.whiteTeam,
+        darkTeam: teams.darkTeam,
+        lastRebalancedAt: new Date().toISOString(),
+        lastRebalanceReason: reason
+    };
+    return teams;
+}
+
 function isDuplicatePlayer(firstName, lastName, phone) {
     const normalizedName = (capitalizeFullName(firstName) + ' ' + capitalizeFullName(lastName)).toLowerCase().trim();
     const normalizedPhone = normalizePhoneDigits(phone);
@@ -5160,7 +5180,9 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         return res.status(400).json({ error: "Skill profile changed. Please review your calculated rating and try again." });
     }
 
-    if (effectiveRosterReleased || playerSpots <= 0) {
+    const shouldWaitlistNewSkater = playerSpots <= 0;
+
+    if (shouldWaitlistNewSkater) {
         const waitlistPlayer = hydratePlayerRatingProfile({
             id: Date.now(),
             firstName: cleanFirstName,
@@ -5317,12 +5339,24 @@ app.post('/api/register-final', async (req, res) => {
 
     try {
         await runProtectedMutation('player-signup', req, async () => {
+            const rosterWasReleased = getEffectiveRosterReleasedState();
+            if (rosterWasReleased) {
+                newPlayer.lateAddedAfterRelease = true;
+                newPlayer.isLateAddition = true;
+                newPlayer.subbedInAt = new Date().toISOString();
+            }
+
             players.push(newPlayer);
             playerSpots = Math.max(0, playerSpots - 1);
+
+            if (rosterWasReleased) {
+                rebalanceReleasedRoster('post-release-signup-open-spot');
+            }
         }, {
             playerId: newPlayer.id,
             firstName: newPlayer.firstName,
-            lastName: newPlayer.lastName
+            lastName: newPlayer.lastName,
+            rosterReleased: getEffectiveRosterReleasedState()
         });
     } catch (err) {
         console.error('Error saving player registration:', err.message);
@@ -5467,11 +5501,11 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
                     players.push(promotedPlayer);
                     playerSpots--;
 
-                    if (assignedTeam) {
-                        syncCurrentWeekTeamsFromPlayers();
+                    if (rosterWasReleased) {
+                        rebalanceReleasedRoster('player-cancel-waitlist-auto-promotion');
                     }
                 } else if (rosterWasReleased && removedPlayerTeam) {
-                    syncCurrentWeekTeamsFromPlayers();
+                    rebalanceReleasedRoster('player-cancel-open-spot');
                 }
             }, {
                 playerId: player.id,
@@ -6673,7 +6707,7 @@ app.post('/api/admin/promote-waitlist', async (req, res) => {
             players.push(newPlayer);
             if (!player.isGoalie && playerSpots > 0) playerSpots--;
             if (rosterReleased) {
-                syncCurrentWeekTeamsFromPlayers();
+                rebalanceReleasedRoster('admin-promote-waitlist');
             }
         }, { waitlistId, promotedPlayerId: newPlayer.id, assignTeam: teamForPromotion });
     } catch (err) {
@@ -6747,7 +6781,7 @@ app.post('/api/admin/add-player', async (req, res) => {
         subbedInAt: isLateRosterAddition ? nowIso : null
     });
     applyPersistentAdminRating(newPlayer);
-    try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; if (rosterReleased) syncCurrentWeekTeamsFromPlayers(); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
+    try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool && playerSpots > 0) playerSpots--; if (rosterReleased) rebalanceReleasedRoster('admin-add-player-after-release'); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false, assignTeam: teamForLateAdd, rosterReleased });
 });
@@ -6785,7 +6819,7 @@ app.post('/api/admin/remove-player', async (req, res) => {
                     players.push(autoPromotedPlayer);
                     if (!autoPromotedPlayer.isGoalie && playerSpots > 0) playerSpots--;
                 }
-                syncCurrentWeekTeamsFromPlayers();
+                rebalanceReleasedRoster(autoPromotedPlayer ? 'admin-remove-player-waitlist-auto-promotion' : 'admin-remove-player-open-spot');
             }
         }, { playerId: idToRemove, rosterReleased, removedTeam: player.team || null });
     } catch (err) {
