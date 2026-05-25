@@ -4805,7 +4805,7 @@ function isLateCancelledPlayer(player = {}) {
         const entryAction = String(entry?.action || '').trim();
         const sameId = playerId && String(entry?.id ?? '').trim() === playerId;
         const sameName = firstName && lastName && String(entry?.firstName || '').trim().toLowerCase() == firstName && String(entry?.lastName || '').trim().toLowerCase() == lastName;
-        return (sameId || sameName) && (entryAction === 'late_cancel_no_show_owed' || entryAction === 'cancelled' || entryAction === 'removed');
+        return (sameId || sameName) && entryAction === 'late_cancel_no_show_owed';
     });
 }
 
@@ -4824,7 +4824,7 @@ function buildPublicRosterPayload() {
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
         const protectedPlayer = String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly';
-        const canCancel = !cancelled && cancellationAllowedNow && !p.isGoalie && !protectedPlayer;
+        const canCancel = !cancelled && cancellationAllowedNow && !protectedPlayer;
         return {
             id: p.id,
             firstName: p.firstName,
@@ -4895,7 +4895,7 @@ app.get('/api/status', (req, res) => {
         lastName: p.lastName,
         isGoalie: p.isGoalie,
         // Phan Ly cannot cancel from signup page - only admin can remove
-        canCancel: cancellationAllowedNow && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
+        canCancel: cancellationAllowedNow && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
         // Public replacement display fields only. Still excludes rating, payment, and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
@@ -5425,41 +5425,9 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
     const isLateCancelWindow = foundSource === 'players' && !!cancellationTiming.isLateCancelWindow;
 
     if (isLateCancelWindow) {
-        const alreadyLoggedLateAttempt = cancelledRegistrations.some(item =>
-            String(item?.id) === String(foundPlayer.id) &&
-            item?.action === 'late_cancel_no_show_owed'
-        );
-
-        if (!alreadyLoggedLateAttempt) {
-            try {
-                await runProtectedMutation('player-cancel-late-attempt', req, async () => {
-                    appendCancellationLog({
-                        id: foundPlayer.id,
-                        firstName: foundPlayer.firstName,
-                        lastName: foundPlayer.lastName,
-                        phone: foundPlayer.phone,
-                        rating: foundPlayer.rating,
-                        isGoalie: foundPlayer.isGoalie,
-                        paymentMethod: foundPlayer.paymentMethod,
-                        source: foundSource || 'players',
-                        action: 'late_cancel_no_show_owed',
-                        cancelledBy: 'player',
-                        cancelledAt: new Date().toISOString(),
-                        notes: NO_SHOW_POLICY_TEXT
-                    });
-                }, {
-                    playerId: foundPlayer.id,
-                    source: foundSource || 'players'
-                });
-            } catch (err) {
-                console.error('Error logging late cancel attempt:', err.message);
-                return res.status(500).json({ error: "Cancellation could not be saved safely. Please try again." });
-            }
-        }
-
         return res.status(403).json({
             error: "Cancellation cutoff has passed. Players can cancel only until 3 hours before game time. Please contact the admin.",
-            lateCancel: true,
+            lateCancel: false,
             cancellationAllowedNow: false,
             policy: NO_SHOW_POLICY_TEXT,
             hoursUntilGame: cancellationTiming.hoursUntilGame,
