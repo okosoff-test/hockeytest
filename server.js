@@ -581,7 +581,7 @@ let currentWeekData = {
 };
 
 const MAX_GOALIES = 2;
-const NO_SHOW_POLICY_TEXT = 'Last minute cancellations must be done 3 hours before game time. Late cancel / no-show owes.';
+const NO_SHOW_POLICY_TEXT = 'Cancellations are allowed until 3 hours before game time. After that cutoff, please contact the admin.';
 
 const GAME_RULES = [
     "No contact. Board tie-ups only.",
@@ -4887,13 +4887,15 @@ app.get('/api/status', (req, res) => {
     
     // STRIP all sensitive data from public players list
     // Players see: id, name, goalie status, cancel permission ONLY
+    const cancellationTiming = getCancellationTimingStatus();
+    const cancellationAllowedNow = !cancellationTiming.isLateCancelWindow;
     const publicPlayers = players.map(p => ({
         id: p.id,
         firstName: p.firstName,
         lastName: p.lastName,
         isGoalie: p.isGoalie,
         // Phan Ly cannot cancel from signup page - only admin can remove
-        canCancel: !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
+        canCancel: cancellationAllowedNow && !p.isGoalie && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
         // Public replacement display fields only. Still excludes rating, payment, and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
@@ -4968,12 +4970,16 @@ app.get('/api/status', (req, res) => {
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
         scheduleMode,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
-        cancellationDeadlineLine: NO_SHOW_POLICY_TEXT
+        cancellationDeadlineLine: NO_SHOW_POLICY_TEXT,
+        cancellationAllowedNow,
+        hoursUntilGame: cancellationTiming.hoursUntilGame
     });
 });
 
 app.get('/api/waitlist', (req, res) => {
     // Waitlist view supports self-cancel, so include the id but keep private data hidden.
+    const cancellationTiming = getCancellationTimingStatus();
+    const cancellationAllowedNow = !cancellationTiming.isLateCancelWindow;
     const waitlistNames = waitlist.map((p, index) => ({
         id: p.id,
         position: index + 1,
@@ -4981,7 +4987,7 @@ app.get('/api/waitlist', (req, res) => {
         lastName: p.lastName,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie,
-        canCancel: !rosterReleased && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
+        canCancel: cancellationAllowedNow && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
         // EXCLUDED: rating, phone, paymentMethod
     }));
     
@@ -5451,12 +5457,12 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
             }
         }
 
-        return res.json({
-            success: true,
+        return res.status(403).json({
+            error: "Cancellation cutoff has passed. Players can cancel only until 3 hours before game time. Please contact the admin.",
             lateCancel: true,
-            noShowOwes: true,
+            cancellationAllowedNow: false,
             policy: NO_SHOW_POLICY_TEXT,
-            message: "Cancellation recorded. Late cancel / no-show owes.",
+            hoursUntilGame: cancellationTiming.hoursUntilGame,
             spotsAvailable: playerSpots
         });
     }
