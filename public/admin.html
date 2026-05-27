@@ -4025,37 +4025,6 @@ th, td{padding:2px 3px !important;}
                 <span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
             </div>
         </div>
-
-        
-        <!-- Signup Code Management -->
-        <div class="control-box">
-            <h3>Signup Code Management</h3>
-
-            <div class="control-row" style="margin-bottom:15px;">
-                <div style="flex:1; min-width:220px;">
-                    <label>Default Signup Code</label>
-                    <input type="text" id="defaultSignupCode" maxlength="4" placeholder="9855">
-                </div>
-
-                <button class="control-btn">Save Default Code</button>
-            </div>
-
-            <div class="control-row">
-                <div style="flex:1; min-width:220px;">
-                    <label>Temporary Override Code</label>
-                    <input type="text" id="overrideSignupCode" maxlength="4" placeholder="1234">
-                </div>
-
-                <button class="control-btn">Enable Override</button>
-                <button class="control-btn restore-btn">Clear Override</button>
-            </div>
-
-            <div class="schedule-info">
-                Permanent default code can be changed anytime. Override code temporarily replaces the default code until cleared.
-            </div>
-        </div>
-
-
 <div class="control-box">
             <h3>🔧 Player Spots</h3>
             <div class="control-row">
@@ -4080,21 +4049,30 @@ th, td{padding:2px 3px !important;}
 
         <div class="control-box">
             <h3>🔒 Signup Code Control</h3>
-            <div class="control-row" style="margin-bottom: 15px;">
+
+            <div class="control-row" style="margin-bottom: 12px;">
                 <div class="code-display" id="currentCodeDisplay">----</div>
                 <button class="control-btn" onclick="toggleCode()" id="toggleCodeBtn">Toggle Lock</button>
-                <button class="control-btn restore-btn" id="restoreBtn" onclick="restoreSchedule()" style="display:none;">Restore Auto</button>
-            </div>
-            <div class="control-row">
-                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="New 4-digit code" style="width:120px;">
-                <button class="control-btn" onclick="updateCode()" style="background: #4a90e2;">Set Override Code</button>
-                <button class="control-btn" onclick="generateNewCode()" style="background: #ff6b00;">🎲 Generate New</button>
-                <button class="control-btn" onclick="clearCodeOverride()" style="background: #666;">Clear Override</button>
                 <div class="status-display">
                     Status: <span id="codeStatusDisplay">...</span>
                 </div>
             </div>
-            
+
+            <div class="control-row" style="margin-bottom: 12px;">
+                <input type="text" id="defaultSignupCodeInput" class="control-input" maxlength="4" placeholder="Default code" style="width:160px;">
+                <button class="control-btn" onclick="updateDefaultCode()" style="background:#ff6b00;">Save Default Code</button>
+            </div>
+
+            <div class="control-row" style="margin-bottom: 12px;">
+                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Temporary override" style="width:160px;">
+                <button class="control-btn" onclick="updateCode()" style="background:#4a90e2;">Set Temporary Override</button>
+                <button class="control-btn" onclick="clearCodeOverride()" style="background:#666;">Clear Override</button>
+            </div>
+
+            <div class="schedule-info">
+                Active code uses the temporary override only when one is set. Otherwise it uses the saved default code.
+            </div>
+
             <div class="schedule-editor">
                 <h4 style="margin:10px 0 8px 0;">🗓️ Schedules (ET)</h4>
 
@@ -6073,6 +6051,8 @@ Date: ${selectedGameDate}`);
                 document.getElementById('dateInput').value = data.date || '';
                 document.getElementById('currentCodeDisplay').innerText = data.code;
                 document.getElementById('codeInput').value = '';
+                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
+                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
 
                 // Populate schedules
                 if (data.signupLockSchedule) {
@@ -6239,6 +6219,39 @@ Date: ${selectedGameDate}`);
             await updateCode();
         }
 
+
+        async function updateDefaultCode() {
+            try {
+                const newCode = document.getElementById('defaultSignupCodeInput').value.trim();
+
+                if (!newCode || !/^\d{4}$/.test(newCode)) {
+                    alert("Please enter a valid 4-digit default code.");
+                    return;
+                }
+
+                const res = await fetch(`${API_URL}/api/admin/update-default-code`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, newCode: newCode })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('currentCodeDisplay').innerText = data.code;
+                    await loadSettings();
+                    alert("Default signup code saved: " + data.defaultSignupCode);
+                } else if (res.status === 401) {
+                    alert("Session expired. Please login again.");
+                    logout();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.error || "Failed to update default code"));
+                }
+            } catch (err) {
+                console.error("Update default code error:", err);
+            }
+        }
+
         async function updateCode() {
             try {
                 const newCode = document.getElementById('codeInput').value.trim();
@@ -6258,8 +6271,10 @@ Date: ${selectedGameDate}`);
                     const data = await res.json();
                     document.getElementById('currentCodeDisplay').innerText = data.code;
                     document.getElementById('codeInput').value = '';
+                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
+                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
                     await loadSettings();
-                    alert("Code override updated successfully to: " + data.code);
+                    alert("Temporary override set. Current active code: " + data.code);
                 } else if (res.status === 401) {
                     alert("Session expired. Please login again.");
                     logout();
@@ -6273,7 +6288,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function clearCodeOverride() {
-            if (!confirm("Clear the manual code override and go back to the automatic default code?")) return;
+            if (!confirm("Clear the temporary override and use the saved default code?")) return;
             try {
                 const res = await fetch(`${API_URL}/api/admin/clear-code-override`, {
                     method: 'POST',
@@ -6285,8 +6300,10 @@ Date: ${selectedGameDate}`);
                     const data = await res.json();
                     document.getElementById('currentCodeDisplay').innerText = data.code;
                     document.getElementById('codeInput').value = '';
+                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
+                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
                     await loadSettings();
-                    alert("Manual code override cleared. Current active code: " + data.code);
+                    alert("Temporary override cleared. Current active code: " + data.code);
                 } else if (res.status === 401) {
                     alert("Session expired. Please login again.");
                     logout();
