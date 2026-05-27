@@ -345,6 +345,11 @@ function getGameDayName() {
 const FRIDAY_SIGNUP_CODE = '9855';
 const SUNDAY_SIGNUP_CODE = '7666';
 const DEFAULT_SIGNUP_CODE = FRIDAY_SIGNUP_CODE;
+
+// Editable permanent default code
+let editableDefaultSignupCode = DEFAULT_SIGNUP_CODE;
+
+// Temporary override code
 let customSignupCode = '';
 
 function getDynamicSignupCode(dayName = getGameDayName()) {
@@ -352,6 +357,10 @@ function getDynamicSignupCode(dayName = getGameDayName()) {
     if (/^\d{4}$/.test(custom)) return custom;
 
     const day = String(dayName || '').trim().toLowerCase();
+    if (/^\d{4}$/.test(editableDefaultSignupCode)) {
+        return editableDefaultSignupCode;
+    }
+
     if (day === 'friday') return FRIDAY_SIGNUP_CODE;
     if (day === 'sunday') return SUNDAY_SIGNUP_CODE;
     return DEFAULT_SIGNUP_CODE;
@@ -383,7 +392,7 @@ function calculateNextGameDate() {
     return next.toISOString().split("T")[0];
 }
 
-// Player signup password protection - dynamic by game day
+// Player signup password protection with editable default + temporary override
 let playerSignupCode = DEFAULT_SIGNUP_CODE;
 let requirePlayerCode = true;
 let manualOverride = false;
@@ -399,7 +408,7 @@ let lastExactRosterReleaseRunAt = '';
 let lastExactResetMinuteKey = '';
 let lastExactRosterReleaseMinuteKey = '';
 
-const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = false;
+const AUTO_BUILD_WEEKLY_SCHEDULES_FROM_GAMETIME = true;
 const AUTO_SCHEDULE_LOCK_HOUR = 17;
 const AUTO_SCHEDULE_LOCK_MINUTE = 0;
 const AUTO_SCHEDULE_RESET_HOUR = 0;
@@ -434,7 +443,7 @@ let resetWeekSchedule = {
 // Controls whether schedules may be auto rebuilt from game date/time.
 // 'manual' means admin-saved schedules are preserved across weekly resets and game-date changes.
 // 'auto' means schedules can be rebuilt from the selected game day/time.
-let scheduleMode = 'manual';
+let scheduleMode = 'auto';
 
 function hasConfiguredAdminPassword() {
     return !!ADMIN_PASSWORD;
@@ -1365,7 +1374,7 @@ function shouldAutoBuildMissingSchedules(scheduleSettings = {}) {
 }
 
 function isManualScheduleMode() {
-    return true;
+    return String(scheduleMode || 'auto').toLowerCase() === 'manual';
 }
 
 function canAutoRebuildSchedules() {
@@ -2112,7 +2121,7 @@ async function loadDataFromDB() {
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
-        scheduleMode = 'manual';
+        if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
         if (settings.signupLockEndAt !== undefined) signupLockEndAt = settings.signupLockEndAt || '';
         if (settings.rosterReleaseAt !== undefined) rosterReleaseAt = settings.rosterReleaseAt || '';
@@ -2745,7 +2754,7 @@ function applySnapshotToMemory(snapshot) {
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
-    scheduleMode = 'manual';
+    scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
         weekNumber: null,
         year: null,
@@ -3561,7 +3570,7 @@ function loadDataFromFile() {
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             customSignupCode = String(data.customSignupCode || '').trim();
-            scheduleMode = 'manual';
+            scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
                 weekNumber: null,
                 year: null,
@@ -6603,15 +6612,14 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
     
     try {
         await runProtectedMutation('reset-schedule', req, async () => {
-            // Auto weekly scheduling has been intentionally disabled.
-            // This route now clears manual overrides only; schedules must be explicitly saved by admin.
-            scheduleMode = 'manual';
+            scheduleMode = 'auto';
             manualOverride = false;
             manualOverrideState = null;
+            buildAutoSchedulesFromGameTime(gameTime, gameDate || calculateNextGameDate());
             checkAutoLock();
         });
     } catch (err) {
-        return res.status(500).json({ error: 'Failed to clear manual override safely' });
+        return res.status(500).json({ error: 'Failed to restore auto schedule safely' });
     }
     
     const dynamicScheduleDates = getDynamicScheduleDatetimeLocalValues();
@@ -6633,7 +6641,7 @@ app.post('/api/admin/reset-schedule', async (req, res) => {
         storedSignupLockEndAt: signupLockEndAt,
         storedRosterReleaseAt: rosterReleaseAt,
         storedResetWeekAt: resetWeekAt,
-        message: "Manual override cleared. Schedules must be set manually."
+        message: "Auto-schedule restored"
     });
 });
 
