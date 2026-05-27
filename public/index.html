@@ -1582,28 +1582,6 @@
     color: #d7d7d7 !important;
 }
 
-
-
-/* Correct left alignment for goalie/protected/subbed labels */
-.player-info-simple .goalie-badge,
-.player-info-simple .protected-label,
-.player-info-simple .subbed-in-label {
-    display: block !important;
-    margin-left: 0 !important;
-    padding-left: 0 !important;
-    text-indent: 0 !important;
-    line-height: 1.05 !important;
-}
-
-.player-info-simple .goalie-badge {
-    margin-top: 2px !important;
-}
-
-.player-info-simple .protected-label,
-.player-info-simple .subbed-in-label {
-    margin-top: 3px !important;
-}
-
 </style>
 <base target="_blank">
 <style id="game-card-lock-and-live-promo-v1">
@@ -1762,6 +1740,45 @@
     font-weight: 800 !important;
     line-height: 1 !important;
     text-transform: uppercase !important;
+}
+</style>
+
+
+<style id="final-mobile-label-left-align-fix">
+/* Final mobile label alignment:
+   labels sit directly under the player name, not offset to the right */
+.player-info-simple > .goalie-badge,
+.player-info-simple > .protected-label,
+.player-info-simple > .subbed-in-label {
+    display: block !important;
+    width: fit-content !important;
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    margin-left: 0 !important;
+    text-indent: 0 !important;
+    transform: translateX(0) !important;
+    line-height: 1.05 !important;
+    text-align: left !important;
+}
+
+.player-info-simple > .goalie-badge {
+    color: #ff3b3b !important;
+    margin-top: 2px !important;
+}
+
+.player-info-simple > .protected-label,
+.player-info-simple > .subbed-in-label {
+    color: #4CAF50 !important;
+    margin-top: 3px !important;
+}
+
+.player-info-simple > .subbed-in-for,
+.player-info-simple > div[style*="for "] {
+    margin-left: 0 !important;
+    padding-left: 0 !important;
 }
 </style>
 
