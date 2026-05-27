@@ -5667,13 +5667,6 @@ th, td{padding:2px 3px !important;}
             </div>
 
 
-
-            <div class="control-row" style="margin-bottom: 12px;">
-                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Override" style="width:160px;">
-                <button class="control-btn" onclick="updateCode()" style="background:#4a90e2;">Set Override</button>
-                <button class="control-btn" onclick="clearCodeOverride()" style="background:#666;">Clear Override</button>
-            </div>
-
             <div class="schedule-editor">
                 <h4 style="margin:10px 0 8px 0;">🗓️ Schedules (ET)</h4>
 
@@ -7651,7 +7644,7 @@ Date: ${selectedGameDate}`);
                 document.getElementById('timeInput').value = data.time;
                 document.getElementById('dateInput').value = data.date || '';
                 document.getElementById('currentCodeDisplay').innerText = data.code;
-                document.getElementById('codeInput').value = '';
+                
                 const weeklyCodes = data.weeklyDefaultSignupCodes || {};
                 weeklyCodeState = {
                     sunday: weeklyCodes.sunday || data.defaultSignupCode || '9855',
@@ -7950,76 +7943,6 @@ Date: ${selectedGameDate}`);
                 }
             } catch (err) {
                 console.error("Update default code error:", err);
-            }
-        }
-
-        async function updateCode() {
-            try {
-                const newCode = document.getElementById('codeInput').value.trim();
-                
-                if (!newCode || !/^\d{4}$/.test(newCode)) {
-                    alert("Please enter a valid 4-digit code (numbers only)");
-                    return;
-                }
-                
-                const res = await fetch(`${API_URL}/api/admin/update-code`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken, newCode: newCode })
-                });
-                
-                if (res.ok) {
-                    const data = await res.json();
-                    document.getElementById('currentCodeDisplay').innerText = data.code;
-                    document.getElementById('codeInput').value = '';
-                const weeklyCodes = data.weeklyDefaultSignupCodes || {};
-                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
-                    const input = document.getElementById('code_' + day);
-                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
-                });
-                    await loadSettings();
-                    alert("Temporary override set. Current active code: " + data.code);
-                } else if (res.status === 401) {
-                    alert("Session expired. Please login again.");
-                    logout();
-                } else {
-                    const err = await res.json();
-                    alert("Error: " + (err.error || "Failed to update code"));
-                }
-            } catch (err) {
-                console.error("Update code error:", err);
-            }
-        }
-
-        async function clearCodeOverride() {
-            if (!confirm("Clear the temporary override and use the saved default code?")) return;
-            try {
-                const res = await fetch(`${API_URL}/api/admin/clear-code-override`, {
-                    method: 'POST',
-                    headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken })
-                });
-
-                if (res.ok) {
-                    const data = await res.json();
-                    document.getElementById('currentCodeDisplay').innerText = data.code;
-                    document.getElementById('codeInput').value = '';
-                const weeklyCodes = data.weeklyDefaultSignupCodes || {};
-                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
-                    const input = document.getElementById('code_' + day);
-                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
-                });
-                    await loadSettings();
-                    alert("Temporary override cleared. Current active code: " + data.code);
-                } else if (res.status === 401) {
-                    alert("Session expired. Please login again.");
-                    logout();
-                } else {
-                    const err = await res.json();
-                    alert("Error: " + (err.error || "Failed to clear code override"));
-                }
-            } catch (err) {
-                console.error("Clear code override error:", err);
             }
         }
 
