@@ -4053,7 +4053,7 @@ th, td{padding:2px 3px !important;}
             <div class="control-row" style="margin-bottom: 15px;">
                 <div class="code-display" id="currentCodeDisplay">----</div>
                 <button class="control-btn" onclick="toggleCode()" id="toggleCodeBtn">Toggle Lock</button>
-                <button class="control-btn restore-btn" id="restoreBtn" onclick="restoreSchedule()" style="display:none;">Restore Auto</button>
+                <button class="control-btn restore-btn" id="restoreBtn" onclick="restoreSchedule()" style="display:none;">Clear Manual Override</button>
             </div>
             <div class="control-row">
                 <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="New 4-digit code" style="width:120px;">
@@ -4087,7 +4087,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
+                        <div class="schedule-hint">Requires a manually saved ET date/time. Repeats weekly using that weekday and time.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -4104,7 +4104,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
+                        <div class="schedule-hint">Requires a manually saved ET date/time. Repeats weekly using that weekday and time.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -4121,7 +4121,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">This clears players and waitlist only after the configured game time, then auto-adds the default players at the exact ET date and time selected above.</div>
+                        <div class="schedule-hint">This clears players and waitlist only after the configured game time, then auto-adds the default players at the exact ET date/time you manually save here.</div>
                     </div>
                 </div>
 
@@ -4924,7 +4924,7 @@ th, td{padding:2px 3px !important;}
                 <strong>🔒 Signup Lock Window:</strong> ${lockLine}<br>
                 <strong>📋 Auto Roster Release:</strong> ${rrLine}<br>
                 <strong>♻️ Weekly Reset:</strong> ${resetLine}<br>
-                <span style="color:#aaa;">V51 auto-schedule: times repeat weekly in ET based on the weekday and time you saved.</span>
+                <span style="color:#aaa;">Manual schedules only: no weekly schedule is auto-created from game time. Times repeat weekly in ET only after you save them.</span>
             `;
         }
 
@@ -4955,7 +4955,7 @@ th, td{padding:2px 3px !important;}
                     }
                     document.getElementById('scheduleInfo').innerHTML = formatScheduleInfo(data);
                     await refreshSettings();
-                    alert('✅ Weekly schedules saved. These now repeat automatically in ET every week.');
+                    alert('✅ Schedules saved. These manually set times now repeat weekly in ET.');
                 } catch (e) {
                     console.error(e);
                     alert('Error saving schedules.');
@@ -5615,7 +5615,7 @@ Date: ${selectedGameDate}`);
                         document.getElementById('dynamicTitlePreview').innerText = newTitle;
                         setCustomTitleInput(newTitle);
                         document.getElementById('timeInput').value = dayTime;
-                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nWeekly auto-schedule was rebuilt from this game time.`);
+                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nSchedules were NOT rebuilt. Manual schedule settings must be saved separately.`);
                         await loadSettings();
                     } else {
                         alert(result.error || 'Failed to update title');
@@ -6098,7 +6098,7 @@ Date: ${selectedGameDate}`);
                         overrideDetails.innerHTML = `
                             <div style="margin-top:8px; font-size:0.8rem; color:#ff4444;">
                                 <strong>⚠️ CRITICAL:</strong> Signup should be LOCKED right now (scheduled lock window)!<br>
-                                Auto-schedule is disabled. Players can signup without code!
+                                Scheduled lock is not active. Players can signup without code unless you manually lock it!
                             </div>
                         `;
                     } else {
@@ -6289,7 +6289,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function restoreSchedule() {
-            if (!confirm("Restore auto-schedule? This will allow the system to automatically lock/unlock based on the schedule (scheduled lock window).")) return;
+            if (!confirm("Clear the manual lock/open override? This will NOT create or restore any automatic weekly schedule. Schedules must be saved manually.")) return;
             try {
                 const res = await fetch(`${API_URL}/api/admin/reset-schedule`, {
                     method: 'POST',
@@ -6298,12 +6298,12 @@ Date: ${selectedGameDate}`);
                 });
                 if (res.ok) {
                     loadSettings();
-                    alert("Auto-schedule restored! Signup will now automatically lock during the scheduled lock window.");
+                    alert("Manual override cleared. No auto weekly schedule was created; save schedules manually if needed.");
                 } else if (res.status === 401) {
                     logout();
                 }
             } catch (err) {
-                console.error("Restore schedule error:", err);
+                console.error("Clear override error:", err);
             }
         }
 
