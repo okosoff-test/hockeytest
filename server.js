@@ -346,10 +346,8 @@ const FRIDAY_SIGNUP_CODE = '9855';
 const SUNDAY_SIGNUP_CODE = '7666';
 const DEFAULT_SIGNUP_CODE = FRIDAY_SIGNUP_CODE;
 
-// Editable permanent default code
+// One permanent default code, plus optional temporary override.
 let editableDefaultSignupCode = DEFAULT_SIGNUP_CODE;
-
-// Temporary override code
 let customSignupCode = '';
 
 function getDynamicSignupCode(dayName = getGameDayName()) {
@@ -2121,6 +2119,7 @@ async function loadDataFromDB() {
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
+        if (settings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(settings.editableDefaultSignupCode || '').trim()) ? String(settings.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
         if (settings.signupLockEndAt !== undefined) signupLockEndAt = settings.signupLockEndAt || '';
@@ -2754,6 +2753,7 @@ function applySnapshotToMemory(snapshot) {
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
     customSignupCode = String(snapshot.customSignupCode || '').trim();
+    editableDefaultSignupCode = /^\d{4}$/.test(String(snapshot.editableDefaultSignupCode || '').trim()) ? String(snapshot.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
     scheduleMode = String(snapshot.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
     currentWeekData = snapshot.currentWeekData ?? {
         weekNumber: null,
@@ -3111,6 +3111,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['regularSkatersByDay', regularSkatersByDay],
             ['persistentAdminRatings', persistentAdminRatings],
             ['customSignupCode', customSignupCode],
+            ['editableDefaultSignupCode', editableDefaultSignupCode],
             ['scheduleMode', scheduleMode],
             ['signupLockStartAt', signupLockStartAt],
             ['signupLockEndAt', signupLockEndAt],
@@ -3341,6 +3342,7 @@ function buildFullDataSnapshot() {
         regularSkatersByDay,
         persistentAdminRatings,
         customSignupCode,
+        editableDefaultSignupCode,
         scheduleMode,
         gameLocation,
         gameTime,
@@ -3468,6 +3470,7 @@ function getSettingsSnapshot() {
         regularSkatersByDay,
         persistentAdminRatings,
         customSignupCode,
+        editableDefaultSignupCode,
         scheduleMode,
         lastExactResetMinuteKey,
         lastExactRosterReleaseMinuteKey
@@ -3570,6 +3573,7 @@ function loadDataFromFile() {
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             customSignupCode = String(data.customSignupCode || '').trim();
+            editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
                 weekNumber: null,
@@ -6430,12 +6434,7 @@ app.post('/api/admin/settings', (req, res) => {
         customSignupCode,
         usingCustomSignupCode: /^\d{4}$/.test(String(customSignupCode || '').trim()),
         regularSkatersByDay,
-        defaultSignupCode: (() => {
-            const day = String(getGameDayName() || '').trim().toLowerCase();
-            if (day === 'friday') return FRIDAY_SIGNUP_CODE;
-            if (day === 'sunday') return SUNDAY_SIGNUP_CODE;
-            return DEFAULT_SIGNUP_CODE;
-        })()
+                defaultSignupCode: editableDefaultSignupCode
     });
 });
 
@@ -6452,6 +6451,37 @@ app.post('/api/admin/update-details', async (req, res) => {
         return res.status(500).json({ error: 'Failed to save game details safely' });
     }
     res.json({ success: true, location: gameLocation, time: gameTime, date: gameDate, formattedDate: formatGameDate(gameDate) });
+});
+
+
+app.post('/api/admin/update-default-code', async (req, res) => {
+    const { newCode } = req.body || {};
+
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized - invalid session" });
+    }
+
+    if (!newCode || !/^\d{4}$/.test(String(newCode).trim())) {
+        return res.status(400).json({ error: "Default code must be exactly 4 digits" });
+    }
+
+    try {
+        await runProtectedMutation('update-default-code', req, async () => {
+            editableDefaultSignupCode = String(newCode).trim();
+            playerSignupCode = getDynamicSignupCode();
+        }, { newDefaultCode: String(newCode).trim() });
+    } catch (err) {
+        return res.status(500).json({ error: 'Failed to save default signup code safely' });
+    }
+
+    res.json({
+        success: true,
+        code: playerSignupCode,
+        defaultSignupCode: editableDefaultSignupCode,
+        customSignupCode,
+        usingCustomSignupCode: /^\d{4}$/.test(String(customSignupCode || '').trim()),
+        requireCode: requirePlayerCode
+    });
 });
 
 app.post('/api/admin/update-code', async (req, res) => {
