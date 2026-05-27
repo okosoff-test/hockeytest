@@ -1670,46 +1670,38 @@
         }
 
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1733,46 +1725,38 @@ input[type="number"] {
     margin: 0 !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1792,46 +1776,38 @@ th, td { padding: 3px 5px !important; }
 /* reduce internal gaps */
 .rating-wrap, .paid-wrap { gap: 2px !important; }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1872,46 +1848,38 @@ button {
     font-size: 0.8rem !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1933,46 +1901,38 @@ button {
     white-space: nowrap;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -1995,46 +1955,38 @@ button {
     margin-right: 0 !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2188,46 +2140,38 @@ button {
     background:#1565c0 !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2243,46 +2187,38 @@ button {
     display: none !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2297,46 +2233,38 @@ button {
 .add-player-form .inline-check-row input[type="checkbox"] { width:auto; margin:0; }
 .add-player-form .goalie-helper { color:#8fd18f; font-size:0.82rem; }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2523,46 +2451,38 @@ button {
 }
 
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2664,46 +2584,38 @@ button {
     .waitlist-section .action-stack { gap:2px !important; }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2785,46 +2697,38 @@ th, td{padding:2px 3px !important;}
     .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -2844,46 +2748,38 @@ th, td{padding:2px 3px !important;}
     border-bottom: none !important;
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3021,46 +2917,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3145,46 +3033,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3231,46 +3111,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3519,46 +3391,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3836,46 +3700,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -3944,46 +3800,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4029,46 +3877,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4159,46 +3999,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4229,46 +4061,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4313,46 +4137,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4393,46 +4209,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4480,46 +4288,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4670,46 +4470,38 @@ th, td{padding:2px 3px !important;}
     #waitlistList .player-time-sub { font-size:0.54rem !important; line-height:1 !important; }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4757,46 +4549,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4838,46 +4622,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -4954,46 +4730,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -5030,46 +4798,38 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -5129,46 +4889,38 @@ th, td{padding:2px 3px !important;}
 .waitlist-to-roster-hint{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;color:#fff;font-weight:700;margin-top:10px;}
 @media(max-width:700px){.waitlist-to-roster-grid{grid-template-columns:1fr;}}
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -5422,19 +5174,30 @@ th, td{padding:2px 3px !important;}
                 </div>
             </div>
 
-            <div class="control-row" style="margin-bottom: 12px;">
-                <input type="text" id="defaultSignupCodeInput" class="control-input" maxlength="4" placeholder="Default code" style="width:100%; max-width:180px;">
-                <button class="control-btn" onclick="updateDefaultCode()" style="background:#ff6b00;">Save Default Code</button>
+            
+            <div class="weekly-code-grid" id="weeklyCodeGrid">
+                <label>Sunday <input type="text" id="code_sunday" maxlength="4" placeholder="9855"></label>
+                <label>Monday <input type="text" id="code_monday" maxlength="4" placeholder="9855"></label>
+                <label>Tuesday <input type="text" id="code_tuesday" maxlength="4" placeholder="9855"></label>
+                <label>Wednesday <input type="text" id="code_wednesday" maxlength="4" placeholder="9855"></label>
+                <label>Thursday <input type="text" id="code_thursday" maxlength="4" placeholder="9855"></label>
+                <label>Friday <input type="text" id="code_friday" maxlength="4" placeholder="9855"></label>
+                <label>Saturday <input type="text" id="code_saturday" maxlength="4" placeholder="9855"></label>
             </div>
 
             <div class="control-row" style="margin-bottom: 12px;">
-                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Override code" style="width:100%; max-width:180px;">
+                <button class="control-btn" onclick="updateWeeklyDefaultCodes()" style="background:#ff6b00;">Save 7-Day Default Codes</button>
+            </div>
+
+
+            <div class="control-row" style="margin-bottom: 12px;">
+                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Temporary override" style="width:160px;">
                 <button class="control-btn" onclick="updateCode()" style="background:#4a90e2;">Set Temporary Override</button>
                 <button class="control-btn" onclick="clearCodeOverride()" style="background:#666;">Clear Override</button>
             </div>
 
             <div class="schedule-info">
-                Active code uses the temporary override only when one is set. Otherwise it uses the saved default code.
+                Active code uses the temporary override only when one is set. Otherwise it uses the saved default code for the selected game day.
             </div>
 
             <div class="schedule-editor">
@@ -7415,8 +7178,11 @@ Date: ${selectedGameDate}`);
                 document.getElementById('dateInput').value = data.date || '';
                 document.getElementById('currentCodeDisplay').innerText = data.code;
                 document.getElementById('codeInput').value = '';
-                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
-                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
+                const weeklyCodes = data.weeklyDefaultSignupCodes || {};
+                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
+                    const input = document.getElementById('code_' + day);
+                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
+                });
 
                 // Populate schedules
                 if (data.signupLockSchedule) {
@@ -7584,6 +7350,45 @@ Date: ${selectedGameDate}`);
         }
 
 
+
+        async function updateWeeklyDefaultCodes() {
+            try {
+                const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+                const weeklyCodes = {};
+
+                for (const day of days) {
+                    const el = document.getElementById('code_' + day);
+                    const value = el ? el.value.trim() : '';
+                    if (!/^\d{4}$/.test(value)) {
+                        alert(day.charAt(0).toUpperCase() + day.slice(1) + " code must be exactly 4 digits.");
+                        return;
+                    }
+                    weeklyCodes[day] = value;
+                }
+
+                const res = await fetch(`${API_URL}/api/admin/update-weekly-default-codes`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, weeklyCodes })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    document.getElementById('currentCodeDisplay').innerText = data.code;
+                    await loadSettings();
+                    alert("7-day default signup codes saved. Current active code: " + data.code);
+                } else if (res.status === 401) {
+                    alert("Session expired. Please login again.");
+                    logout();
+                } else {
+                    const err = await res.json();
+                    alert("Error: " + (err.error || "Failed to update weekly default codes"));
+                }
+            } catch (err) {
+                console.error("Update weekly default codes error:", err);
+            }
+        }
+
         async function updateDefaultCode() {
             try {
                 const newCode = document.getElementById('defaultSignupCodeInput').value.trim();
@@ -7635,8 +7440,11 @@ Date: ${selectedGameDate}`);
                     const data = await res.json();
                     document.getElementById('currentCodeDisplay').innerText = data.code;
                     document.getElementById('codeInput').value = '';
-                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
-                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
+                const weeklyCodes = data.weeklyDefaultSignupCodes || {};
+                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
+                    const input = document.getElementById('code_' + day);
+                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
+                });
                     await loadSettings();
                     alert("Temporary override set. Current active code: " + data.code);
                 } else if (res.status === 401) {
@@ -7664,8 +7472,11 @@ Date: ${selectedGameDate}`);
                     const data = await res.json();
                     document.getElementById('currentCodeDisplay').innerText = data.code;
                     document.getElementById('codeInput').value = '';
-                const defaultCodeInput = document.getElementById('defaultSignupCodeInput');
-                if (defaultCodeInput) defaultCodeInput.value = data.defaultSignupCode || '';
+                const weeklyCodes = data.weeklyDefaultSignupCodes || {};
+                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
+                    const input = document.getElementById('code_' + day);
+                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
+                });
                     await loadSettings();
                     alert("Temporary override cleared. Current active code: " + data.code);
                 } else if (res.status === 401) {
@@ -10020,46 +9831,38 @@ document.addEventListener('keydown', function(e){
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
@@ -10135,46 +9938,38 @@ document.addEventListener('keydown', function(e){
     }
 }
 
-        .control-input {
-            width: 100%;
-            max-width: 180px;
-            min-width: 0;
-            font-size: 0.95rem !important;
-            padding: 8px 10px !important;
-            line-height: 1.2;
+        .weekly-code-grid {
+            display: grid;
+            grid-template-columns: repeat(7, minmax(90px, 1fr));
+            gap: 8px;
+            margin-bottom: 12px;
         }
 
-        @media (max-width: 768px) {
-            .control-row {
-                flex-direction: column;
-                align-items: stretch !important;
-                gap: 8px;
-            }
+        .weekly-code-grid label {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            font-size: 0.78rem;
+            color: #ccc;
+        }
 
-            .control-input {
-                max-width: 100%;
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-            }
+        .weekly-code-grid input {
+            width: 100%;
+            min-width: 0;
+            font-size: 0.88rem !important;
+            padding: 8px 6px !important;
+            text-align: center;
+        }
 
-            .control-btn {
-                width: 100%;
-                font-size: 0.82rem !important;
-                padding: 10px 8px !important;
-                white-space: normal;
+        @media (max-width: 900px) {
+            .weekly-code-grid {
+                grid-template-columns: repeat(2, minmax(120px, 1fr));
             }
+        }
 
-            .code-display {
-                width: 100%;
-                text-align: center;
-                font-size: 1rem !important;
-            }
-
-            .status-display {
-                margin-left: 0 !important;
-                text-align: center;
-                width: 100%;
+        @media (max-width: 480px) {
+            .weekly-code-grid {
+                grid-template-columns: 1fr;
             }
         }
 
