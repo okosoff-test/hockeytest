@@ -1584,21 +1584,19 @@
 
 
 
-/* Inline alignment fix for GOALIE / PROTECTED / SUBBED IN */
-.player-name-simple {
-    display: flex !important;
-    align-items: center !important;
-    flex-wrap: wrap !important;
-    gap: 6px !important;
+/* Mobile alignment fix only */
+.protected-label,
+.subbed-in-label {
+    display: block !important;
+    margin-top: 2px !important;
+    margin-left: 0 !important;
+    line-height: 1 !important;
 }
 
-.player-name-simple .goalie-badge,
-.player-name-simple .protected-label,
-.player-name-simple .subbed-in-label {
-    display: inline-flex !important;
-    align-items: center !important;
-    margin: 0 !important;
-    line-height: 1 !important;
+.player-info-simple .goalie-badge {
+    display: inline-block !important;
+    vertical-align: middle !important;
+    margin-left: 6px !important;
 }
 
 </style>
@@ -3554,12 +3552,10 @@ function updateCalculatedRating() {
                 card.innerHTML = `
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
-                        <div class="player-name-simple">
-                            ${firstName} ${lastName}
-                            ${goalieLabel}
-                            ${protectedLabel}
-                            ${subbedInLabel}
-                        </div>
+                        <div class="player-name-simple">${firstName} ${lastName}</div>
+                        ${goalieLabel}
+                        ${protectedLabel}
+                        ${subbedInLabel}
                         ${subbedInNote}
                     </div>
                     ${cancelButton}
