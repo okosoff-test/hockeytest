@@ -8124,7 +8124,15 @@ Date: ${selectedGameDate}`);
                 alert('No roster phone numbers available yet.');
                 return;
             }
-            const body = encodeURIComponent(data.smsBody || 'Phan Hockey roster update');
+
+            const portalLink = window.location.origin;
+
+            const smsBody = `
+Roster released, review your team roster here:
+${portalLink}
+`.trim();
+
+            const body = encodeURIComponent(smsBody);
             window.location.href = `sms:${data.phoneOnly}?body=${body}`;
         }
 

@@ -7106,7 +7106,7 @@ function buildAdminRosterContactExport() {
         phoneOnly,
         namePhoneLines,
         csv: csvLines.join('\n'),
-        smsBody: `Phan Hockey roster for ${formatGameDate(gameDate)} ${gameTime} at ${gameLocation}`
+        smsBody: 'Roster Released.'
     };
 }
 
