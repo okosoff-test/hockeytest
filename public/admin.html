@@ -5864,6 +5864,7 @@ th, td{padding:2px 3px !important;}
                     <option value="0">Mat Carriere (Rating: 7, 226-350-0217)</option>
                     <option value="1">Jesse Laframboise (Rating: 7, 519-566-6711)</option>
                     <option value="2">Kent Nelson (Rating: 7, 250-884-6609)</option>
+Lilly Isberg
                 </select>
                 <button class="add-backup-btn" onclick="addBackupGoalie()">Add as Substitute</button>
             </div>
@@ -8128,8 +8129,12 @@ Date: ${selectedGameDate}`);
             const portalLink = window.location.origin;
 
             const smsBody = `
-Roster released, review your team roster here:
+Roster Released.
+
+Please review your team roster here:
 ${portalLink}
+
+If you cannot attend, cancel immediately so a waitlist player can be added.
 `.trim();
 
             const body = encodeURIComponent(smsBody);
