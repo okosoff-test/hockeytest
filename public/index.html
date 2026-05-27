@@ -1584,19 +1584,24 @@
 
 
 
-/* Mobile alignment fix only */
-.protected-label,
-.subbed-in-label {
+/* Correct left alignment for goalie/protected/subbed labels */
+.player-info-simple .goalie-badge,
+.player-info-simple .protected-label,
+.player-info-simple .subbed-in-label {
     display: block !important;
-    margin-top: 2px !important;
     margin-left: 0 !important;
-    line-height: 1 !important;
+    padding-left: 0 !important;
+    text-indent: 0 !important;
+    line-height: 1.05 !important;
 }
 
 .player-info-simple .goalie-badge {
-    display: inline-block !important;
-    vertical-align: middle !important;
-    margin-left: 6px !important;
+    margin-top: 2px !important;
+}
+
+.player-info-simple .protected-label,
+.player-info-simple .subbed-in-label {
+    margin-top: 3px !important;
 }
 
 </style>
