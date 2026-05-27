@@ -4026,7 +4026,37 @@ th, td{padding:2px 3px !important;}
             </div>
         </div>
 
+        
+        <!-- Signup Code Management -->
         <div class="control-box">
+            <h3>Signup Code Management</h3>
+
+            <div class="control-row" style="margin-bottom:15px;">
+                <div style="flex:1; min-width:220px;">
+                    <label>Default Signup Code</label>
+                    <input type="text" id="defaultSignupCode" maxlength="4" placeholder="9855">
+                </div>
+
+                <button class="control-btn">Save Default Code</button>
+            </div>
+
+            <div class="control-row">
+                <div style="flex:1; min-width:220px;">
+                    <label>Temporary Override Code</label>
+                    <input type="text" id="overrideSignupCode" maxlength="4" placeholder="1234">
+                </div>
+
+                <button class="control-btn">Enable Override</button>
+                <button class="control-btn restore-btn">Clear Override</button>
+            </div>
+
+            <div class="schedule-info">
+                Permanent default code can be changed anytime. Override code temporarily replaces the default code until cleared.
+            </div>
+        </div>
+
+
+<div class="control-box">
             <h3>🔧 Player Spots</h3>
             <div class="control-row">
                 <input type="number" id="playerSpotInput" class="control-input" min="0" max="30" value="20">
@@ -4053,7 +4083,7 @@ th, td{padding:2px 3px !important;}
             <div class="control-row" style="margin-bottom: 15px;">
                 <div class="code-display" id="currentCodeDisplay">----</div>
                 <button class="control-btn" onclick="toggleCode()" id="toggleCodeBtn">Toggle Lock</button>
-                <button class="control-btn restore-btn" id="restoreBtn" onclick="restoreSchedule()" style="display:none;">Clear Manual Override</button>
+                <button class="control-btn restore-btn" id="restoreBtn" onclick="restoreSchedule()" style="display:none;">Restore Auto</button>
             </div>
             <div class="control-row">
                 <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="New 4-digit code" style="width:120px;">
@@ -4087,7 +4117,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">Requires a manually saved ET date/time. Repeats weekly using that weekday and time.</div>
+                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -4104,7 +4134,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">Requires a manually saved ET date/time. Repeats weekly using that weekday and time.</div>
+                        <div class="schedule-hint">Repeats weekly in ET using the weekday and time you selected.</div>
                     </div>
 
                     <div class="schedule-card">
@@ -4121,7 +4151,7 @@ th, td{padding:2px 3px !important;}
                             </div>
                         </div>
 
-                        <div class="schedule-hint">This clears players and waitlist only after the configured game time, then auto-adds the default players at the exact ET date/time you manually save here.</div>
+                        <div class="schedule-hint">This clears players and waitlist only after the configured game time, then auto-adds the default players at the exact ET date and time selected above.</div>
                     </div>
                 </div>
 
@@ -4924,7 +4954,7 @@ th, td{padding:2px 3px !important;}
                 <strong>🔒 Signup Lock Window:</strong> ${lockLine}<br>
                 <strong>📋 Auto Roster Release:</strong> ${rrLine}<br>
                 <strong>♻️ Weekly Reset:</strong> ${resetLine}<br>
-                <span style="color:#aaa;">Manual schedules only: no weekly schedule is auto-created from game time. Times repeat weekly in ET only after you save them.</span>
+                <span style="color:#aaa;">V51 auto-schedule: times repeat weekly in ET based on the weekday and time you saved.</span>
             `;
         }
 
@@ -4955,7 +4985,7 @@ th, td{padding:2px 3px !important;}
                     }
                     document.getElementById('scheduleInfo').innerHTML = formatScheduleInfo(data);
                     await refreshSettings();
-                    alert('✅ Schedules saved. These manually set times now repeat weekly in ET.');
+                    alert('✅ Weekly schedules saved. These now repeat automatically in ET every week.');
                 } catch (e) {
                     console.error(e);
                     alert('Error saving schedules.');
@@ -5615,7 +5645,7 @@ Date: ${selectedGameDate}`);
                         document.getElementById('dynamicTitlePreview').innerText = newTitle;
                         setCustomTitleInput(newTitle);
                         document.getElementById('timeInput').value = dayTime;
-                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nSchedules were NOT rebuilt. Manual schedule settings must be saved separately.`);
+                        alert(`✅ Title updated to: ${newTitle}\nTime updated to: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}\nDate updated to: ${selectedGameDate}\n\nWeekly auto-schedule was rebuilt from this game time.`);
                         await loadSettings();
                     } else {
                         alert(result.error || 'Failed to update title');
@@ -6098,7 +6128,7 @@ Date: ${selectedGameDate}`);
                         overrideDetails.innerHTML = `
                             <div style="margin-top:8px; font-size:0.8rem; color:#ff4444;">
                                 <strong>⚠️ CRITICAL:</strong> Signup should be LOCKED right now (scheduled lock window)!<br>
-                                Scheduled lock is not active. Players can signup without code unless you manually lock it!
+                                Auto-schedule is disabled. Players can signup without code!
                             </div>
                         `;
                     } else {
@@ -6289,7 +6319,7 @@ Date: ${selectedGameDate}`);
         }
 
         async function restoreSchedule() {
-            if (!confirm("Clear the manual lock/open override? This will NOT create or restore any automatic weekly schedule. Schedules must be saved manually.")) return;
+            if (!confirm("Restore auto-schedule? This will allow the system to automatically lock/unlock based on the schedule (scheduled lock window).")) return;
             try {
                 const res = await fetch(`${API_URL}/api/admin/reset-schedule`, {
                     method: 'POST',
@@ -6298,12 +6328,12 @@ Date: ${selectedGameDate}`);
                 });
                 if (res.ok) {
                     loadSettings();
-                    alert("Manual override cleared. No auto weekly schedule was created; save schedules manually if needed.");
+                    alert("Auto-schedule restored! Signup will now automatically lock during the scheduled lock window.");
                 } else if (res.status === 401) {
                     logout();
                 }
             } catch (err) {
-                console.error("Clear override error:", err);
+                console.error("Restore schedule error:", err);
             }
         }
 
