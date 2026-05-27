@@ -1685,24 +1685,64 @@
 </style>
 
 
-<style id="red-goalie-no-blue-final-override">
-/* Remove blue goalie highlight and show GOALIE text in red. */
-.player-info-simple .goalie-badge,
-.player-info-simple .goalie-label,
+
+<style id="goalie-red-subbed-green-final-override">
+/* FINAL OVERRIDE:
+   - Remove blue goalie highlight
+   - Make GOALIE red text only
+   - Keep SUBBED IN green text only
+*/
 .player-card .goalie-badge,
-.player-card .goalie-label {
+.player-item .goalie-badge,
+.venue-waitlist-name .goalie-badge,
+.player-info-simple .goalie-badge,
+.player-info-simple .goalie-label {
     background: transparent !important;
     color: #ff3b3b !important;
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
-    margin-top: 2px !important;
-    font-size: 0.72rem !important;
+    margin: 0 0 0 4px !important;
+    border-radius: 0 !important;
+    font-size: 0.68rem !important;
     font-weight: 800 !important;
-    line-height: 1.1 !important;
-    text-transform: uppercase;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
+}
+
+.subbed-in-label,
+.subbed-in-badge,
+.player-info-simple .subbed-in-label,
+.player-name .subbed-in-badge {
+    background: transparent !important;
+    color: #4CAF50 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 0 0 4px !important;
+    border-radius: 0 !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
+}
+
+/* Preserve "you were subbed" as a green cue without blue. */
+.you-were-subbed-badge {
+    background: transparent !important;
+    color: #4CAF50 !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 0 0 4px !important;
+    border-radius: 0 !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
+    line-height: 1 !important;
+    text-transform: uppercase !important;
 }
 </style>
+
 </head>
 <body>
 
@@ -3484,7 +3524,7 @@ function updateCalculatedRating() {
                 const goalieLabel = isGoalie ? '<div class="goalie-badge">GOALIE</div>' : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
                 const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
-                const subbedInLabel = isSubbedIn ? '<div class="goalie-label" style="background:#1976d2;">SUBBED IN</div>' : '';
+                const subbedInLabel = isSubbedIn ? '<div class="subbed-in-label">SUBBED IN</div>' : '';
                 const subbedInNote = isSubbedIn ? `<div style="font-size:0.78rem;color:#a8d3ff;margin-top:4px;">for ${player.subbedInForName}</div>` : '';
 
                 let cancelButton = '';
