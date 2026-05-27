@@ -5389,6 +5389,50 @@ th, td{padding:2px 3px !important;}
 
 </style>
 
+
+<style id="roster-text-export-styles">
+.roster-text-export-box {
+    background: linear-gradient(135deg, #142c3f, #1e435c);
+    border: 2px solid #5fa8ff;
+    border-radius: 10px;
+    padding: 16px;
+    margin: 14px 0 0 0;
+}
+.roster-text-export-box h4 {
+    margin: 0 0 8px 0;
+    color: #9dcbff;
+    font-size: 1rem;
+}
+.roster-text-export-box p {
+    margin: 0 0 10px 0;
+    color: #c9dff5;
+    font-size: 0.86rem;
+    line-height: 1.35;
+}
+.roster-text-export-actions {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.roster-text-export-actions button {
+    width: auto;
+    margin: 0 !important;
+}
+.roster-text-export-preview {
+    width: 100%;
+    min-height: 120px;
+    margin-top: 10px;
+    font-family: monospace;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    white-space: pre-wrap;
+}
+@media (max-width: 700px) {
+    .roster-text-export-actions { flex-direction: column; }
+    .roster-text-export-actions button { width: 100%; }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -5753,6 +5797,17 @@ th, td{padding:2px 3px !important;}
             </div>
             <div style="margin-top:10px; font-size: 0.85rem; color: #aaa;">
                 Click "Release Roster Now" to generate teams and make them visible to all players instantly.
+            </div>
+            <div class="roster-text-export-box" id="rosterTextExportBox" style="display:none;">
+                <h4>📱 Android Mass Text Export</h4>
+                <p>After roster release, use this to extract the active roster phone numbers. Copy the phone list into your Android messaging app, or download the CSV for your contacts.</p>
+                <div class="roster-text-export-actions">
+                    <button class="control-btn" onclick="copyRosterPhonesOnly()" style="background:#2e7d32;">Copy Phone Numbers</button>
+                    <button class="control-btn" onclick="copyRosterNamesAndPhones()" style="background:#4a90e2;">Copy Names + Phones</button>
+                    <button class="control-btn" onclick="openRosterSmsDraft()" style="background:#8e44ad;">Open Android Text</button>
+                    <button class="control-btn" onclick="downloadRosterContactsCsv()" style="background:#546e7a;">Download CSV</button>
+                </div>
+                <textarea id="rosterTextExportPreview" class="roster-text-export-preview" readonly placeholder="Roster contact export appears here after release."></textarea>
             </div>
         </div>
 
@@ -6588,6 +6643,7 @@ th, td{padding:2px 3px !important;}
         let currentRegularSkatersByDay = normalizeRegularDayBucketMap(loadLocalRegularSkaters());
         let adminPlayersById = {};
         let adminWaitlist = [];
+        let latestRosterContactExport = null;
 
         // Pre-defined goalie data
         const PREDEFINED_GOALIES = [
@@ -7984,6 +8040,99 @@ Date: ${selectedGameDate}`);
             }
         }
 
+
+        function formatRosterExportPreview(exportData) {
+            if (!exportData || !Array.isArray(exportData.all)) return '';
+            const header = `Roster Contacts - ${exportData.formattedDate || exportData.gameDate || ''} ${exportData.time || ''} - ${exportData.location || ''}`.trim();
+            const white = (exportData.whiteTeam || []).map(p => `White: ${p.name} - ${p.phone || p.phoneDigits}`).join('\n');
+            const dark = (exportData.darkTeam || []).map(p => `Dark: ${p.name} - ${p.phone || p.phoneDigits}`).join('\n');
+            return [header, '', white, '', dark].filter(part => String(part || '').trim()).join('\n');
+        }
+
+        async function loadRosterContactExport() {
+            const box = document.getElementById('rosterTextExportBox');
+            const preview = document.getElementById('rosterTextExportPreview');
+            if (!currentRosterReleased) {
+                latestRosterContactExport = null;
+                if (box) box.style.display = 'none';
+                if (preview) preview.value = '';
+                return null;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/roster-contacts?sessionToken=${encodeURIComponent(sessionToken)}`, {
+                    method: 'GET',
+                    headers: getAdminHeaders()
+                });
+
+                if (!res.ok) {
+                    if (res.status === 401) logout();
+                    throw new Error('Could not load roster contact export.');
+                }
+
+                const data = await res.json();
+                latestRosterContactExport = data;
+                if (box) box.style.display = 'block';
+                if (preview) preview.value = formatRosterExportPreview(data);
+                return data;
+            } catch (err) {
+                console.error('Roster contact export error:', err);
+                if (preview) preview.value = err.message || 'Could not load roster contact export.';
+                return null;
+            }
+        }
+
+        async function ensureRosterContactExport() {
+            return latestRosterContactExport || await loadRosterContactExport();
+        }
+
+        async function copyTextToClipboard(text, successMessage) {
+            const value = String(text || '').trim();
+            if (!value) {
+                alert('Nothing to copy yet. Release the roster first.');
+                return;
+            }
+            try {
+                await navigator.clipboard.writeText(value);
+                showNotification(successMessage || 'Copied', 'success');
+            } catch (err) {
+                const preview = document.getElementById('rosterTextExportPreview');
+                if (preview) {
+                    preview.value = value;
+                    preview.focus();
+                    preview.select();
+                }
+                alert('Copy is blocked by the browser. The text has been selected; use Ctrl+C or long-press copy on mobile.');
+            }
+        }
+
+        async function copyRosterPhonesOnly() {
+            const data = await ensureRosterContactExport();
+            if (!data) return;
+            await copyTextToClipboard(data.phoneOnly, `Copied ${data.total || 0} roster phone numbers.`);
+        }
+
+        async function copyRosterNamesAndPhones() {
+            const data = await ensureRosterContactExport();
+            if (!data) return;
+            await copyTextToClipboard(data.namePhoneLines, `Copied ${data.total || 0} roster names and phone numbers.`);
+        }
+
+        async function openRosterSmsDraft() {
+            const data = await ensureRosterContactExport();
+            if (!data || !data.phoneOnly) {
+                alert('No roster phone numbers available yet.');
+                return;
+            }
+            const body = encodeURIComponent(data.smsBody || 'Phan Hockey roster update');
+            window.location.href = `sms:${data.phoneOnly}?body=${body}`;
+        }
+
+        async function downloadRosterContactsCsv() {
+            const url = `${API_URL}/api/admin/roster-contacts.csv?sessionToken=${encodeURIComponent(sessionToken)}`;
+            window.open(url, '_blank');
+        }
+
         async function releaseRoster() {
             console.log("Release roster clicked");
             
@@ -8031,6 +8180,7 @@ Date: ${selectedGameDate}`);
                     btn.innerText = "Roster Already Released";
                     
                     await loadReleasedRosterPreview();
+                    await loadRosterContactExport();
                     
                     alert(`✅ Roster Released Successfully!\n\nWhite Team: ${data.whiteTeam.length} players (Avg: ${data.whiteRating})\nDark Team: ${data.darkTeam.length} players (Avg: ${data.darkRating})\n\nSignup stays OPEN after roster release. Players can see the teams on the signup page, and new signups go to the waitlist.`);
                 } else {
@@ -8316,6 +8466,8 @@ Date: ${selectedGameDate}`);
                         cancellationBody.appendChild(tr);
                     });
                 }
+
+                await loadRosterContactExport();
             } catch (err) {
                 console.error("Load data error:", err);
             }

@@ -7054,6 +7054,89 @@ app.post('/api/admin/update-rating', async (req, res) => {
     }
 });
 
+
+function buildAdminRosterContactExport() {
+    const rosterPayload = buildPublicRosterPayload();
+    const fullById = new Map((Array.isArray(players) ? players : []).map(p => [String(p.id), p]));
+
+    const hydrate = (publicPlayer, teamName) => {
+        const full = fullById.get(String(publicPlayer.id)) || publicPlayer || {};
+        const firstName = String(full.firstName || publicPlayer.firstName || '').trim();
+        const lastName = String(full.lastName || publicPlayer.lastName || '').trim();
+        const phoneRaw = String(full.phone || '').trim();
+        const phoneDigits = normalizePhoneDigits(phoneRaw);
+        return {
+            id: full.id ?? publicPlayer.id,
+            firstName,
+            lastName,
+            name: `${firstName} ${lastName}`.trim(),
+            phone: phoneRaw,
+            phoneDigits,
+            team: teamName,
+            isGoalie: !!(full.isGoalie || publicPlayer.isGoalie),
+            cancelled: !!publicPlayer.cancelled
+        };
+    };
+
+    const whiteTeam = (rosterPayload.whiteTeam || []).map(p => hydrate(p, 'White')).filter(p => !p.cancelled && p.phoneDigits.length === 10);
+    const darkTeam = (rosterPayload.darkTeam || []).map(p => hydrate(p, 'Dark')).filter(p => !p.cancelled && p.phoneDigits.length === 10);
+    const all = [...whiteTeam, ...darkTeam];
+
+    const phoneOnly = all.map(p => p.phoneDigits).join(',');
+    const namePhoneLines = all.map(p => `${p.name} - ${p.phone || p.phoneDigits} (${p.team}${p.isGoalie ? ' goalie' : ''})`).join('\n');
+    const csvLines = ['Team,Name,Phone,Goalie'].concat(all.map(p => [
+        p.team,
+        `"${String(p.name).replace(/"/g, '""')}"`,
+        p.phoneDigits,
+        p.isGoalie ? 'Yes' : 'No'
+    ].join(',')));
+
+    return {
+        released: rosterPayload.released,
+        gameDate,
+        formattedDate: formatGameDate(gameDate),
+        location: gameLocation,
+        time: gameTime,
+        total: all.length,
+        whiteCount: whiteTeam.length,
+        darkCount: darkTeam.length,
+        whiteTeam,
+        darkTeam,
+        all,
+        phoneOnly,
+        namePhoneLines,
+        csv: csvLines.join('\n'),
+        smsBody: `Phan Hockey roster for ${formatGameDate(gameDate)} ${gameTime} at ${gameLocation}`
+    };
+}
+
+app.get('/api/admin/roster-contacts', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: 'Unauthorized - Admin access only' });
+    }
+
+    if (!getEffectiveRosterReleasedState()) {
+        return res.status(400).json({ error: 'Roster has not been released yet.' });
+    }
+
+    res.json(buildAdminRosterContactExport());
+});
+
+app.get('/api/admin/roster-contacts.csv', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).send('Unauthorized');
+    }
+
+    if (!getEffectiveRosterReleasedState()) {
+        return res.status(400).send('Roster has not been released yet.');
+    }
+
+    const exportData = buildAdminRosterContactExport();
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="hockey-roster-contacts-${gameDate || 'current'}.csv"`);
+    res.send(exportData.csv);
+});
+
 app.post('/api/admin/release-roster', async (req, res) => {
     const { password, sessionToken } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
