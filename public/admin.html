@@ -1669,39 +1669,53 @@
             border-top: 1px solid rgba(255,255,255,0.1);
         }
 
-
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -1725,38 +1739,53 @@ input[type="number"] {
     margin: 0 !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -1776,38 +1805,53 @@ th, td { padding: 3px 5px !important; }
 /* reduce internal gaps */
 .rating-wrap, .paid-wrap { gap: 2px !important; }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -1848,38 +1892,53 @@ button {
     font-size: 0.8rem !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -1901,38 +1960,53 @@ button {
     white-space: nowrap;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -1955,38 +2029,53 @@ button {
     margin-right: 0 !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2140,38 +2229,53 @@ button {
     background:#1565c0 !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2187,38 +2291,53 @@ button {
     display: none !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2233,38 +2352,53 @@ button {
 .add-player-form .inline-check-row input[type="checkbox"] { width:auto; margin:0; }
 .add-player-form .goalie-helper { color:#8fd18f; font-size:0.82rem; }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2450,39 +2584,53 @@ button {
     }
 }
 
-
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2584,38 +2732,53 @@ button {
     .waitlist-section .action-stack { gap:2px !important; }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2697,38 +2860,53 @@ th, td{padding:2px 3px !important;}
     .control-btn, .remove-btn{font-size:0.62rem !important; padding:3px 5px !important;}
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2748,38 +2926,53 @@ th, td{padding:2px 3px !important;}
     border-bottom: none !important;
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -2917,38 +3110,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3033,38 +3241,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3111,38 +3334,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3391,38 +3629,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3700,38 +3953,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3800,38 +4068,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3877,38 +4160,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -3999,38 +4297,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4061,38 +4374,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4137,38 +4465,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4209,38 +4552,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4288,38 +4646,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4470,38 +4843,53 @@ th, td{padding:2px 3px !important;}
     #waitlistList .player-time-sub { font-size:0.54rem !important; line-height:1 !important; }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4549,38 +4937,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4622,38 +5025,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4730,38 +5148,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4798,38 +5231,53 @@ th, td{padding:2px 3px !important;}
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -4889,38 +5337,53 @@ th, td{padding:2px 3px !important;}
 .waitlist-to-roster-hint{background:rgba(0,0,0,.22);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px;color:#fff;font-weight:700;margin-top:10px;}
 @media(max-width:700px){.waitlist-to-roster-grid{grid-template-columns:1fr;}}
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -5175,24 +5638,38 @@ th, td{padding:2px 3px !important;}
             </div>
 
             
-            <div class="weekly-code-grid" id="weeklyCodeGrid">
-                <label>Sunday <input type="text" id="code_sunday" maxlength="4" placeholder="9855"></label>
-                <label>Monday <input type="text" id="code_monday" maxlength="4" placeholder="9855"></label>
-                <label>Tuesday <input type="text" id="code_tuesday" maxlength="4" placeholder="9855"></label>
-                <label>Wednesday <input type="text" id="code_wednesday" maxlength="4" placeholder="9855"></label>
-                <label>Thursday <input type="text" id="code_thursday" maxlength="4" placeholder="9855"></label>
-                <label>Friday <input type="text" id="code_friday" maxlength="4" placeholder="9855"></label>
-                <label>Saturday <input type="text" id="code_saturday" maxlength="4" placeholder="9855"></label>
+            
+            <div class="compact-weekly-code-editor">
+                <div class="compact-row">
+                    <label for="weeklyDaySelect">Day</label>
+                    <select id="weeklyDaySelect" onchange="loadSelectedDayCode()">
+                        <option value="sunday">Sunday</option>
+                        <option value="monday">Monday</option>
+                        <option value="tuesday">Tuesday</option>
+                        <option value="wednesday">Wednesday</option>
+                        <option value="thursday">Thursday</option>
+                        <option value="friday">Friday</option>
+                        <option value="saturday">Saturday</option>
+                    </select>
+                </div>
+
+                <div class="compact-row">
+                    <label for="selectedDayCodeInput">Default Code</label>
+                    <input type="text" id="selectedDayCodeInput" maxlength="4" placeholder="9855">
+                </div>
+
+                <button class="control-btn compact-save-btn" onclick="saveSelectedDayCode()">Save Selected Day Code</button>
             </div>
 
-            <div class="control-row" style="margin-bottom: 12px;">
-                <button class="control-btn" onclick="updateWeeklyDefaultCodes()" style="background:#ff6b00;">Save 7-Day Default Codes</button>
+            <div class="schedule-info compact-code-note" id="weeklyCodeSummary">
+                Select a day, set its 4-digit default code, then save.
             </div>
 
 
+
             <div class="control-row" style="margin-bottom: 12px;">
-                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Temporary override" style="width:160px;">
-                <button class="control-btn" onclick="updateCode()" style="background:#4a90e2;">Set Temporary Override</button>
+                <input type="text" id="codeInput" class="control-input" maxlength="4" placeholder="Override" style="width:160px;">
+                <button class="control-btn" onclick="updateCode()" style="background:#4a90e2;">Set Override</button>
                 <button class="control-btn" onclick="clearCodeOverride()" style="background:#666;">Clear Override</button>
             </div>
 
@@ -7179,10 +7656,17 @@ Date: ${selectedGameDate}`);
                 document.getElementById('currentCodeDisplay').innerText = data.code;
                 document.getElementById('codeInput').value = '';
                 const weeklyCodes = data.weeklyDefaultSignupCodes || {};
-                ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'].forEach(day => {
-                    const input = document.getElementById('code_' + day);
-                    if (input) input.value = weeklyCodes[day] || data.defaultSignupCode || '9855';
-                });
+                weeklyCodeState = {
+                    sunday: weeklyCodes.sunday || data.defaultSignupCode || '9855',
+                    monday: weeklyCodes.monday || data.defaultSignupCode || '9855',
+                    tuesday: weeklyCodes.tuesday || data.defaultSignupCode || '9855',
+                    wednesday: weeklyCodes.wednesday || data.defaultSignupCode || '9855',
+                    thursday: weeklyCodes.thursday || data.defaultSignupCode || '9855',
+                    friday: weeklyCodes.friday || data.defaultSignupCode || '9855',
+                    saturday: weeklyCodes.saturday || data.defaultSignupCode || '9855'
+                };
+                loadSelectedDayCode();
+                updateWeeklyCodeSummary();
 
                 // Populate schedules
                 if (data.signupLockSchedule) {
@@ -7350,42 +7834,77 @@ Date: ${selectedGameDate}`);
         }
 
 
+        let weeklyCodeState = {
+            sunday: '9855',
+            monday: '9855',
+            tuesday: '9855',
+            wednesday: '9855',
+            thursday: '9855',
+            friday: '9855',
+            saturday: '9855'
+        };
 
-        async function updateWeeklyDefaultCodes() {
+        function loadSelectedDayCode() {
+            const day = document.getElementById('weeklyDaySelect')?.value || 'sunday';
+            const input = document.getElementById('selectedDayCodeInput');
+            if (input) input.value = weeklyCodeState[day] || '9855';
+        }
+
+        function updateWeeklyCodeSummary() {
+            const summary = document.getElementById('weeklyCodeSummary');
+            if (!summary) return;
+
+            const labels = {
+                sunday: 'Sun',
+                monday: 'Mon',
+                tuesday: 'Tue',
+                wednesday: 'Wed',
+                thursday: 'Thu',
+                friday: 'Fri',
+                saturday: 'Sat'
+            };
+
+            summary.innerText = Object.keys(labels)
+                .map(day => `${labels[day]}: ${weeklyCodeState[day] || '9855'}`)
+                .join(' • ');
+        }
+
+        async function saveSelectedDayCode() {
             try {
-                const days = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
-                const weeklyCodes = {};
+                const day = document.getElementById('weeklyDaySelect')?.value || 'sunday';
+                const input = document.getElementById('selectedDayCodeInput');
+                const value = input ? input.value.trim() : '';
 
-                for (const day of days) {
-                    const el = document.getElementById('code_' + day);
-                    const value = el ? el.value.trim() : '';
-                    if (!/^\d{4}$/.test(value)) {
-                        alert(day.charAt(0).toUpperCase() + day.slice(1) + " code must be exactly 4 digits.");
-                        return;
-                    }
-                    weeklyCodes[day] = value;
+                if (!/^\d{4}$/.test(value)) {
+                    alert("Code must be exactly 4 digits.");
+                    return;
                 }
+
+                weeklyCodeState[day] = value;
 
                 const res = await fetch(`${API_URL}/api/admin/update-weekly-default-codes`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify({ sessionToken: sessionToken, weeklyCodes })
+                    body: JSON.stringify({ sessionToken: sessionToken, weeklyCodes: weeklyCodeState })
                 });
 
                 if (res.ok) {
                     const data = await res.json();
+                    weeklyCodeState = data.weeklyDefaultSignupCodes || weeklyCodeState;
                     document.getElementById('currentCodeDisplay').innerText = data.code;
+                    loadSelectedDayCode();
+                    updateWeeklyCodeSummary();
                     await loadSettings();
-                    alert("7-day default signup codes saved. Current active code: " + data.code);
+                    alert(day.charAt(0).toUpperCase() + day.slice(1) + " default code saved. Current active code: " + data.code);
                 } else if (res.status === 401) {
                     alert("Session expired. Please login again.");
                     logout();
                 } else {
                     const err = await res.json();
-                    alert("Error: " + (err.error || "Failed to update weekly default codes"));
+                    alert("Error: " + (err.error || "Failed to update day code"));
                 }
             } catch (err) {
-                console.error("Update weekly default codes error:", err);
+                console.error("Save selected day code error:", err);
             }
         }
 
@@ -9831,38 +10350,53 @@ document.addEventListener('keydown', function(e){
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
@@ -9938,38 +10472,53 @@ document.addEventListener('keydown', function(e){
     }
 }
 
-        .weekly-code-grid {
+        .compact-weekly-code-editor {
             display: grid;
-            grid-template-columns: repeat(7, minmax(90px, 1fr));
-            gap: 8px;
-            margin-bottom: 12px;
+            grid-template-columns: minmax(130px, 1fr) minmax(120px, 1fr) auto;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
         }
 
-        .weekly-code-grid label {
+        .compact-weekly-code-editor .compact-row {
             display: flex;
             flex-direction: column;
             gap: 5px;
+        }
+
+        .compact-weekly-code-editor label {
             font-size: 0.78rem;
             color: #ccc;
         }
 
-        .weekly-code-grid input {
+        .compact-weekly-code-editor select,
+        .compact-weekly-code-editor input {
             width: 100%;
             min-width: 0;
-            font-size: 0.88rem !important;
-            padding: 8px 6px !important;
-            text-align: center;
+            margin: 0;
+            font-size: 0.9rem !important;
+            padding: 8px 10px !important;
         }
 
-        @media (max-width: 900px) {
-            .weekly-code-grid {
-                grid-template-columns: repeat(2, minmax(120px, 1fr));
-            }
+        .compact-save-btn {
+            margin: 0 !important;
+            white-space: nowrap;
         }
 
-        @media (max-width: 480px) {
-            .weekly-code-grid {
+        .compact-code-note {
+            margin-top: 8px;
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 700px) {
+            .compact-weekly-code-editor {
                 grid-template-columns: 1fr;
+            }
+
+            .compact-save-btn {
+                width: 100%;
+                white-space: normal;
+                font-size: 0.82rem !important;
             }
         }
 
