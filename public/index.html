@@ -1582,6 +1582,25 @@
     color: #d7d7d7 !important;
 }
 
+
+
+/* Inline alignment fix for GOALIE / PROTECTED / SUBBED IN */
+.player-name-simple {
+    display: flex !important;
+    align-items: center !important;
+    flex-wrap: wrap !important;
+    gap: 6px !important;
+}
+
+.player-name-simple .goalie-badge,
+.player-name-simple .protected-label,
+.player-name-simple .subbed-in-label {
+    display: inline-flex !important;
+    align-items: center !important;
+    margin: 0 !important;
+    line-height: 1 !important;
+}
+
 </style>
 <base target="_blank">
 <style id="game-card-lock-and-live-promo-v1">
@@ -1713,29 +1732,18 @@
 .subbed-in-label,
 .subbed-in-badge,
 .player-info-simple .subbed-in-label,
-.player-name .subbed-in-badge,
-.player-info-simple .goalie-badge {
-    display: inline-flex !important;
-    align-items: center !important;
+.player-name .subbed-in-badge {
     background: transparent !important;
+    color: #4CAF50 !important;
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
-    margin-left: 6px !important;
+    margin: 0 0 0 4px !important;
     border-radius: 0 !important;
-    font-size: 0.7rem !important;
-    font-weight: bold !important;
+    font-size: 0.68rem !important;
+    font-weight: 800 !important;
     line-height: 1 !important;
     text-transform: uppercase !important;
-}
-
-.subbed-in-label,
-.subbed-in-badge {
-    color: #4CAF50 !important;
-}
-
-.player-info-simple .goalie-badge {
-    color: #ff3b3b !important;
 }
 
 /* Preserve "you were subbed" as a green cue without blue. */
@@ -3546,7 +3554,6 @@ function updateCalculatedRating() {
                 card.innerHTML = `
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
-                        <div class="player-name-simple">${firstName} ${lastName}</div>
                         <div class="player-name-simple">
                             ${firstName} ${lastName}
                             ${goalieLabel}
