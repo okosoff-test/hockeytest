@@ -1713,18 +1713,29 @@
 .subbed-in-label,
 .subbed-in-badge,
 .player-info-simple .subbed-in-label,
-.player-name .subbed-in-badge {
+.player-name .subbed-in-badge,
+.player-info-simple .goalie-badge {
+    display: inline-flex !important;
+    align-items: center !important;
     background: transparent !important;
-    color: #4CAF50 !important;
     border: 0 !important;
     box-shadow: none !important;
     padding: 0 !important;
-    margin: 0 0 0 4px !important;
+    margin-left: 6px !important;
     border-radius: 0 !important;
     font-size: 0.7rem !important;
     font-weight: bold !important;
     line-height: 1 !important;
     text-transform: uppercase !important;
+}
+
+.subbed-in-label,
+.subbed-in-badge {
+    color: #4CAF50 !important;
+}
+
+.player-info-simple .goalie-badge {
+    color: #ff3b3b !important;
 }
 
 /* Preserve "you were subbed" as a green cue without blue. */
@@ -3536,9 +3547,12 @@ function updateCalculatedRating() {
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
                         <div class="player-name-simple">${firstName} ${lastName}</div>
-                        ${goalieLabel}
-                        ${protectedLabel}
-                        ${subbedInLabel}
+                        <div class="player-name-simple">
+                            ${firstName} ${lastName}
+                            ${goalieLabel}
+                            ${protectedLabel}
+                            ${subbedInLabel}
+                        </div>
                         ${subbedInNote}
                     </div>
                     ${cancelButton}
