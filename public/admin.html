@@ -8455,10 +8455,11 @@ ${rosterLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const notifyPlayerBtn = `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`;
+                        const notifyPlayerBtn = (!hideAdminPaymentUi)
+                            ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
+                            : '';
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
-                                    ${notifyPlayerBtn}
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                                </div>`
                             : `<div class="action-stack registered-action-stack">
@@ -10823,11 +10824,44 @@ document.addEventListener('keydown', function(e){
 .notify-player-btn {
     background: #2e7d32 !important;
     color: #fff !important;
-    width: auto !important;
     white-space: nowrap;
 }
 .notify-player-btn:hover {
     background: #3fa447 !important;
+}
+
+/* Final action pill sizing: keep Regular, Text In, and Remove identical on desktop + mobile. */
+#playerList .registered-action-stack .regular-toggle-btn,
+#playerList .registered-action-stack .notify-player-btn,
+#playerList .registered-action-stack .remove-btn {
+    width: 48px !important;
+    min-width: 48px !important;
+    max-width: 48px !important;
+    height: 22px !important;
+    min-height: 22px !important;
+    padding: 0 !important;
+    border-radius: 6px !important;
+    font-size: 0.68rem !important;
+    font-weight: 700 !important;
+    line-height: 1 !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-align: center !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+}
+
+@media (max-width: 600px) {
+    #playerList .registered-action-stack .regular-toggle-btn,
+    #playerList .registered-action-stack .notify-player-btn,
+    #playerList .registered-action-stack .remove-btn {
+        width: 46px !important;
+        min-width: 46px !important;
+        max-width: 46px !important;
+        height: 22px !important;
+        font-size: 0.66rem !important;
+    }
 }
 
 </style>
