@@ -8455,7 +8455,7 @@ ${rosterLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const notifyPlayerBtn = `<button class="promote-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`;
+                        const notifyPlayerBtn = `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`;
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
                                     ${notifyPlayerBtn}
@@ -10818,6 +10818,17 @@ document.addEventListener('keydown', function(e){
                 font-size: 0.82rem !important;
             }
         }
+
+
+.notify-player-btn {
+    background: #2e7d32 !important;
+    color: #fff !important;
+    width: auto !important;
+    white-space: nowrap;
+}
+.notify-player-btn:hover {
+    background: #3fa447 !important;
+}
 
 </style>
 
