@@ -5462,6 +5462,31 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-mobile-action-pill-minus-extra-8-v1">
+/* Mobile only: reduce Registered Players action pillboxes by another ~8%.
+   Keeps order/layout intact. Applies to Regular, Text In, and Remove. */
+@media (max-width: 600px) {
+    #playerList .registered-action-stack .regular-toggle-btn,
+    #playerList .registered-action-stack .notify-player-btn,
+    #playerList .registered-action-stack .remove-btn {
+        width: 33px !important;
+        min-width: 33px !important;
+        max-width: 33px !important;
+        height: 16px !important;
+        min-height: 16px !important;
+        padding: 0 !important;
+        border-radius: 6px !important;
+        font-size: 0.48rem !important;
+        line-height: 1 !important;
+    }
+
+    #playerList .registered-action-stack {
+        gap: 2px !important;
+    }
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 
@@ -8455,7 +8480,9 @@ ${rosterLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const notifyPlayerBtn = (!hideAdminPaymentUi)
+                        const isPhanLyPlayer = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
+                        const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isPhanLyPlayer;
+                        const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
                             : '';
                         const actionCell = hideAdminPaymentUi
