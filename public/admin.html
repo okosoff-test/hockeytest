@@ -8174,6 +8174,43 @@ ${portalLink}
             window.location.href = `sms:${data.phoneOnly}?body=${body}`;
         }
 
+        function getCurrentGameLabelForSms() {
+            const titleValue = String(document.getElementById('customTitleInput')?.value || '').trim();
+            if (titleValue) return titleValue;
+            const previewValue = String(document.getElementById('dynamicTitlePreview')?.innerText || document.getElementById('titlePreview')?.innerText || '').trim();
+            if (previewValue) return previewValue;
+            return 'Phan Hockey';
+        }
+
+        function openPlayerInRosterSms(playerId) {
+            const player = adminPlayersById ? adminPlayersById[String(playerId)] : null;
+            if (!player) {
+                alert('Player details are not loaded yet. Refresh admin and try again.');
+                return;
+            }
+
+            const phoneDigits = normalizePhoneDigitsClient(player.phone);
+            if (!phoneDigits || phoneDigits.length !== 10) {
+                alert('This player does not have a valid 10-digit phone number.');
+                return;
+            }
+
+            const firstName = String(player.firstName || '').trim() || 'there';
+            const gameLabel = getCurrentGameLabelForSms();
+            const rosterLink = `${window.location.origin}/roster`;
+
+            const smsBody = `
+${firstName}, you’re in for ${gameLabel}.
+
+A spot opened up and you have been added to the roster.
+
+Check the updated roster here:
+${rosterLink}
+`.trim();
+
+            window.location.href = `sms:${phoneDigits}?body=${encodeURIComponent(smsBody)}`;
+        }
+
         async function downloadRosterContactsCsv() {
             const url = `${API_URL}/api/admin/roster-contacts.csv?sessionToken=${encodeURIComponent(sessionToken)}`;
             window.open(url, '_blank');
@@ -8418,12 +8455,15 @@ ${portalLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
+                        const notifyPlayerBtn = `<button class="promote-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`;
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
+                                    ${notifyPlayerBtn}
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                                </div>`
                             : `<div class="action-stack registered-action-stack">
                                     ${regularCell}
+                                    ${notifyPlayerBtn}
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                                </div>`;
 
