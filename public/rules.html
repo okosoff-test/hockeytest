@@ -324,15 +324,29 @@
         })();
 // Check for temp registration data
         const tempData = sessionStorage.getItem('tempRegData');
-        
+
+        let registrationData = null;
+
         if (!tempData) {
-            alert('No registration data found. Please start registration from the beginning.');
-            window.location.href = '/';
+            // Public rules viewing mode.
+            const agreementBox = document.querySelector('.agreement-box');
+            const completeBtn = document.getElementById('completeBtn');
+
+            if (agreementBox) {
+                agreementBox.style.display = 'none';
+            }
+
+            if (completeBtn) {
+                completeBtn.disabled = false;
+                completeBtn.innerText = 'Return to Home';
+                completeBtn.onclick = function () {
+                    window.location.href = '/';
+                };
+            }
+        } else {
+            registrationData = JSON.parse(tempData);
         }
-        
-        const registrationData = JSON.parse(tempData);
-        
-        // Enable button when checkbox is checked
+// Enable button when checkbox is checked
         document.getElementById('agreeRules').addEventListener('change', function() {
             document.getElementById('completeBtn').disabled = !this.checked;
         });
