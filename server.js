@@ -1769,6 +1769,7 @@ async function checkWeeklyReset() {
     players = [];
     waitlist = [];
     rosterReleased = false;
+    collectorPageEnabled = false;
     resetArmed = false;
     lastResetWeek = currentWeek;
     gameDate = calculateNextGameDate();
@@ -2273,7 +2274,8 @@ async function loadDataFromDB() {
                 regularSkatersByDay = normalizeRegularSkatersByDayMap({});
             }
         }
-        if (appSettings.persistentAdminRatings !== undefined) {
+                if (!rosterReleased) collectorPageEnabled = false; // weekly reset/default guard
+if (appSettings.persistentAdminRatings !== undefined) {
             try {
                 persistentAdminRatings = normalizePersistentAdminRatings(JSON.parse(appSettings.persistentAdminRatings || '{}'));
             } catch {
@@ -2770,6 +2772,7 @@ function applySnapshotToMemory(snapshot) {
     lastResetWeek = snapshot.lastResetWeek ?? lastResetWeek;
     rosterReleased = snapshot.rosterReleased ?? rosterReleased;
     resetArmed = snapshot.resetArmed ?? resetArmed;
+    if (!rosterReleased) collectorPageEnabled = false; // payment page must stay OFF when roster is not released
     signupLockStartAt = snapshot.signupLockStartAt ?? signupLockStartAt;
     signupLockEndAt = snapshot.signupLockEndAt ?? signupLockEndAt;
     rosterReleaseAt = snapshot.rosterReleaseAt ?? rosterReleaseAt;
@@ -3634,6 +3637,7 @@ function loadDataFromFile() {
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
+            if (!rosterReleased) collectorPageEnabled = false; // file-mode weekly reset/default guard
             refreshDynamicSignupCode();
         } else {
             gameDate = calculateNextGameDate();
