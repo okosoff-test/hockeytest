@@ -1597,6 +1597,8 @@ async function autoReleaseRoster() {
         const teams = generateFairTeams();
 
         rosterReleased = true;
+       collectorPageEnabled = true;
+        collectorPageEnabled = true;
         resetArmed = true;
 
         announcementEnabled = true;
@@ -4094,6 +4096,7 @@ function rebalanceReleasedRoster(reason = 'roster-change') {
     }
 
     rosterReleased = true;
+    collectorPageEnabled = true;
     const teams = generateFairTeams();
     currentWeekData = {
         ...(currentWeekData || {}),
@@ -7274,6 +7277,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         const teams = generateFairTeams();
         await runProtectedMutation('release-roster', req, async () => {
             rosterReleased = true;
+            collectorPageEnabled = true;
             resetArmed = true;
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
