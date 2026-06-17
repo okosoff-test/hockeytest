@@ -23,7 +23,7 @@ table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border-bottom:1px
 <div class="sub">For Kyle / Brad — collect money after roster release only.</div>
 
 <div class="login-box" id="loginBox">
-  <h3>Enter Collector Password</h3>
+  <h3>Enter Payment Password</h3>
   <input type="password" id="passwordInput" placeholder="Password" autocomplete="current-password">
   <button onclick="login()">Login</button>
   <div class="error" id="loginError"></div>
@@ -49,7 +49,7 @@ table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border-bottom:1px
 </div>
 <script>
 const API_URL = window.location.origin;
-const TOKEN_KEY = 'phansCollectorSessionToken';
+const TOKEN_KEY = 'phansPaymentSessionToken';
 let sessionToken = localStorage.getItem(TOKEN_KEY) || '';
 
 function headers(){return {'Content-Type':'application/json','Authorization':'Bearer '+sessionToken,'X-Admin-Auth':sessionToken};}
