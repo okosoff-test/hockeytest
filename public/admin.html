@@ -5535,7 +5535,14 @@ th, td{padding:2px 3px !important;}
             </div>
 </div>
 
+<div class="maintenance-control" id="collectorPageControl" style="margin-top:10px;">
+            <div class="maintenance-toggle">
+                <input type="checkbox" id="collectorPageCheckbox" class="maintenance-checkbox" onchange="toggleCollectorPage()">
+                <label for="collectorPageCheckbox" class="maintenance-label" id="collectorPageLabel">Collector Page ON</label>
+                <div class="maintenance-status active" id="collectorPageStatus">/payment ACTIVE</div>
+            </div>
 </div>
+            </div>
         </div>
 
 
@@ -7073,6 +7080,21 @@ th, td{padding:2px 3px !important;}
                     }
                     maintenanceBulletin.classList.remove('active');
                 }
+                
+                const collectorPageCheckbox = document.getElementById('collectorPageCheckbox');
+                const collectorPageStatus = document.getElementById('collectorPageStatus');
+                const collectorPageLabel = document.getElementById('collectorPageLabel');
+                const collectorEnabled = data.collectorPageEnabled !== false;
+                if (collectorPageCheckbox) collectorPageCheckbox.checked = collectorEnabled;
+                if (collectorPageStatus) {
+                    collectorPageStatus.innerText = collectorEnabled ? '/payment ACTIVE' : '/payment OFF';
+                    collectorPageStatus.className = collectorEnabled ? 'maintenance-status active' : 'maintenance-status inactive';
+                }
+                if (collectorPageLabel) {
+                    collectorPageLabel.innerText = collectorEnabled ? 'Collector Page ON' : 'Collector Page OFF';
+                    collectorPageLabel.classList.toggle('active', !collectorEnabled);
+                }
+
                 // Update title editor
                 if (data.selectedDayTime) {
                     const parsed = parseSelectedDayTime(data.selectedDayTime);
@@ -7172,6 +7194,37 @@ th, td{padding:2px 3px !important;}
             const [hour, minute] = timePart.split(':').map(Number);
             if (![year, month, day, hour, minute].every(Number.isFinite)) return '—';
             return `${weekdayName(year, month, day)} ${formatTime12(hour, minute)} ET`;
+        }
+
+        async function toggleCollectorPage() {
+            const checkbox = document.getElementById('collectorPageCheckbox');
+            const newState = checkbox.checked;
+
+            try {
+                checkbox.disabled = true;
+                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({
+                        sessionToken: sessionToken,
+                        collectorPageEnabled: newState
+                    })
+                });
+
+                const result = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    await loadAppSettings();
+                    alert(newState ? '✅ Collector Page ON' : '🚫 Collector Page OFF');
+                } else {
+                    checkbox.checked = !newState;
+                    alert(result.error || 'Failed to update collector page setting');
+                }
+            } catch (err) {
+                checkbox.checked = !newState;
+                alert('Failed to update collector page setting');
+            } finally {
+                checkbox.disabled = false;
+            }
         }
 
         // Toggle maintenance mode
