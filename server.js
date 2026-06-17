@@ -610,6 +610,7 @@ saveAdminSessionState();
 // Weekly reset tracking
 let lastResetWeek = null;
 let rosterReleased = false;
+    collectorPageEnabled = false;
 let resetArmed = false;
 let currentWeekData = {
     weekNumber: null,
@@ -1597,7 +1598,6 @@ async function autoReleaseRoster() {
         const teams = generateFairTeams();
 
         rosterReleased = true;
-       collectorPageEnabled = true;
         collectorPageEnabled = true;
         resetArmed = true;
 
@@ -7660,8 +7660,8 @@ function getPaymentAuthToken(req) {
     return req.headers['x-admin-auth'] || req.headers['x-admin-token'] || bearerToken || (req.body && req.body.sessionToken) || '';
 }
 function requirePaymentPageEnabled(req, res) {
-    if (collectorPageEnabled !== false) return true;
-    res.status(403).json({ error: 'Payment page is currently turned off by admin.' });
+    if (collectorPageEnabled !== false && getEffectiveRosterReleasedState()) return true;
+    res.status(403).json({ error: 'Payment page is currently turned off or roster has not been released.' });
     return false;
 }
 function requirePaymentAuth(req, res) {
@@ -7671,8 +7671,8 @@ function requirePaymentAuth(req, res) {
 }
 
 app.get('/payment', (req, res) => {
-    if (collectorPageEnabled === false) {
-        return res.status(403).send('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Payment Page Off</title><style>body{margin:0;background:#1a1a1a;color:#fff;font-family:Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}.box{max-width:520px;background:#2d2d2d;border:2px solid #ff6b00;border-radius:14px;padding:24px;text-align:center}h1{color:#ff6b00}</style></head><body><div class="box"><h1>Payment Page Off</h1><p>This page is currently turned off by admin.</p></div></body></html>');
+    if (collectorPageEnabled === false || !getEffectiveRosterReleasedState()) {
+        return res.status(403).send('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Payment Page Off</title><style>body{margin:0;background:#1a1a1a;color:#fff;font-family:Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}.box{max-width:520px;background:#2d2d2d;border:2px solid #ff6b00;border-radius:14px;padding:24px;text-align:center}h1{color:#ff6b00}</style></head><body><div class="box"><h1>Payment Page Off</h1><p>This page is unavailable until the roster is released.</p></div></body></html>');
     }
     return sendPublic(res, 'collector.html');
 });
