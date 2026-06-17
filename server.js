@@ -7664,7 +7664,7 @@ app.get('/payment', (req, res) => {
     if (collectorPageEnabled === false) {
         return res.status(403).send('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Payment Page Off</title><style>body{margin:0;background:#1a1a1a;color:#fff;font-family:Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}.box{max-width:520px;background:#2d2d2d;border:2px solid #ff6b00;border-radius:14px;padding:24px;text-align:center}h1{color:#ff6b00}</style></head><body><div class="box"><h1>Payment Page Off</h1><p>This page is currently turned off by admin.</p></div></body></html>');
     }
-    res.sendFile(path.join(__dirname, 'collector.html'));
+    res.sendFile(path.join(__dirname, 'payment.html'));
 });
 
 app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
