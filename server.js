@@ -248,6 +248,7 @@ let players = [];
 let waitlist = [];
 let cancelledRegistrations = [];
 const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
+const COLLECTOR_PASSWORD = String(process.env.COLLECTOR_PASSWORD || process.env.ADMIN_COLLECTOR_PASSWORD || '').trim();
 const ADMIN_TOKEN_SECRET = String(process.env.ADMIN_TOKEN_SECRET || '').trim() || crypto.randomBytes(48).toString('hex');
 if (!String(process.env.ADMIN_TOKEN_SECRET || '').trim()) {
     console.warn('ADMIN_TOKEN_SECRET is not configured. Using an ephemeral secret for this server process.');
@@ -480,8 +481,16 @@ function hasConfiguredAdminPassword() {
     return !!ADMIN_PASSWORD;
 }
 
+function hasConfiguredCollectorPassword() {
+    return !!COLLECTOR_PASSWORD;
+}
+
 function isValidAdminPassword(password) {
     return hasConfiguredAdminPassword() && String(password || '').trim() === ADMIN_PASSWORD;
+}
+
+function isValidCollectorPassword(password) {
+    return hasConfiguredCollectorPassword() && String(password || '').trim() === COLLECTOR_PASSWORD;
 }
 
 let adminSessionState = {
@@ -559,15 +568,23 @@ function decodeAdminSession(token) {
     }
 }
 
-function createAdminSessionToken(rememberMe = true) {
+function createScopedSessionToken(role = 'admin', rememberMe = true) {
     const jti = crypto.randomUUID();
     const remember = !!rememberMe;
     const expiresIn = remember ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
     return jwt.sign(
-        { role: 'admin', jti, remember },
+        { role, jti, remember },
         ADMIN_TOKEN_SECRET,
         { expiresIn }
     );
+}
+
+function createAdminSessionToken(rememberMe = true) {
+    return createScopedSessionToken('admin', rememberMe);
+}
+
+function createCollectorSessionToken(rememberMe = true) {
+    return createScopedSessionToken('collector', rememberMe);
 }
 
 function getAdminAuthToken(req) {
@@ -587,6 +604,26 @@ function getAdminAuthToken(req) {
     );
 }
 
+function decodeScopedSession(token, allowedRoles = []) {
+    const value = String(token || '').trim();
+    if (!value) return null;
+    try {
+        const decoded = jwt.verify(value, ADMIN_TOKEN_SECRET);
+        if (!decoded || !allowedRoles.includes(decoded.role)) return null;
+        return decoded;
+    } catch (err) {
+        return null;
+    }
+}
+
+function isValidScopedSession(token, allowedRoles = []) {
+    const decoded = decodeScopedSession(token, allowedRoles);
+    if (!decoded) return false;
+    if (decoded.jti && adminSessionState.revokedJtis && adminSessionState.revokedJtis[decoded.jti]) return false;
+    if (adminSessionState.logoutAllAfter && decoded.iat && decoded.iat < Number(adminSessionState.logoutAllAfter)) return false;
+    return true;
+}
+
 function isValidAdminSession(token) {
     const decoded = decodeAdminSession(token);
     if (!decoded) return false;
@@ -599,6 +636,12 @@ function isAuthorizedAdminRequest(req) {
     const token = getAdminAuthToken(req);
     if (isValidAdminSession(token)) return true;
     return isValidAdminPassword(token);
+}
+
+function isAuthorizedCollectorRequest(req) {
+    const token = getAdminAuthToken(req);
+    if (isValidScopedSession(token, ['admin', 'collector'])) return true;
+    return isValidAdminPassword(token) || isValidCollectorPassword(token);
 }
 
 // Store admin sessions
@@ -4833,6 +4876,14 @@ app.get('/admin-phan-puck-you-9648.html', (req, res) => {
     return sendPublic(res, 'admin.html');
 });
 
+app.get('/collector', (req, res) => {
+    return sendPublic(res, 'collector.html');
+});
+
+app.get('/payment-admin', (req, res) => {
+    return sendPublic(res, 'collector.html');
+});
+
 app.get('/waitlist', (req, res) => {
     return sendPublic(res, 'waitlist.html');
 });
@@ -6054,6 +6105,97 @@ app.post('/api/admin/add-backup-goalie', async (req, res) => {
 });
 
 // END NEW ADMIN ENDPOINTS
+
+
+// Collector-only payment page login and data.
+app.post('/api/collector/login', (req, res) => {
+    const { password, rememberMe } = req.body || {};
+    if (!isValidCollectorPassword(password) && !isValidAdminPassword(password)) {
+        return res.status(401).json({ error: 'Invalid password' });
+    }
+    const sessionToken = isValidAdminPassword(password)
+        ? createAdminSessionToken(!!rememberMe)
+        : createCollectorSessionToken(!!rememberMe);
+    addAdminAuditEntry('collector_login', req, { role: isValidAdminPassword(password) ? 'admin' : 'collector' });
+    res.json({ success: true, sessionToken });
+});
+
+app.post('/api/collector/players', (req, res) => {
+    if (!isAuthorizedCollectorRequest(req)) {
+        return res.status(401).json({ error: 'Unauthorized' });
+    }
+
+    const released = getEffectiveRosterReleasedState();
+    const totalPaid = players.reduce((sum, p) => {
+        const value = parseFloat(p && p.paidAmount);
+        return sum + (Number.isFinite(value) ? value : 0);
+    }, 0);
+
+    const payablePlayers = players.filter(p => {
+        const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
+        return !p.isGoalie && !isPhan;
+    });
+
+    res.json({
+        success: true,
+        rosterReleased: released,
+        playerCount: getPlayerCount(),
+        goalieCount: getGoalieCount(),
+        totalPlayers: players.length,
+        totalPaid: totalPaid.toFixed(2),
+        paidCount: payablePlayers.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes').length,
+        unpaidCount: payablePlayers.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes').length,
+        location: gameLocation,
+        time: gameTime,
+        date: gameDate,
+        players: released ? players : []
+    });
+});
+
+app.post('/api/collector/update-paid-amount', async (req, res) => {
+    const { playerId, amount } = req.body || {};
+    if (!isAuthorizedCollectorRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+    if (!getEffectiveRosterReleasedState()) return res.status(403).json({ error: 'Roster is not released yet.' });
+
+    const normalizedPlayerId = parseInt(playerId, 10);
+    const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId);
+    if (!player) return res.status(404).json({ error: 'Player not found' });
+    const isPhan = String(player.firstName || '').trim().toLowerCase() === 'phan' && String(player.lastName || '').trim().toLowerCase() === 'ly';
+    if (player.isGoalie || isPhan) return res.status(400).json({ error: 'Payment collection is disabled for this player.' });
+
+    let paidAmount = null;
+    if (amount !== '' && amount !== null && amount !== undefined) {
+        const parsed = parseFloat(amount);
+        if (!Number.isNaN(parsed) && parsed >= 0) paidAmount = parsed;
+    }
+
+    try {
+        player.paidAmount = paidAmount;
+        if (paidAmount !== null && paidAmount > 0) {
+            applyPaymentStatusToPlayer(player, 'paid');
+        } else {
+            applyPaymentStatusToPlayer(player, 'owes');
+        }
+
+        if (pool) {
+            await pool.query(
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
+            );
+        }
+        await saveData();
+
+        const totalPaid = players.reduce((sum, p) => {
+            const value = parseFloat(p && p.paidAmount);
+            return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+        addAdminAuditEntry('collector_update_paid_amount', req, { playerId: normalizedPlayerId, amount: paidAmount });
+        res.json({ success: true, player, totalPaid: totalPaid.toFixed(2) });
+    } catch (err) {
+        console.error('Collector payment update error:', err);
+        res.status(500).json({ error: 'Failed to update payment safely' });
+    }
+});
 
 // ADMIN ONLY: Get full player data with payment AND rating info
 app.post('/api/admin/players-full', (req, res) => {
