@@ -2260,6 +2260,8 @@ async function loadDataFromDB() {
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
         if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
+        if (appSettings.collectorPageEnabled !== undefined) collectorPageEnabled = appSettings.collectorPageEnabled !== 'false';
+        if (!rosterReleased) collectorPageEnabled = false;
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
@@ -2881,6 +2883,8 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.announcementText === 'string') announcementText = s.announcementText;
         if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
         if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+        if (typeof s.collectorPageEnabled === 'boolean') collectorPageEnabled = s.collectorPageEnabled;
+        if (!rosterReleased) collectorPageEnabled = false;
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
     }
@@ -3175,6 +3179,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
             ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
+            ['collectorPageEnabled', String(collectorPageEnabled)],
             ['persistentAdminRatings', JSON.stringify(persistentAdminRatings)],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
@@ -3409,6 +3414,7 @@ function buildFullDataSnapshot() {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         summary: {
             gameLocation,
             gameTime,
@@ -3425,6 +3431,7 @@ function buildFullDataSnapshot() {
             announcementImages,
             paymentEmail,
         rosterReleaseAnnouncementText,
+            collectorPageEnabled,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
             requirePlayerCode,
@@ -3486,6 +3493,7 @@ function getSettingsSnapshot() {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         gameTime,
         gameLocation,
         gameDate,
@@ -3627,6 +3635,8 @@ function loadDataFromFile() {
             announcementText = data.announcementText ?? '';
             rosterReleaseAnnouncementText = String(data.rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
             announcementImages = Array.isArray(data.announcementImages) ? data.announcementImages : [];
+            collectorPageEnabled = data.collectorPageEnabled ?? data.appSettings?.collectorPageEnabled ?? false;
+            if (!rosterReleased) collectorPageEnabled = false;
             if (!isManualScheduleMode() && shouldAutoBuildMissingSchedules(data)) {
                 buildAutoSchedulesFromGameTime(gameTime, gameDate);
             }
@@ -4092,7 +4102,6 @@ function rebalanceReleasedRoster(reason = 'roster-change') {
     }
 
     rosterReleased = true;
-    collectorPageEnabled = true;
     const teams = generateFairTeams();
     currentWeekData = {
         ...(currentWeekData || {}),
@@ -5931,6 +5940,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
@@ -5946,7 +5956,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
-            regularSkatersByDay: newRegularSkatersByDay } = req.body;
+            regularSkatersByDay: newRegularSkatersByDay, collectorPageEnabled: newCollectorPageEnabled } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -5960,6 +5970,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
+            if (newCollectorPageEnabled !== undefined) collectorPageEnabled = !!newCollectorPageEnabled;
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
@@ -5999,6 +6010,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             rosterReleaseAnnouncementText,
             announcementImages,
             regularSkatersByDay,
+            collectorPageEnabled,
             gameTime,
             gameLocation,
             gameDate
@@ -7403,6 +7415,7 @@ app.post('/api/admin/release-roster', async (req, res) => {
         const teams = generateFairTeams();
         await runProtectedMutation('release-roster', req, async () => {
             rosterReleased = true;
+            collectorPageEnabled = true;
             resetArmed = true;
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
             announcementEnabled = true;
@@ -7430,7 +7443,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
         await runProtectedMutation('manual-reset', req, async () => {
             // Preserve all active admin-adjusted ratings before clearing the weekly roster.
             rememberCurrentAdminRatings();
-            playerSpots = MAX_SKATERS; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
+            playerSpots = MAX_SKATERS; players = []; waitlist = []; rosterReleased = false; collectorPageEnabled = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
             manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
