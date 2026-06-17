@@ -860,6 +860,7 @@ let announcementText = '';
 let announcementImages = [];
 let paymentEmail = String(process.env.PAYMENT_EMAIL || 'okosoff@outlook.com').trim();
 let rosterReleaseAnnouncementText = buildRosterReleasePaymentAnnouncement();
+let collectorPageEnabled = true; // Payment page ON/OFF toggle from main admin
 
 // ============================================
 // END NEW CONFIGURATION SECTION
@@ -1854,7 +1855,8 @@ function buildPersistedStateFingerprint(snapshot = null) {
         announcementText: payload.announcementText,
         announcementImages: payload.announcementImages,
         paymentEmail: payload.paymentEmail,
-        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText
+        rosterReleaseAnnouncementText: payload.rosterReleaseAnnouncementText,
+        collectorPageEnabled: payload.collectorPageEnabled
     });
 }
 
@@ -2252,6 +2254,7 @@ async function loadDataFromDB() {
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
         if (appSettings.paymentEmail !== undefined) paymentEmail = String(appSettings.paymentEmail || '').trim() || paymentEmail;
         if (appSettings.rosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(appSettings.rosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
+        if (appSettings.collectorPageEnabled !== undefined) collectorPageEnabled = appSettings.collectorPageEnabled !== 'false';
         if (appSettings.announcementImages !== undefined) {
             try {
                 announcementImages = JSON.parse(appSettings.announcementImages || '[]');
@@ -2873,6 +2876,7 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.announcementText === 'string') announcementText = s.announcementText;
         if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
         if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+                if (typeof s.collectorPageEnabled === 'boolean') collectorPageEnabled = s.collectorPageEnabled;
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
     }
@@ -3167,6 +3171,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['announcementImages', JSON.stringify(announcementImages)],
             ['paymentEmail', paymentEmail],
             ['rosterReleaseAnnouncementText', rosterReleaseAnnouncementText],
+            ['collectorPageEnabled', String(collectorPageEnabled)],
             ['persistentAdminRatings', JSON.stringify(persistentAdminRatings)],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
@@ -3401,6 +3406,7 @@ function buildFullDataSnapshot() {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         summary: {
             gameLocation,
             gameTime,
@@ -3417,6 +3423,7 @@ function buildFullDataSnapshot() {
             announcementImages,
             paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
             requirePlayerCode,
@@ -3478,6 +3485,7 @@ function getSettingsSnapshot() {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         gameTime,
         gameLocation,
         gameDate,
@@ -5787,13 +5795,15 @@ app.post('/api/admin/app-settings', (req, res) => {
         announcementImages,
         paymentEmail,
         rosterReleaseAnnouncementText,
+        collectorPageEnabled,
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
-        regularSkatersByDay
+        regularSkatersByDay,
+        collectorPageEnabled
     });
 });
 
@@ -5802,7 +5812,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
-            regularSkatersByDay: newRegularSkatersByDay } = req.body;
+            regularSkatersByDay: newRegularSkatersByDay, collectorPageEnabled: newCollectorPageEnabled } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -5816,6 +5826,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newAnnouncementText !== undefined) announcementText = String(newAnnouncementText || '').trim();
             if (newRosterReleaseAnnouncementText !== undefined) rosterReleaseAnnouncementText = String(newRosterReleaseAnnouncementText || '').trim() || buildRosterReleasePaymentAnnouncement();
             if (newPaymentEmail !== undefined) paymentEmail = String(newPaymentEmail || '').trim();
+            if (newCollectorPageEnabled !== undefined) collectorPageEnabled = !!newCollectorPageEnabled;
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
             }
@@ -5855,6 +5866,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             rosterReleaseAnnouncementText,
             announcementImages,
             regularSkatersByDay,
+            collectorPageEnabled,
             gameTime,
             gameLocation,
             gameDate
@@ -6435,6 +6447,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = s.rosterReleaseAnnouncementText.trim() || buildRosterReleasePaymentAnnouncement();
                 if (Array.isArray(s.announcementImages)) announcementImages = s.announcementImages;
                 if (typeof s.paymentEmail === 'string') paymentEmail = s.paymentEmail.trim() || paymentEmail;
+                if (typeof s.collectorPageEnabled === 'boolean') collectorPageEnabled = s.collectorPageEnabled;
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
             }
@@ -7608,6 +7621,115 @@ process.on('unhandledRejection', (err) => {
 });
 
 // Initialize and start
+// PAYMENT PAGE: limited collector access for Kyle/Brad
+const PAYMENT_PASSWORD = String(process.env.PAYMENT_PASSWORD || process.env.COLLECTOR_PASSWORD || '').trim();
+function isPaymentExcludedPlayer(player = {}) {
+    const first = String(player.firstName || '').trim().toLowerCase();
+    const last = String(player.lastName || '').trim().toLowerCase();
+    return !!player.isGoalie || (first === 'phan' && last === 'ly');
+}
+function getPaymentPlayers() {
+    return (Array.isArray(players) ? players : []).filter(p => !isPaymentExcludedPlayer(p));
+}
+function createPaymentSessionToken(rememberMe = true) {
+    const expiresIn = rememberMe ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
+    return jwt.sign({ role: 'payment', jti: crypto.randomUUID(), remember: !!rememberMe }, ADMIN_TOKEN_SECRET, { expiresIn });
+}
+function isValidPaymentSession(token) {
+    if (isValidAdminSession(token)) return true;
+    try {
+        const decoded = jwt.verify(String(token || '').trim(), ADMIN_TOKEN_SECRET);
+        return !!decoded && decoded.role === 'payment';
+    } catch (err) {
+        return false;
+    }
+}
+function getPaymentAuthToken(req) {
+    const authHeader = req.headers['authorization'] || '';
+    const bearerToken = typeof authHeader === 'string' && authHeader.startsWith('Bearer ') ? authHeader.slice(7).trim() : '';
+    return req.headers['x-admin-auth'] || req.headers['x-admin-token'] || bearerToken || (req.body && req.body.sessionToken) || '';
+}
+function requirePaymentPageEnabled(req, res) {
+    if (collectorPageEnabled !== false) return true;
+    res.status(403).json({ error: 'Payment page is currently turned off by admin.' });
+    return false;
+}
+function requirePaymentAuth(req, res) {
+    if (isValidPaymentSession(getPaymentAuthToken(req))) return true;
+    res.status(401).json({ error: 'Unauthorized' });
+    return false;
+}
+
+app.get('/payment', (req, res) => {
+    if (collectorPageEnabled === false) {
+        return res.status(403).send('<!doctype html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>Payment Page Off</title><style>body{margin:0;background:#1a1a1a;color:#fff;font-family:Arial;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:20px}.box{max-width:520px;background:#2d2d2d;border:2px solid #ff6b00;border-radius:14px;padding:24px;text-align:center}h1{color:#ff6b00}</style></head><body><div class="box"><h1>Payment Page Off</h1><p>This page is currently turned off by admin.</p></div></body></html>');
+    }
+    res.sendFile(path.join(__dirname, 'collector.html'));
+});
+
+app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
+    if (!requirePaymentPageEnabled(req, res)) return;
+    const { password, rememberMe } = req.body || {};
+    if (!PAYMENT_PASSWORD) return res.status(503).json({ error: 'PAYMENT_PASSWORD or COLLECTOR_PASSWORD is not configured.' });
+    if (String(password || '').trim() !== PAYMENT_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
+    res.json({ success: true, sessionToken: createPaymentSessionToken(rememberMe !== false) });
+});
+
+app.post('/api/collector/players', (req, res) => {
+    if (!requirePaymentPageEnabled(req, res)) return;
+    if (!requirePaymentAuth(req, res)) return;
+    const paymentPlayers = getPaymentPlayers();
+    const totalPaid = paymentPlayers.reduce((sum, p) => {
+        const amount = Number(p.paidAmount);
+        return Number.isFinite(amount) && amount > 0 ? sum + amount : sum;
+    }, 0);
+    const paidCount = paymentPlayers.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes').length;
+    const unpaidCount = paymentPlayers.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes').length;
+    res.json({
+        success: true,
+        rosterReleased,
+        date: gameDate,
+        time: gameTime,
+        location: gameLocation,
+        totalPaid: totalPaid.toFixed(2),
+        paidCount,
+        unpaidCount,
+        playerCount: paymentPlayers.length,
+        goalieCount: 0,
+        players: rosterReleased ? paymentPlayers : []
+    });
+});
+
+app.post('/api/collector/update-paid-amount', async (req, res) => {
+    if (!requirePaymentPageEnabled(req, res)) return;
+    if (!requirePaymentAuth(req, res)) return;
+    if (!rosterReleased) return res.status(403).json({ error: 'Payment page opens after roster release.' });
+    const playerId = String(req.body?.playerId || '').trim();
+    const player = (Array.isArray(players) ? players : []).find(p => String(p.id) === playerId);
+    if (!player || isPaymentExcludedPlayer(player)) return res.status(404).json({ error: 'Player not found on payment list.' });
+    const amountRaw = req.body?.amount;
+    try {
+        await runProtectedMutation('payment-page-update-paid-amount', req, async () => {
+            if (amountRaw === null || amountRaw === '' || amountRaw === undefined) {
+                applyPaymentStatusToPlayer(player, 'owes');
+            } else {
+                const amount = Number(amountRaw);
+                if (!Number.isFinite(amount) || amount < 0) throw new Error('Enter a valid payment amount.');
+                player.paidAmount = amount;
+                player.paid = amount > 0;
+                player.paymentStatus = amount > 0 ? 'paid' : 'owes';
+            }
+            if (pool) {
+                await pool.query('UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4', [!!player.paid, player.paidAmount == null ? null : Number(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), player.id]);
+            }
+        });
+        res.json({ success: true });
+    } catch (err) {
+        res.status(500).json({ error: err && err.message ? err.message : 'Payment update failed.' });
+    }
+});
+
+
 initDatabase().then(async () => {
     if (!STRICT_DATABASE_MODE) {
         await reconcileFromFileBackup();
@@ -7632,6 +7754,8 @@ initDatabase().then(async () => {
     }
     
     
+
+
 // Backward-compatible redirects for old payment collection URLs
 app.get('/collect', (req, res) => res.redirect('/payment'));
 app.get('/collector', (req, res) => res.redirect('/payment'));

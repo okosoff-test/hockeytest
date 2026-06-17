@@ -77,7 +77,7 @@ async function loadData(){
   const res = await fetch(`${API_URL}/api/collector/players`,{method:'POST',headers:headers(),body:JSON.stringify({sessionToken})});
   if(res.status===401){logout(); return;}
   const data = await res.json().catch(()=>({}));
-  if(!res.ok){alert(data.error || 'Could not load data'); return;}
+  if(!res.ok){alert(data.error || 'Could not load data'); if(res.status===403){logout();} return;}
   document.getElementById('gameInfo').innerHTML = `${escapeHtml(data.date || '')} ${escapeHtml(data.time || '')}<br><strong>${escapeHtml(data.location || '')}</strong>`;
   if(!data.rosterReleased){
     document.getElementById('pendingBox').classList.remove('hidden');
@@ -91,8 +91,8 @@ async function loadData(){
   document.getElementById('totalCollected').textContent = '$' + Number(data.totalPaid || 0).toFixed(2);
   document.getElementById('paidCount').textContent = data.paidCount || 0;
   document.getElementById('unpaidCount').textContent = data.unpaidCount || 0;
-  document.getElementById('playersTitle').textContent = `🏒 Registered Players (${data.playerCount || 0} Players, ${data.goalieCount || 0} Goalies)`;
-  renderPlayers(data.players || []);
+  document.getElementById('playersTitle').textContent = `🏒 Payment List (${data.playerCount || 0} Players)`;
+  renderPlayers((data.players || []).filter(p => !p.isGoalie && !(String(p.firstName||'').trim().toLowerCase()==='phan' && String(p.lastName||'').trim().toLowerCase()==='ly')));
 }
 
 function paymentState(p){
