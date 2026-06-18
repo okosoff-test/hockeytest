@@ -7690,7 +7690,21 @@ const EXTRA_GOALIE_CONTACTS = [
         lastName: "Isberg",
         phone: "(289) 808-4633",
         rating: 7,
-        note: "Quick goalie contact"
+        note: "Backup / substitute goalie"
+    },
+    {
+        firstName: "Mikhayla",
+        lastName: "Angelese",
+        phone: "(226) 246-0773",
+        rating: 5.5,
+        note: "Backup / substitute goalie"
+    },
+    {
+        firstName: "Cass",
+        lastName: "Isberg",
+        phone: "(226) 344-5306",
+        rating: 5.5,
+        note: "Backup / substitute goalie"
     }
 ];
 
