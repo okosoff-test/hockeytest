@@ -5822,7 +5822,6 @@ app.post('/api/admin/app-settings', (req, res) => {
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
-        extraGoalieContacts,
         regularSkatersByDay,
         collectorPageEnabled
     });
@@ -6134,8 +6133,7 @@ app.post('/api/admin/players-full', (req, res) => {
         currentWeekData, 
         playerSignupCode, 
         requirePlayerCode,
-        regularSkatersByDay,
-        extraGoalieContacts 
+        regularSkatersByDay 
     });
 });
 
@@ -7182,119 +7180,6 @@ app.post('/api/admin/update-rating', async (req, res) => {
 });
 
 
-// Admin-only add/update for spare goalie contacts used by both Admin and the goalie panel
-app.post('/api/admin/save-spare-goalie-contact', async (req, res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
-
-    const goalie = normalizeGoalieContact(req.body?.goalie || req.body || {});
-    if (!goalie.firstName || !goalie.lastName || normalizePhoneDigits(goalie.phone).length !== 10) {
-        return res.status(400).json({ error: 'First name, last name, and a valid 10-digit phone number are required.' });
-    }
-
-    try {
-        let updatedExisting = false;
-        await runProtectedMutation('admin-save-spare-goalie-contact', req, async () => {
-            extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
-            const key = normalizeGoalieContactKey(goalie);
-            const index = extraGoalieContacts.findIndex(g => normalizeGoalieContactKey(g) === key);
-            if (index >= 0) {
-                extraGoalieContacts[index] = normalizeGoalieContact({
-                    ...extraGoalieContacts[index],
-                    ...goalie
-                });
-                updatedExisting = true;
-            } else {
-                extraGoalieContacts.push(goalie);
-            }
-        }, { goalie });
-
-        res.json({
-            success: true,
-            updatedExisting,
-            goalie,
-            extraGoalieContacts
-        });
-    } catch (err) {
-        console.error('Error saving spare goalie contact from admin:', err.message);
-        res.status(500).json({ error: 'Could not save spare goalie contact.' });
-    }
-});
-
-
-// Admin-only rating update for spare goalie contacts saved from the goalie panel
-app.post('/api/admin/update-spare-goalie-rating', async (req, res) => {
-    const { index, newRating } = req.body || {};
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
-
-    const goalieIndex = Number(index);
-    const ratingNum = roundRating(parseFloat(newRating));
-    if (!Number.isInteger(goalieIndex) || goalieIndex < 0) {
-        return res.status(400).json({ error: 'Invalid spare goalie selection.' });
-    }
-    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
-        return res.status(400).json({ error: 'Rating must be a number between 1 and 10.' });
-    }
-
-    extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
-    const goalie = extraGoalieContacts[goalieIndex];
-    if (!goalie) return res.status(404).json({ error: 'Spare goalie not found.' });
-
-    const oldRating = goalie.rating;
-    try {
-        await runProtectedMutation('update-spare-goalie-rating', req, async () => {
-            extraGoalieContacts[goalieIndex] = normalizeGoalieContact({
-                ...goalie,
-                rating: ratingNum
-            });
-        }, { goalieIndex, oldRating, newRating: ratingNum });
-
-        res.json({
-            success: true,
-            goalie: extraGoalieContacts[goalieIndex],
-            extraGoalieContacts,
-            oldRating,
-            newRating: ratingNum
-        });
-    } catch (err) {
-        console.error('Error updating spare goalie rating:', err);
-        res.status(500).json({ error: 'Failed to update spare goalie rating safely.' });
-    }
-});
-
-
-// Admin-only delete for spare goalie contacts used by both Admin and the goalie panel
-app.post('/api/admin/delete-spare-goalie-contact', async (req, res) => {
-    const { index } = req.body || {};
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
-
-    const goalieIndex = Number(index);
-    if (!Number.isInteger(goalieIndex) || goalieIndex < 0) {
-        return res.status(400).json({ error: 'Invalid spare goalie selection.' });
-    }
-
-    extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
-    const goalie = extraGoalieContacts[goalieIndex];
-    if (!goalie) return res.status(404).json({ error: 'Spare goalie not found.' });
-
-    try {
-        let deleted = null;
-        await runProtectedMutation('delete-spare-goalie-contact', req, async () => {
-            const removed = extraGoalieContacts.splice(goalieIndex, 1);
-            deleted = removed && removed[0] ? removed[0] : null;
-        }, { goalieIndex, goalie });
-
-        res.json({
-            success: true,
-            deleted,
-            extraGoalieContacts
-        });
-    } catch (err) {
-        console.error('Error deleting spare goalie contact:', err);
-        res.status(500).json({ error: 'Failed to delete spare goalie safely.' });
-    }
-});
-
-
 function buildAdminRosterContactExport() {
     const rosterPayload = buildPublicRosterPayload();
     const fullById = new Map((Array.isArray(players) ? players : []).map(p => [String(p.id), p]));
@@ -7812,8 +7697,8 @@ const EXTRA_GOALIE_CONTACTS = [
 let extraGoalieContacts = EXTRA_GOALIE_CONTACTS.map(goalie => ({ ...goalie }));
 
 function normalizeGoalieContact(input = {}) {
-    const firstName = capitalizeFullName(String(input.firstName || '').trim());
-    const lastName = capitalizeFullName(String(input.lastName || '').trim());
+    const firstName = capitalizeName(String(input.firstName || '').trim());
+    const lastName = capitalizeName(String(input.lastName || '').trim());
     const phoneDigits = normalizePhoneDigits(input.phone);
     const phone = formatPhoneNumber(phoneDigits || String(input.phone || '').trim());
     const ratingNumber = Number(input.rating);
@@ -7827,9 +7712,38 @@ function formatSmsPhone(phone) {
     return digits ? `+1${digits}` : '';
 }
 
-function buildGoalieInText(goalie = {}) {
-    const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
-    return `${name}, you're in for ${gameTime || 'hockey'} at ${gameLocation || 'the rink'}. Please confirm you can make it.`;
+function getPublicBaseUrl(req = null) {
+    if (req && typeof req.get === 'function') {
+        const host = String(req.get('host') || '').trim();
+        if (host) {
+            const protoHeader = String(req.get('x-forwarded-proto') || '').split(',')[0].trim();
+            const protocol = protoHeader || req.protocol || 'https';
+            return `${protocol}://${host}`;
+        }
+    }
+
+    const configuredUrl = String(process.env.PUBLIC_SITE_URL || process.env.RENDER_EXTERNAL_URL || '').trim();
+    return configuredUrl.replace(/\/$/, '');
+}
+
+function buildGoalieInText(goalie = {}, req = null) {
+    const firstName = String(goalie.firstName || '').trim();
+    const name = firstName || `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
+    const baseUrl = getPublicBaseUrl(req);
+    const signupUrl = baseUrl ? `${baseUrl}/` : '';
+    const gameDateText = formatGameDate(gameDate);
+    const gameTimeText = String(gameTime || '').trim() || 'hockey';
+    const locationText = String(gameLocation || '').trim() || 'the rink';
+
+    return `Hi ${name},
+
+You're in for Phan's Hockey on ${gameDateText} at ${gameTimeText} at ${locationText}.
+
+Game details:
+${signupUrl || 'Signup page'}
+
+Thanks,
+Phan`;
 }
 
 function createGoalieSessionToken(rememberMe = true) {
@@ -7920,9 +7834,6 @@ function getBackupGoalieContacts() {
         addUniqueGoalieContact(map, goalie, { note: 'Backup / substitute goalie' });
     }
     for (const goalie of extraGoalieContacts || []) {
-        const key = normalizeGoalieContactKey(goalie);
-        // Saved admin/goalie-panel records override the built-in backup defaults by phone/name.
-        if (key && map.has(key)) map.delete(key);
         addUniqueGoalieContact(map, goalie, { note: goalie.note || 'Extra goalie contact' });
     }
     return Array.from(map.values()).sort(sortGoalieContacts);
@@ -7991,12 +7902,18 @@ app.post('/api/goalies/add-contact', async (req, res) => {
 app.post('/api/goalies/cancel', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
     const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
+    const cancelPhone = normalizePhoneDigits(req.body?.cancelPhone || '');
+
     if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
+    if (!cancelPhone) return res.status(400).json({ error: 'Cancelling goalie phone number is required.' });
 
     const goalieIndex = players.findIndex(p => String(p.id) === cancelGoalieId && !!p.isGoalie);
     if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
 
     const cancellingGoalie = players[goalieIndex];
+    if (normalizePhoneDigits(cancellingGoalie.phone) !== cancelPhone) {
+        return res.status(401).json({ error: 'Cancelling goalie phone number does not match.' });
+    }
 
     const nowIso = new Date().toISOString();
     const rosterWasReleased = getEffectiveRosterReleasedState();
@@ -8041,9 +7958,11 @@ app.post('/api/goalies/cancel', async (req, res) => {
 app.post('/api/goalies/substitute', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
     const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
+    const cancelPhone = normalizePhoneDigits(req.body?.cancelPhone || '');
     const substitute = normalizeGoalieContact(req.body?.substitute || {});
 
     if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
+    if (!cancelPhone) return res.status(400).json({ error: 'Cancelling goalie phone number is required.' });
     if (!substitute.firstName || !substitute.lastName || normalizePhoneDigits(substitute.phone).length !== 10) {
         return res.status(400).json({ error: 'Substitute goalie first name, last name, and 10-digit phone are required.' });
     }
@@ -8052,6 +7971,9 @@ app.post('/api/goalies/substitute', async (req, res) => {
     if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
 
     const cancellingGoalie = players[goalieIndex];
+    if (normalizePhoneDigits(cancellingGoalie.phone) !== cancelPhone) {
+        return res.status(401).json({ error: 'Cancelling goalie phone number does not match.' });
+    }
 
     const substitutePhone = normalizePhoneDigits(substitute.phone);
     const duplicate = players.find(p => normalizePhoneDigits(p.phone) === substitutePhone && String(p.id) !== cancelGoalieId);
@@ -8122,7 +8044,7 @@ app.post('/api/goalies/substitute', async (req, res) => {
         return res.status(500).json({ error: 'Goalie substitution could not be saved safely.' });
     }
 
-    const smsBody = buildGoalieInText(newGoalie);
+    const smsBody = buildGoalieInText(newGoalie, req);
     const smsPhone = formatSmsPhone(newGoalie.phone);
     const smsLink = smsPhone ? `sms:${smsPhone}?&body=${encodeURIComponent(smsBody)}` : '';
     res.json({
