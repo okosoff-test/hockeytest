@@ -74,10 +74,13 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or enter a replacement below and choose <strong>Cancel + Sub In</strong>.</div>
-    <input id="subFirst" placeholder="First name">
-    <input id="subLast" placeholder="Last name">
-    <input id="subPhone" placeholder="Phone number" inputmode="tel">
+    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>.</div>
+    <select id="subGoalieSelect" onchange="applySelectedSubGoalie()">
+      <option value="">-- Select replacement goalie --</option>
+    </select>
+    <input id="subFirst" type="hidden">
+    <input id="subLast" type="hidden">
+    <input id="subPhone" type="hidden">
     <input id="subRating" type="hidden" value="7">
     <div class="error" id="subError"></div>
     <div class="modal-actions">
@@ -151,16 +154,57 @@ async function addSpareGoalie(){
   spareFirst.value=''; spareLast.value=''; sparePhone.value=''; spareRating.value='7'; spareNote.value='';
   await loadData();
 }
+function getSubGoalieOptions(){
+  const all = [
+    ...(Array.isArray(currentData.regularGoalies) ? currentData.regularGoalies : []),
+    ...(Array.isArray(currentData.backupGoalies) ? currentData.backupGoalies : [])
+  ];
+  const seen = new Set();
+  const cancelPhone = phoneDigits(selectedCancelGoalie?.phone || '');
+  const cancelId = selectedCancelGoalie?.id == null ? '' : String(selectedCancelGoalie.id);
+  return all.filter(g => {
+    const key = phoneDigits(g.phone || '') || `${String(g.firstName||'').toLowerCase()}|${String(g.lastName||'').toLowerCase()}`;
+    if(!key || seen.has(key)) return false;
+    seen.add(key);
+    if(cancelPhone && phoneDigits(g.phone || '') === cancelPhone) return false;
+    if(cancelId && String(g.id || '') === cancelId) return false;
+    return true;
+  }).sort((a,b)=>goalieName(a).localeCompare(goalieName(b)));
+}
+function populateSubGoalieSelect(){
+  const select = document.getElementById('subGoalieSelect');
+  const options = getSubGoalieOptions();
+  const selectedKey = selectedSubGoalie ? (phoneDigits(selectedSubGoalie.phone || '') || `${selectedSubGoalie.firstName||''}|${selectedSubGoalie.lastName||''}`) : '';
+  select.innerHTML = '<option value="">-- Select replacement goalie --</option>';
+  options.forEach((g, index) => {
+    const opt = document.createElement('option');
+    opt.value = String(index);
+    opt.textContent = `${goalieName(g)}${g.phone ? ' — ' + g.phone : ''}${g.note ? ' — ' + g.note : ''}`;
+    const key = phoneDigits(g.phone || '') || `${g.firstName||''}|${g.lastName||''}`;
+    if(selectedKey && key === selectedKey) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.dataset.options = JSON.stringify(options);
+  applySelectedSubGoalie();
+}
+function applySelectedSubGoalie(){
+  const select = document.getElementById('subGoalieSelect');
+  let options = [];
+  try{ options = JSON.parse(select.dataset.options || '[]'); }catch(e){ options = []; }
+  const g = options[Number(select.value)] || null;
+  selectedSubGoalie = g;
+  document.getElementById('subFirst').value=g?.firstName||'';
+  document.getElementById('subLast').value=g?.lastName||'';
+  document.getElementById('subPhone').value=g?.phone||'';
+  document.getElementById('subRating').value=g?.rating||7;
+}
 function chooseCancel(g){selectedCancelGoalie=g; selectedSubGoalie=null; openSubModal();}
 function chooseSub(g){selectedSubGoalie=g; selectedCancelGoalie=(currentData.currentGoalies||[])[0]||null; openSubModal();}
 function openSubModal(){
   if(!selectedCancelGoalie){alert('Select the current goalie who is cancelling first.');return;}
   document.getElementById('cancelGoalieLabel').textContent=`Cancelling: ${goalieName(selectedCancelGoalie)}${selectedCancelGoalie.team?' — Team '+selectedCancelGoalie.team:''}`;
-  document.getElementById('subFirst').value=selectedSubGoalie?.firstName||'';
-  document.getElementById('subLast').value=selectedSubGoalie?.lastName||'';
-  document.getElementById('subPhone').value=selectedSubGoalie?.phone||'';
-  document.getElementById('subRating').value=selectedSubGoalie?.rating||7;
   hideError('subError');
+  populateSubGoalieSelect();
   document.getElementById('subModal').classList.add('active');
 }
 function closeSubModal(){document.getElementById('subModal').classList.remove('active');}
@@ -186,6 +230,8 @@ async function submitCancelOnly(){
 async function submitSubstitution(){
   hideError('subError');
   if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
+  applySelectedSubGoalie();
+  if(!selectedSubGoalie){showError('subError','Select a replacement goalie from the dropdown.');return;}
   const payload={
     sessionToken,
     cancelGoalieId:selectedCancelGoalie.id,
