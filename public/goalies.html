@@ -74,8 +74,7 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <input id="cancelPhone" placeholder="Cancelling goalie phone number" inputmode="tel">
-    <div class="small">Replacement goalie: <br><strong>To cancel immediately without a replacement, enter the cancelling goalie phone number and tap Cancel Only.</strong></div>
+    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or enter a replacement below and choose <strong>Cancel + Sub In</strong>.</div>
     <input id="subFirst" placeholder="First name">
     <input id="subLast" placeholder="Last name">
     <input id="subPhone" placeholder="Phone number" inputmode="tel">
@@ -157,7 +156,6 @@ function chooseSub(g){selectedSubGoalie=g; selectedCancelGoalie=(currentData.cur
 function openSubModal(){
   if(!selectedCancelGoalie){alert('Select the current goalie who is cancelling first.');return;}
   document.getElementById('cancelGoalieLabel').textContent=`Cancelling: ${goalieName(selectedCancelGoalie)}${selectedCancelGoalie.team?' — Team '+selectedCancelGoalie.team:''}`;
-  document.getElementById('cancelPhone').value='';
   document.getElementById('subFirst').value=selectedSubGoalie?.firstName||'';
   document.getElementById('subLast').value=selectedSubGoalie?.lastName||'';
   document.getElementById('subPhone').value=selectedSubGoalie?.phone||'';
@@ -171,8 +169,7 @@ async function submitCancelOnly(){
   if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
   const payload={
     sessionToken,
-    cancelGoalieId:selectedCancelGoalie.id,
-    cancelPhone:document.getElementById('cancelPhone').value
+    cancelGoalieId:selectedCancelGoalie.id
   };
   try{
     const res=await fetch(`${API_URL}/api/goalies/cancel`,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
@@ -192,7 +189,6 @@ async function submitSubstitution(){
   const payload={
     sessionToken,
     cancelGoalieId:selectedCancelGoalie.id,
-    cancelPhone:document.getElementById('cancelPhone').value,
     substitute:{firstName:subFirst.value,lastName:subLast.value,phone:subPhone.value,rating:subRating.value}
   };
   try{
