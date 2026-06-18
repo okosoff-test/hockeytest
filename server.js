@@ -7262,6 +7262,39 @@ app.post('/api/admin/update-spare-goalie-rating', async (req, res) => {
 });
 
 
+// Admin-only delete for spare goalie contacts used by both Admin and the goalie panel
+app.post('/api/admin/delete-spare-goalie-contact', async (req, res) => {
+    const { index } = req.body || {};
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const goalieIndex = Number(index);
+    if (!Number.isInteger(goalieIndex) || goalieIndex < 0) {
+        return res.status(400).json({ error: 'Invalid spare goalie selection.' });
+    }
+
+    extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+    const goalie = extraGoalieContacts[goalieIndex];
+    if (!goalie) return res.status(404).json({ error: 'Spare goalie not found.' });
+
+    try {
+        let deleted = null;
+        await runProtectedMutation('delete-spare-goalie-contact', req, async () => {
+            const removed = extraGoalieContacts.splice(goalieIndex, 1);
+            deleted = removed && removed[0] ? removed[0] : null;
+        }, { goalieIndex, goalie });
+
+        res.json({
+            success: true,
+            deleted,
+            extraGoalieContacts
+        });
+    } catch (err) {
+        console.error('Error deleting spare goalie contact:', err);
+        res.status(500).json({ error: 'Failed to delete spare goalie safely.' });
+    }
+});
+
+
 function buildAdminRosterContactExport() {
     const rosterPayload = buildPublicRosterPayload();
     const fullById = new Map((Array.isArray(players) ? players : []).map(p => [String(p.id), p]));
