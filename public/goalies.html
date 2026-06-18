@@ -43,8 +43,8 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
       <input id="spareLast" placeholder="Last name">
       <input id="sparePhone" placeholder="Phone number" inputmode="tel">
     </div>
-    <div class="form-grid" style="margin-top:10px;grid-template-columns:1fr 2fr auto;">
-      <input id="spareRating" placeholder="Rating" type="number" min="1" max="10" step="0.5" value="7">
+    <div class="form-grid" style="margin-top:10px;grid-template-columns:2fr auto;">
+      <input id="spareRating" type="hidden" value="7">
       <input id="spareNote" placeholder="Note, optional">
       <button class="success" onclick="addSpareGoalie()">Save Spare</button>
     </div>
@@ -75,14 +75,15 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
     <input id="cancelPhone" placeholder="Cancelling goalie phone number" inputmode="tel">
-    <div class="small">Replacement goalie:</div>
+    <div class="small">Replacement goalie: <br><strong>To cancel immediately without a replacement, enter the cancelling goalie phone number and tap Cancel Only.</strong></div>
     <input id="subFirst" placeholder="First name">
     <input id="subLast" placeholder="Last name">
     <input id="subPhone" placeholder="Phone number" inputmode="tel">
-    <input id="subRating" placeholder="Rating" type="number" min="1" max="10" step="0.5" value="7">
+    <input id="subRating" type="hidden" value="7">
     <div class="error" id="subError"></div>
     <div class="modal-actions">
-      <button class="secondary" onclick="closeSubModal()">Cancel</button>
+      <button class="secondary" onclick="closeSubModal()">Close</button>
+      <button class="danger" onclick="submitCancelOnly()">Cancel Only</button>
       <button class="success" onclick="submitSubstitution()">Cancel + Sub In</button>
     </div>
   </div>
@@ -121,11 +122,10 @@ function renderCard(g, kind){
   const classes = `card ${kind||''}`;
   const label = kind === 'current' ? 'CURRENT' : kind === 'regular' ? 'REGULAR' : 'BACKUP';
   const wait = g.source === 'waitlist' ? '<span class="pill waitlist">WAITLIST</span>' : '';
-  const rating = Number(g.rating ?? g.finalRating ?? 7);
   const notes = [g.dayLabel, g.team ? `Team: ${g.team}` : '', g.note, g.registeredAt ? `Registered: ${fmtTime(g.registeredAt)}` : ''].filter(Boolean).join('<br>');
   const subBtn = kind !== 'current' ? `<button class="success" onclick='chooseSub(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Use as Sub</button>` : '';
   const cancelBtn = kind === 'current' ? `<button class="danger" onclick='chooseCancel(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Self Cancel / Replace</button>` : '';
-  return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta">Rating: <strong>${Number.isFinite(rating)?rating.toFixed(1):'7.0'}</strong><br><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${subBtn}${cancelBtn}</div></div>`;
+  return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta"><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${subBtn}${cancelBtn}</div></div>`;
 }
 function renderList(id, list, kind){
   const el = document.getElementById(id);
@@ -166,6 +166,26 @@ function openSubModal(){
   document.getElementById('subModal').classList.add('active');
 }
 function closeSubModal(){document.getElementById('subModal').classList.remove('active');}
+async function submitCancelOnly(){
+  hideError('subError');
+  if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
+  const payload={
+    sessionToken,
+    cancelGoalieId:selectedCancelGoalie.id,
+    cancelPhone:document.getElementById('cancelPhone').value
+  };
+  try{
+    const res=await fetch(`${API_URL}/api/goalies/cancel`,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error||'Goalie cancel failed');
+    closeSubModal();
+    const box=document.getElementById('resultBox');
+    box.classList.add('active');
+    box.innerHTML=`<strong>${escapeHtml(data.cancelledGoalie?.firstName||'Goalie')} ${escapeHtml(data.cancelledGoalie?.lastName||'')} is cancelled immediately.</strong><div class="sms-box">Public roster/player page has been updated.</div>`;
+    box.scrollIntoView({behavior:'smooth',block:'start'});
+    await loadData();
+  }catch(e){showError('subError', e.message||'Goalie cancel failed');}
+}
 async function submitSubstitution(){
   hideError('subError');
   if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
