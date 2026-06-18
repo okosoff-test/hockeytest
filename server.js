@@ -7902,19 +7902,13 @@ app.post('/api/goalies/add-contact', async (req, res) => {
 app.post('/api/goalies/cancel', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
     const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
-    const cancelPhone = normalizePhoneDigits(req.body?.cancelPhone || '');
 
     if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
-    if (!cancelPhone) return res.status(400).json({ error: 'Cancelling goalie phone number is required.' });
 
     const goalieIndex = players.findIndex(p => String(p.id) === cancelGoalieId && !!p.isGoalie);
     if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
 
     const cancellingGoalie = players[goalieIndex];
-    if (normalizePhoneDigits(cancellingGoalie.phone) !== cancelPhone) {
-        return res.status(401).json({ error: 'Cancelling goalie phone number does not match.' });
-    }
-
     const nowIso = new Date().toISOString();
     const rosterWasReleased = getEffectiveRosterReleasedState();
     const cancelledTeam = cancellingGoalie.team === 'White' || cancellingGoalie.team === 'Dark' ? cancellingGoalie.team : null;
@@ -7958,11 +7952,9 @@ app.post('/api/goalies/cancel', async (req, res) => {
 app.post('/api/goalies/substitute', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
     const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
-    const cancelPhone = normalizePhoneDigits(req.body?.cancelPhone || '');
     const substitute = normalizeGoalieContact(req.body?.substitute || {});
 
     if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
-    if (!cancelPhone) return res.status(400).json({ error: 'Cancelling goalie phone number is required.' });
     if (!substitute.firstName || !substitute.lastName || normalizePhoneDigits(substitute.phone).length !== 10) {
         return res.status(400).json({ error: 'Substitute goalie first name, last name, and 10-digit phone are required.' });
     }
@@ -7971,10 +7963,6 @@ app.post('/api/goalies/substitute', async (req, res) => {
     if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
 
     const cancellingGoalie = players[goalieIndex];
-    if (normalizePhoneDigits(cancellingGoalie.phone) !== cancelPhone) {
-        return res.status(401).json({ error: 'Cancelling goalie phone number does not match.' });
-    }
-
     const substitutePhone = normalizePhoneDigits(substitute.phone);
     const duplicate = players.find(p => normalizePhoneDigits(p.phone) === substitutePhone && String(p.id) !== cancelGoalieId);
     if (duplicate) return res.status(400).json({ error: 'That substitute is already registered.' });
