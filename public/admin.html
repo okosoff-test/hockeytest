@@ -1679,6 +1679,25 @@
             margin: 0 0 12px 0;
             line-height: 1.35;
         }
+        .spare-goalie-add-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 90px;
+            gap: 10px;
+            align-items: end;
+            margin: 12px 0;
+        }
+        .spare-goalie-add-grid input {
+            margin: 0 !important;
+        }
+        .spare-goalie-add-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+        .spare-goalie-add-actions button {
+            margin: 0 !important;
+        }
         .spare-goalie-rating-list {
             display: grid;
             gap: 10px;
@@ -1708,6 +1727,8 @@
             text-align: center;
         }
         @media (max-width: 700px) {
+            .spare-goalie-add-grid { grid-template-columns: 1fr; }
+            .spare-goalie-add-actions button { width: 100%; }
             .spare-goalie-rating-card { grid-template-columns: 1fr; }
             .spare-goalie-rating-card button,
             .spare-goalie-rating-input { width: 100% !important; }
@@ -6001,7 +6022,18 @@ th, td{padding:2px 3px !important;}
 
         <div class="spare-goalie-ratings-section">
             <h3>🥅 Spare Goalie Ratings</h3>
-            <p class="spare-goalie-rating-note">Goalies saved from the goalie panel appear here. Ratings stay admin-only and are used when a spare goalie is subbed in.</p>
+            <p class="spare-goalie-rating-note">This is the single spare-goalie database used by both Admin and the private goalie page. Ratings stay admin-only.</p>
+            <div class="spare-goalie-add-grid">
+                <input type="text" id="adminSpareGoalieFirst" placeholder="First name">
+                <input type="text" id="adminSpareGoalieLast" placeholder="Last name">
+                <input type="tel" id="adminSpareGoaliePhone" placeholder="Phone">
+                <input type="number" id="adminSpareGoalieRating" min="1" max="10" step="0.1" value="7" placeholder="Rating">
+            </div>
+            <input type="text" id="adminSpareGoalieNote" placeholder="Note, optional" style="margin-top:0 !important;">
+            <div class="spare-goalie-add-actions">
+                <button class="control-btn" style="background:#4CAF50;" onclick="saveSpareGoalieFromAdmin()">Save Spare Goalie</button>
+                <button class="control-btn secondary-btn" onclick="loadAppSettings()">Refresh Spare List</button>
+            </div>
             <div id="spareGoalieRatingList" class="spare-goalie-rating-list">
                 <div class="spare-goalie-empty">Loading spare goalies...</div>
             </div>
@@ -9046,6 +9078,59 @@ ${rosterLink}
                     </div>
                 `;
             }).join('');
+        }
+
+        async function saveSpareGoalieFromAdmin() {
+            const first = document.getElementById('adminSpareGoalieFirst');
+            const last = document.getElementById('adminSpareGoalieLast');
+            const phone = document.getElementById('adminSpareGoaliePhone');
+            const rating = document.getElementById('adminSpareGoalieRating');
+            const note = document.getElementById('adminSpareGoalieNote');
+
+            const ratingNum = parseFloat(rating ? rating.value : '');
+            if (!first || !last || !phone || !String(first.value || '').trim() || !String(last.value || '').trim() || String(phone.value || '').replace(/\D/g, '').length < 10) {
+                alert('First name, last name, and a valid 10-digit phone number are required.');
+                return;
+            }
+            if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+                alert('Rating must be between 1 and 10');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/save-spare-goalie-contact`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({
+                        sessionToken,
+                        goalie: {
+                            firstName: first.value,
+                            lastName: last.value,
+                            phone: phone.value,
+                            rating: ratingNum,
+                            note: note ? note.value : ''
+                        }
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    first.value = '';
+                    last.value = '';
+                    phone.value = '';
+                    if (rating) rating.value = '7';
+                    if (note) note.value = '';
+                    showNotification(data.updatedExisting ? '✅ Spare goalie updated' : '✅ Spare goalie saved', 'success');
+                    renderSpareGoalieRatings(data.extraGoalieContacts || []);
+                } else if (res.status === 401) {
+                    logout();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save spare goalie'));
+                }
+            } catch (err) {
+                console.error('Save spare goalie error:', err);
+                alert('Error saving spare goalie');
+            }
         }
 
         async function updateSpareGoalieRating(index) {
