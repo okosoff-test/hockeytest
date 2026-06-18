@@ -2422,6 +2422,43 @@ button {
 #goalieQuickSelectWrap { display:none; }
 #goalieQuickSelectWrap.visible { display:block; }
 
+#goalieQuickSelectWrap .spare-goalie-manager-details {
+    margin-top: 10px;
+}
+#goalieQuickSelectWrap .spare-goalie-manager-details > summary {
+    cursor: pointer;
+    list-style: none;
+    background: rgba(0,0,0,0.22);
+    border: 1px solid rgba(143, 209, 143, 0.35);
+    color: #8fd18f;
+    font-weight: 800;
+    border-radius: 10px;
+    padding: 10px 12px;
+    user-select: none;
+}
+#goalieQuickSelectWrap .spare-goalie-manager-details > summary::before {
+    content: '▸ ';
+    color: #8fd18f;
+}
+#goalieQuickSelectWrap .spare-goalie-manager-details[open] > summary::before {
+    content: '▾ ';
+}
+#goalieQuickSelectWrap .nested-spare-goalie-ratings {
+    margin: 10px 0 0 0 !important;
+    padding: 14px !important;
+    border-color: rgba(143, 209, 143, 0.45) !important;
+    background: rgba(0,0,0,0.16) !important;
+}
+#goalieQuickSelectWrap .nested-spare-goalie-ratings .spare-goalie-rating-note {
+    color: #b9d9c4;
+}
+@media (max-width: 700px) {
+    #goalieQuickSelectWrap .spare-goalie-add-grid { grid-template-columns: 1fr; }
+    #goalieQuickSelectWrap .spare-goalie-rating-card { grid-template-columns: 1fr; }
+    #goalieQuickSelectWrap .spare-goalie-rating-input { width: 100% !important; }
+}
+
+
 #goalieQuickManager {
     display: none;
     margin-top: 10px;
@@ -6020,24 +6057,6 @@ th, td{padding:2px 3px !important;}
             <button class="add-fly-btn" onclick="addGoalieOnTheFly()">➕ Add New Goalie</button>
         </div>
 
-        <div class="spare-goalie-ratings-section">
-            <h3>🥅 Manage Spare / Quick Goalies</h3>
-            <p class="spare-goalie-rating-note">One goalie list for Admin quick-select and the private goalie page. Built-in goalies stay visible; saved spares/ratings sync through the server.</p>
-            <div class="spare-goalie-add-grid">
-                <input type="text" id="adminSpareGoalieFirst" placeholder="First name">
-                <input type="text" id="adminSpareGoalieLast" placeholder="Last name">
-                <input type="tel" id="adminSpareGoaliePhone" placeholder="Phone">
-                <input type="number" id="adminSpareGoalieRating" min="1" max="10" step="0.1" value="7" placeholder="Rating">
-            </div>
-            <input type="text" id="adminSpareGoalieNote" placeholder="Note, optional" style="margin-top:0 !important;">
-            <div class="spare-goalie-add-actions">
-                <button class="control-btn" style="background:#4CAF50;" onclick="saveSpareGoalieFromAdmin()">Save Spare Goalie</button>
-                <button class="control-btn secondary-btn" onclick="loadAppSettings()">Refresh Spare List</button>
-            </div>
-            <div id="spareGoalieRatingList" class="spare-goalie-rating-list">
-                <div class="spare-goalie-empty">Loading spare goalies...</div>
-            </div>
-        </div>
 
 
         <div class="control-box">
@@ -6134,6 +6153,29 @@ th, td{padding:2px 3px !important;}
                 </select>
 
                 <div id="goalieQuickManager" style="display:none !important;"></div>
+
+                <details id="spareGoalieManagerDetails" class="spare-goalie-manager-details">
+                    <summary>Manage Spare / Quick Goalies</summary>
+                    <div class="spare-goalie-ratings-section nested-spare-goalie-ratings">
+                        <h3>🥅 Manage Spare / Quick Goalies</h3>
+            <p class="spare-goalie-rating-note">One goalie list for Admin quick-select and the private goalie page. Built-in goalies stay visible; saved spares/ratings sync through the server.</p>
+            <div class="spare-goalie-add-grid">
+                <input type="text" id="adminSpareGoalieFirst" placeholder="First name">
+                <input type="text" id="adminSpareGoalieLast" placeholder="Last name">
+                <input type="tel" id="adminSpareGoaliePhone" placeholder="Phone">
+                <input type="number" id="adminSpareGoalieRating" min="1" max="10" step="0.1" value="7" placeholder="Rating">
+            </div>
+            <input type="text" id="adminSpareGoalieNote" placeholder="Note, optional" style="margin-top:0 !important;">
+            <div class="spare-goalie-add-actions">
+                <button class="control-btn" style="background:#4CAF50;" onclick="saveSpareGoalieFromAdmin()">Save Spare Goalie</button>
+                <button class="control-btn secondary-btn" onclick="loadAppSettings()">Refresh Spare List</button>
+            </div>
+            <div id="spareGoalieRatingList" class="spare-goalie-rating-list">
+                <div class="spare-goalie-empty">Loading spare goalies...</div>
+            </div>
+        </div>
+
+                </details>
             </div>
 
             <label style="display:flex; align-items:center; gap:10px; margin:10px 0; color:#aaa;">
