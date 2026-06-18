@@ -6021,8 +6021,8 @@ th, td{padding:2px 3px !important;}
         </div>
 
         <div class="spare-goalie-ratings-section">
-            <h3>🥅 Spare Goalie Ratings</h3>
-            <p class="spare-goalie-rating-note">This is the single spare-goalie database used by both Admin and the private goalie page. Ratings stay admin-only.</p>
+            <h3>🥅 Manage Spare / Quick Goalies</h3>
+            <p class="spare-goalie-rating-note">One goalie list for Admin quick-select and the private goalie page. Built-in goalies stay visible; saved spares/ratings sync through the server.</p>
             <div class="spare-goalie-add-grid">
                 <input type="text" id="adminSpareGoalieFirst" placeholder="First name">
                 <input type="text" id="adminSpareGoalieLast" placeholder="Last name">
@@ -6133,10 +6133,7 @@ th, td{padding:2px 3px !important;}
                     <option value="">-- Quick Select Goalie --</option>
                 </select>
 
-                <div id="goalieQuickManager" class="visible" style="margin-top:8px;">
-                    <div class="quick-goalie-manager-title">Quick Select uses the Spare Goalie Ratings list above.</div>
-                    <div class="goalie-helper">Add, rate, or delete goalies in Spare Goalie Ratings. This dropdown updates from the same server-saved list.</div>
-                </div>
+                <div id="goalieQuickManager" style="display:none !important;"></div>
             </div>
 
             <label style="display:flex; align-items:center; gap:10px; margin:10px 0; color:#aaa;">
@@ -9043,15 +9040,41 @@ ${rosterLink}
 
 
 
+        function getGoalieKeyForAdmin(goalie = {}) {
+            const phone = String(goalie.phone || '').replace(/\D/g, '');
+            if (phone) return `phone:${phone}`;
+            return `name:${String(goalie.firstName || '').trim().toLowerCase()}-${String(goalie.lastName || '').trim().toLowerCase()}`;
+        }
+
+        function getCombinedSpareQuickGoalies() {
+            const map = new Map();
+            DEFAULT_QUICK_GOALIES.forEach((goalie) => {
+                const clean = normalizeQuickGoalie(goalie);
+                if (!clean) return;
+                map.set(getGoalieKeyForAdmin(clean), { ...clean, source: 'built-in' });
+            });
+            (Array.isArray(adminExtraGoalieContacts) ? adminExtraGoalieContacts : []).forEach((goalie, extraIndex) => {
+                const clean = normalizeQuickGoalie(goalie);
+                if (!clean) return;
+                const key = getGoalieKeyForAdmin(clean);
+                map.set(key, { ...clean, note: goalie.note || '', source: 'saved', extraIndex });
+            });
+            return Array.from(map.values()).sort((a, b) => {
+                const last = String(a.lastName || '').localeCompare(String(b.lastName || ''));
+                if (last !== 0) return last;
+                return String(a.firstName || '').localeCompare(String(b.firstName || ''));
+            });
+        }
+
         function renderSpareGoalieRatings(extraGoalies) {
             const list = document.getElementById('spareGoalieRatingList');
             adminExtraGoalieContacts = Array.isArray(extraGoalies) ? extraGoalies : [];
             renderQuickGoalies();
             if (!list) return;
 
-            const goalies = adminExtraGoalieContacts;
+            const goalies = getCombinedSpareQuickGoalies();
             if (!goalies.length) {
-                list.innerHTML = '<div class="spare-goalie-empty">No spare goalies saved yet. Add them here or from the goalie panel.</div>';
+                list.innerHTML = '<div class="spare-goalie-empty">No goalies available. Add one here or from the goalie panel.</div>';
                 return;
             }
 
@@ -9060,19 +9083,62 @@ ${rosterLink}
                 const phone = g.phone || '';
                 const note = g.note ? `<div class="spare-goalie-rating-meta">${escapeHtml(g.note)}</div>` : '';
                 const rating = Number(g.rating || 7);
+                const sourceLabel = g.source === 'saved' ? 'Saved spare goalie' : 'Built-in quick goalie';
+                const deleteButton = g.source === 'saved'
+                    ? `<button class="remove-btn" onclick="deleteSpareGoalieContact(${g.extraIndex})">Delete</button>`
+                    : `<button class="control-btn secondary-btn" onclick='saveBuiltInGoalieAsSpare(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Save To Spare List</button>`;
                 return `
                     <div class="spare-goalie-rating-card">
                         <div>
                             <strong>${escapeHtml(name)}</strong>
                             <div class="spare-goalie-rating-meta">${escapeHtml(phone)}</div>
+                            <div class="spare-goalie-rating-meta">${escapeHtml(sourceLabel)}</div>
                             ${note}
                         </div>
                         <input type="number" id="spareGoalieRating-${index}" class="spare-goalie-rating-input rating-pill-input" value="${Number.isFinite(rating) ? rating.toFixed(1) : '7.0'}" min="1" max="10" step="0.1">
-                        <button class="control-btn" style="background:#4a90e2;" onclick="updateSpareGoalieRating(${index})">Save Rating</button>
-                        <button class="remove-btn" onclick="deleteSpareGoalieContact(${index})">Delete</button>
+                        <button class="control-btn" style="background:#4a90e2;" onclick='saveCombinedGoalieRating(${JSON.stringify(g).replace(/'/g,"&#39;")}, ${index})'>Save Rating</button>
+                        ${deleteButton}
                     </div>
                 `;
             }).join('');
+        }
+
+        async function saveCombinedGoalieRating(goalie, displayIndex) {
+            const input = document.getElementById(`spareGoalieRating-${displayIndex}`);
+            const ratingNum = parseFloat(input ? input.value : '');
+            if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+                alert('Rating must be between 1 and 10');
+                return;
+            }
+            await saveSpareGoalieObject({ ...goalie, rating: ratingNum });
+        }
+
+        async function saveBuiltInGoalieAsSpare(goalie) {
+            await saveSpareGoalieObject(goalie);
+        }
+
+        async function saveSpareGoalieObject(goalie) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/save-spare-goalie-contact`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, goalie })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    showNotification(data.updatedExisting ? '✅ Goalie updated' : '✅ Goalie saved', 'success');
+                    renderSpareGoalieRatings(data.extraGoalieContacts || []);
+                    await loadAppSettings();
+                } else if (res.status === 401) {
+                    logout();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to save goalie'));
+                }
+            } catch (err) {
+                console.error('Save goalie error:', err);
+                alert('Error saving goalie');
+            }
         }
 
         async function saveSpareGoalieFromAdmin() {
@@ -9265,10 +9331,12 @@ ${rosterLink}
         }
 
         function getQuickGoalies() {
-            const serverGoalies = Array.isArray(adminExtraGoalieContacts)
-                ? adminExtraGoalieContacts.map(normalizeQuickGoalie).filter(Boolean)
-                : [];
-            return serverGoalies.length ? serverGoalies : DEFAULT_QUICK_GOALIES.slice();
+            return getCombinedSpareQuickGoalies().map(goalie => ({
+                firstName: goalie.firstName,
+                lastName: goalie.lastName,
+                phone: goalie.phone,
+                rating: goalie.rating
+            }));
         }
 
         function saveQuickGoalies(goalies) {
@@ -9296,21 +9364,7 @@ ${rosterLink}
             }
 
             const list = document.getElementById('quickGoalieManagerList');
-            if (list) {
-                list.innerHTML = '';
-                getQuickGoalies().forEach((goalie, index) => {
-                    const item = document.createElement('div');
-                    item.className = 'quick-goalie-list-item';
-                    item.innerHTML = `
-                        <div>
-                            <strong>${goalie.firstName} ${goalie.lastName}</strong><br>
-                            <span>${goalie.phone || 'No phone'} · Rating ${goalie.rating || 7}</span>
-                        </div>
-                        <button type="button" onclick="deleteQuickGoalie(${index})">Delete</button>
-                    `;
-                    list.appendChild(item);
-                });
-            }
+            if (list) list.innerHTML = '';
         }
 
         function saveQuickGoalieFromManager() {
@@ -9362,7 +9416,7 @@ ${rosterLink}
             const quickSelect = document.getElementById('goalieQuickSelect');
             const paymentSelect = document.getElementById('newPayment');
             if (quickWrap) quickWrap.classList.toggle('visible', isGoalie);
-            if (quickManager) quickManager.classList.toggle('visible', isGoalie);
+            if (quickManager) quickManager.classList.remove('visible');
             if (isGoalie) renderQuickGoalies();
             if (paymentSelect) {
                 paymentSelect.disabled = isGoalie;
