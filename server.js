@@ -7697,8 +7697,8 @@ const EXTRA_GOALIE_CONTACTS = [
 let extraGoalieContacts = EXTRA_GOALIE_CONTACTS.map(goalie => ({ ...goalie }));
 
 function normalizeGoalieContact(input = {}) {
-    const firstName = capitalizeName(String(input.firstName || '').trim());
-    const lastName = capitalizeName(String(input.lastName || '').trim());
+    const firstName = capitalizeFullName(String(input.firstName || '').trim());
+    const lastName = capitalizeFullName(String(input.lastName || '').trim());
     const phoneDigits = normalizePhoneDigits(input.phone);
     const phone = formatPhoneNumber(phoneDigits || String(input.phone || '').trim());
     const ratingNumber = Number(input.rating);
