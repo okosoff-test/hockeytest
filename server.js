@@ -7737,13 +7737,10 @@ function buildGoalieInText(goalie = {}, req = null) {
 
     return `Hi ${name},
 
-You're in for Phan's Hockey on ${gameDateText} at ${gameTimeText} at ${locationText}.
+You're in for Phan's Hockey.
 
-Game details:
-${signupUrl || 'Signup page'}
-
-Thanks,
-Phan`;
+Go to game portal for info:
+${signupUrl || 'Signup page'}`;
 }
 
 function createGoalieSessionToken(rememberMe = true) {
