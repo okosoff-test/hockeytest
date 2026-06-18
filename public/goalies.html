@@ -59,7 +59,7 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <div class="small">Select a replacement goalie below and click <strong>Sub In Selected Goalie</strong>.</div>
+    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>.</div>
     <select id="subGoalieSelect" onchange="applySelectedSubGoalie()">
       <option value="">-- Select replacement goalie --</option>
     </select>
@@ -70,7 +70,8 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
     <div class="error" id="subError"></div>
     <div class="modal-actions">
       <button class="secondary" onclick="closeSubModal()">Close</button>
-      <button class="success" style="flex:2" onclick="submitSubstitution()">Sub In Selected Goalie</button>
+      <button class="danger" onclick="submitCancelOnly()">Cancel Only</button>
+      <button class="success" onclick="submitSubstitution()">Cancel + Sub In</button>
     </div>
   </div>
 </div>
@@ -104,14 +105,7 @@ function getGameDateTimeForSms(){
   return rawTime || rawDate || 'the next game';
 }
 function buildAvailabilitySms(goalie){
-  const firstName = String(goalie?.firstName || '').trim() || 'there';
-  const location = String(currentData.location || '').trim() || 'the rink';
-
-  return `Hi ${firstName},
-
-Would you be available to sub in goal for Phan's Hockey on ${getGameDateTimeForSms()} at ${location}?
-
-Please let me know ASAP.`;
+  return `Are you available to sub for Phan's Hockey this ${getGameDateTimeForSms()}?`;
 }
 function textAvailability(goalie){
   const body = buildAvailabilitySms(goalie || {});
@@ -164,7 +158,19 @@ async function loadData(){
   document.getElementById('gameInfo').innerHTML = `${escapeHtml(data.date || '')} ${escapeHtml(data.time || '')}<br><strong>${escapeHtml(data.location || '')}</strong>${data.rosterReleased?'<br><span style="color:#8fd18f;font-weight:900">Roster is released — substitutions update roster immediately.</span>':''}`;
   renderList('currentGoalies', data.currentGoalies || [], 'current');
   renderList('regularGoalies', data.regularGoalies || [], 'regular');
-  renderList('backupGoalies', data.backupGoalies || [], 'backup');
+
+  const regularPhones = new Set(
+    (data.regularGoalies || [])
+      .map(g => phoneDigits(g.phone || ''))
+      .filter(Boolean)
+  );
+
+  const filteredBackups = (data.backupGoalies || []).filter(g => {
+    const phone = phoneDigits(g.phone || '');
+    return !phone || !regularPhones.has(phone);
+  });
+
+  renderList('backupGoalies', filteredBackups, 'backup');
 }
 function getSubGoalieOptions(){
   const all = [
