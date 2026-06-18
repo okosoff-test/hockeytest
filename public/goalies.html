@@ -59,7 +59,7 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>.</div>
+    <div class="small">Select a replacement goalie below and click <strong>Sub In Selected Goalie</strong>.</div>
     <select id="subGoalieSelect" onchange="applySelectedSubGoalie()">
       <option value="">-- Select replacement goalie --</option>
     </select>
@@ -70,8 +70,7 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
     <div class="error" id="subError"></div>
     <div class="modal-actions">
       <button class="secondary" onclick="closeSubModal()">Close</button>
-      <button class="danger" onclick="submitCancelOnly()">Cancel Only</button>
-      <button class="success" onclick="submitSubstitution()">Cancel + Sub In</button>
+      <button class="success" style="flex:2" onclick="submitSubstitution()">Sub In Selected Goalie</button>
     </div>
   </div>
 </div>
