@@ -120,7 +120,15 @@ function getGameDateTimeForSms(){
   return rawTime || rawDate || 'the next game';
 }
 function buildAvailabilitySms(goalie){
-  return `Are you available to sub for Phan's Hockey this ${getGameDateTimeForSms()}?`;
+  const firstName = (goalie?.firstName || '').trim();
+  const greeting = firstName ? `Hi ${firstName},\n\n` : 'Hi,\n\n';
+
+  return `${greeting}Would you be available to sub in goal for Phan's Hockey on ${getGameDateTimeForSms()} at ${currentData.location || 'our rink'}?
+
+Please let me know.
+
+Thanks,
+Phan`;
 }
 function textAvailability(goalie){
   const body = buildAvailabilitySms(goalie || {});
