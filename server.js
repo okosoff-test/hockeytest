@@ -5822,6 +5822,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         arenaOptions: ARENA_OPTIONS,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
+        extraGoalieContacts,
         regularSkatersByDay,
         collectorPageEnabled
     });
@@ -6133,7 +6134,8 @@ app.post('/api/admin/players-full', (req, res) => {
         currentWeekData, 
         playerSignupCode, 
         requirePlayerCode,
-        regularSkatersByDay 
+        regularSkatersByDay,
+        extraGoalieContacts 
     });
 });
 
@@ -7176,6 +7178,47 @@ app.post('/api/admin/update-rating', async (req, res) => {
     } catch (err) {
         console.error('Error updating rating:', err);
         res.status(500).json({ error: "Failed to update rating safely" });
+    }
+});
+
+
+// Admin-only rating update for spare goalie contacts saved from the goalie panel
+app.post('/api/admin/update-spare-goalie-rating', async (req, res) => {
+    const { index, newRating } = req.body || {};
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const goalieIndex = Number(index);
+    const ratingNum = roundRating(parseFloat(newRating));
+    if (!Number.isInteger(goalieIndex) || goalieIndex < 0) {
+        return res.status(400).json({ error: 'Invalid spare goalie selection.' });
+    }
+    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+        return res.status(400).json({ error: 'Rating must be a number between 1 and 10.' });
+    }
+
+    extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+    const goalie = extraGoalieContacts[goalieIndex];
+    if (!goalie) return res.status(404).json({ error: 'Spare goalie not found.' });
+
+    const oldRating = goalie.rating;
+    try {
+        await runProtectedMutation('update-spare-goalie-rating', req, async () => {
+            extraGoalieContacts[goalieIndex] = normalizeGoalieContact({
+                ...goalie,
+                rating: ratingNum
+            });
+        }, { goalieIndex, oldRating, newRating: ratingNum });
+
+        res.json({
+            success: true,
+            goalie: extraGoalieContacts[goalieIndex],
+            extraGoalieContacts,
+            oldRating,
+            newRating: ratingNum
+        });
+    } catch (err) {
+        console.error('Error updating spare goalie rating:', err);
+        res.status(500).json({ error: 'Failed to update spare goalie rating safely.' });
     }
 });
 
