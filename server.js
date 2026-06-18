@@ -7182,6 +7182,45 @@ app.post('/api/admin/update-rating', async (req, res) => {
 });
 
 
+// Admin-only add/update for spare goalie contacts used by both Admin and the goalie panel
+app.post('/api/admin/save-spare-goalie-contact', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Unauthorized' });
+
+    const goalie = normalizeGoalieContact(req.body?.goalie || req.body || {});
+    if (!goalie.firstName || !goalie.lastName || normalizePhoneDigits(goalie.phone).length !== 10) {
+        return res.status(400).json({ error: 'First name, last name, and a valid 10-digit phone number are required.' });
+    }
+
+    try {
+        let updatedExisting = false;
+        await runProtectedMutation('admin-save-spare-goalie-contact', req, async () => {
+            extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+            const key = normalizeGoalieContactKey(goalie);
+            const index = extraGoalieContacts.findIndex(g => normalizeGoalieContactKey(g) === key);
+            if (index >= 0) {
+                extraGoalieContacts[index] = normalizeGoalieContact({
+                    ...extraGoalieContacts[index],
+                    ...goalie
+                });
+                updatedExisting = true;
+            } else {
+                extraGoalieContacts.push(goalie);
+            }
+        }, { goalie });
+
+        res.json({
+            success: true,
+            updatedExisting,
+            goalie,
+            extraGoalieContacts
+        });
+    } catch (err) {
+        console.error('Error saving spare goalie contact from admin:', err.message);
+        res.status(500).json({ error: 'Could not save spare goalie contact.' });
+    }
+});
+
+
 // Admin-only rating update for spare goalie contacts saved from the goalie panel
 app.post('/api/admin/update-spare-goalie-rating', async (req, res) => {
     const { index, newRating } = req.body || {};
