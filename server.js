@@ -7920,6 +7920,9 @@ function getBackupGoalieContacts() {
         addUniqueGoalieContact(map, goalie, { note: 'Backup / substitute goalie' });
     }
     for (const goalie of extraGoalieContacts || []) {
+        const key = normalizeGoalieContactKey(goalie);
+        // Saved admin/goalie-panel records override the built-in backup defaults by phone/name.
+        if (key && map.has(key)) map.delete(key);
         addUniqueGoalieContact(map, goalie, { note: goalie.note || 'Extra goalie contact' });
     }
     return Array.from(map.values()).sort(sortGoalieContacts);
