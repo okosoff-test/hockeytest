@@ -7869,6 +7869,63 @@ app.post('/api/goalies/add-contact', async (req, res) => {
     }
 });
 
+
+app.post('/api/goalies/cancel', async (req, res) => {
+    if (!requireGoalieAuth(req, res)) return;
+    const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
+    const cancelPhone = normalizePhoneDigits(req.body?.cancelPhone || '');
+
+    if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
+    if (!cancelPhone) return res.status(400).json({ error: 'Cancelling goalie phone number is required.' });
+
+    const goalieIndex = players.findIndex(p => String(p.id) === cancelGoalieId && !!p.isGoalie);
+    if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
+
+    const cancellingGoalie = players[goalieIndex];
+    if (normalizePhoneDigits(cancellingGoalie.phone) !== cancelPhone) {
+        return res.status(401).json({ error: 'Cancelling goalie phone number does not match.' });
+    }
+
+    const nowIso = new Date().toISOString();
+    const rosterWasReleased = getEffectiveRosterReleasedState();
+    const cancelledTeam = cancellingGoalie.team === 'White' || cancellingGoalie.team === 'Dark' ? cancellingGoalie.team : null;
+
+    try {
+        await runProtectedMutation('goalie-self-cancel-immediate', req, async () => {
+            appendCancellationLog({
+                id: cancellingGoalie.id,
+                firstName: cancellingGoalie.firstName,
+                lastName: cancellingGoalie.lastName,
+                phone: cancellingGoalie.phone,
+                rating: cancellingGoalie.rating,
+                isGoalie: true,
+                paymentMethod: cancellingGoalie.paymentMethod,
+                source: 'players',
+                action: 'goalie-self-cancel-immediate',
+                cancelledBy: 'goalie-panel',
+                cancelledAt: nowIso
+            });
+
+            players.splice(goalieIndex, 1);
+
+            if (rosterWasReleased) {
+                syncCurrentWeekTeamsFromPlayers();
+            }
+        }, { cancelledGoalieId: cancellingGoalie.id, rosterWasReleased, cancelledTeam });
+    } catch (err) {
+        console.error('Error cancelling goalie immediately:', err.message);
+        return res.status(500).json({ error: 'Goalie cancellation could not be saved safely.' });
+    }
+
+    res.json({
+        success: true,
+        cancelledGoalie: { firstName: cancellingGoalie.firstName, lastName: cancellingGoalie.lastName, team: cancelledTeam },
+        rosterReleased: rosterWasReleased,
+        currentGoalies: getCurrentGoalieContacts(),
+        backupGoalies: getBackupGoalieContacts()
+    });
+});
+
 app.post('/api/goalies/substitute', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
     const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
