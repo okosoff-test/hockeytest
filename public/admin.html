@@ -1659,6 +1659,60 @@
 
 .regular-summary-section{display:none !important;}
 
+
+        /* Spare goalie rating manager */
+        .spare-goalie-ratings-section {
+            background: linear-gradient(135deg, #1a2f3a, #243f4d);
+            border: 2px solid #4a90e2;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+        .spare-goalie-ratings-section h3 {
+            margin: 0 0 10px 0;
+            color: #7ab8ff;
+            font-size: 1.1rem;
+        }
+        .spare-goalie-rating-note {
+            color: #b8d8ee;
+            font-size: 0.88rem;
+            margin: 0 0 12px 0;
+            line-height: 1.35;
+        }
+        .spare-goalie-rating-list {
+            display: grid;
+            gap: 10px;
+        }
+        .spare-goalie-rating-card {
+            display: grid;
+            grid-template-columns: 1fr 90px auto;
+            gap: 10px;
+            align-items: center;
+            background: rgba(0,0,0,0.24);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 10px;
+            padding: 10px 12px;
+        }
+        .spare-goalie-rating-card strong { color: #fff; }
+        .spare-goalie-rating-meta { color: #b8d8ee; font-size: 0.84rem; margin-top: 3px; }
+        .spare-goalie-rating-input {
+            width: 70px !important;
+            margin: 0 !important;
+            text-align: center;
+        }
+        .spare-goalie-empty {
+            color: #b8d8ee;
+            border: 1px dashed rgba(255,255,255,0.18);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+        }
+        @media (max-width: 700px) {
+            .spare-goalie-rating-card { grid-template-columns: 1fr; }
+            .spare-goalie-rating-card button,
+            .spare-goalie-rating-input { width: 100% !important; }
+        }
+
         /* Copyright Footer */
         .copyright-footer {
             text-align: center;
@@ -5945,6 +5999,15 @@ th, td{padding:2px 3px !important;}
             <button class="add-fly-btn" onclick="addGoalieOnTheFly()">➕ Add New Goalie</button>
         </div>
 
+        <div class="spare-goalie-ratings-section">
+            <h3>🥅 Spare Goalie Ratings</h3>
+            <p class="spare-goalie-rating-note">Goalies saved from the goalie panel appear here. Ratings stay admin-only and are used when a spare goalie is subbed in.</p>
+            <div id="spareGoalieRatingList" class="spare-goalie-rating-list">
+                <div class="spare-goalie-empty">Loading spare goalies...</div>
+            </div>
+        </div>
+
+
         <div class="control-box">
             <h3>📚 History</h3>
             <div class="control-row">
@@ -7125,6 +7188,9 @@ th, td{padding:2px 3px !important;}
                 // Store backup goalies data
                 if (data.backupGoalies) {
                     backupGoaliesData = data.backupGoalies;
+                }
+                if (data.extraGoalieContacts) {
+                    renderSpareGoalieRatings(data.extraGoalieContacts);
                 }
                 
                 const announcementCheckbox = document.getElementById('announcementCheckbox');
@@ -8948,6 +9014,68 @@ ${rosterLink}
                 }
             } catch (err) {
                 console.error("Remove waitlist error:", err);
+            }
+        }
+
+
+
+        function renderSpareGoalieRatings(extraGoalies) {
+            const list = document.getElementById('spareGoalieRatingList');
+            if (!list) return;
+
+            const goalies = Array.isArray(extraGoalies) ? extraGoalies : [];
+            if (!goalies.length) {
+                list.innerHTML = '<div class="spare-goalie-empty">No spare goalies saved yet. Add them from the goalie panel first.</div>';
+                return;
+            }
+
+            list.innerHTML = goalies.map((g, index) => {
+                const name = `${g.firstName || ''} ${g.lastName || ''}`.trim() || 'Unnamed Goalie';
+                const phone = g.phone || '';
+                const note = g.note ? `<div class="spare-goalie-rating-meta">${escapeHtml(g.note)}</div>` : '';
+                const rating = Number(g.rating || 7);
+                return `
+                    <div class="spare-goalie-rating-card">
+                        <div>
+                            <strong>${escapeHtml(name)}</strong>
+                            <div class="spare-goalie-rating-meta">${escapeHtml(phone)}</div>
+                            ${note}
+                        </div>
+                        <input type="number" id="spareGoalieRating-${index}" class="spare-goalie-rating-input rating-pill-input" value="${Number.isFinite(rating) ? rating.toFixed(1) : '7.0'}" min="1" max="10" step="0.1">
+                        <button class="control-btn" style="background:#4a90e2;" onclick="updateSpareGoalieRating(${index})">Save Rating</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function updateSpareGoalieRating(index) {
+            const input = document.getElementById(`spareGoalieRating-${index}`);
+            const ratingNum = parseFloat(input ? input.value : '');
+            if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 10) {
+                alert('Rating must be between 1 and 10');
+                return;
+            }
+
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-spare-goalie-rating`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, index, newRating: ratingNum })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    showNotification(`✅ Spare goalie rating saved`, 'success');
+                    renderSpareGoalieRatings(data.extraGoalieContacts || []);
+                    await loadAppSettings();
+                } else if (res.status === 401) {
+                    logout();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to update spare goalie rating'));
+                }
+            } catch (err) {
+                console.error('Update spare goalie rating error:', err);
+                alert('Error updating spare goalie rating');
             }
         }
 
