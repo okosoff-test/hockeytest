@@ -7990,51 +7990,13 @@ app.post('/api/goalies/add-contact', async (req, res) => {
 
 app.post('/api/goalies/cancel', async (req, res) => {
     if (!requireGoalieAuth(req, res)) return;
-    const cancelGoalieId = String(req.body?.cancelGoalieId || '').trim();
-    if (!cancelGoalieId) return res.status(400).json({ error: 'Select the goalie who is cancelling.' });
 
-    const goalieIndex = players.findIndex(p => String(p.id) === cancelGoalieId && !!p.isGoalie);
-    if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
-
-    const cancellingGoalie = players[goalieIndex];
-
-    const nowIso = new Date().toISOString();
-    const rosterWasReleased = getEffectiveRosterReleasedState();
-    const cancelledTeam = cancellingGoalie.team === 'White' || cancellingGoalie.team === 'Dark' ? cancellingGoalie.team : null;
-
-    try {
-        await runProtectedMutation('goalie-self-cancel-immediate', req, async () => {
-            appendCancellationLog({
-                id: cancellingGoalie.id,
-                firstName: cancellingGoalie.firstName,
-                lastName: cancellingGoalie.lastName,
-                phone: cancellingGoalie.phone,
-                rating: cancellingGoalie.rating,
-                isGoalie: true,
-                paymentMethod: cancellingGoalie.paymentMethod,
-                source: 'players',
-                action: 'goalie-self-cancel-immediate',
-                cancelledBy: 'goalie-panel',
-                cancelledAt: nowIso
-            });
-
-            players.splice(goalieIndex, 1);
-
-            if (rosterWasReleased) {
-                syncCurrentWeekTeamsFromPlayers();
-            }
-        }, { cancelledGoalieId: cancellingGoalie.id, rosterWasReleased, cancelledTeam });
-    } catch (err) {
-        console.error('Error cancelling goalie immediately:', err.message);
-        return res.status(500).json({ error: 'Goalie cancellation could not be saved safely.' });
-    }
-
-    res.json({
-        success: true,
-        cancelledGoalie: { firstName: cancellingGoalie.firstName, lastName: cancellingGoalie.lastName, team: cancelledTeam },
-        rosterReleased: rosterWasReleased,
-        currentGoalies: getCurrentGoalieContacts(),
-        backupGoalies: getBackupGoalieContacts()
+    // Goalie panel rule:
+    // There must always be 2 registered goalies.
+    // Do not allow "cancel only" from the goalie panel. Use /api/goalies/substitute
+    // so the cancelling goalie is removed and the replacement goalie is added in one safe mutation.
+    return res.status(400).json({
+        error: 'Goalies cannot be cancelled without a replacement. Two goalies are required at all times. Please select a substitute goalie and use Cancel + Sub In.'
     });
 });
 
