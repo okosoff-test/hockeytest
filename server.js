@@ -7832,11 +7832,13 @@ function buildGoalieInText(goalie = {}) {
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
     const greeting = firstName ? `Hi ${firstName},` : `Hi ${name},`;
 
-    const portalUrl = process.env.PUBLIC_BASE_URL || '';
+    const portalUrl =
+        process.env.PUBLIC_BASE_URL ||
+        process.env.APP_URL ||
+        'https://phanshockeyportal.com';
 
-    return `${greeting}, you're in. Check ${portalUrl} for details.`;
+    return `${greeting} you're in. Check ${portalUrl} for details.`;
 }
-
 function createGoalieSessionToken(rememberMe = true) {
     const expiresIn = rememberMe ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
     return jwt.sign({ role: 'goalie', jti: crypto.randomUUID(), remember: !!rememberMe }, ADMIN_TOKEN_SECRET, { expiresIn });
