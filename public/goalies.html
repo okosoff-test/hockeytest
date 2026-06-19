@@ -59,7 +59,7 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>.</div>
+    <div class="small">A goalie cannot be cancelled without a replacement. Select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>. The roster must always have 2 goalies.</div>
     <select id="subGoalieSelect" onchange="applySelectedSubGoalie()">
       <option value="">-- Select replacement goalie --</option>
     </select>
@@ -70,7 +70,6 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
     <div class="error" id="subError"></div>
     <div class="modal-actions">
       <button class="secondary" onclick="closeSubModal()">Close</button>
-      <button class="danger" onclick="submitCancelOnly()">Cancel Only</button>
       <button class="success" onclick="submitSubstitution()">Cancel + Sub In</button>
     </div>
   </div>
@@ -227,23 +226,7 @@ function openSubModal(){
 }
 function closeSubModal(){document.getElementById('subModal').classList.remove('active');}
 async function submitCancelOnly(){
-  hideError('subError');
-  if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
-  const payload={
-    sessionToken,
-    cancelGoalieId:selectedCancelGoalie.id
-  };
-  try{
-    const res=await fetch(`${API_URL}/api/goalies/cancel`,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
-    const data=await res.json().catch(()=>({}));
-    if(!res.ok) throw new Error(data.error||'Goalie cancel failed');
-    closeSubModal();
-    const box=document.getElementById('resultBox');
-    box.classList.add('active');
-    box.innerHTML=`<strong>${escapeHtml(data.cancelledGoalie?.firstName||'Goalie')} ${escapeHtml(data.cancelledGoalie?.lastName||'')} is cancelled immediately.</strong><div class="sms-box">Public roster/player page has been updated.</div>`;
-    box.scrollIntoView({behavior:'smooth',block:'start'});
-    await loadData();
-  }catch(e){showError('subError', e.message||'Goalie cancel failed');}
+  showError('subError','Goalie cancellation blocked. Select a replacement goalie and use Cancel + Sub In. The roster must always have 2 goalies.');
 }
 async function submitSubstitution(){
   hideError('subError');
