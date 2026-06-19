@@ -7828,8 +7828,10 @@ function formatSmsPhone(phone) {
 }
 
 function buildGoalieInText(goalie = {}) {
+    const firstName = String(goalie.firstName || '').trim();
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
-    return `${name}, you're in for ${gameTime || 'hockey'} at ${gameLocation || 'the rink'}. Please confirm you can make it.`;
+    const greeting = firstName ? `Hey ${firstName},` : `Hey ${name},`;
+    return `${greeting} thanks for helping out. You're in for Phan's Hockey ${gameTime || 'tonight'} at ${gameLocation || 'the rink'}. Please confirm when you can. Appreciate it!`;
 }
 
 function createGoalieSessionToken(rememberMe = true) {
