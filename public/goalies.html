@@ -37,6 +37,21 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="result-box" id="resultBox"></div>
 
   <div class="section">
+    <h3>➕ Add Spare Goalie Contact</h3>
+    <div class="form-grid">
+      <input id="spareFirst" placeholder="First name">
+      <input id="spareLast" placeholder="Last name">
+      <input id="sparePhone" placeholder="Phone number" inputmode="tel">
+    </div>
+    <div class="form-grid" style="margin-top:10px;grid-template-columns:2fr auto;">
+      <input id="spareRating" type="hidden" value="7">
+      <input id="spareNote" placeholder="Note, optional">
+      <button class="success" onclick="addSpareGoalie()">Save Spare</button>
+    </div>
+    <div class="small">Saved spare goalies appear below under Backup / Substitute Goalies.</div>
+  </div>
+
+  <div class="section">
     <h3>🥅 Current Registered Goalies</h3>
     <div class="grid" id="currentGoalies"></div>
   </div>
@@ -105,7 +120,12 @@ function getGameDateTimeForSms(){
   return rawTime || rawDate || 'the next game';
 }
 function buildAvailabilitySms(goalie){
-  return `Are you available to sub for Phan's Hockey this ${getGameDateTimeForSms()}?`;
+  const firstName = (goalie?.firstName || '').trim();
+  const greeting = firstName ? `Hi ${firstName},\n\n` : 'Hi,\n\n';
+
+  return `${greeting}Would you be available to sub in goal for Phan's Hockey on ${getGameDateTimeForSms()} at ${currentData.location || 'our rink'}?
+
+Please let me know ASAP.`;
 }
 function textAvailability(goalie){
   const body = buildAvailabilitySms(goalie || {});
@@ -158,19 +178,15 @@ async function loadData(){
   document.getElementById('gameInfo').innerHTML = `${escapeHtml(data.date || '')} ${escapeHtml(data.time || '')}<br><strong>${escapeHtml(data.location || '')}</strong>${data.rosterReleased?'<br><span style="color:#8fd18f;font-weight:900">Roster is released — substitutions update roster immediately.</span>':''}`;
   renderList('currentGoalies', data.currentGoalies || [], 'current');
   renderList('regularGoalies', data.regularGoalies || [], 'regular');
-
-  const regularPhones = new Set(
-    (data.regularGoalies || [])
-      .map(g => phoneDigits(g.phone || ''))
-      .filter(Boolean)
-  );
-
-  const filteredBackups = (data.backupGoalies || []).filter(g => {
-    const phone = phoneDigits(g.phone || '');
-    return !phone || !regularPhones.has(phone);
-  });
-
-  renderList('backupGoalies', filteredBackups, 'backup');
+  renderList('backupGoalies', data.backupGoalies || [], 'backup');
+}
+async function addSpareGoalie(){
+  const goalie={firstName:spareFirst.value,lastName:spareLast.value,phone:sparePhone.value,rating:spareRating.value,note:spareNote.value};
+  const res=await fetch(`${API_URL}/api/goalies/add-contact`,{method:'POST',headers:headers(),body:JSON.stringify({sessionToken,goalie})});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok){alert(data.error||'Could not save spare goalie');return;}
+  spareFirst.value=''; spareLast.value=''; sparePhone.value=''; spareRating.value='7'; spareNote.value='';
+  await loadData();
 }
 function getSubGoalieOptions(){
   const all = [
