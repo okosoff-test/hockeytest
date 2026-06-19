@@ -7827,15 +7827,19 @@ function formatSmsPhone(phone) {
     return digits ? `+1${digits}` : '';
 }
 
-function buildGoalieInText(goalie = {}) {
+function getPublicBaseUrl(req) {
+    return (
+        process.env.PUBLIC_BASE_URL ||
+        `${req.protocol}://${req.get('host')}`
+    );
+}
+
+function buildGoalieInText(goalie = {}, req) {
     const firstName = String(goalie.firstName || '').trim();
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
     const greeting = firstName ? `Hi ${firstName},` : `Hi ${name},`;
 
-    const portalUrl =
-        process.env.PUBLIC_BASE_URL ||
-        process.env.APP_URL ||
-        'https://phanshockeyportal.com';
+    const portalUrl = getPublicBaseUrl(req);
 
     return `${greeting} you're in. Check ${portalUrl} for details.`;
 }
