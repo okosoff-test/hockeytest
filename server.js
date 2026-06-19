@@ -7831,7 +7831,7 @@ function buildGoalieInText(goalie = {}) {
     const firstName = String(goalie.firstName || '').trim();
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
     const greeting = firstName ? `Hey ${firstName},` : `Hi ${name},`;
-    return `${greeting}, you're in check ${gameLink} for details.
+    return `${greeting}, you're in check ${gameLink} for details.`;
 }
 
 function createGoalieSessionToken(rememberMe = true) {
