@@ -109,7 +109,6 @@ function buildAvailabilitySms(goalie){
 
   return `Hi ${name}, are you available to sub in net for Phan's Hockey this ${getGameDateTimeForSms()}?`;
 }
-}
 function textAvailability(goalie){
   const body = buildAvailabilitySms(goalie || {});
   const href = smsHref(goalie?.phone || '', body);
