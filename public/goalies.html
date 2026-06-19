@@ -37,21 +37,6 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="result-box" id="resultBox"></div>
 
   <div class="section">
-    <h3>➕ Add Spare Goalie Contact</h3>
-    <div class="form-grid">
-      <input id="spareFirst" placeholder="First name">
-      <input id="spareLast" placeholder="Last name">
-      <input id="sparePhone" placeholder="Phone number" inputmode="tel">
-    </div>
-    <div class="form-grid" style="margin-top:10px;grid-template-columns:1fr 2fr auto;">
-      <input id="spareRating" placeholder="Rating" type="number" min="1" max="10" step="0.5" value="7">
-      <input id="spareNote" placeholder="Note, optional">
-      <button class="success" onclick="addSpareGoalie()">Save Spare</button>
-    </div>
-    <div class="small">Saved spare goalies appear below under Backup / Substitute Goalies.</div>
-  </div>
-
-  <div class="section">
     <h3>🥅 Current Registered Goalies</h3>
     <div class="grid" id="currentGoalies"></div>
   </div>
@@ -74,15 +59,18 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
   <div class="modal-card">
     <div class="modal-title">Substitute Goalie</div>
     <div class="small" id="cancelGoalieLabel"></div>
-    <input id="cancelPhone" placeholder="Cancelling goalie phone number" inputmode="tel">
-    <div class="small">Replacement goalie:</div>
-    <input id="subFirst" placeholder="First name">
-    <input id="subLast" placeholder="Last name">
-    <input id="subPhone" placeholder="Phone number" inputmode="tel">
-    <input id="subRating" placeholder="Rating" type="number" min="1" max="10" step="0.5" value="7">
+    <div class="small">Choose <strong>Cancel Only</strong> to remove the goalie immediately, or select an existing replacement goalie below and choose <strong>Cancel + Sub In</strong>.</div>
+    <select id="subGoalieSelect" onchange="applySelectedSubGoalie()">
+      <option value="">-- Select replacement goalie --</option>
+    </select>
+    <input id="subFirst" type="hidden">
+    <input id="subLast" type="hidden">
+    <input id="subPhone" type="hidden">
+    <input id="subRating" type="hidden" value="7">
     <div class="error" id="subError"></div>
     <div class="modal-actions">
-      <button class="secondary" onclick="closeSubModal()">Cancel</button>
+      <button class="secondary" onclick="closeSubModal()">Close</button>
+      <button class="danger" onclick="submitCancelOnly()">Cancel Only</button>
       <button class="success" onclick="submitSubstitution()">Cancel + Sub In</button>
     </div>
   </div>
@@ -101,6 +89,33 @@ function phoneDigits(phone){let d=String(phone||'').replace(/\D/g,''); if(d.leng
 function phoneHref(phone){const d=phoneDigits(phone);return d ? 'tel:+1'+d : '#';}
 function smsHref(phone, body){const d=phoneDigits(phone);return d ? `sms:+1${d}?&body=${encodeURIComponent(body||'')}` : '#';}
 function fmtTime(v){try{return v ? new Date(v).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) : '';}catch(e){return '';}}
+function getGameDateTimeForSms(){
+  const rawDate = String(currentData.date || '').trim();
+  const rawTime = String(currentData.time || '').trim();
+  const timeOnly = rawTime.replace(/^(Sunday|Monday|Tuesday|Wednesday|Thursday|Friday|Saturday)\s+/i,'').trim();
+  let dateText = '';
+  if(/^\d{4}-\d{2}-\d{2}$/.test(rawDate)){
+    const d = new Date(rawDate + 'T00:00:00');
+    if(!Number.isNaN(d.getTime())){
+      dateText = d.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+    }
+  }
+  if(dateText && timeOnly) return `${dateText} at ${timeOnly}`;
+  if(dateText && rawTime) return `${dateText} at ${rawTime}`;
+  return rawTime || rawDate || 'the next game';
+}
+function buildAvailabilitySms(goalie){
+  return `Are you available to sub for Phan's Hockey this ${getGameDateTimeForSms()}?`;
+}
+function textAvailability(goalie){
+  const body = buildAvailabilitySms(goalie || {});
+  const href = smsHref(goalie?.phone || '', body);
+  if(!phoneDigits(goalie?.phone || '')){
+    alert('No phone number listed for this goalie.');
+    return;
+  }
+  window.location.href = href;
+}
 function showError(id,msg){const el=document.getElementById(id);el.textContent=msg;el.style.display='block';}
 function hideError(id){const el=document.getElementById(id);el.textContent='';el.style.display='none';}
 async function login(){
@@ -121,11 +136,12 @@ function renderCard(g, kind){
   const classes = `card ${kind||''}`;
   const label = kind === 'current' ? 'CURRENT' : kind === 'regular' ? 'REGULAR' : 'BACKUP';
   const wait = g.source === 'waitlist' ? '<span class="pill waitlist">WAITLIST</span>' : '';
-  const rating = Number(g.rating ?? g.finalRating ?? 7);
   const notes = [g.dayLabel, g.team ? `Team: ${g.team}` : '', g.note, g.registeredAt ? `Registered: ${fmtTime(g.registeredAt)}` : ''].filter(Boolean).join('<br>');
-  const subBtn = kind !== 'current' ? `<button class="success" onclick='chooseSub(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Use as Sub</button>` : '';
-  const cancelBtn = kind === 'current' ? `<button class="danger" onclick='chooseCancel(${JSON.stringify(g).replace(/'/g,"&#39;")})'>Self Cancel / Replace</button>` : '';
-  return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta">Rating: <strong>${Number.isFinite(rating)?rating.toFixed(1):'7.0'}</strong><br><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${subBtn}${cancelBtn}</div></div>`;
+  const safeGoaliePayload = JSON.stringify(g).replace(/'/g,"&#39;");
+  const textAvailabilityBtn = kind !== 'current' ? `<button class="refresh" onclick='textAvailability(${safeGoaliePayload})'>Text Availability</button>` : '';
+  const subBtn = kind !== 'current' ? `<button class="success" onclick='chooseSub(${safeGoaliePayload})'>Use as Sub</button>` : '';
+  const cancelBtn = kind === 'current' ? `<button class="danger" onclick='chooseCancel(${safeGoaliePayload})'>Self Cancel / Replace</button>` : '';
+  return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta"><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${textAvailabilityBtn}${subBtn}${cancelBtn}</div></div>`;
 }
 function renderList(id, list, kind){
   const el = document.getElementById(id);
@@ -142,37 +158,101 @@ async function loadData(){
   document.getElementById('gameInfo').innerHTML = `${escapeHtml(data.date || '')} ${escapeHtml(data.time || '')}<br><strong>${escapeHtml(data.location || '')}</strong>${data.rosterReleased?'<br><span style="color:#8fd18f;font-weight:900">Roster is released — substitutions update roster immediately.</span>':''}`;
   renderList('currentGoalies', data.currentGoalies || [], 'current');
   renderList('regularGoalies', data.regularGoalies || [], 'regular');
-  renderList('backupGoalies', data.backupGoalies || [], 'backup');
+
+  const regularPhones = new Set(
+    (data.regularGoalies || [])
+      .map(g => phoneDigits(g.phone || ''))
+      .filter(Boolean)
+  );
+
+  const filteredBackups = (data.backupGoalies || []).filter(g => {
+    const phone = phoneDigits(g.phone || '');
+    return !phone || !regularPhones.has(phone);
+  });
+
+  renderList('backupGoalies', filteredBackups, 'backup');
 }
-async function addSpareGoalie(){
-  const goalie={firstName:spareFirst.value,lastName:spareLast.value,phone:sparePhone.value,rating:spareRating.value,note:spareNote.value};
-  const res=await fetch(`${API_URL}/api/goalies/add-contact`,{method:'POST',headers:headers(),body:JSON.stringify({sessionToken,goalie})});
-  const data=await res.json().catch(()=>({}));
-  if(!res.ok){alert(data.error||'Could not save spare goalie');return;}
-  spareFirst.value=''; spareLast.value=''; sparePhone.value=''; spareRating.value='7'; spareNote.value='';
-  await loadData();
+function getSubGoalieOptions(){
+  const all = [
+    ...(Array.isArray(currentData.regularGoalies) ? currentData.regularGoalies : []),
+    ...(Array.isArray(currentData.backupGoalies) ? currentData.backupGoalies : [])
+  ];
+  const seen = new Set();
+  const cancelPhone = phoneDigits(selectedCancelGoalie?.phone || '');
+  const cancelId = selectedCancelGoalie?.id == null ? '' : String(selectedCancelGoalie.id);
+  return all.filter(g => {
+    const key = phoneDigits(g.phone || '') || `${String(g.firstName||'').toLowerCase()}|${String(g.lastName||'').toLowerCase()}`;
+    if(!key || seen.has(key)) return false;
+    seen.add(key);
+    if(cancelPhone && phoneDigits(g.phone || '') === cancelPhone) return false;
+    if(cancelId && String(g.id || '') === cancelId) return false;
+    return true;
+  }).sort((a,b)=>goalieName(a).localeCompare(goalieName(b)));
+}
+function populateSubGoalieSelect(){
+  const select = document.getElementById('subGoalieSelect');
+  const options = getSubGoalieOptions();
+  const selectedKey = selectedSubGoalie ? (phoneDigits(selectedSubGoalie.phone || '') || `${selectedSubGoalie.firstName||''}|${selectedSubGoalie.lastName||''}`) : '';
+  select.innerHTML = '<option value="">-- Select replacement goalie --</option>';
+  options.forEach((g, index) => {
+    const opt = document.createElement('option');
+    opt.value = String(index);
+    opt.textContent = `${goalieName(g)}${g.phone ? ' — ' + g.phone : ''}${g.note ? ' — ' + g.note : ''}`;
+    const key = phoneDigits(g.phone || '') || `${g.firstName||''}|${g.lastName||''}`;
+    if(selectedKey && key === selectedKey) opt.selected = true;
+    select.appendChild(opt);
+  });
+  select.dataset.options = JSON.stringify(options);
+  applySelectedSubGoalie();
+}
+function applySelectedSubGoalie(){
+  const select = document.getElementById('subGoalieSelect');
+  let options = [];
+  try{ options = JSON.parse(select.dataset.options || '[]'); }catch(e){ options = []; }
+  const g = options[Number(select.value)] || null;
+  selectedSubGoalie = g;
+  document.getElementById('subFirst').value=g?.firstName||'';
+  document.getElementById('subLast').value=g?.lastName||'';
+  document.getElementById('subPhone').value=g?.phone||'';
+  document.getElementById('subRating').value=g?.rating||7;
 }
 function chooseCancel(g){selectedCancelGoalie=g; selectedSubGoalie=null; openSubModal();}
 function chooseSub(g){selectedSubGoalie=g; selectedCancelGoalie=(currentData.currentGoalies||[])[0]||null; openSubModal();}
 function openSubModal(){
   if(!selectedCancelGoalie){alert('Select the current goalie who is cancelling first.');return;}
   document.getElementById('cancelGoalieLabel').textContent=`Cancelling: ${goalieName(selectedCancelGoalie)}${selectedCancelGoalie.team?' — Team '+selectedCancelGoalie.team:''}`;
-  document.getElementById('cancelPhone').value='';
-  document.getElementById('subFirst').value=selectedSubGoalie?.firstName||'';
-  document.getElementById('subLast').value=selectedSubGoalie?.lastName||'';
-  document.getElementById('subPhone').value=selectedSubGoalie?.phone||'';
-  document.getElementById('subRating').value=selectedSubGoalie?.rating||7;
   hideError('subError');
+  populateSubGoalieSelect();
   document.getElementById('subModal').classList.add('active');
 }
 function closeSubModal(){document.getElementById('subModal').classList.remove('active');}
-async function submitSubstitution(){
+async function submitCancelOnly(){
   hideError('subError');
   if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
   const payload={
     sessionToken,
+    cancelGoalieId:selectedCancelGoalie.id
+  };
+  try{
+    const res=await fetch(`${API_URL}/api/goalies/cancel`,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
+    const data=await res.json().catch(()=>({}));
+    if(!res.ok) throw new Error(data.error||'Goalie cancel failed');
+    closeSubModal();
+    const box=document.getElementById('resultBox');
+    box.classList.add('active');
+    box.innerHTML=`<strong>${escapeHtml(data.cancelledGoalie?.firstName||'Goalie')} ${escapeHtml(data.cancelledGoalie?.lastName||'')} is cancelled immediately.</strong><div class="sms-box">Public roster/player page has been updated.</div>`;
+    box.scrollIntoView({behavior:'smooth',block:'start'});
+    await loadData();
+  }catch(e){showError('subError', e.message||'Goalie cancel failed');}
+}
+async function submitSubstitution(){
+  hideError('subError');
+  if(!selectedCancelGoalie?.id){showError('subError','Cancelling goalie is missing an ID. Refresh and try again.');return;}
+  applySelectedSubGoalie();
+  if(!selectedSubGoalie){showError('subError','Select a replacement goalie from the dropdown.');return;}
+  const payload={
+    sessionToken,
     cancelGoalieId:selectedCancelGoalie.id,
-    cancelPhone:document.getElementById('cancelPhone').value,
     substitute:{firstName:subFirst.value,lastName:subLast.value,phone:subPhone.value,rating:subRating.value}
   };
   try{

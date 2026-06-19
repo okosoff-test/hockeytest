@@ -5605,19 +5605,6 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         const player = players[playerIndex];
         let promotedPlayer = null;
 
-        if (player.isGoalie) {
-            const currentGoalieCount = (Array.isArray(players) ? players : []).filter(p => !!p.isGoalie).length;
-            const hasGoalieReplacementWaiting = (Array.isArray(waitlist) ? waitlist : []).some(p => !!p.isGoalie);
-            if (currentGoalieCount <= MAX_GOALIES && !hasGoalieReplacementWaiting) {
-                return res.status(400).json({
-                    error: 'Cannot cancel goalie without a replacement. Two goalies are required at all times. Please use the goalie portal to sub in a replacement first.',
-                    code: 'GOALIE_REPLACEMENT_REQUIRED',
-                    goalieCount: currentGoalieCount,
-                    minimumGoalies: MAX_GOALIES
-                });
-            }
-        }
-
         try {
             await runProtectedMutation('player-cancel', req, async () => {
                 appendCancellationLog({
@@ -7035,20 +7022,6 @@ app.post('/api/admin/remove-player', async (req, res) => {
     const index = players.findIndex(p => String(p.id) === String(idToRemove));
     if (index === -1) return res.status(404).json({ error: "Player not found" });
     const player = players[index];
-
-    if (player.isGoalie) {
-        const currentGoalieCount = (Array.isArray(players) ? players : []).filter(p => !!p.isGoalie).length;
-        const hasGoalieReplacementWaiting = (Array.isArray(waitlist) ? waitlist : []).some(p => !!p.isGoalie);
-        if (currentGoalieCount <= MAX_GOALIES && !hasGoalieReplacementWaiting) {
-            return res.status(400).json({
-                error: 'Cannot remove goalie without a replacement. Two goalies are required at all times.',
-                code: 'GOALIE_REPLACEMENT_REQUIRED',
-                goalieCount: currentGoalieCount,
-                minimumGoalies: MAX_GOALIES
-            });
-        }
-    }
-
     let autoPromotedPlayer = null;
     try {
         await runProtectedMutation('remove-player', req, async () => {
@@ -7220,19 +7193,20 @@ app.post('/api/admin/save-spare-goalie-contact', async (req, res) => {
 
     try {
         let updatedExisting = false;
-        extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
-        const key = normalizeGoalieContactKey(goalie);
-        const index = extraGoalieContacts.findIndex(g => normalizeGoalieContactKey(g) === key);
-        if (index >= 0) {
-            extraGoalieContacts[index] = normalizeGoalieContact({
-                ...extraGoalieContacts[index],
-                ...goalie
-            });
-            updatedExisting = true;
-        } else {
-            extraGoalieContacts.push(goalie);
-        }
-        await saveExtraGoalieContactsOnly('admin-save-spare-goalie-contact');
+        await runProtectedMutation('admin-save-spare-goalie-contact', req, async () => {
+            extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+            const key = normalizeGoalieContactKey(goalie);
+            const index = extraGoalieContacts.findIndex(g => normalizeGoalieContactKey(g) === key);
+            if (index >= 0) {
+                extraGoalieContacts[index] = normalizeGoalieContact({
+                    ...extraGoalieContacts[index],
+                    ...goalie
+                });
+                updatedExisting = true;
+            } else {
+                extraGoalieContacts.push(goalie);
+            }
+        }, { goalie });
 
         res.json({
             success: true,
@@ -7267,11 +7241,12 @@ app.post('/api/admin/update-spare-goalie-rating', async (req, res) => {
 
     const oldRating = goalie.rating;
     try {
-        extraGoalieContacts[goalieIndex] = normalizeGoalieContact({
-            ...goalie,
-            rating: ratingNum
-        });
-        await saveExtraGoalieContactsOnly('update-spare-goalie-rating');
+        await runProtectedMutation('update-spare-goalie-rating', req, async () => {
+            extraGoalieContacts[goalieIndex] = normalizeGoalieContact({
+                ...goalie,
+                rating: ratingNum
+            });
+        }, { goalieIndex, oldRating, newRating: ratingNum });
 
         res.json({
             success: true,
@@ -7303,9 +7278,10 @@ app.post('/api/admin/delete-spare-goalie-contact', async (req, res) => {
 
     try {
         let deleted = null;
-        const removed = extraGoalieContacts.splice(goalieIndex, 1);
-        deleted = removed && removed[0] ? removed[0] : null;
-        await saveExtraGoalieContactsOnly('delete-spare-goalie-contact');
+        await runProtectedMutation('delete-spare-goalie-contact', req, async () => {
+            const removed = extraGoalieContacts.splice(goalieIndex, 1);
+            deleted = removed && removed[0] ? removed[0] : null;
+        }, { goalieIndex, goalie });
 
         res.json({
             success: true,
@@ -7889,28 +7865,6 @@ function normalizeGoalieContactKey(goalie = {}) {
     return `name:${String(goalie.firstName || '').trim().toLowerCase()}-${String(goalie.lastName || '').trim().toLowerCase()}`;
 }
 
-
-async function saveExtraGoalieContactsOnly(reason = 'extra-goalie-contacts') {
-    extraGoalieContacts = Array.isArray(extraGoalieContacts)
-        ? extraGoalieContacts.map(normalizeGoalieContact).filter(g => g.firstName && g.lastName)
-        : [];
-
-    if (pool) {
-        await pool.query(
-            'INSERT INTO app_settings (key, value) VALUES ($1, $2) ON CONFLICT (key) DO UPDATE SET value = $2',
-            ['extraGoalieContacts', JSON.stringify(extraGoalieContacts)]
-        );
-    }
-
-    const localResult = persistDataToFile(reason);
-    if (!localResult || !localResult.ok) {
-        throw new Error(localResult?.error || 'Local save failed');
-    }
-
-    refreshPersistedStateFingerprint();
-    return { ok: true, localSnapshot: localResult };
-}
-
 function addUniqueGoalieContact(map, goalie = {}, extras = {}) {
     const firstName = String(goalie.firstName || '').trim();
     const lastName = String(goalie.lastName || '').trim();
@@ -8022,9 +7976,10 @@ app.post('/api/goalies/add-contact', async (req, res) => {
     }
 
     try {
-        extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
-        extraGoalieContacts.push(goalie);
-        await saveExtraGoalieContactsOnly('goalie-add-spare-contact');
+        await runProtectedMutation('goalie-add-spare-contact', req, async () => {
+            extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+            extraGoalieContacts.push(goalie);
+        }, { goalie });
         res.json({ success: true, goalie, backupGoalies: getBackupGoalieContacts() });
     } catch (err) {
         console.error('Error adding spare goalie contact:', err.message);
@@ -8042,16 +7997,6 @@ app.post('/api/goalies/cancel', async (req, res) => {
     if (goalieIndex === -1) return res.status(404).json({ error: 'Registered goalie not found.' });
 
     const cancellingGoalie = players[goalieIndex];
-    const currentGoalieCount = (Array.isArray(players) ? players : []).filter(p => !!p.isGoalie).length;
-
-    if (currentGoalieCount <= MAX_GOALIES) {
-        return res.status(400).json({
-            error: 'Cannot cancel goalie without a replacement. Two goalies are required at all times. Use Cancel + Sub In instead.',
-            code: 'GOALIE_REPLACEMENT_REQUIRED',
-            goalieCount: currentGoalieCount,
-            minimumGoalies: MAX_GOALIES
-        });
-    }
 
     const nowIso = new Date().toISOString();
     const rosterWasReleased = getEffectiveRosterReleasedState();
