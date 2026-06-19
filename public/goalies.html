@@ -105,9 +105,10 @@ function getGameDateTimeForSms(){
   return rawTime || rawDate || 'the next game';
 }
 function buildAvailabilitySms(goalie){
-  const name = String(goalie?.firstName || '').trim();
-  const greeting = name ? `Hey ${name},` : 'Hey,';
-  return `${greeting} hope you're doing well. We may need a goalie for Phan's Hockey this ${getGameDateTimeForSms()}. Hi {GoalieName}, are you available to sub in net for Phan's Hockey this {DayOfWeek} at {GameTime}? No worries if you can't — just let me know when you have a chance. Thanks!`;
+  const name = String(goalie?.firstName || '').trim() || 'Goalie';
+
+  return `Hi ${name}, are you available to sub in net for Phan's Hockey this ${getGameDateTimeForSms()}?`;
+}
 }
 function textAvailability(goalie){
   const body = buildAvailabilitySms(goalie || {});
