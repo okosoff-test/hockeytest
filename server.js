@@ -7827,22 +7827,37 @@ function formatSmsPhone(phone) {
     return digits ? `+1${digits}` : '';
 }
 
-function getPublicBaseUrl(req) {
-    return (
+function getPublicBaseUrl(req = null) {
+    const envUrl = String(
         process.env.PUBLIC_BASE_URL ||
-        `${req.protocol}://${req.get('host')}`
-    );
+        process.env.APP_BASE_URL ||
+        process.env.RENDER_EXTERNAL_URL ||
+        ''
+    ).trim().replace(/\/+$/, '');
+
+    if (envUrl) return envUrl;
+
+    const forwardedProto = String(req?.headers?.['x-forwarded-proto'] || '').split(',')[0].trim();
+    const forwardedHost = String(req?.headers?.['x-forwarded-host'] || '').split(',')[0].trim();
+    const proto = forwardedProto || req?.protocol || 'https';
+    const host = forwardedHost || (typeof req?.get === 'function' ? req.get('host') : '') || String(req?.headers?.host || '').trim();
+
+    return host ? `${proto}://${host}` : '';
 }
 
-function buildGoalieInText(goalie = {}, req) {
+function buildGoalieInText(goalie = {}, req = null) {
     const firstName = String(goalie.firstName || '').trim();
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
     const greeting = firstName ? `Hi ${firstName},` : `Hi ${name},`;
-
     const portalUrl = getPublicBaseUrl(req);
 
-    return `${greeting} you're in. Check ${portalUrl} for details.`;
+    if (portalUrl) {
+        return `${greeting} you're in. Check ${portalUrl} for details.`;
+    }
+
+    return `${greeting} you're in. Check the Hockey Portal for details.`;
 }
+
 function createGoalieSessionToken(rememberMe = true) {
     const expiresIn = rememberMe ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
     return jwt.sign({ role: 'goalie', jti: crypto.randomUUID(), remember: !!rememberMe }, ADMIN_TOKEN_SECRET, { expiresIn });
@@ -7912,10 +7927,23 @@ function getCurrentGoalieContacts() {
     return Array.from(map.values()).sort(sortGoalieContacts);
 }
 
+function isCurrentlyRegisteredGoalieContact(goalie = {}) {
+    const targetPhone = normalizePhoneDigits(goalie.phone || '');
+    const targetName = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim().toLowerCase();
+
+    return (Array.isArray(players) ? players : []).some(player => {
+        if (!player || !player.isGoalie) return false;
+        const playerPhone = normalizePhoneDigits(player.phone || '');
+        const playerName = `${player.firstName || ''} ${player.lastName || ''}`.trim().toLowerCase();
+        return (targetPhone && playerPhone === targetPhone) || (!!targetName && playerName === targetName);
+    });
+}
+
 function getRegularGoalieContacts() {
     const list = [];
     for (const [day, goalies] of Object.entries(REGULAR_GOALIES_BY_DAY || {})) {
         for (const goalie of (Array.isArray(goalies) ? goalies : [])) {
+            if (isCurrentlyRegisteredGoalieContact(goalie)) continue;
             list.push({
                 ...goalie,
                 dayLabel: `${day.charAt(0).toUpperCase()}${day.slice(1)} regular goalie`
@@ -7928,9 +7956,11 @@ function getRegularGoalieContacts() {
 function getBackupGoalieContacts() {
     const map = new Map();
     for (const goalie of BACKUP_GOALIES || []) {
+        if (isCurrentlyRegisteredGoalieContact(goalie)) continue;
         addUniqueGoalieContact(map, goalie, { note: 'Backup / substitute goalie' });
     }
     for (const goalie of extraGoalieContacts || []) {
+        if (isCurrentlyRegisteredGoalieContact(goalie)) continue;
         const key = normalizeGoalieContactKey(goalie);
         // Saved admin/goalie-panel records override the built-in backup defaults by phone/name.
         if (key && map.has(key)) map.delete(key);
@@ -8028,7 +8058,7 @@ app.post('/api/goalies/substitute', async (req, res) => {
 
     const substitutePhone = normalizePhoneDigits(substitute.phone);
     const duplicate = players.find(p => normalizePhoneDigits(p.phone) === substitutePhone && String(p.id) !== cancelGoalieId);
-    if (duplicate) return res.status(400).json({ error: 'That substitute is already registered.' });
+    if (duplicate) return res.status(400).json({ error: 'That substitute is already registered as a goalie/player. Select a goalie who is not currently registered.' });
 
     let newGoalie = null;
     const nowIso = new Date().toISOString();
@@ -8095,7 +8125,7 @@ app.post('/api/goalies/substitute', async (req, res) => {
         return res.status(500).json({ error: 'Goalie substitution could not be saved safely.' });
     }
 
-    const smsBody = buildGoalieInText(newGoalie);
+    const smsBody = buildGoalieInText(newGoalie, req);
     const smsPhone = formatSmsPhone(newGoalie.phone);
     const smsLink = smsPhone ? `sms:${smsPhone}?&body=${encodeURIComponent(smsBody)}` : '';
     res.json({
