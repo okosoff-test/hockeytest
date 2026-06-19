@@ -7830,7 +7830,7 @@ function formatSmsPhone(phone) {
 function buildGoalieInText(goalie = {}) {
     const firstName = String(goalie.firstName || '').trim();
     const name = `${goalie.firstName || ''} ${goalie.lastName || ''}`.trim() || 'Goalie';
-    const greeting = firstName ? `Hey ${firstName},` : `Hi ${name},`;
+    const greeting = firstName ? `Hi ${firstName},` : `Hi ${name},`;
 
     const portalUrl = process.env.PUBLIC_BASE_URL || '';
 
