@@ -97,13 +97,17 @@ async function loadData(){
 
 function paymentState(p){
   const st = String(p.paymentStatus || '').toLowerCase();
-  if(st === 'pia') return {label:'PIA', cls:'pia'};
+  if(st === 'pia') return {label:'PIA', cls:'pia', method:'E-Transfer'};
   const amt = Number(p.paidAmount);
   if(Number.isFinite(amt) && amt > 0){
-    const isCash = String(p.paymentMethod || '').trim().toLowerCase() === 'cash';
-    return {label:(isCash ? '$' : 'e $') + amt.toFixed(0), cls:isCash ? 'paid-cash' : 'paid-etransfer'};
+    const isCash = String(p.paymentMethod || '').toLowerCase().includes('cash');
+    return {
+      label:(isCash ? '$' : 'E$') + amt.toFixed(0),
+      cls:isCash ? 'paid-cash' : 'paid-etransfer',
+      method:isCash ? 'Cash' : 'E-Transfer'
+    };
   }
-  return {label:'OWES', cls:'owes'};
+  return {label:'OWES', cls:'owes', method:'E-Transfer'};
 }
 function renderPlayers(players){
   const tbody = document.getElementById('playerList'); tbody.innerHTML='';
@@ -116,25 +120,41 @@ function renderPlayers(players){
   for(const p of sorted){
     const isPhan = String(p.firstName||'').toLowerCase()==='phan' && String(p.lastName||'').toLowerCase()==='ly';
     const state = paymentState(p);
-    const actions = (p.isGoalie || isPhan) ? '<span class="goalie-note">No collection</span>' : `<div class="action-stack"><button class="paid-btn" onclick="setPaid(${p.id},15)">$15 Paid</button><button class="amount-btn" onclick="customAmount(${p.id})">Other</button><button class="owes-btn" onclick="setPaid(${p.id},null)">Owes</button></div>`;
+    const actions = (p.isGoalie || isPhan) ? '<span class="goalie-note">No collection</span>' : `<div class="action-stack"><button class="paid-btn" onclick="setPaid(${p.id},15,'Cash')">$15</button><button class="amount-btn" onclick="customAmount(${p.id})">Other</button><button class="owes-btn" onclick="setPaid(${p.id},null)">Owes</button></div>`;
     const tr = document.createElement('tr');
-    tr.innerHTML = `<td><span class="name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}${p.isGoalie?' <span class="goalie-note">GOALIE</span>':''}</span><span class="phone">${escapeHtml(p.phone||'')}</span>${p.registeredAt?`<span class="time">🔒 ${fmtTime(p.registeredAt)}</span>`:''}</td><td><span class="rating-pill">${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}</span></td><td><span class="pay-pill ${state.cls}">${state.label}</span></td><td>${actions}</td>`;
+    const pillAction = (p.isGoalie || isPhan) ? '' : `onclick="payPillTap(${p.id}, '${state.cls}', '${state.method || 'E-Transfer'}')" style="cursor:pointer" title="Tap OWES for E$15. Tap paid to switch cash/e-transfer."`;
+    tr.innerHTML = `<td><span class="name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}${p.isGoalie?' <span class="goalie-note">GOALIE</span>':''}</span><span class="phone">${escapeHtml(p.phone||'')}</span>${p.registeredAt?`<span class="time">🔒 ${fmtTime(p.registeredAt)}</span>`:''}</td><td><span class="rating-pill">${Number(p.finalRating ?? p.rating ?? 5).toFixed(1)}</span></td><td><span class="pay-pill ${state.cls}" ${pillAction}>${state.label}</span></td><td>${actions}</td>`;
     tbody.appendChild(tr);
   }
 }
-async function setPaid(playerId, amount){
+async function setPaid(playerId, amount, paymentMethod){
   if(amount === null && !confirm('Mark this player as owing?')) return;
-  const res = await fetch(`${API_URL}/api/collector/update-paid-amount`,{method:'POST',headers:headers(),body:JSON.stringify({sessionToken,playerId,amount})});
+  const payload = {sessionToken, playerId, amount};
+  if(paymentMethod) payload.paymentMethod = paymentMethod;
+  const res = await fetch(`${API_URL}/api/collector/update-paid-amount`,{method:'POST',headers:headers(),body:JSON.stringify(payload)});
   const data = await res.json().catch(()=>({}));
   if(!res.ok){alert(data.error || 'Payment update failed'); return;}
   await loadData();
+}
+function payPillTap(playerId, cls, currentMethod){
+  if(String(cls || '').includes('owes')){
+    setPaid(playerId, 15, 'E-Transfer');
+    return;
+  }
+  const method = String(currentMethod || 'E-Transfer');
+  if(method.toLowerCase().includes('cash')){
+    if(confirm('Switch this payment to E-Transfer?')) setPaid(playerId, 15, 'E-Transfer');
+  }else{
+    if(confirm('Mark this payment as CASH?')) setPaid(playerId, 15, 'Cash');
+  }
 }
 async function customAmount(playerId){
   const raw = prompt('Enter amount collected:', '15');
   if(raw === null) return;
   const amount = Number(raw);
   if(!Number.isFinite(amount) || amount < 0){alert('Enter a valid amount.'); return;}
-  await setPaid(playerId, amount);
+  const cash = confirm('Was this paid in CASH?\n\nOK = Cash\nCancel = E-Transfer');
+  await setPaid(playerId, amount, cash ? 'Cash' : 'E-Transfer');
 }
 if(sessionToken){document.getElementById('loginBox').classList.add('hidden');document.getElementById('collectorPanel').classList.remove('hidden');document.getElementById('logoutBtn').classList.remove('hidden');loadData();}
 setInterval(()=>{if(sessionToken) loadData();},30000);
