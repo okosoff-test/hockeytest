@@ -57,3 +57,26 @@ body{margin:0;background:#111;color:#fff;font-family:Arial}
 }
 
 .btn + .btn{margin-top:1px}
+
+.notify-goalie-btn{
+    background:#ff0000 !important;
+    color:#fff !important;
+    font-weight:900 !important;
+    animation:goalieFlash .8s infinite;
+}
+
+@keyframes goalieFlash{
+    0%{
+        background:#ff0000;
+        box-shadow:0 0 5px #ff0000;
+    }
+    50%{
+        background:#ffff00;
+        color:#000;
+        box-shadow:0 0 25px #ffff00;
+    }
+    100%{
+        background:#ff0000;
+        box-shadow:0 0 5px #ff0000;
+    }
+}
