@@ -7774,7 +7774,7 @@ process.on('unhandledRejection', (err) => {
 
 // Initialize and start
 // PAYMENT PAGE: limited collector access for Kyle/Brad
-const PAYMENT_PASSWORD = String(process.env.PAYMENT_PASSWORD || process.env.COLLECTOR_PASSWORD || '').trim();
+const PAYMENT_PASSWORD = String(process.env.PAYMENT_PASSWORD || process.env.COLLECTOR_PASSWORD || ADMIN_PASSWORD || '').trim();
 function isPaymentExcludedPlayer(player = {}) {
     const first = String(player.firstName || '').trim().toLowerCase();
     const last = String(player.lastName || '').trim().toLowerCase();
@@ -8166,7 +8166,7 @@ app.get('/payment', (req, res) => {
 app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
     if (!requirePaymentPageEnabled(req, res)) return;
     const { password, rememberMe } = req.body || {};
-    if (!PAYMENT_PASSWORD) return res.status(503).json({ error: 'PAYMENT_PASSWORD or COLLECTOR_PASSWORD is not configured.' });
+    if (!PAYMENT_PASSWORD) return res.status(503).json({ error: 'PAYMENT_PASSWORD, COLLECTOR_PASSWORD, or ADMIN_PASSWORD is not configured.' });
     if (String(password || '').trim() !== PAYMENT_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
     res.json({ success: true, sessionToken: createPaymentSessionToken(rememberMe !== false) });
 });
