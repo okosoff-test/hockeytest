@@ -2179,6 +2179,12 @@ button {
 .compact-pay.is-pia{
     background:#1565c0;
 }
+.compact-pay.is-paid-cash{
+    background:#2e7d32;
+}
+.compact-pay.is-paid-etransfer{
+    background:#1565c0;
+}
 .compact-pay-btn{
     border:none;
     background:transparent;
@@ -6830,7 +6836,7 @@ th, td{padding:2px 3px !important;}
         let selectedSnapshotKey = null;
         let selectedSnapshotFingerprint = "";
         let latestSnapshotKey = null;
-        let currentRegularSkatersByDay = normalizeRegularDayBucketMap({});
+        let currentRegularSkatersByDay = normalizeRegularDayBucketMap(loadLocalRegularSkaters());
         let adminPlayersById = {};
         let adminWaitlist = [];
         let latestRosterContactExport = null;
@@ -7856,6 +7862,7 @@ Date: ${selectedGameDate}`);
                     throw new Error(data.error || 'Failed to remove regular player');
                 }
                 currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
                 await loadData();
             } catch (err) {
@@ -7873,7 +7880,7 @@ Date: ${selectedGameDate}`);
                 });
                 if (!res.ok) return;
                 const data = await res.json();
-                currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
+                currentRegularSkatersByDay = mergeRegularMaps(data.regularSkatersByDay || {}, loadLocalRegularSkaters());
                 saveLocalRegularSkaters(currentRegularSkatersByDay);
                 renderRegularSkatersList();
             } catch (err) {
@@ -7900,7 +7907,7 @@ Date: ${selectedGameDate}`);
                     });
                     const data = await res.json().catch(() => ({}));
                     if (res.ok && data.success !== false) {
-                        currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay || currentRegularSkatersByDay);
+                        currentRegularSkatersByDay = mergeRegularMaps(data.regularSkatersByDay || {}, currentRegularSkatersByDay);
                         saveLocalRegularSkaters(currentRegularSkatersByDay);
                         renderRegularSkatersList();
                         return true;
@@ -8616,9 +8623,24 @@ ${rosterLink}
                 renderWaitlistRosterPicker();
 
                 const serverRegularMap = normalizeRegularDayBucketMap(data.regularSkatersByDay || {});
-                currentRegularSkatersByDay = serverRegularMap;
-                saveLocalRegularSkaters(currentRegularSkatersByDay);
-                renderRegularSkatersList();
+                const localRegularMap = normalizeRegularDayBucketMap(loadLocalRegularSkaters());
+                const serverRegularCount = getRegularEntriesFlatFromMap(serverRegularMap).length;
+                const localRegularCount = getRegularEntriesFlatFromMap(localRegularMap).length;
+
+                if (serverRegularCount === 0 && localRegularCount > 0) {
+                    currentRegularSkatersByDay = localRegularMap;
+                    saveLocalRegularSkaters(currentRegularSkatersByDay);
+                    renderRegularSkatersList();
+                    try {
+                        await saveRegularSkatersSettings();
+                    } catch (syncErr) {
+                        console.error('Regular skater sync error:', syncErr);
+                    }
+                } else {
+                    currentRegularSkatersByDay = serverRegularMap;
+                    saveLocalRegularSkaters(currentRegularSkatersByDay);
+                    renderRegularSkatersList();
+                }
 
                 playersCount = data.players.length;
                 maxGoalies = data.maxGoalies || 2;
@@ -8688,11 +8710,15 @@ ${rosterLink}
                             const compactAmount = isPia
                                 ? 0
                                 : (isPaid ? parseFloat(p.paidAmount) : 15);
-                            const compactLabel = isPia ? 'PIA' : (isPaid ? `$${compactAmount}` : 'OWES');
-                            const compactClass = isPia ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
+                            const compactMethod = String(p.paymentMethod || '').trim();
+                            const compactMethodLower = compactMethod.toLowerCase();
+                            const isCashPayment = compactMethodLower === 'cash';
+                            const compactLabel = isPia ? 'PIA' : (isPaid ? `${isCashPayment ? '$' : 'e $'}${compactAmount}` : 'OWES');
+                            const compactClass = isPia ? 'is-pia' : (isPaid ? (isCashPayment ? 'is-paid-cash' : 'is-paid-etransfer') : 'is-unpaid');
+                            const compactTitle = isPaid && compactMethod ? `Paid by ${compactMethod}` : 'Tap to mark paid/open payment options. PIA is paid in advance.';
                             paidInput = `
-                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}">
-                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/open payment options. PIA is paid in advance." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}" data-payment-method="${escapeHtml(compactMethod)}">
+                                    <button class="compact-pay-btn compact-pay-main" title="${escapeHtml(compactTitle)}" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         ${compactLabel}
                                     </button>
                                 </div>
