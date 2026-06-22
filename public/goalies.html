@@ -159,7 +159,7 @@ function renderCard(g, kind){
   const wait = g.source === 'waitlist' ? '<span class="pill waitlist">WAITLIST</span>' : '';
   const notes = [g.dayLabel, g.team ? `Team: ${g.team}` : '', g.note, g.registeredAt ? `Registered: ${fmtTime(g.registeredAt)}` : ''].filter(Boolean).join('<br>');
   const safeGoaliePayload = JSON.stringify(g).replace(/'/g,"&#39;");
-  const textAvailabilityBtn = kind !== 'current' ? `<button class="refresh" onclick='textAvailability(${safeGoaliePayload})'>Text Availability</button>` : '';
+  const textAvailabilityBtn = kind !== 'current' ? `<button class="refresh flashing-notify" onclick='textAvailability(${safeGoaliePayload})'>Text Availability</button>` : '';
   const subBtn = kind !== 'current' ? `<button class="success" onclick='chooseSub(${safeGoaliePayload})'>Use as Sub</button>` : '';
   const cancelBtn = kind === 'current' ? `<button class="danger" onclick='chooseCancel(${safeGoaliePayload})'>Self Cancel / Replace</button>` : '';
   return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta"><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${textAvailabilityBtn}${subBtn}${cancelBtn}</div></div>`;
