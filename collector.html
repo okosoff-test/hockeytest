@@ -136,10 +136,7 @@ async function customAmount(playerId){
   if(raw === null) return;
   const amount = Number(raw);
   if(!Number.isFinite(amount) || amount < 0){alert('Enter a valid amount.'); return;}
-  const cash = confirm('Was this paid in CASH?
-
-OK = Cash
-Cancel = E-Transfer');
+  const cash = confirm('Was this paid in CASH?\n\nOK = Cash\nCancel = E-Transfer');
   await setPaid(playerId, amount, cash ? 'Cash' : 'E-Transfer');
 }
 if(sessionToken){document.getElementById('loginBox').classList.add('hidden');document.getElementById('collectorPanel').classList.remove('hidden');document.getElementById('logoutBtn').classList.remove('hidden');loadData();}
