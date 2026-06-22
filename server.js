@@ -3131,6 +3131,18 @@ function applyPaymentStatusToPlayer(player, status, options = {}) {
     return player;
 }
 
+function normalizeCollectionPaymentMethod(method, fallback = 'E-Transfer') {
+    const raw = String(method || '').trim().toLowerCase();
+    if (raw === 'cash') return 'Cash';
+    if (raw === 'e-transfer' || raw === 'etransfer' || raw === 'e transfer' || raw === 'email transfer') return 'E-Transfer';
+    if (raw === 'pia' || raw === 'paid in advance' || raw === 'pay in advance') return 'PIA';
+
+    const fallbackRaw = String(fallback || '').trim().toLowerCase();
+    if (fallbackRaw === 'cash') return 'Cash';
+    if (fallbackRaw === 'pia') return 'PIA';
+    return 'E-Transfer';
+}
+
 async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = null) {
     if (!pool) return { ok: true, mode: 'file' };
     const payload = snapshot || buildFullDataSnapshot();
@@ -7068,7 +7080,7 @@ app.post('/api/admin/update-spots', async (req, res) => {
 
 // Update paid amount endpoint
 app.post('/api/admin/update-paid-amount', async (req, res) => {
-    const { password, sessionToken, playerId, amount } = req.body;
+    const { password, sessionToken, playerId, amount, paymentMethod } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
@@ -7087,8 +7099,10 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
         player.paidAmount = paidAmount;
 
         if (paidAmount !== null && paidAmount > 0) {
+            player.paymentMethod = normalizeCollectionPaymentMethod(paymentMethod, player.paymentMethod || 'E-Transfer');
             applyPaymentStatusToPlayer(player, 'paid');
         } else if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
+            player.paymentMethod = 'PIA';
             applyPaymentStatusToPlayer(player, 'pia');
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
@@ -7096,8 +7110,8 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
             );
         }
 
@@ -7128,8 +7142,10 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
 
     try {
         if (paymentStatus === 'paid') {
+            player.paymentMethod = normalizeCollectionPaymentMethod(player.paymentMethod, 'E-Transfer');
             applyPaymentStatusToPlayer(player, 'paid', { ensureAmount: true, defaultAmount: 15 });
         } else if (paymentStatus === 'pia') {
+            player.paymentMethod = 'PIA';
             applyPaymentStatusToPlayer(player, 'pia');
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
@@ -7137,8 +7153,8 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
             );
         }
 
@@ -8188,6 +8204,7 @@ app.post('/api/collector/update-paid-amount', async (req, res) => {
     const player = (Array.isArray(players) ? players : []).find(p => String(p.id) === playerId);
     if (!player || isPaymentExcludedPlayer(player)) return res.status(404).json({ error: 'Player not found on payment list.' });
     const amountRaw = req.body?.amount;
+    const paymentMethodRaw = req.body?.paymentMethod;
     try {
         await runProtectedMutation('payment-page-update-paid-amount', req, async () => {
             if (amountRaw === null || amountRaw === '' || amountRaw === undefined) {
@@ -8198,9 +8215,10 @@ app.post('/api/collector/update-paid-amount', async (req, res) => {
                 player.paidAmount = amount;
                 player.paid = amount > 0;
                 player.paymentStatus = amount > 0 ? 'paid' : 'owes';
+                if (amount > 0) player.paymentMethod = normalizeCollectionPaymentMethod(paymentMethodRaw, player.paymentMethod || 'E-Transfer');
             }
             if (pool) {
-                await pool.query('UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4', [!!player.paid, player.paidAmount == null ? null : Number(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), player.id]);
+                await pool.query('UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5', [!!player.paid, player.paidAmount == null ? null : Number(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, player.id]);
             }
         });
         res.json({ success: true });
