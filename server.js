@@ -7119,7 +7119,7 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
 // Update payment status endpoint: paid / pia / owes without adding another admin-table column
 app.post('/api/admin/update-payment-status', async (req, res) => {
-    const { password, sessionToken, playerId, status } = req.body;
+    const { password, sessionToken, playerId, status, paymentMethod } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
@@ -7127,10 +7127,12 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
     if (!player) return res.status(404).json({ error: "Player not found" });
 
     const paymentStatus = normalizePaymentStatus(status, player);
+    const normalizedPaymentMethod = String(paymentMethod || '').trim().toLowerCase() === 'cash' ? 'Cash' : 'E-Transfer';
 
     try {
         if (paymentStatus === 'paid') {
             applyPaymentStatusToPlayer(player, 'paid', { ensureAmount: true, defaultAmount: 15 });
+            player.paymentMethod = normalizedPaymentMethod;
         } else if (paymentStatus === 'pia') {
             applyPaymentStatusToPlayer(player, 'pia');
         } else {
@@ -7139,8 +7141,8 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
             );
         }
 
