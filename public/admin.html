@@ -8900,7 +8900,7 @@ ${rosterLink}
         }
 
         async function quickPay15(playerId) {
-            await updatePaidAmount(playerId, 15, 'E-Transfer');
+            await updatePaidAmount(playerId, 15);
             loadData();
         }
 
@@ -8910,18 +8910,16 @@ ${rosterLink}
             loadData();
         }
 
-        async function updatePaidAmount(playerId, amount, paymentMethod) {
+        async function updatePaidAmount(playerId, amount) {
             try {
-                const body = { 
-                    sessionToken: sessionToken, 
-                    playerId: playerId, 
-                    amount: amount 
-                };
-                if (paymentMethod) body.paymentMethod = paymentMethod;
                 const res = await fetch(`${API_URL}/api/admin/update-paid-amount`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({ 
+                        sessionToken: sessionToken, 
+                        playerId: playerId, 
+                        amount: amount 
+                    })
                 });
 
                 if (res.status === 401) {
@@ -8945,18 +8943,16 @@ ${rosterLink}
         }
 
 
-        async function updatePaymentStatus(playerId, status, paymentMethod) {
+        async function updatePaymentStatus(playerId, status) {
             try {
-                const body = {
-                    sessionToken: sessionToken,
-                    playerId: playerId,
-                    status: status
-                };
-                if (paymentMethod) body.paymentMethod = paymentMethod;
                 const res = await fetch(`${API_URL}/api/admin/update-payment-status`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        sessionToken: sessionToken,
+                        playerId: playerId,
+                        status: status
+                    })
                 });
 
                 if (res.status === 401) {
@@ -10835,7 +10831,7 @@ async function savePaymentSlider(){
         wrap.style.opacity = '0.7';
     }
     try {
-        await updatePaidAmount(activePaymentSliderPlayerId, amount, 'E-Transfer');
+        await updatePaidAmount(activePaymentSliderPlayerId, amount);
         closePaymentSlider();
         await loadData();
     } finally {
@@ -10850,35 +10846,15 @@ async function compactPayToggle(playerId){
     const wrap = compactPayFind(playerId);
     if(!main || !wrap || wrap.dataset.busy === '1') return;
 
-    if(wrap.classList.contains('is-pia')){
+    if(wrap.classList.contains('is-paid') || wrap.classList.contains('is-pia')){
         openPaymentSlider(playerId);
-        return;
-    }
-
-    if(wrap.classList.contains('is-paid-cash')){
-        return;
-    }
-
-    if(wrap.classList.contains('is-paid-etransfer') || wrap.classList.contains('is-paid')){
-        const amount = getCompactPayAmount(playerId);
-        if(confirm('Mark this payment as CASH?')){
-            wrap.dataset.busy = '1';
-            wrap.style.opacity = '0.7';
-            try {
-                await updatePaidAmount(playerId, amount, 'Cash');
-                await loadData();
-            } finally {
-                delete wrap.dataset.busy;
-                wrap.style.opacity = '';
-            }
-        }
         return;
     }
 
     wrap.dataset.busy = '1';
     wrap.style.opacity = '0.7';
     try {
-        await updatePaidAmount(playerId, 15, 'E-Transfer');
+        await updatePaymentStatus(playerId, 'paid');
         await loadData();
     } finally {
         delete wrap.dataset.busy;
