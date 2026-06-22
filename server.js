@@ -7068,7 +7068,7 @@ app.post('/api/admin/update-spots', async (req, res) => {
 
 // Update paid amount endpoint
 app.post('/api/admin/update-paid-amount', async (req, res) => {
-    const { password, sessionToken, playerId, amount, paymentMethod } = req.body;
+    const { password, sessionToken, playerId, amount } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
@@ -7085,10 +7085,8 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
     try {
         player.paidAmount = paidAmount;
-        const normalizedPaymentMethod = String(paymentMethod || '').trim().toLowerCase() === 'cash' ? 'Cash' : 'E-Transfer';
 
         if (paidAmount !== null && paidAmount > 0) {
-            player.paymentMethod = normalizedPaymentMethod;
             applyPaymentStatusToPlayer(player, 'paid');
         } else if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
             applyPaymentStatusToPlayer(player, 'pia');
@@ -7098,8 +7096,8 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), normalizedPlayerId]
             );
         }
 
@@ -8187,8 +8185,6 @@ app.post('/api/collector/update-paid-amount', async (req, res) => {
     if (!requirePaymentAuth(req, res)) return;
     if (!rosterReleased) return res.status(403).json({ error: 'Payment page opens after roster release.' });
     const playerId = String(req.body?.playerId || '').trim();
-    const paymentMethodRaw = String(req.body?.paymentMethod || '').trim();
-    const normalizedPaymentMethod = paymentMethodRaw.toLowerCase() === 'cash' ? 'Cash' : 'E-Transfer';
     const player = (Array.isArray(players) ? players : []).find(p => String(p.id) === playerId);
     if (!player || isPaymentExcludedPlayer(player)) return res.status(404).json({ error: 'Player not found on payment list.' });
     const amountRaw = req.body?.amount;
@@ -8202,12 +8198,10 @@ app.post('/api/collector/update-paid-amount', async (req, res) => {
                 player.paidAmount = amount;
                 player.paid = amount > 0;
                 player.paymentStatus = amount > 0 ? 'paid' : 'owes';
-                if (amount > 0) player.paymentMethod = normalizedPaymentMethod;
             }
             if (pool) {
-                await pool.query('UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5', [!!player.paid, player.paidAmount == null ? null : Number(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, player.id]);
+                await pool.query('UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3 WHERE id = $4', [!!player.paid, player.paidAmount == null ? null : Number(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), player.id]);
             }
-            await saveData();
         });
         res.json({ success: true });
     } catch (err) {

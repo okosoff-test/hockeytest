@@ -2179,12 +2179,6 @@ button {
 .compact-pay.is-pia{
     background:#1565c0;
 }
-.compact-pay.is-paid-cash{
-    background:#2e7d32;
-}
-.compact-pay.is-paid-etransfer{
-    background:#1565c0;
-}
 .compact-pay-btn{
     border:none;
     background:transparent;
@@ -8709,15 +8703,11 @@ ${rosterLink}
                             const compactAmount = isPia
                                 ? 0
                                 : (isPaid ? parseFloat(p.paidAmount) : 15);
-                            const compactMethod = String(p.paymentMethod || '').trim();
-                            const compactMethodLower = compactMethod.toLowerCase();
-                            const isCashPayment = compactMethodLower === 'cash';
-                            const compactLabel = isPia ? 'PIA' : (isPaid ? `${isCashPayment ? '$' : 'e $'}${compactAmount}` : 'OWES');
-                            const compactClass = isPia ? 'is-pia' : (isPaid ? (isCashPayment ? 'is-paid-cash' : 'is-paid-etransfer') : 'is-unpaid');
-                            const compactTitle = isPaid && compactMethod ? `Paid by ${compactMethod}` : 'Tap to mark paid/open payment options. PIA is paid in advance.';
+                            const compactLabel = isPia ? 'PIA' : (isPaid ? `$${compactAmount}` : 'OWES');
+                            const compactClass = isPia ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
                             paidInput = `
-                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}" data-payment-method="${escapeHtml(compactMethod)}">
-                                    <button class="compact-pay-btn compact-pay-main" title="${escapeHtml(compactTitle)}" onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
+                                <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}">
+                                    <button class="compact-pay-btn compact-pay-main" title="Tap to mark paid/open payment options. PIA is paid in advance." onclick="compactPayToggle(${p.id})" data-amount="${compactAmount}">
                                         ${compactLabel}
                                     </button>
                                 </div>
