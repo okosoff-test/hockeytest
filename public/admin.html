@@ -2179,6 +2179,12 @@ button {
 .compact-pay.is-pia{
     background:#1565c0;
 }
+.compact-pay.is-paid-cash{
+    background:#2e7d32;
+}
+.compact-pay.is-paid-etransfer{
+    background:#1565c0;
+}
 .compact-pay-btn{
     border:none;
     background:transparent;
@@ -2267,46 +2273,9 @@ button {
     margin-bottom:14px;
 }
 .payment-slider-input{
-    display:none !important;
-}
-.payment-method-label{
-    color:#bbb;
-    font-size:0.86rem;
-    font-weight:700;
-    margin:10px 0 6px 0;
-}
-.payment-method-options{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:8px;
-    margin:0 0 14px 0;
-}
-.payment-method-option input{
-    display:none;
-}
-.payment-method-option span{
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    min-height:38px;
-    background:#3d3d3d;
-    border:2px solid #555;
-    border-radius:10px;
-    color:#fff;
-    font-weight:800;
-    cursor:pointer;
-    user-select:none;
-}
-.payment-method-option input:checked + span{
-    border-color:var(--accent);
-    background:#4d4d4d;
-    box-shadow:0 0 0 1px rgba(255,107,0,0.35) inset;
-}
-.payment-slider-number-label{
-    color:#bbb;
-    font-size:0.86rem;
-    font-weight:700;
-    margin:0 0 6px 0;
+    width:100%;
+    margin:0 0 14px 0 !important;
+    accent-color:#ff6b00;
 }
 .payment-slider-presets{
     display:grid;
@@ -8740,9 +8709,11 @@ ${rosterLink}
                             const compactAmount = isPia
                                 ? 0
                                 : (isPaid ? parseFloat(p.paidAmount) : 15);
-                            const compactLabel = isPia ? 'PIA' : (isPaid ? `$${compactAmount}` : 'OWES');
-                            const compactClass = isPia ? 'is-pia' : (isPaid ? 'is-paid' : 'is-unpaid');
                             const compactMethod = String(p.paymentMethod || '').trim();
+                            const compactMethodLower = compactMethod.toLowerCase();
+                            const isCashPayment = compactMethodLower === 'cash';
+                            const compactLabel = isPia ? 'PIA' : (isPaid ? `${isCashPayment ? '$' : 'e $'}${compactAmount}` : 'OWES');
+                            const compactClass = isPia ? 'is-pia' : (isPaid ? (isCashPayment ? 'is-paid-cash' : 'is-paid-etransfer') : 'is-unpaid');
                             const compactTitle = isPaid && compactMethod ? `Paid by ${compactMethod}` : 'Tap to mark paid/open payment options. PIA is paid in advance.';
                             paidInput = `
                                 <div class="compact-pay ${compactClass}" data-player-id="${p.id}" data-payment-status="${paymentStatus}" data-payment-method="${escapeHtml(compactMethod)}">
@@ -8939,19 +8910,16 @@ ${rosterLink}
             loadData();
         }
 
-        async function updatePaidAmount(playerId, amount, paymentMethod = null) {
+        async function updatePaidAmount(playerId, amount) {
             try {
-                const payload = {
-                    sessionToken: sessionToken,
-                    playerId: playerId,
-                    amount: amount
-                };
-                if (paymentMethod) payload.paymentMethod = paymentMethod;
-
                 const res = await fetch(`${API_URL}/api/admin/update-paid-amount`, {
                     method: 'POST',
                     headers: getAdminHeaders(),
-                    body: JSON.stringify(payload)
+                    body: JSON.stringify({ 
+                        sessionToken: sessionToken, 
+                        playerId: playerId, 
+                        amount: amount 
+                    })
                 });
 
                 if (res.status === 401) {
@@ -10819,30 +10787,25 @@ function getCompactPayAmount(playerId){
     return amount;
 }
 function setPaymentSliderAmount(amount){
+    const slider = document.getElementById('paymentSliderInput');
     const valueLabel = document.getElementById('paymentSliderAmount');
     const numberInput = document.getElementById('paymentSliderNumber');
     const parsed = Number(amount);
     const safe = Number.isFinite(parsed) ? Math.max(0, parsed) : 0;
     const display = Number.isInteger(safe) ? String(safe) : safe.toFixed(2).replace(/\.00$/, '').replace(/0$/, '');
 
+    // Keep the existing slider UI, but do not let it cap manually typed payments.
+    // The slider can move up to its visual max; the number box can hold any higher amount.
+    if(slider){
+        const sliderMax = Number(slider.max || 500);
+        slider.value = String(Math.min(safe, Number.isFinite(sliderMax) ? sliderMax : safe));
+    }
     if(numberInput) numberInput.value = display;
     if(valueLabel) valueLabel.textContent = '$' + display;
-}
-function setPaymentMethodChoice(method){
-    const normalized = String(method || '').trim().toLowerCase() === 'cash' ? 'Cash' : 'E-Transfer';
-    const target = document.querySelector(`input[name="paymentSliderMethod"][value="${normalized}"]`);
-    if(target) target.checked = true;
-}
-function getPaymentMethodChoice(){
-    const selected = document.querySelector('input[name="paymentSliderMethod"]:checked');
-    return selected && selected.value === 'Cash' ? 'Cash' : 'E-Transfer';
 }
 function openPaymentSlider(playerId){
     activePaymentSliderPlayerId = playerId;
     setPaymentSliderAmount(getCompactPayAmount(playerId));
-    const wrap = compactPayFind(playerId);
-    const existingMethod = String(wrap?.dataset.paymentMethod || '').trim();
-    setPaymentMethodChoice(existingMethod === 'Cash' ? 'Cash' : 'E-Transfer');
     const modal = document.getElementById('paymentSliderModal');
     if(modal) modal.classList.add('active');
 }
@@ -10868,7 +10831,7 @@ async function savePaymentSlider(){
         wrap.style.opacity = '0.7';
     }
     try {
-        await updatePaidAmount(activePaymentSliderPlayerId, amount, getPaymentMethodChoice());
+        await updatePaidAmount(activePaymentSliderPlayerId, amount);
         closePaymentSlider();
         await loadData();
     } finally {
@@ -10939,21 +10902,10 @@ document.addEventListener('keydown', function(e){
 
     <div class="payment-slider-modal" id="paymentSliderModal" onclick="if(event.target === this) closePaymentSlider()">
         <div class="payment-slider-card">
-            <div class="payment-slider-title">Set Payment</div>
+            <div class="payment-slider-title">Set Payment Amount</div>
             <div class="payment-slider-amount" id="paymentSliderAmount">$15</div>
-            <div class="payment-slider-number-label">Amount</div>
+            <input type="range" id="paymentSliderInput" class="payment-slider-input" min="0" max="500" step="1" value="15" oninput="handlePaymentSliderInput(this.value)">
             <input type="number" id="paymentSliderNumber" min="0" step="1" value="15" placeholder="Enter any amount" oninput="handlePaymentSliderInput(this.value)">
-            <div class="payment-method-label">Payment Method</div>
-            <div class="payment-method-options">
-                <label class="payment-method-option">
-                    <input type="radio" name="paymentSliderMethod" value="E-Transfer" checked>
-                    <span>E-Transfer</span>
-                </label>
-                <label class="payment-method-option">
-                    <input type="radio" name="paymentSliderMethod" value="Cash">
-                    <span>Cash</span>
-                </label>
-            </div>
             <div class="payment-slider-presets">
                 <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(10)">$10</button>
                 <button type="button" class="payment-slider-preset" onclick="paymentSliderPreset(15)">$15</button>
