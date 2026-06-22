@@ -17,17 +17,24 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
 @media(max-width:650px){body{padding:10px}.container{padding:16px}h1{font-size:1.55rem}.grid,.form-grid{grid-template-columns:1fr}.top-actions{justify-content:stretch}.top-actions button{width:100%}.modal-actions{flex-direction:column}}
 
 .flashing-notify{
-    animation:simpleFlash 1.5s infinite;
+    animation: notifyFlash 0.8s infinite;
+    font-weight:900 !important;
 }
-
-@keyframes simpleFlash{
+@keyframes notifyFlash{
     0%,100%{
-        opacity:1;
+        background:#ff3b30;
+        color:#fff;
+        transform:scale(1);
+        box-shadow:0 0 10px rgba(255,59,48,.8);
     }
     50%{
-        opacity:0.55;
+        background:#ffff00;
+        color:#000;
+        transform:scale(1.08);
+        box-shadow:0 0 25px rgba(255,255,0,1);
     }
 }
+
 </style>
 </head>
 <body>
@@ -152,7 +159,7 @@ function renderCard(g, kind){
   const wait = g.source === 'waitlist' ? '<span class="pill waitlist">WAITLIST</span>' : '';
   const notes = [g.dayLabel, g.team ? `Team: ${g.team}` : '', g.note, g.registeredAt ? `Registered: ${fmtTime(g.registeredAt)}` : ''].filter(Boolean).join('<br>');
   const safeGoaliePayload = JSON.stringify(g).replace(/'/g,"&#39;");
-  const textAvailabilityBtn = kind !== 'current' ? `<button class="refresh flashing-notify" onclick='textAvailability(${safeGoaliePayload})'>Text Availability</button>` : '';
+  const textAvailabilityBtn = kind !== 'current' ? `<button class="refresh" onclick='textAvailability(${safeGoaliePayload})'>Text Availability</button>` : '';
   const subBtn = kind !== 'current' ? `<button class="success" onclick='chooseSub(${safeGoaliePayload})'>Use as Sub</button>` : '';
   const cancelBtn = kind === 'current' ? `<button class="danger" onclick='chooseCancel(${safeGoaliePayload})'>Self Cancel / Replace</button>` : '';
   return `<div class="${classes}"><div class="name">${escapeHtml(goalieName(g))} <span class="pill ${kind}">${label}</span>${wait}</div><div class="meta"><a class="phone-link" href="${phoneHref(g.phone)}">${escapeHtml(g.phone || 'No phone listed')}</a>${notes?`<div class="note">${notes}</div>`:''}</div><div class="card-actions">${textAvailabilityBtn}${subBtn}${cancelBtn}</div></div>`;
