@@ -12254,7 +12254,6 @@ document.addEventListener('keydown', function(e){
         set('weeklyStatusNow', etNow);
 
         setSummaryForSection('.game-setup-section', `${details.date} · ${details.time} · ${details.loc} · ${playerCount}/${playerSpots} players${code ? ' · Code ' + code : ''}`);
-        setSummaryForSection('.registered-players-box', `${playerCount}/${playerSpots} registered · ${waitlistCount} waitlist · ${piaCount} PIA`);
         setSummaryForSection('.waitlist-section', `${waitlistCount} waitlist`);
         setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${piaCount} PIA · ${totalCollected} · Cash ${cashCollected} · ET$ ${etransferCollected}`);
         setSummaryForSection('.roster-status', roster);
