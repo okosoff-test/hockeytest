@@ -5915,6 +5915,28 @@ th, td{padding:2px 3px !important;}
             <div class="game-setup-savebar">
                 <button id="updateGameSetupBtn" class="update-title-btn" onclick="updateGameSetup()">Save Game Setup</button>
             </div>
+
+            <div class="player-spots-inline-section">
+                <h4>🔧 Player Spots</h4>
+                <div class="control-row">
+                    <input type="number" id="playerSpotInput" class="control-input" min="0" max="30" value="20">
+                    <button class="control-btn" onclick="updatePlayerSpots()">Update</button>
+                    <div class="status-display">
+                        <div class="count-box">
+                            <div class="count-label">Player Spots</div>
+                            <div class="count-value" id="currentPlayerSpotsDisplay">20</div>
+                        </div>
+                        <div class="count-box">
+                            <div class="count-label">Players</div>
+                            <div class="count-value" id="currentPlayerCount">0</div>
+                        </div>
+                        <div class="count-box">
+                            <div class="count-label">Goalies</div>
+                            <div class="count-value" id="currentGoalieCount" style="color:#4CAF50;">0/2</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- GAME DETAILS -->
@@ -5932,28 +5954,6 @@ th, td{padding:2px 3px !important;}
                 <span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
             </div>
         </div>
-<div class="control-box">
-            <h3>🔧 Player Spots</h3>
-            <div class="control-row">
-                <input type="number" id="playerSpotInput" class="control-input" min="0" max="30" value="20">
-                <button class="control-btn" onclick="updatePlayerSpots()">Update</button>
-                <div class="status-display">
-                    <div class="count-box">
-                        <div class="count-label">Player Spots</div>
-                        <div class="count-value" id="currentPlayerSpotsDisplay">20</div>
-                    </div>
-                    <div class="count-box">
-                        <div class="count-label">Players</div>
-                        <div class="count-value" id="currentPlayerCount">0</div>
-                    </div>
-                    <div class="count-box">
-                        <div class="count-label">Goalies</div>
-                        <div class="count-value" id="currentGoalieCount" style="color:#4CAF50;">0/2</div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
         <div class="control-box">
             <h3>🔒 Signup Code Control</h3>
 
@@ -6189,9 +6189,10 @@ th, td{padding:2px 3px !important;}
 
 
 
-        <div class="control-box">
-            <h3>📚 History</h3>
-            <div class="control-row">
+        <!-- History Management -->
+        <div class="history-delete-box">
+            <h3>📚 History / Delete Old History</h3>
+            <div class="control-row" style="margin-bottom: 14px; gap:10px; align-items:center; flex-wrap:wrap;">
                 <button class="control-btn" onclick="window.open('/history', '_blank')" style="background: #4a90e2;">
                     View Roster History
                 </button>
@@ -6199,11 +6200,6 @@ th, td{padding:2px 3px !important;}
                     Past weeks are automatically archived
                 </div>
             </div>
-        </div>
-
-        <!-- History Management -->
-        <div class="history-delete-box">
-            <h3>🗑️ Delete Old History</h3>
             <div class="control-row" style="margin-bottom: 10px; gap:10px; align-items:flex-start; flex-wrap:wrap;">
                 <select id="historySelect" class="history-select" multiple size="8" style="min-height:220px;">
                 </select>
@@ -11998,6 +11994,33 @@ document.addEventListener('keydown', function(e){
         width: 44px !important;
         height: 44px !important;
         font-size: 1.25rem !important;
+    }
+}
+</style>
+
+<style id="gameSetupPlayerSpotsGroupStyle">
+.player-spots-inline-section {
+    margin-top: 18px;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255,255,255,0.14);
+}
+.player-spots-inline-section h4 {
+    margin: 0 0 12px;
+    color: #ff7a00;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+.player-spots-inline-section .control-row {
+    align-items: center;
+}
+@media (max-width: 700px) {
+    .player-spots-inline-section .control-row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+    .player-spots-inline-section .status-display {
+        margin-left: 0 !important;
+        justify-content: center;
     }
 }
 </style>
