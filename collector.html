@@ -94,9 +94,19 @@ async function loadData(){
   renderPlayers(data.players || []);
 }
 
+
+function formatPiaDateShort(value){
+  const raw = String(value || '').trim();
+  if(!raw) return '';
+  const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(m) return `${m[2]}/${m[3]}`;
+  const d = new Date(raw);
+  if(Number.isNaN(d.getTime())) return '';
+  return `${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+}
 function paymentState(p){
   const st = String(p.paymentStatus || '').toLowerCase();
-  if(st === 'pia') return {label:'PIA', cls:'pia', method:'E-Transfer'};
+  if(st === 'pia') { const pd = formatPiaDateShort(p.piaDate); return {label:'PIA' + (pd ? ' ' + pd : ''), cls:'pia', method:'E-Transfer'}; }
   const amt = Number(p.paidAmount);
   if(Number.isFinite(amt) && amt > 0){
     const isCash = String(p.paymentMethod || '').toLowerCase().includes('cash');
