@@ -3016,11 +3016,15 @@ button {
     line-height:1 !important;
 }
 
-#playerList .nickname-edit-row{
-    margin-top:3px;
+#playerList .player-name-nickname-row{
+    display:flex;
+    align-items:center;
+    gap:8px;
+    min-width:0;
+    max-width:100%;
 }
 #playerList .nickname-input{
-    width:120px;
+    width:115px;
     max-width:100%;
     background:rgba(255,255,255,0.08);
     border:1px solid rgba(255,255,255,0.18);
@@ -8906,8 +8910,8 @@ ${rosterLink}
 
                         tr.innerHTML = `
                             <td class="player-name-cell">
-                                <span class="player-name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
-                                <div class="nickname-edit-row">
+                                <div class="player-name-nickname-row">
+                                    <span class="player-name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
                                     <input type="text" class="nickname-input" value="${escapeHtml(p.nickname || '')}" placeholder="Nickname" maxlength="100"
                                         onchange="updatePlayerNickname(${p.id}, this.value)">
                                 </div>

@@ -3684,8 +3684,13 @@ function normalizeNickname(nickname) {
 }
 
 function getRosterFirstName(player = {}) {
+    return String(player.firstName || '').trim();
+}
+
+function getReleasedRosterFirstName(player = {}) {
+    const first = String(player.firstName || '').trim();
     const nickname = normalizeNickname(player.nickname);
-    return nickname || String(player.firstName || '').trim();
+    return nickname ? `${first} '${nickname}'`.trim() : first;
 }
 
 function getRosterFullName(player = {}) {
@@ -4997,9 +5002,8 @@ function buildPublicRosterPayload() {
         const canCancel = !cancelled && cancellationAllowedNow && !protectedPlayer;
         return {
             id: p.id,
-            firstName: getRosterFirstName(p),
+            firstName: getReleasedRosterFirstName(p),
             lastName: p.lastName,
-            nickname: normalizeNickname(p.nickname),
             isGoalie: !!p.isGoalie,
             cancelled,
             owes: cancelled,
@@ -5221,9 +5225,8 @@ app.get('/api/history/:year/:week', async (req, res) => {
         const sanitizeHistoricalPlayer = (p) => ({
             firstName: getRosterFirstName(p),
             lastName: p.lastName,
-            nickname: normalizeNickname(p.nickname),
             isGoalie: p.isGoalie
-            // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
+            // EXCLUDED: nickname, rating, paid, paidAmount, paymentMethod, phone
         });
         
         const sanitizedData = {
@@ -8296,7 +8299,7 @@ app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
 app.post('/api/collector/players', (req, res) => {
     if (!requirePaymentPageEnabled(req, res)) return;
     if (!requirePaymentAuth(req, res)) return;
-    const paymentPlayers = getPaymentPlayers().map(p => ({ ...p, firstName: getRosterFirstName(p), nickname: normalizeNickname(p.nickname) }));
+    const paymentPlayers = getPaymentPlayers().map(p => ({ ...p, firstName: getRosterFirstName(p) }));
     const totalPaid = paymentPlayers.reduce((sum, p) => {
         const amount = Number(p.paidAmount);
         return Number.isFinite(amount) && amount > 0 ? sum + amount : sum;
