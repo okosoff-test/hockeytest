@@ -11822,5 +11822,120 @@ document.addEventListener('keydown', function(e){
 })();
 </script>
 
+
+<style id="adminCollapsibleNonTableSectionsStyle">
+/* Collapsible admin sections without tables, e.g. Player Spots and Signup Code Control */
+.admin-ui-collapsible-section > .admin-ui-collapsible-title {
+    cursor: pointer;
+    user-select: none;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.admin-ui-collapsible-section.admin-ui-collapsed > .admin-ui-collapse-body {
+    display: none !important;
+}
+.admin-ui-collapse-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 0.18s ease, background 0.18s ease;
+    margin-left: auto;
+}
+.admin-ui-collapsible-section:not(.admin-ui-collapsed) .admin-ui-collapse-arrow {
+    transform: rotate(180deg);
+    background: rgba(74,144,226,0.35);
+}
+.admin-ui-collapse-hint {
+    color: #9fb7c9;
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+@media (max-width: 700px) {
+    .admin-ui-collapse-hint { display: none; }
+    .admin-ui-collapse-arrow { min-width: 32px; height: 32px; }
+}
+</style>
+<script id="adminCollapsibleNonTableSectionsScript">
+(function () {
+    function hasDirectTable(section) {
+        return !!section.querySelector(':scope > table, :scope table.admin-collapsible-table');
+    }
+
+    function makeSectionCollapsible(section) {
+        if (!section || section.dataset.adminUiCollapsibleReady === '1') return;
+        if (section.dataset.adminCollapsibleSectionReady === '1') return;
+        if (section.classList.contains('mobile-collapsible')) return;
+        if (hasDirectTable(section)) return;
+
+        const header = section.querySelector(':scope > h3, :scope > h4, :scope > .section-header');
+        if (!header) return;
+
+        const body = document.createElement('div');
+        body.className = 'admin-ui-collapse-body';
+        Array.from(section.children).forEach((child) => {
+            if (child !== header) body.appendChild(child);
+        });
+        section.appendChild(body);
+
+        section.dataset.adminUiCollapsibleReady = '1';
+        section.classList.add('admin-ui-collapsible-section', 'admin-ui-collapsed');
+        header.classList.add('admin-ui-collapsible-title');
+        header.setAttribute('role', 'button');
+        header.setAttribute('tabindex', '0');
+        header.setAttribute('aria-expanded', 'false');
+
+        if (!header.querySelector('.admin-ui-collapse-arrow')) {
+            const hint = document.createElement('span');
+            hint.className = 'admin-ui-collapse-hint';
+            hint.textContent = 'Tap to expand';
+            const arrow = document.createElement('span');
+            arrow.className = 'admin-ui-collapse-arrow';
+            arrow.textContent = '⌄';
+            header.appendChild(hint);
+            header.appendChild(arrow);
+        }
+
+        function toggle() {
+            const willOpen = section.classList.contains('admin-ui-collapsed');
+            section.classList.toggle('admin-ui-collapsed', !willOpen);
+            header.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+        }
+
+        header.addEventListener('click', function (event) {
+            const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
+            if (['button','input','select','textarea','a','label'].includes(tag)) return;
+            toggle();
+        });
+        header.addEventListener('keydown', function (event) {
+            if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                toggle();
+            }
+        });
+    }
+
+    function initAdminUiCollapsibles() {
+        document.querySelectorAll('.control-box, .details-box, .portal-backup-section, .schedule-editor').forEach(makeSectionCollapsible);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initAdminUiCollapsibles);
+    } else {
+        initAdminUiCollapsibles();
+    }
+    window.initAdminUiCollapsibles = initAdminUiCollapsibles;
+})();
+</script>
+
 </body>
 </html>
