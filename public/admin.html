@@ -5937,25 +5937,9 @@ th, td{padding:2px 3px !important;}
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- GAME DETAILS -->
-        <div class="details-box">
-            <h3>📍 Game Details</h3>
-            <div class="control-row">
-                <input type="text" id="locationInput" placeholder="Location" style="flex:1;" readonly>
-                <input type="text" id="timeInput" placeholder="Time" style="flex:1;" readonly>
-            </div>
-            <div class="control-row" style="margin-top:10px;">
-                <input type="date" id="dateInput" style="flex:1;">
-                <button class="control-btn" onclick="updateDetails()">Update Date Only</button>
-            </div>
-            <div class="status-display" style="margin-top:10px; margin-left:0;">
-                <span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
-            </div>
-        </div>
-        <div class="control-box">
-            <h3>🔒 Signup Code Control</h3>
+            <div class="game-setup-subsection signup-schedule-inline-section">
+                <h4>🔒 Signup Code Control</h4>
 
             <div class="control-row" style="margin-bottom: 12px;">
                 <div class="code-display" id="currentCodeDisplay">----</div>
@@ -6068,8 +6052,24 @@ th, td{padding:2px 3px !important;}
                 <strong>⚠️ Manual Override Active</strong>
                 <div id="overrideDetails"></div>
             </div>
+                    </div>
         </div>
 
+        <!-- GAME DETAILS -->
+        <div class="details-box">
+            <h3>📍 Game Details</h3>
+            <div class="control-row">
+                <input type="text" id="locationInput" placeholder="Location" style="flex:1;" readonly>
+                <input type="text" id="timeInput" placeholder="Time" style="flex:1;" readonly>
+            </div>
+            <div class="control-row" style="margin-top:10px;">
+                <input type="date" id="dateInput" style="flex:1;">
+                <button class="control-btn" onclick="updateDetails()">Update Date Only</button>
+            </div>
+            <div class="status-display" style="margin-top:10px; margin-left:0;">
+                <span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
+            </div>
+        </div>
         <div class="roster-status">
             <h3>📋 Team Roster Status</h3>
             <div class="control-row">
