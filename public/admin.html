@@ -525,7 +525,7 @@
 
         .payment-stats {
             display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
             gap: 15px;
             text-align: center;
             margin-bottom: 15px;
@@ -6236,10 +6236,18 @@ th, td{padding:2px 3px !important;}
 
 <div class="payment-summary-box">
 <h3>💰 Payment Summary (Admin Only)</h3>
-<div class="payment-stats">
+<div class="payment-stats payment-stats-expanded">
 <div class="payment-stat">
-<div class="payment-stat-value" id="totalCollected">$15.00</div>
+<div class="payment-stat-value" id="totalCollected">$0.00</div>
 <div class="payment-stat-label">Total Collected</div>
+</div>
+<div class="payment-stat">
+<div class="payment-stat-value" id="cashCollected">$0.00</div>
+<div class="payment-stat-label">Cash</div>
+</div>
+<div class="payment-stat">
+<div class="payment-stat-value" id="etransferCollected">$0.00</div>
+<div class="payment-stat-label">ET$</div>
 </div>
 <div class="payment-stat">
 <div class="payment-stat-value" id="paidCountDisplay">0</div>
@@ -8740,9 +8748,26 @@ ${rosterLink}
                 maxGoalies = data.maxGoalies || 2;
                 currentGoalies = data.goalieCount;
                 currentTotalPaid = parseFloat(data.totalPaid) || 0;
+                const paymentSummaryPlayers = Array.isArray(data.players) ? data.players : [];
+                const paymentCashTotal = paymentSummaryPlayers.reduce((sum, p) => {
+                    const amount = parseFloat(p.paidAmount);
+                    const method = String(p.paymentMethod || '').toLowerCase();
+                    if (!Number.isFinite(amount) || amount <= 0) return sum;
+                    return method.includes('cash') ? sum + amount : sum;
+                }, 0);
+                const paymentEtTotal = paymentSummaryPlayers.reduce((sum, p) => {
+                    const amount = parseFloat(p.paidAmount);
+                    const method = String(p.paymentMethod || '').toLowerCase();
+                    if (!Number.isFinite(amount) || amount <= 0) return sum;
+                    return method.includes('cash') ? sum : sum + amount;
+                }, 0);
                 
                 // Update payment summary
                 document.getElementById('totalCollected').innerText = '$' + currentTotalPaid.toFixed(2);
+                const cashCollectedEl = document.getElementById('cashCollected');
+                if (cashCollectedEl) cashCollectedEl.innerText = '$' + paymentCashTotal.toFixed(2);
+                const etransferCollectedEl = document.getElementById('etransferCollected');
+                if (etransferCollectedEl) etransferCollectedEl.innerText = '$' + paymentEtTotal.toFixed(2);
                 document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
                 document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
                 
@@ -12239,6 +12264,8 @@ document.addEventListener('keydown', function(e){
         const owingCount = getNumText('unpaidCountDisplay');
         const piaCount = String(getPiaCount());
         const totalCollected = safeText(byId('totalCollected')) || '$0.00';
+        const cashCollected = safeText(byId('cashCollected')) || '$0.00';
+        const etransferCollected = safeText(byId('etransferCollected')) || '$0.00';
         const roster = getRosterState();
         const code = safeText(byId('currentCodeDisplay')) || '';
         const etNow = safeText(byId('etNowLine')) || new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
@@ -12256,7 +12283,7 @@ document.addEventListener('keydown', function(e){
         setSummaryForSection('.game-setup-section', `${details.date} · ${details.time} · ${playerCount}/${playerSpots} players${code ? ' · Code ' + code : ''}`);
         setSummaryForSection('.registered-players-box', `${playerCount}/${playerSpots} registered · ${waitlistCount} waitlist · ${piaCount} PIA`);
         setSummaryForSection('.waitlist-section', `${waitlistCount} waitlist`);
-        setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${piaCount} PIA · ${totalCollected}`);
+        setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${piaCount} PIA · ${totalCollected} · Cash ${cashCollected} · ET$ ${etransferCollected}`);
         setSummaryForSection('.roster-status', roster);
         setSummaryForSection('.snapshot-pro-section', `${safeText(byId('snapshotStatCount')) || '--'} snapshots`);
         setSummaryForSection('.history-delete-box', 'History / delete old history');
