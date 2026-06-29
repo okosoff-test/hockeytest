@@ -1660,9 +1660,9 @@ async function addAutoPlayers() {
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`,
-                    [newPlayer.id, newPlayer.firstName, newPlayer.lastName, newPlayer.phone,
+                    `INSERT INTO players (id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                    [newPlayer.id, newPlayer.firstName, newPlayer.lastName, normalizeNickname(newPlayer.nickname) || null, newPlayer.phone,
                      newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), newPlayer.rating,
                      toNumericOrNull(newPlayer.adminRating), toNumericOrNull(newPlayer.adminAdjustment), toNumericOrNull(newPlayer.finalRating),
                      autoPlayer.isGoalie, null, newPlayer.registeredAt, true]
@@ -1904,6 +1904,7 @@ async function initDatabase() {
                 id BIGINT PRIMARY KEY,
                 first_name VARCHAR(100) NOT NULL,
                 last_name VARCHAR(100) NOT NULL,
+                nickname VARCHAR(100),
                 phone VARCHAR(20) NOT NULL,
                 payment_method VARCHAR(20),
                 paid BOOLEAN DEFAULT false,
@@ -1934,6 +1935,7 @@ async function initDatabase() {
                 rules_agreed BOOLEAN DEFAULT false
             )
         `);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS nickname VARCHAR(100)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS skating_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS puck_skills_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS hockey_sense_rating NUMERIC(4,1)`);
@@ -2154,6 +2156,7 @@ async function loadDataFromDB() {
             id: Number(p.id),
             firstName: p.first_name,
             lastName: p.last_name,
+            nickname: p.nickname || '',
             phone: p.phone,
             paymentMethod: p.payment_method,
             paid: !!p.paid,
@@ -3195,17 +3198,17 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
         for (const player of players) {
             await client.query(
                 `INSERT INTO players (
-                    id, first_name, last_name, phone, payment_method, paid, paid_amount, payment_status, rating,
+                    id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, rating,
                     skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed,
                     promoted_from_waitlist, late_added_after_release, subbed_in_for_player_id, subbed_in_for_name, subbed_in_at
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37
                 )`,
                 [
-                    player.id, player.firstName, player.lastName, player.phone, player.paymentMethod || null, !!player.paid,
+                    player.id, player.firstName, player.lastName, normalizeNickname(player.nickname) || null, player.phone, player.paymentMethod || null, !!player.paid,
                     toNumericOrNull(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), toNumericOrNull(player.rating),
                     toNumericOrNull(player.skatingRating), toNumericOrNull(player.puckSkillsRating), toNumericOrNull(player.hockeySenseRating), toNumericOrNull(player.conditioningRating), toNumericOrNull(player.effortRating),
                     toNumericOrNull(player.passingRating), toNumericOrNull(player.shootingRating), toNumericOrNull(player.defensiveRating), toNumericOrNull(player.speedBurstRating), player.positionPlayed || null,
@@ -3674,6 +3677,19 @@ function capitalizeFullName(name) {
         .split(/\s+/)
         .map(capitalizeNamePart)
         .join(' ');
+}
+
+function normalizeNickname(nickname) {
+    return String(nickname || '').trim().slice(0, 100);
+}
+
+function getRosterFirstName(player = {}) {
+    const nickname = normalizeNickname(player.nickname);
+    return nickname || String(player.firstName || '').trim();
+}
+
+function getRosterFullName(player = {}) {
+    return `${getRosterFirstName(player)} ${String(player.lastName || '').trim()}`.trim();
 }
 
 function normalizePhoneDigits(phone) {
@@ -4981,8 +4997,9 @@ function buildPublicRosterPayload() {
         const canCancel = !cancelled && cancellationAllowedNow && !protectedPlayer;
         return {
             id: p.id,
-            firstName: p.firstName,
+            firstName: getRosterFirstName(p),
             lastName: p.lastName,
+            nickname: normalizeNickname(p.nickname),
             isGoalie: !!p.isGoalie,
             cancelled,
             owes: cancelled,
@@ -5202,8 +5219,9 @@ app.get('/api/history/:year/:week', async (req, res) => {
     if (weekData) {
         // Sanitize historical data too
         const sanitizeHistoricalPlayer = (p) => ({
-            firstName: p.firstName,
+            firstName: getRosterFirstName(p),
             lastName: p.lastName,
+            nickname: normalizeNickname(p.nickname),
             isGoalie: p.isGoalie
             // EXCLUDED: rating, paid, paidAmount, paymentMethod, phone
         });
@@ -5303,6 +5321,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
 
     const cleanFirstName = capitalizeFullName(firstName);
     const cleanLastName = capitalizeFullName(lastName);
+    const cleanNickname = normalizeNickname(nickname);
     const cleanPhone = formatPhoneNumber(phone);
 
     if (isDuplicatePlayer(cleanFirstName, cleanLastName, cleanPhone)) {
@@ -6952,7 +6971,7 @@ app.post('/api/admin/remove-waitlist', async (req, res) => {
 });
 
 app.post('/api/admin/add-player', async (req, res) => {
-    const { password, sessionToken, firstName, lastName, phone, paymentMethod, rating, isGoalie, toWaitlist, assignTeam } = req.body;
+    const { password, sessionToken, firstName, lastName, nickname, phone, paymentMethod, rating, isGoalie, toWaitlist, assignTeam } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
     if (!firstName || !lastName || !phone || !rating) return res.status(400).json({ error: "First name, last name, phone, and rating required" });
     const cleanFirstName = capitalizeFullName(firstName);
@@ -6967,7 +6986,7 @@ app.post('/api/admin/add-player', async (req, res) => {
         return res.status(400).json({ error: "Roster is already released. Choose Team White or Team Dark for this late player." });
     }
     if (toWaitlist) {
-        const waitlistPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, bypassAutoPromote: false, joinedAt: new Date() });
+        const waitlistPlayer = hydratePlayerRatingProfile({ id: Date.now(), firstName: cleanFirstName, lastName: cleanLastName, nickname: cleanNickname, phone: formattedPhone, paymentMethod: paymentMethod || 'Cash', rating: ratingNum, derivedRating: ratingNum, finalRating: ratingNum, selfRatingRaw: ratingNum, isGoalie: isGoalieBool, bypassAutoPromote: false, joinedAt: new Date() });
         applyPersistentAdminRating(waitlistPlayer);
         try { await runProtectedMutation('admin-add-waitlist-player', req, async () => { waitlist.push(waitlistPlayer); }, { playerId: waitlistPlayer.id }); }
         catch (err) { console.error('Error adding to waitlist:', err); return res.status(500).json({ error: "Failed to add waitlist player safely" }); }
@@ -6981,6 +7000,7 @@ app.post('/api/admin/add-player', async (req, res) => {
         id: Date.now(),
         firstName: cleanFirstName,
         lastName: cleanLastName,
+        nickname: cleanNickname,
         phone: formattedPhone,
         paymentMethod: paymentMethod || 'Cash',
         paid: isGoalieBool ? true : false,
@@ -7145,6 +7165,47 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
     } catch (err) {
         console.error('Error updating payment status:', err);
         res.status(500).json({ error: "Failed to update payment status safely" });
+    }
+});
+
+// Admin override for optional player nickname. Real signup name stays unchanged.
+app.post('/api/admin/update-nickname', async (req, res) => {
+    const { password, sessionToken, playerId, nickname } = req.body;
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+
+    const normalizedPlayerId = parseInt(playerId, 10);
+    if (!Number.isFinite(normalizedPlayerId)) return res.status(400).json({ error: "Invalid player id" });
+
+    const cleanNickname = normalizeNickname(nickname);
+    const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId) || waitlist.find(p => parseInt(p.id, 10) === normalizedPlayerId);
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    try {
+        await runProtectedMutation('update-nickname', req, async () => {
+            player.nickname = cleanNickname;
+
+            for (const teamKey of ['whiteTeam', 'darkTeam']) {
+                if (!Array.isArray(currentWeekData?.[teamKey])) continue;
+                const currentPlayer = currentWeekData[teamKey].find(p => parseInt(p.id, 10) === normalizedPlayerId);
+                if (currentPlayer) currentPlayer.nickname = cleanNickname;
+            }
+
+            if (pool) {
+                await pool.query('UPDATE players SET nickname = $1 WHERE id = $2', [cleanNickname || null, normalizedPlayerId]);
+            }
+
+            if (rosterReleased) {
+                const etNow = getCurrentETTime();
+                const { week, year } = getWeekNumber(etNow);
+                await saveWeekHistory(year, week, currentWeekData.whiteTeam || [], currentWeekData.darkTeam || []);
+            }
+        }, { playerId: normalizedPlayerId, nickname: cleanNickname });
+
+        await saveData();
+        res.json({ success: true, player, displayName: getRosterFullName(player) });
+    } catch (err) {
+        console.error('Error updating nickname:', err);
+        res.status(500).json({ error: "Failed to update nickname safely" });
     }
 });
 
@@ -8235,7 +8296,7 @@ app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
 app.post('/api/collector/players', (req, res) => {
     if (!requirePaymentPageEnabled(req, res)) return;
     if (!requirePaymentAuth(req, res)) return;
-    const paymentPlayers = getPaymentPlayers();
+    const paymentPlayers = getPaymentPlayers().map(p => ({ ...p, firstName: getRosterFirstName(p), nickname: normalizeNickname(p.nickname) }));
     const totalPaid = paymentPlayers.reduce((sum, p) => {
         const amount = Number(p.paidAmount);
         return Number.isFinite(amount) && amount > 0 ? sum + amount : sum;
