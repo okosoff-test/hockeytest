@@ -12005,22 +12005,6 @@ document.addEventListener('keydown', function(e){
     margin: 6px 0 0 0;
     text-align: left;
 }
-.admin-player-search-wrap {
-    display: flex;
-    gap: 8px;
-    align-items: center;
-    margin: 10px 0 12px 0;
-}
-.admin-player-search-wrap input {
-    flex: 1;
-    margin: 0 !important;
-}
-.admin-player-search-clear {
-    width: auto !important;
-    min-width: 74px;
-    margin: 0 !important;
-    background: #555 !important;
-}
 .admin-balance-score-card {
     background: rgba(255,255,255,0.07);
     border: 1px solid rgba(255,255,255,0.14);
@@ -12037,8 +12021,6 @@ document.addEventListener('keydown', function(e){
     .admin-weekly-status-card { padding: 12px; }
     .admin-section-live-summary,
     .admin-collapsible-live-summary { text-align:left; margin-left:0; margin-top:5px; font-size:0.8rem; }
-    .admin-player-search-wrap { flex-direction: column; align-items: stretch; }
-    .admin-player-search-clear { width:100% !important; }
 }
 </style>
 <script id="adminSafeUpgradeScriptV1">
@@ -12048,7 +12030,6 @@ document.addEventListener('keydown', function(e){
     const STORAGE_KEY_PREFIX = 'adminSafeSectionOpen:';
     let summaryUpdatePending = false;
     let accordionLock = false;
-    let playerSearchTerm = '';
 
     function safeText(el) { return el ? String(el.textContent || '').trim() : ''; }
     function byId(id) { return document.getElementById(id); }
@@ -12169,38 +12150,6 @@ document.addEventListener('keydown', function(e){
         else panel.insertBefore(card, panel.firstChild);
     }
 
-    function ensurePlayerSearch() {
-        const box = document.querySelector('.registered-players-box');
-        if (!box || byId('adminPlayerSearch')) return;
-        const wrap = document.createElement('div');
-        wrap.className = 'admin-player-search-wrap';
-        wrap.innerHTML = `<input id="adminPlayerSearch" type="search" placeholder="🔍 Search registered players..." autocomplete="off"/><button type="button" class="control-btn admin-player-search-clear" id="adminPlayerSearchClear">Clear</button>`;
-        const addForm = box.querySelector('.add-player-form');
-        if (addForm) box.insertBefore(wrap, addForm); else box.insertBefore(wrap, box.firstChild.nextSibling);
-        const input = byId('adminPlayerSearch');
-        const clear = byId('adminPlayerSearchClear');
-        input.addEventListener('input', function () {
-            playerSearchTerm = input.value.trim().toLowerCase();
-            filterRegisteredPlayers();
-        });
-        clear.addEventListener('click', function () {
-            input.value = '';
-            playerSearchTerm = '';
-            filterRegisteredPlayers();
-            input.focus();
-        });
-    }
-
-    function filterRegisteredPlayers() {
-        const rows = Array.from(document.querySelectorAll('#playerList tr'));
-        if (!rows.length) return;
-        rows.forEach(row => {
-            if (!playerSearchTerm) { row.style.display = ''; return; }
-            const text = row.textContent.toLowerCase();
-            row.style.display = text.includes(playerSearchTerm) ? '' : 'none';
-        });
-    }
-
     function setSummaryForSection(selector, text) {
         const section = document.querySelector(selector);
         if (!section) return;
@@ -12251,7 +12200,6 @@ document.addEventListener('keydown', function(e){
 
     function updateWeeklyStatusAndSummaries() {
         ensureWeeklyStatusCard();
-        ensurePlayerSearch();
         ensureBalanceScoreCard();
 
         const details = readDateSummary();
@@ -12289,7 +12237,6 @@ document.addEventListener('keydown', function(e){
         setSummaryForSection('.history-delete-box', 'History / delete old history');
         setSummaryForSection('.compact-announcement-control, .announcement-control', `${safeText(byId('announcementStatus')) || 'OFF'}`);
         updateBalanceScore();
-        filterRegisteredPlayers();
     }
 
     function scheduleSummaryUpdate() {
@@ -12318,7 +12265,6 @@ document.addEventListener('keydown', function(e){
 
     function initSafeAdminUpgrade() {
         ensureWeeklyStatusCard();
-        ensurePlayerSearch();
         ensureBalanceScoreCard();
         restoreSectionState();
         enableAccordion();
