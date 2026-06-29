@@ -1002,8 +1002,16 @@ function armScheduleGuardForCurrentWeek(scheduleAt, etDate = getCurrentETTime())
 function syncScheduledActionRunMarker(scheduleAt, runType = 'release', etDate = getCurrentETTime()) {
     if (!scheduleAt) return { occurrenceKey: '', minuteKey: '' };
 
-    const guard = armScheduleGuardForCurrentWeek(scheduleAt, etDate);
-    if (!guard.occurrenceKey) return guard;
+    const occurrenceParts = getLatestOccurrenceEtParts(scheduleAt, etDate);
+    const lagMinutes = minutesSinceEtParts(occurrenceParts, etDate);
+    if (!Number.isFinite(lagMinutes) || lagMinutes < 0) {
+        return { occurrenceKey: '', minuteKey: '' };
+    }
+
+    const guard = {
+        occurrenceKey: getOccurrenceKeyFromEtParts(scheduleAt, occurrenceParts),
+        minuteKey: String(nowETMinuteKey(etDate))
+    };
 
     if (runType === 'reset') {
         lastExactResetRunAt = guard.occurrenceKey;
@@ -1099,17 +1107,22 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
         return { ok: false, reason: 'Blocked weekly reset because no reset schedule is configured.' };
     }
 
-    if (!sameDowHourMinute(resetAt, getEtDowHourMinute(etTime))) {
+    const resetLagMinutes = resetCheck && Number.isFinite(resetCheck.lagMinutes)
+        ? Number(resetCheck.lagMinutes)
+        : minutesSinceLatestWeeklyOccurrence(resetAt, etTime);
+    const maxResetCatchupMinutes = Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 180);
+
+    if (!Number.isFinite(resetLagMinutes) || resetLagMinutes < 0 || resetLagMinutes > maxResetCatchupMinutes) {
         return {
             ok: false,
-            reason: `Blocked weekly reset because current ET time is not the exact scheduled reset minute (${formatScheduleDowTime(resetAt)}).`
+            reason: `Blocked weekly reset because current ET time is outside the reset catch-up window (${formatScheduleDowTime(resetAt)}).`
         };
     }
 
-    if (resetCheck && resetCheck.reason !== 'exact_minute') {
+    if (resetCheck && !['exact_minute', 'catchup'].includes(resetCheck.reason)) {
         return {
             ok: false,
-            reason: `Blocked weekly reset because scheduler reason was ${resetCheck.reason || 'unknown'} instead of exact_minute.`
+            reason: `Blocked weekly reset because scheduler reason was ${resetCheck.reason || 'unknown'}.`
         };
     }
 
@@ -1710,8 +1723,7 @@ async function checkWeeklyReset() {
         resetWeekSchedule.at,
         lastExactResetRunAt,
         etTime,
-        0,
-        { exactMinuteOnly: true }
+        Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 180)
     );
     if (!resetCheck.shouldRun) return false;
 
@@ -8140,6 +8152,94 @@ app.post('/api/goalies/list', (req, res) => {
         backupGoalies: getBackupGoalieContacts(),
         rosterReleased: getEffectiveRosterReleasedState()
     });
+});
+
+
+app.get('/api/goalies/export', (req, res) => {
+    if (!requireGoalieAuth(req, res)) return;
+    const rawBackupGoalies = (Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [])
+        .map(normalizeGoalieContact)
+        .filter(g => g.firstName && g.lastName);
+
+    res.json({
+        success: true,
+        exportType: 'phans-hockey-goalie-contacts',
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        gameDate,
+        gameTime,
+        gameLocation,
+        importScope: 'backupGoalies',
+        backupGoalies: rawBackupGoalies,
+        regularGoalies: getRegularGoalieContacts(),
+        currentGoalies: getCurrentGoalieContacts()
+    });
+});
+
+app.post('/api/goalies/import', async (req, res) => {
+    if (!requireGoalieAuth(req, res)) return;
+
+    const mode = String(req.body?.mode || 'merge').trim().toLowerCase() === 'replace' ? 'replace' : 'merge';
+    const incoming = Array.isArray(req.body?.goalies)
+        ? req.body.goalies
+        : Array.isArray(req.body?.backupGoalies)
+            ? req.body.backupGoalies
+            : [];
+
+    const normalizedIncoming = incoming
+        .map(normalizeGoalieContact)
+        .filter(g => g.firstName && g.lastName);
+
+    if (!normalizedIncoming.length) {
+        return res.status(400).json({ error: 'No valid goalie contacts found in import file.' });
+    }
+
+    try {
+        let importedCount = 0;
+        let skippedCount = 0;
+
+        await runProtectedMutation(`goalie-import-${mode}`, req, async () => {
+            if (mode === 'replace') {
+                const map = new Map();
+                for (const goalie of normalizedIncoming) {
+                    const key = normalizeGoalieContactKey(goalie);
+                    if (!key) continue;
+                    if (!map.has(key)) {
+                        map.set(key, goalie);
+                        importedCount++;
+                    } else {
+                        skippedCount++;
+                    }
+                }
+                extraGoalieContacts = Array.from(map.values());
+                return;
+            }
+
+            extraGoalieContacts = Array.isArray(extraGoalieContacts) ? extraGoalieContacts : [];
+            const existingKeys = new Set(extraGoalieContacts.map(normalizeGoalieContactKey).filter(Boolean));
+            for (const goalie of normalizedIncoming) {
+                const key = normalizeGoalieContactKey(goalie);
+                if (!key || existingKeys.has(key)) {
+                    skippedCount++;
+                    continue;
+                }
+                extraGoalieContacts.push(goalie);
+                existingKeys.add(key);
+                importedCount++;
+            }
+        }, { mode, incomingCount: normalizedIncoming.length });
+
+        res.json({
+            success: true,
+            mode,
+            importedCount,
+            skippedCount,
+            backupGoalies: getBackupGoalieContacts()
+        });
+    } catch (err) {
+        console.error('Error importing goalie contacts:', err.message);
+        res.status(500).json({ error: 'Could not import goalie contacts.' });
+    }
 });
 
 
