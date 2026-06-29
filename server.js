@@ -1922,6 +1922,7 @@ async function initDatabase() {
                 paid BOOLEAN DEFAULT false,
                 paid_amount NUMERIC(10,2),
                 payment_status VARCHAR(20) DEFAULT 'owes',
+                pia_date VARCHAR(20),
                 rating NUMERIC(4,1) NOT NULL,
                 skating_rating NUMERIC(4,1),
                 puck_skills_rating NUMERIC(4,1),
@@ -1967,6 +1968,7 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS admin_adjustment NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS final_rating NUMERIC(4,1)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS payment_status VARCHAR(20) DEFAULT 'owes'`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS pia_date VARCHAR(20)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS promoted_from_waitlist BOOLEAN DEFAULT false`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS late_added_after_release BOOLEAN DEFAULT false`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS subbed_in_for_player_id BIGINT`);
@@ -2174,6 +2176,7 @@ async function loadDataFromDB() {
             paid: !!p.paid,
             paidAmount: p.paid_amount == null ? null : Number(p.paid_amount),
             paymentStatus: normalizePaymentStatus(p.payment_status, { paid: !!p.paid, paidAmount: p.paid_amount == null ? null : Number(p.paid_amount) }),
+            piaDate: p.pia_date || '',
             rating: p.rating == null ? null : Number(p.rating),
             skatingRating: p.skating_rating == null ? null : Number(p.skating_rating),
             puckSkillsRating: p.puck_skills_rating == null ? null : Number(p.puck_skills_rating),
@@ -3111,6 +3114,16 @@ function normalizeCollectionPaymentMethod(method, fallback = 'E-Transfer') {
     return String(fallback || 'E-Transfer').toLowerCase().includes('cash') ? 'Cash' : 'E-Transfer';
 }
 
+function normalizePiaDate(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const m = raw.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) return raw;
+    const parsed = new Date(raw);
+    if (Number.isNaN(parsed.getTime())) return '';
+    return parsed.toISOString().slice(0, 10);
+}
+
 function applyPaymentStatusToPlayer(player, status, options = {}) {
     if (!player) return player;
     const normalized = normalizePaymentStatus(status, player);
@@ -3121,15 +3134,22 @@ function applyPaymentStatusToPlayer(player, status, options = {}) {
         // PIA means paid in advance and must always carry a $0 collected amount.
         // Do not preserve a prior $15/default payment when switching to PIA.
         player.paidAmount = 0;
+        if (Object.prototype.hasOwnProperty.call(options, 'piaDate')) {
+            player.piaDate = normalizePiaDate(options.piaDate);
+        } else if (!player.piaDate) {
+            player.piaDate = new Date().toISOString().slice(0, 10);
+        }
     } else if (normalized === 'paid') {
         player.paid = true;
         const amount = Number(player.paidAmount);
         if (options.ensureAmount && (!Number.isFinite(amount) || amount <= 0)) {
             player.paidAmount = Number(options.defaultAmount || 15);
         }
+        player.piaDate = '';
     } else {
         player.paid = false;
         if (options.clearAmount !== false) player.paidAmount = null;
+        player.piaDate = '';
     }
 
     return player;
@@ -3210,18 +3230,18 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
         for (const player of players) {
             await client.query(
                 `INSERT INTO players (
-                    id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, rating,
+                    id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, pia_date, rating,
                     skating_rating, puck_skills_rating, hockey_sense_rating, conditioning_rating, effort_rating,
                     passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed,
                     promoted_from_waitlist, late_added_after_release, subbed_in_for_player_id, subbed_in_for_name, subbed_in_at
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38
                 )`,
                 [
                     player.id, player.firstName, player.lastName, normalizeNickname(player.nickname) || null, player.phone, player.paymentMethod || null, !!player.paid,
-                    toNumericOrNull(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), toNumericOrNull(player.rating),
+                    toNumericOrNull(player.paidAmount), normalizePaymentStatus(player.paymentStatus, player), normalizePiaDate(player.piaDate) || null, toNumericOrNull(player.rating),
                     toNumericOrNull(player.skatingRating), toNumericOrNull(player.puckSkillsRating), toNumericOrNull(player.hockeySenseRating), toNumericOrNull(player.conditioningRating), toNumericOrNull(player.effortRating),
                     toNumericOrNull(player.passingRating), toNumericOrNull(player.shootingRating), toNumericOrNull(player.defensiveRating), toNumericOrNull(player.speedBurstRating), player.positionPlayed || null,
                     player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating),
@@ -7122,8 +7142,8 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4, pia_date = $5 WHERE id = $6',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizePiaDate(player.piaDate) || null, normalizedPlayerId]
             );
         }
 
@@ -7143,7 +7163,7 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
 // Update payment status endpoint: paid / pia / owes without adding another admin-table column
 app.post('/api/admin/update-payment-status', async (req, res) => {
-    const { password, sessionToken, playerId, status } = req.body;
+    const { password, sessionToken, playerId, status, piaDate } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
@@ -7157,15 +7177,15 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
             player.paymentMethod = normalizeCollectionPaymentMethod(req.body?.paymentMethod, player.paymentMethod || 'E-Transfer');
             applyPaymentStatusToPlayer(player, 'paid', { ensureAmount: true, defaultAmount: 15 });
         } else if (paymentStatus === 'pia') {
-            applyPaymentStatusToPlayer(player, 'pia');
+            applyPaymentStatusToPlayer(player, 'pia', { piaDate });
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
         }
 
         if (pool) {
             await pool.query(
-                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4 WHERE id = $5',
-                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizedPlayerId]
+                'UPDATE players SET paid = $1, paid_amount = $2, payment_status = $3, payment_method = $4, pia_date = $5 WHERE id = $6',
+                [player.paid, player.paidAmount, normalizePaymentStatus(player.paymentStatus, player), player.paymentMethod || null, normalizePiaDate(player.piaDate) || null, normalizedPlayerId]
             );
         }
 
