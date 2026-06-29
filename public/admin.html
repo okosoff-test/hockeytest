@@ -3019,26 +3019,19 @@ button {
 #playerList .player-name-nickname-row{
     display:flex;
     align-items:center;
-    gap:8px;
+    gap:4px;
     min-width:0;
     max-width:100%;
 }
-#playerList .nickname-input{
-    width:115px;
-    max-width:100%;
-    background:rgba(255,255,255,0.08);
-    border:1px solid rgba(255,255,255,0.18);
-    border-radius:6px;
-    color:#fff;
+#playerList .nickname-tap-target{
+    cursor:pointer;
+    user-select:none;
+    border-bottom:1px dotted rgba(255,255,255,0.22);
+}
+#playerList .nickname-tap-target.has-nickname::after{
+    content:' ✎';
+    color:rgba(255,255,255,0.55);
     font-size:0.72rem;
-    padding:3px 6px;
-}
-#playerList .nickname-input::placeholder{
-    color:rgba(255,255,255,0.48);
-}
-#playerList .nickname-input:focus{
-    outline:none;
-    border-color:#4CAF50;
 }
 #playerList .player-time-sub{
     display:block;
@@ -8911,9 +8904,9 @@ ${rosterLink}
                         tr.innerHTML = `
                             <td class="player-name-cell">
                                 <div class="player-name-nickname-row">
-                                    <span class="player-name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
-                                    <input type="text" class="nickname-input" value="${escapeHtml(p.nickname || '')}" placeholder="Nickname" maxlength="100"
-                                        onchange="updatePlayerNickname(${p.id}, this.value)">
+                                    <span class="player-name-main nickname-tap-target ${(p.nickname || '').trim() ? 'has-nickname' : ''}"
+                                        title="Double-tap to edit nickname"
+                                        onclick="handleNicknameNameTap(${p.id}, event)">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
                                 </div>
                                 <span class="player-phone-sub">${escapeHtml(p.phone || '')}</span>
                                 ${p.registeredAt ? `<span class="player-time-sub"><span class="locked-time-chip" title="Locked signup timestamp — saved when the player registered and does not change">${formatLockedSignupTime(p.registeredAt)}</span></span>` : ``}
@@ -9461,6 +9454,29 @@ ${rosterLink}
         }
 
 
+        const nicknameTapTracker = {};
+
+        function handleNicknameNameTap(id, event) {
+            const now = Date.now();
+            const key = String(id);
+            if (nicknameTapTracker[key] && (now - nicknameTapTracker[key]) < 450) {
+                nicknameTapTracker[key] = 0;
+                openNicknamePrompt(id);
+            } else {
+                nicknameTapTracker[key] = now;
+            }
+        }
+
+        function openNicknamePrompt(id) {
+            const player = adminPlayersById[String(id)];
+            if (!player) return;
+            const fullName = `${player.firstName || ''} ${player.lastName || ''}`.trim();
+            const currentNickname = String(player.nickname || '').trim();
+            const nextNickname = prompt(`Nickname for ${fullName} (leave blank to remove):`, currentNickname);
+            if (nextNickname === null) return;
+            updatePlayerNickname(id, nextNickname);
+        }
+
         async function updatePlayerNickname(id, nickname) {
             try {
                 const res = await fetch(`${API_URL}/api/admin/update-nickname`, {
@@ -9475,6 +9491,7 @@ ${rosterLink}
                     if (data.player && adminPlayersById[String(id)]) {
                         adminPlayersById[String(id)].nickname = data.player.nickname || '';
                     }
+                    loadData();
                 } else if (res.status === 401) {
                     logout();
                 } else {
