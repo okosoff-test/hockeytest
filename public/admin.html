@@ -5910,7 +5910,7 @@ th, td{padding:2px 3px !important;}
                 <span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
             </div>
         </div>
-<div class="control-box">
+<div class="control-box admin-no-collapse" data-admin-no-collapse="1">
             <h3>🔧 Player Spots</h3>
             <div class="control-row">
                 <input type="number" id="playerSpotInput" class="control-input" min="0" max="30" value="20">
@@ -5932,7 +5932,7 @@ th, td{padding:2px 3px !important;}
             </div>
         </div>
 
-        <div class="control-box">
+        <div class="control-box admin-no-collapse" data-admin-no-collapse="1">
             <h3>🔒 Signup Code Control</h3>
 
             <div class="control-row" style="margin-bottom: 12px;">
@@ -11741,6 +11741,18 @@ document.addEventListener('keydown', function(e){
     .admin-collapsible-hint { display: none; }
     .admin-collapse-arrow { min-width: 32px; height: 32px; }
 }
+
+.admin-no-collapse.admin-collapsed > table,
+.admin-no-collapse.admin-collapsed table.admin-collapsible-table {
+    display: table !important;
+}
+.admin-no-collapse .admin-collapse-arrow,
+.admin-no-collapse .admin-collapsible-hint {
+    display: none !important;
+}
+.admin-no-collapse .admin-collapsible-title {
+    cursor: default !important;
+}
 </style>
 <script id="adminCollapsibleTablesScript">
 (function () {
@@ -11772,8 +11784,11 @@ document.addEventListener('keydown', function(e){
             if (table.dataset.adminCollapsibleReady === '1') return;
             const section = closestTableSection(table);
             if (!section || section.dataset.adminCollapsibleSectionReady === '1') return;
+            if (section.closest('[data-admin-no-collapse="1"], .admin-no-collapse')) return;
             const header = makeHeader(section, table, index);
             if (!header) return;
+            const headerText = (header.textContent || '').replace(/\s+/g, ' ').trim().toLowerCase();
+            if (headerText.includes('player spots') || headerText.includes('signup code control') || headerText.includes('schedules')) return;
 
             table.dataset.adminCollapsibleReady = '1';
             table.classList.add('admin-collapsible-table');
