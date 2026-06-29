@@ -2795,6 +2795,9 @@ function applySnapshotToMemory(snapshot) {
     resetWeekSchedule = snapshot.resetWeekSchedule ?? resetWeekSchedule;
     cancelledRegistrations = Array.isArray(snapshot.cancelledRegistrations) ? snapshot.cancelledRegistrations : [];
     regularSkatersByDay = normalizeRegularSkatersByDayMap(snapshot.regularSkatersByDay || {});
+    if (Array.isArray(snapshot.extraGoalieContacts)) extraGoalieContacts = snapshot.extraGoalieContacts.map(normalizeGoalieContact).filter(g => g.firstName && g.lastName);
+    if (typeof snapshot.rosterReleaseAnnouncementText === 'string') rosterReleaseAnnouncementText = snapshot.rosterReleaseAnnouncementText;
+    if (typeof snapshot.collectorPageEnabled === 'boolean') collectorPageEnabled = snapshot.collectorPageEnabled;
     customSignupCode = String(snapshot.customSignupCode || '').trim();
     editableDefaultSignupCode = /^\d{4}$/.test(String(snapshot.editableDefaultSignupCode || '').trim()) ? String(snapshot.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
     if (snapshot.weeklyDefaultSignupCodes !== undefined) weeklyDefaultSignupCodes = normalizeWeeklyDefaultSignupCodes(snapshot.weeklyDefaultSignupCodes);
@@ -3414,6 +3417,7 @@ function buildFullDataSnapshot() {
         waitlist,
         cancelledRegistrations,
         regularSkatersByDay,
+        extraGoalieContacts,
         persistentAdminRatings,
         customSignupCode,
         editableDefaultSignupCode,
@@ -3546,6 +3550,7 @@ function getSettingsSnapshot() {
         currentWeekData,
         cancelledRegistrations,
         regularSkatersByDay,
+        extraGoalieContacts,
         persistentAdminRatings,
         customSignupCode,
         editableDefaultSignupCode,
@@ -6196,6 +6201,83 @@ app.post('/api/admin/clear-cancellations', async (req, res) => {
     res.json({ success: true, cancellations: cancelledRegistrations });
 });
 
+
+async function getPortalHistoryRowsForBackup() {
+    if (!pool) return [];
+    try {
+        const result = await pool.query(`
+            SELECT week_number, year, release_date, game_location, game_time, game_date, white_team, dark_team, white_avg, dark_avg
+            FROM history
+            ORDER BY year ASC, week_number ASC, release_date ASC, id ASC
+        `);
+        return result.rows.map(row => ({
+            weekNumber: row.week_number,
+            year: row.year,
+            releaseDate: row.release_date,
+            gameLocation: row.game_location,
+            gameTime: row.game_time,
+            gameDate: row.game_date,
+            whiteTeam: row.white_team,
+            darkTeam: row.dark_team,
+            whiteAvg: row.white_avg,
+            darkAvg: row.dark_avg
+        }));
+    } catch (err) {
+        console.error('Error reading history for portal backup:', err.message);
+        return [];
+    }
+}
+
+async function replacePortalHistoryFromBackup(historyRows = []) {
+    if (!pool || !Array.isArray(historyRows)) return { restoredHistoryRows: 0, skippedHistoryRows: Array.isArray(historyRows) ? historyRows.length : 0 };
+    const client = await pool.connect();
+    let restored = 0;
+    let skipped = 0;
+    try {
+        await client.query('BEGIN');
+        await client.query('DELETE FROM history');
+        for (const row of historyRows) {
+            const weekNumber = Number(row.weekNumber ?? row.week_number);
+            const year = Number(row.year);
+            if (!Number.isFinite(weekNumber) || !Number.isFinite(year)) { skipped++; continue; }
+            await client.query(
+                `INSERT INTO history (week_number, year, release_date, game_location, game_time, game_date, white_team, dark_team, white_avg, dark_avg)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+                 ON CONFLICT (year, week_number)
+                 DO UPDATE SET release_date = EXCLUDED.release_date,
+                               game_location = EXCLUDED.game_location,
+                               game_time = EXCLUDED.game_time,
+                               game_date = EXCLUDED.game_date,
+                               white_team = EXCLUDED.white_team,
+                               dark_team = EXCLUDED.dark_team,
+                               white_avg = EXCLUDED.white_avg,
+                               dark_avg = EXCLUDED.dark_avg`,
+                [
+                    weekNumber,
+                    year,
+                    row.releaseDate || row.release_date || new Date().toISOString(),
+                    row.gameLocation ?? row.game_location ?? null,
+                    row.gameTime ?? row.game_time ?? null,
+                    row.gameDate ?? row.game_date ?? null,
+                    JSON.stringify(row.whiteTeam ?? row.white_team ?? []),
+                    JSON.stringify(row.darkTeam ?? row.dark_team ?? []),
+                    row.whiteAvg ?? row.white_avg ?? row.whiteTeamAvg ?? null,
+                    row.darkAvg ?? row.dark_avg ?? row.darkTeamAvg ?? null
+                ]
+            );
+            restored++;
+        }
+        await client.query('COMMIT');
+        return { restoredHistoryRows: restored, skippedHistoryRows: skipped };
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error restoring portal history from backup:', err.message);
+        throw err;
+    } finally {
+        client.release();
+    }
+}
+
 app.post('/api/admin/download-backup', async (req, res) => {
     const { sessionToken } = req.body || {};
 
@@ -6212,33 +6294,27 @@ app.post('/api/admin/download-backup', async (req, res) => {
         const mi = String(etNow.getMinutes()).padStart(2, '0');
         const ss = String(etNow.getSeconds()).padStart(2, '0');
 
+        const fullSnapshot = buildFullDataSnapshot();
+        const historyRows = await getPortalHistoryRowsForBackup();
         const backup = {
+            portalBackupVersion: 1,
             exportedAt: new Date().toISOString(),
             exportedAtET: `${yyyy}-${mm}-${dd} ${hh}:${mi}:${ss} ET`,
+            fullSnapshot,
+            historyRows,
+            // Backward-compatible top-level fields for older restore code/tools
             players,
             waitlist,
             currentWeekData,
+            regularSkatersByDay,
+            extraGoalieContacts,
             summary: {
-                playerSpots,
-                gameLocation,
-                gameTime,
-                gameDate,
-                rosterReleased,
-                requirePlayerCode,
-                playerSignupCode,
+                ...fullSnapshot.summary,
                 totalPlayers: players.length,
-                totalWaitlist: waitlist.length
+                totalWaitlist: waitlist.length,
+                totalHistoryRows: historyRows.length
             },
-            appSettings: {
-                maintenanceMode,
-                customTitle,
-                announcementEnabled,
-                announcementText,
-                announcementImages,
-                playerSpots,
-                requirePlayerCode,
-                playerSignupCode
-            }
+            appSettings: fullSnapshot.appSettings
         };
 
         const filename = getGameDayBackupDownloadName('json');
@@ -6447,8 +6523,9 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             return res.status(400).json({ error: "Invalid backup file" });
         }
 
-        const restoredPlayers = normalizeRestoreList(backupData.players);
-        const restoredWaitlist = normalizeRestoreList(backupData.waitlist);
+        const portalSnapshot = (backupData.fullSnapshot && typeof backupData.fullSnapshot === 'object') ? backupData.fullSnapshot : null;
+        const restoredPlayers = normalizeRestoreList(portalSnapshot?.players || backupData.players);
+        const restoredWaitlist = normalizeRestoreList(portalSnapshot?.waitlist || backupData.waitlist);
 
         if (!restoredPlayers || !restoredWaitlist) {
             return res.status(400).json({ error: "Backup file is missing players or waitlist" });
@@ -6491,8 +6568,10 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             waitlist = mergeUnique(originalWaitlist, restoredWaitlist);
         }
 
-        // Restore supported settings only when explicitly requested on a full replace
-        if (mode === 'replace' && restoreSettings === true) {
+        // Restore full portal settings only when explicitly requested on a full replace.
+        if (mode === 'replace' && restoreSettings === true && portalSnapshot) {
+            applySnapshotToMemory(portalSnapshot);
+        } else if (mode === 'replace' && restoreSettings === true) {
             if (backupData.currentWeekData && typeof backupData.currentWeekData === 'object') {
                 currentWeekData = backupData.currentWeekData;
             }
@@ -6522,10 +6601,15 @@ app.post('/api/admin/restore-backup', async (req, res) => {
         // Always recalculate spots from the resulting live roster instead of trusting backup counts.
         playerSpots = Math.max(0, MAX_SKATERS - players.filter(p => !(p && p.isGoalie)).length);
 
+        let historyRestoreResult = { restoredHistoryRows: 0, skippedHistoryRows: 0 };
+        if (mode === 'replace' && restoreSettings === true && Array.isArray(backupData.historyRows)) {
+            historyRestoreResult = await replacePortalHistoryFromBackup(backupData.historyRows);
+        }
+
         // Persist using existing save helper if available
         try {
             if (typeof saveData === 'function') {
-                await saveData();
+                await saveData('restore-portal-backup');
             }
         } catch (saveErr) {
             console.error('Restore completed in memory but saveData failed:', saveErr);
@@ -6557,6 +6641,9 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             backupPlayers: restoredPlayers.length,
             backupWaitlist: restoredWaitlist.length,
             restoreSettingsApplied: mode === 'replace' && restoreSettings === true,
+            restoredHistoryRows: historyRestoreResult.restoredHistoryRows || 0,
+            skippedHistoryRows: historyRestoreResult.skippedHistoryRows || 0,
+            portalBackupVersion: backupData.portalBackupVersion || null,
             message: mode === 'merge'
                 ? "Backup merged safely with live data"
                 : "Backup replaced live data successfully"

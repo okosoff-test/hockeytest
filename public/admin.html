@@ -5720,10 +5720,10 @@ th, td{padding:2px 3px !important;}
 <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
             <h1 style="margin:0;">Admin Dashboard</h1>
             <div style="display:flex; gap:10px; flex-wrap:wrap;">
-                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Download Backup</button>
+                <button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Backup Portal</button>
                 <button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
                 <button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
-                <button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Backup</button>
+                <button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Portal</button>
                 <input type="file" id="restoreBackupFile" accept=".json,application/json" style="display:none;" onchange="restoreBackupFromFile(event)">
                 <button class="control-btn" onclick="logoutAllDevices()" style="background:#6d4c41;">Logout All Devices</button>
                 <button class="logout-btn" onclick="logout()">Logout</button>
@@ -10727,7 +10727,9 @@ Continue?`;
                     `Source: ${data.snapshotSource || 'unknown'}\n` +
                     `Fingerprint: ${data.fingerprint || 'n/a'}\n` +
                     `Players now: ${data.restoredPlayers}\n` +
-                    `Waitlist now: ${data.restoredWaitlist}`
+                    `Waitlist now: ${data.restoredWaitlist}
+` +
+                    `History weeks restored: ${data.restoredHistoryRows || 0}`
                 );
                 await loadSnapshotCatalog(false);
                 loadData();
@@ -10851,7 +10853,9 @@ Continue?`;
                     `Saved: ${data.snapshotSavedAt || 'unknown'}\n` +
                     `Mode: ${(data.mode || 'replace').toUpperCase()}\n` +
                     `Players now: ${data.restoredPlayers}\n` +
-                    `Waitlist now: ${data.restoredWaitlist}`
+                    `Waitlist now: ${data.restoredWaitlist}
+` +
+                    `History weeks restored: ${data.restoredHistoryRows || 0}`
                 );
 
                 loadData();
@@ -10883,6 +10887,7 @@ Continue?`;
 
                 const backupPlayerCount = Array.isArray(backupData.players) ? backupData.players.length : 0;
                 const backupWaitlistCount = Array.isArray(backupData.waitlist) ? backupData.waitlist.length : 0;
+                const backupHistoryCount = Array.isArray(backupData.historyRows) ? backupData.historyRows.length : 0;
 
                 let currentPlayerCount = 15;
                 let currentWaitlistCount = 15;
@@ -10913,6 +10918,7 @@ Waitlist: ${currentWaitlistCount}
                     `Backup File
 Players: ${backupPlayerCount}
 Waitlist: ${backupWaitlistCount}
+History weeks: ${backupHistoryCount}
 
 ` +
                     `Press OK for FULL REPLACE.
@@ -10944,12 +10950,12 @@ This backup has fewer records than live data.
                 let restoreSettings = false;
                 if (useReplace) {
                     restoreSettings = confirm(
-                        `Also restore settings from the backup?
+                        `Also restore the full portal from this backup?
 
 ` +
-                        `OK = restore game/settings too
+                        `OK = restore players, waitlist, settings, goalies, schedule, current roster, and history
 ` +
-                        `Cancel = restore players/waitlist only (recommended)`
+                        `Cancel = restore players/waitlist only`
                     );
                 }
 
@@ -10992,7 +10998,9 @@ This backup has fewer records than live data.
 ` +
                     `Players now: ${data.restoredPlayers}
 ` +
-                    `Waitlist now: ${data.restoredWaitlist}`
+                    `Waitlist now: ${data.restoredWaitlist}
+` +
+                    `History weeks restored: ${data.restoredHistoryRows || 0}`
                 );
                 loadData();
                 loadSettings();
