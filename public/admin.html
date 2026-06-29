@@ -4242,8 +4242,7 @@ th, td{padding:2px 3px !important;}
 </style>
 
 
-<style id="android-mobile-collapsible-sections-v3">
-@media (max-width: 700px) {
+<style id="admin-all-device-collapsible-sections-v4">
     .mobile-collapsible {
         overflow: hidden;
     }
@@ -4252,31 +4251,43 @@ th, td{padding:2px 3px !important;}
         display: flex;
         align-items: center;
         justify-content: space-between;
-        gap: 10px;
+        gap: 12px;
         cursor: pointer;
         user-select: none;
         margin: 0 !important;
         padding: 2px 0 !important;
     }
 
+    .mobile-collapse-header h1,
+    .mobile-collapse-header h2,
     .mobile-collapse-header h3,
     .mobile-collapse-header .section-header,
     .mobile-collapse-header .mobile-collapse-title {
         margin: 0 !important;
     }
 
+    .mobile-collapse-title {
+        min-width: 0;
+    }
+
     .mobile-collapse-chevron {
         flex: 0 0 auto;
-        width: 22px;
-        height: 22px;
+        width: 42px;
+        height: 42px;
         display: inline-flex;
         align-items: center;
         justify-content: center;
         border-radius: 999px;
-        background: rgba(255,255,255,0.08);
-        font-size: 0.82rem;
+        background: rgba(255,255,255,0.10);
+        color: #ffffff;
+        font-size: 1.2rem;
+        font-weight: 900;
         line-height: 1;
-        transition: transform 0.18s ease;
+        transition: transform 0.18s ease, background 0.18s ease;
+    }
+
+    .mobile-collapse-header:hover .mobile-collapse-chevron {
+        background: rgba(255,255,255,0.16);
     }
 
     .mobile-collapsible.is-collapsed .mobile-collapse-chevron {
@@ -4284,7 +4295,7 @@ th, td{padding:2px 3px !important;}
     }
 
     .mobile-collapse-body {
-        margin-top: 8px;
+        margin-top: 10px;
     }
 
     .mobile-collapsible.is-collapsed .mobile-collapse-body {
@@ -4293,16 +4304,27 @@ th, td{padding:2px 3px !important;}
 
     .mobile-collapse-summary {
         display: none;
-        margin-top: 6px;
+        margin-top: 8px;
         color: #bfc8d4;
-        font-size: 0.66rem;
-        line-height: 1.25;
+        font-size: 0.86rem;
+        line-height: 1.3;
     }
 
     .mobile-collapsible.is-collapsed .mobile-collapse-summary {
         display: block;
     }
-}
+
+    @media (max-width: 700px) {
+        .mobile-collapse-chevron {
+            width: 44px;
+            height: 44px;
+            font-size: 1.25rem;
+        }
+
+        .mobile-collapse-summary {
+            font-size: 0.88rem;
+        }
+    }
 
         .compact-weekly-code-editor {
             display: grid;
@@ -11281,18 +11303,25 @@ document.addEventListener('keydown', function(e){
     function makeCollapsible(section, opts = {}) {
         if (!section || section.dataset.mobileCollapseReady === '1') return;
 
-        const titleEl = section.querySelector('h3');
+        const titleEl = section.querySelector('h1, h2, h3, .section-header');
         if (!titleEl) return;
 
         const originalTitleHtml = titleEl.innerHTML;
         const summaryText = opts.summary || '';
-        const collapsedByDefault = !!opts.collapsedByDefault;
+        const collapsedByDefault = opts.collapsedByDefault !== false;
+        const storageKey = opts.storageKey || (`adminCollapse:${(originalTitleHtml || '').replace(/<[^>]*>/g, '').trim().toLowerCase().replace(/[^a-z0-9]+/g, '-')}`);
+        let initialCollapsed = collapsedByDefault;
+        try {
+            const stored = localStorage.getItem(storageKey);
+            if (stored === 'open') initialCollapsed = false;
+            if (stored === 'closed') initialCollapsed = true;
+        } catch (e) {}
 
         const header = document.createElement('div');
         header.className = 'mobile-collapse-header';
         header.setAttribute('role', 'button');
         header.setAttribute('tabindex', '0');
-        header.setAttribute('aria-expanded', collapsedByDefault ? 'false' : 'true');
+        header.setAttribute('aria-expanded', initialCollapsed ? 'false' : 'true');
 
         const titleWrap = document.createElement('div');
         titleWrap.className = 'mobile-collapse-title';
@@ -11328,19 +11357,13 @@ document.addEventListener('keydown', function(e){
         section.dataset.mobileCollapseReady = '1';
 
         function applyState(collapsed) {
-            if (isMobileViewport() && collapsed) {
-                section.classList.add('is-collapsed');
-                header.setAttribute('aria-expanded', 'false');
-            } else {
-                section.classList.remove('is-collapsed');
-                header.setAttribute('aria-expanded', 'true');
-            }
+            section.classList.toggle('is-collapsed', !!collapsed);
+            header.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+            try { localStorage.setItem(storageKey, collapsed ? 'closed' : 'open'); } catch (e) {}
         }
 
         function toggle() {
-            if (!isMobileViewport()) return;
-            const collapsed = !section.classList.contains('is-collapsed');
-            applyState(collapsed);
+            applyState(!section.classList.contains('is-collapsed'));
         }
 
         header.addEventListener('click', toggle);
@@ -11351,11 +11374,16 @@ document.addEventListener('keydown', function(e){
             }
         });
 
-        applyState(collapsedByDefault);
-        window.addEventListener('resize', () => applyState(section.classList.contains('is-collapsed')));
+        applyState(initialCollapsed);
     }
 
     function initMobileCollapsibles() {
+        makeCollapsible(document.querySelector('.admin-header-box'), {
+            collapsedByDefault: true,
+            summary: 'Admin dashboard hidden. Tap to expand.',
+            storageKey: 'adminCollapse:admin-dashboard'
+        });
+
         makeCollapsible(document.querySelector('.payment-summary-box'), {
             collapsedByDefault: true,
             summary: 'Payment totals hidden. Tap to expand.'
@@ -11377,12 +11405,12 @@ document.addEventListener('keydown', function(e){
         });
 
         makeCollapsible(document.querySelector('.waitlist-section'), {
-            collapsedByDefault: false,
+            collapsedByDefault: true,
             summary: 'Waitlist hidden. Tap to expand.'
         });
 
         makeCollapsible(document.querySelector('.roster-status'), {
-            collapsedByDefault: false,
+            collapsedByDefault: true,
             summary: 'Roster tools hidden. Tap to expand.'
         });
 
@@ -11397,7 +11425,7 @@ document.addEventListener('keydown', function(e){
         });
 
         makeCollapsible(document.querySelector('.maintenance-control'), {
-            collapsedByDefault: false,
+            collapsedByDefault: true,
             summary: 'Maintenance controls hidden. Tap to expand.'
         });
 
@@ -11713,12 +11741,14 @@ document.addEventListener('keydown', function(e){
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 28px;
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
     border-radius: 999px;
     background: rgba(255,255,255,0.10);
     color: #fff;
-    font-size: 1rem;
+    font-size: 1.2rem;
+    font-weight: 900;
     line-height: 1;
     transition: transform 0.18s ease, background 0.18s ease;
     margin-left: auto;
@@ -11739,7 +11769,7 @@ document.addEventListener('keydown', function(e){
 }
 @media (max-width: 700px) {
     .admin-collapsible-hint { display: none; }
-    .admin-collapse-arrow { min-width: 32px; height: 32px; }
+    .admin-collapse-arrow { min-width: 44px; width:44px; height: 44px; }
 }
 
 </style>
@@ -11791,7 +11821,7 @@ document.addEventListener('keydown', function(e){
                 hint.textContent = 'Tap to expand';
                 const arrow = document.createElement('span');
                 arrow.className = 'admin-collapse-arrow';
-                arrow.textContent = '⌄';
+                arrow.innerHTML = '&#9662;';
                 header.appendChild(hint);
                 header.appendChild(arrow);
             }
@@ -11840,12 +11870,14 @@ document.addEventListener('keydown', function(e){
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    min-width: 28px;
-    height: 28px;
+    min-width: 42px;
+    width: 42px;
+    height: 42px;
     border-radius: 999px;
     background: rgba(255,255,255,0.10);
     color: #fff;
-    font-size: 1rem;
+    font-size: 1.2rem;
+    font-weight: 900;
     line-height: 1;
     transition: transform 0.18s ease, background 0.18s ease;
     margin-left: auto;
@@ -11862,7 +11894,7 @@ document.addEventListener('keydown', function(e){
 }
 @media (max-width: 700px) {
     .admin-ui-collapse-hint { display: none; }
-    .admin-ui-collapse-arrow { min-width: 32px; height: 32px; }
+    .admin-ui-collapse-arrow { min-width: 44px; width:44px; height: 44px; }
 }
 </style>
 <script id="adminCollapsibleNonTableSectionsScript">
@@ -11900,7 +11932,7 @@ document.addEventListener('keydown', function(e){
             hint.textContent = 'Tap to expand';
             const arrow = document.createElement('span');
             arrow.className = 'admin-ui-collapse-arrow';
-            arrow.textContent = '⌄';
+            arrow.innerHTML = '&#9662;';
             header.appendChild(hint);
             header.appendChild(arrow);
         }
@@ -11937,5 +11969,37 @@ document.addEventListener('keydown', function(e){
 })();
 </script>
 
+
+<style id="admin-consistent-collapse-arrow-override-v1">
+.admin-collapse-arrow,
+.admin-ui-collapse-arrow,
+.mobile-collapse-chevron {
+    min-width: 42px !important;
+    width: 42px !important;
+    height: 42px !important;
+    font-size: 1.2rem !important;
+    font-weight: 900 !important;
+}
+.admin-collapsible-section:not(.admin-collapsed) .admin-collapse-arrow,
+.admin-ui-collapsible-section:not(.admin-ui-collapsed) .admin-ui-collapse-arrow {
+    transform: rotate(0deg) !important;
+    background: rgba(74,144,226,0.35) !important;
+}
+.admin-collapsible-section.admin-collapsed .admin-collapse-arrow,
+.admin-ui-collapsible-section.admin-ui-collapsed .admin-ui-collapse-arrow,
+.mobile-collapsible.is-collapsed .mobile-collapse-chevron {
+    transform: rotate(-90deg) !important;
+}
+@media (max-width: 700px) {
+    .admin-collapse-arrow,
+    .admin-ui-collapse-arrow,
+    .mobile-collapse-chevron {
+        min-width: 44px !important;
+        width: 44px !important;
+        height: 44px !important;
+        font-size: 1.25rem !important;
+    }
+}
+</style>
 </body>
 </html>
