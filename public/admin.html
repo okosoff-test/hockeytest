@@ -3015,6 +3015,27 @@ button {
     font-size:0.72rem !important;
     line-height:1 !important;
 }
+
+#playerList .nickname-edit-row{
+    margin-top:3px;
+}
+#playerList .nickname-input{
+    width:120px;
+    max-width:100%;
+    background:rgba(255,255,255,0.08);
+    border:1px solid rgba(255,255,255,0.18);
+    border-radius:6px;
+    color:#fff;
+    font-size:0.72rem;
+    padding:3px 6px;
+}
+#playerList .nickname-input::placeholder{
+    color:rgba(255,255,255,0.48);
+}
+#playerList .nickname-input:focus{
+    outline:none;
+    border-color:#4CAF50;
+}
 #playerList .player-time-sub{
     display:block;
     color:#8f8f8f;
@@ -8885,8 +8906,12 @@ ${rosterLink}
 
                         tr.innerHTML = `
                             <td class="player-name-cell">
-                                <span class="player-name-main">${p.firstName} ${p.lastName}</span>
-                                <span class="player-phone-sub">${p.phone}</span>
+                                <span class="player-name-main">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
+                                <div class="nickname-edit-row">
+                                    <input type="text" class="nickname-input" value="${escapeHtml(p.nickname || '')}" placeholder="Nickname" maxlength="100"
+                                        onchange="updatePlayerNickname(${p.id}, this.value)">
+                                </div>
+                                <span class="player-phone-sub">${escapeHtml(p.phone || '')}</span>
                                 ${p.registeredAt ? `<span class="player-time-sub"><span class="locked-time-chip" title="Locked signup timestamp — saved when the player registered and does not change">${formatLockedSignupTime(p.registeredAt)}</span></span>` : ``}
                             </td>
                             <td class="phone-col-hidden">${p.phone}</td>
@@ -9428,6 +9453,34 @@ ${rosterLink}
             } catch (err) {
                 console.error('Update spare goalie rating error:', err);
                 alert('Error updating spare goalie rating');
+            }
+        }
+
+
+        async function updatePlayerNickname(id, nickname) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-nickname`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken: sessionToken, playerId: id, nickname: String(nickname || '').trim() })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (res.ok && data.success !== false) {
+                    showNotification('✅ Nickname saved', 'success');
+                    if (data.player && adminPlayersById[String(id)]) {
+                        adminPlayersById[String(id)].nickname = data.player.nickname || '';
+                    }
+                } else if (res.status === 401) {
+                    logout();
+                } else {
+                    alert('Error: ' + (data.error || 'Failed to update nickname'));
+                    loadData();
+                }
+            } catch (err) {
+                console.error('Update nickname error:', err);
+                alert('Error updating nickname');
+                loadData();
             }
         }
 
