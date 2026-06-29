@@ -11989,6 +11989,14 @@ document.addEventListener('keydown', function(e){
     font-size: 1rem;
     line-height: 1.2;
 }
+.admin-weekly-status-arena {
+    display: block;
+    margin-top: 6px;
+    color: #4a90e2;
+    font-weight: 800;
+    font-size: 0.92rem;
+    line-height: 1.2;
+}
 .admin-section-live-summary,
 .admin-collapsible-live-summary {
     display: block;
@@ -12112,8 +12120,17 @@ document.addEventListener('keydown', function(e){
     function readDateSummary() {
         const date = safeText(byId('currentDateDisplay')) || (byId('dateInput') && byId('dateInput').value) || '--';
         const time = safeText(byId('currentTime')) || safeText(byId('timeInput')) || '--';
-        const loc = safeText(byId('currentLocation')) || safeText(byId('locationInput')) || '--';
+        const loc = safeText(byId('currentArenaDisplay')) || (byId('arenaSelect') && byId('arenaSelect').value) || safeText(byId('currentLocation')) || (byId('locationInput') && byId('locationInput').value) || '--';
         return { date, time, loc };
+    }
+
+    function escapeWeeklyStatusHtml(value) {
+        return String(value == null ? '' : value)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
     }
 
     function getRosterState() {
@@ -12219,7 +12236,10 @@ document.addEventListener('keydown', function(e){
         const etNow = safeText(byId('etNowLine')) || new Date().toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
 
         const set = (id, value) => { const el = byId(id); if (el) el.textContent = value; };
-        set('weeklyStatusGame', `${details.date} · ${details.time}`);
+        const gameStatusEl = byId('weeklyStatusGame');
+        if (gameStatusEl) {
+            gameStatusEl.innerHTML = `${escapeWeeklyStatusHtml(details.date)} · ${escapeWeeklyStatusHtml(details.time)}<span class="admin-weekly-status-arena">Arena: ${escapeWeeklyStatusHtml(details.loc)}</span>`;
+        }
         set('weeklyStatusPlayers', `${playerCount}/${playerSpots}`);
         set('weeklyStatusGoalies', goalieMax ? `${goalieCount}/${goalieMax}` : goalieCount);
         set('weeklyStatusRoster', roster);
@@ -12228,7 +12248,7 @@ document.addEventListener('keydown', function(e){
         set('weeklyStatusWaitlist', waitlistCount);
         set('weeklyStatusNow', etNow);
 
-        setSummaryForSection('.game-setup-section', `${details.date} · ${details.time} · ${playerCount}/${playerSpots} players${code ? ' · Code ' + code : ''}`);
+        setSummaryForSection('.game-setup-section', `${details.date} · ${details.time} · ${details.loc} · ${playerCount}/${playerSpots} players${code ? ' · Code ' + code : ''}`);
         setSummaryForSection('.registered-players-box', `${playerCount}/${playerSpots} registered · ${waitlistCount} waitlist · ${piaCount} PIA`);
         setSummaryForSection('.waitlist-section', `${waitlistCount} waitlist`);
         setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${piaCount} PIA · ${totalCollected} · Cash ${cashCollected} · ET$ ${etransferCollected}`);
