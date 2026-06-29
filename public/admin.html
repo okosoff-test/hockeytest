@@ -3029,6 +3029,9 @@ button {
     max-width:100%;
 }
 #playerList .nickname-tap-target{
+    touch-action: manipulation;
+    user-select: none;
+    -webkit-user-select: none;
     cursor:pointer;
     user-select:none;
     border-bottom:1px dotted rgba(255,255,255,0.22);
@@ -8913,7 +8916,9 @@ ${rosterLink}
                                 <div class="player-name-nickname-row">
                                     <span class="player-name-main nickname-tap-target ${(p.nickname || '').trim() ? 'has-nickname' : ''}"
                                         title="Double-tap to edit nickname"
-                                        onclick="handleNicknameNameTap(${p.id}, event)">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
+                                        onclick="handleNicknameNameTap(${p.id}, event)"
+                                        ondblclick="handleNicknameNameDoubleTap(${p.id}, event)"
+                                        ontouchend="handleNicknameNameTouch(${p.id}, event)">${escapeHtml(p.firstName)} ${escapeHtml(p.lastName)}</span>
                                 </div>
                                 <span class="player-phone-sub">${escapeHtml(p.phone || '')}</span>
                                 ${p.registeredAt ? `<span class="player-time-sub"><span class="locked-time-chip" title="Locked signup timestamp — saved when the player registered and does not change">${formatLockedSignupTime(p.registeredAt)}</span></span>` : ``}
@@ -9479,12 +9484,31 @@ function todayDateInputValue(){
 
         const nicknameTapTracker = {};
 
+        function handleNicknameNameDoubleTap(id, event) {
+            if (event) {
+                event.preventDefault();
+                event.stopPropagation();
+            }
+            nicknameTapTracker[String(id)] = 0;
+            openNicknamePrompt(id);
+        }
+
         function handleNicknameNameTap(id, event) {
+            if (event) event.stopPropagation();
             const now = Date.now();
             const key = String(id);
-            if (nicknameTapTracker[key] && (now - nicknameTapTracker[key]) < 450) {
-                nicknameTapTracker[key] = 0;
-                openNicknamePrompt(id);
+            if (nicknameTapTracker[key] && (now - nicknameTapTracker[key]) < 500) {
+                handleNicknameNameDoubleTap(id, event);
+            } else {
+                nicknameTapTracker[key] = now;
+            }
+        }
+
+        function handleNicknameNameTouch(id, event) {
+            const now = Date.now();
+            const key = String(id);
+            if (nicknameTapTracker[key] && (now - nicknameTapTracker[key]) < 650) {
+                handleNicknameNameDoubleTap(id, event);
             } else {
                 nicknameTapTracker[key] = now;
             }
@@ -11671,5 +11695,132 @@ document.addEventListener('keydown', function(e){
 
 
     <div class="copyright-footer">© 2026 Phan Anthony Ly. All Rights Reserved.</div>
+
+
+<style id="adminCollapsibleTablesStyle">
+/* Collapsible admin tables - mobile friendly */
+.admin-collapsible-section > .admin-collapsible-title,
+.admin-collapsible-section > h3.admin-collapsible-title,
+.admin-collapsible-section .section-header.admin-collapsible-title {
+    cursor: pointer;
+    user-select: none;
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+.admin-collapse-arrow {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 28px;
+    height: 28px;
+    border-radius: 999px;
+    background: rgba(255,255,255,0.10);
+    color: #fff;
+    font-size: 1rem;
+    line-height: 1;
+    transition: transform 0.18s ease, background 0.18s ease;
+    margin-left: auto;
+}
+.admin-collapsible-section:not(.admin-collapsed) .admin-collapse-arrow {
+    transform: rotate(180deg);
+    background: rgba(74,144,226,0.35);
+}
+.admin-collapsible-section.admin-collapsed > table,
+.admin-collapsible-section.admin-collapsed table.admin-collapsible-table {
+    display: none !important;
+}
+.admin-collapsible-hint {
+    color: #9fb7c9;
+    font-size: 0.78rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+@media (max-width: 700px) {
+    .admin-collapsible-hint { display: none; }
+    .admin-collapse-arrow { min-width: 32px; height: 32px; }
+}
+</style>
+<script id="adminCollapsibleTablesScript">
+(function () {
+    function closestTableSection(table) {
+        return table.closest('.registered-players-box, .waitlist-section, .cancellations-section, .history-delete-box, .payment-summary-box, .control-box, .message-box, .spare-goalie-ratings-section, .backup-goalies-section, .add-goalie-fly-section, .add-player-form, section, .admin-section, div');
+    }
+
+    function makeHeader(section, table, index) {
+        let header = section.querySelector(':scope > h3, :scope > .section-header, :scope > .preview-header h3');
+        if (!header) {
+            const previous = table.previousElementSibling;
+            if (previous && /^H[1-6]$/i.test(previous.tagName)) header = previous;
+        }
+        if (!header) return null;
+        return header;
+    }
+
+    function toggleSection(section, forceOpen) {
+        const willOpen = typeof forceOpen === 'boolean' ? forceOpen : section.classList.contains('admin-collapsed');
+        section.classList.toggle('admin-collapsed', !willOpen);
+        const header = section.querySelector('.admin-collapsible-title');
+        if (header) header.setAttribute('aria-expanded', willOpen ? 'true' : 'false');
+    }
+
+    function initCollapsibleAdminTables() {
+        const tables = Array.from(document.querySelectorAll('body.admin-page table, .container table, table'));
+        const sections = [];
+        tables.forEach((table, index) => {
+            if (table.dataset.adminCollapsibleReady === '1') return;
+            const section = closestTableSection(table);
+            if (!section || section.dataset.adminCollapsibleSectionReady === '1') return;
+            const header = makeHeader(section, table, index);
+            if (!header) return;
+
+            table.dataset.adminCollapsibleReady = '1';
+            table.classList.add('admin-collapsible-table');
+            section.dataset.adminCollapsibleSectionReady = '1';
+            section.classList.add('admin-collapsible-section', 'admin-collapsed');
+
+            header.classList.add('admin-collapsible-title');
+            header.setAttribute('role', 'button');
+            header.setAttribute('tabindex', '0');
+            header.setAttribute('aria-expanded', 'false');
+
+            if (!header.querySelector('.admin-collapse-arrow')) {
+                const hint = document.createElement('span');
+                hint.className = 'admin-collapsible-hint';
+                hint.textContent = 'Tap to expand';
+                const arrow = document.createElement('span');
+                arrow.className = 'admin-collapse-arrow';
+                arrow.textContent = '⌄';
+                header.appendChild(hint);
+                header.appendChild(arrow);
+            }
+
+            const handler = (event) => {
+                const tag = event.target && event.target.tagName ? event.target.tagName.toLowerCase() : '';
+                if (['button','input','select','textarea','a','label'].includes(tag)) return;
+                toggleSection(section);
+            };
+            header.addEventListener('click', handler);
+            header.addEventListener('keydown', (event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    toggleSection(section);
+                }
+            });
+            sections.push(section);
+        });
+        window.adminCollapsibleTableSections = sections;
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initCollapsibleAdminTables);
+    } else {
+        initCollapsibleAdminTables();
+    }
+    window.initCollapsibleAdminTables = initCollapsibleAdminTables;
+})();
+</script>
+
 </body>
 </html>
