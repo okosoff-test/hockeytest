@@ -4195,44 +4195,10 @@ function summarizeTeamMetrics(team = []) {
     };
 }
 
-function getExtremeSkaterSeparationProblems(whiteTeam = [], darkTeam = []) {
-    const allSkaters = [
-        ...whiteTeam.filter(p => p && !p.isGoalie).map(p => ({ ...p, team: 'White' })),
-        ...darkTeam.filter(p => p && !p.isGoalie).map(p => ({ ...p, team: 'Dark' }))
-    ];
-
-    if (allSkaters.length < 2) return [];
-
-    const byStrength = allSkaters
-        .map(p => ({ ...p, balanceScore: getPlayerBalanceScore(p) }))
-        .sort((a, b) => {
-            const diff = b.balanceScore - a.balanceScore;
-            if (Math.abs(diff) > 0.001) return diff;
-            return `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase().localeCompare(`${b.firstName || ''} ${b.lastName || ''}`.toLowerCase());
-        });
-
-    const problems = [];
-    const topTwo = byStrength.slice(0, 2);
-    const bottomTwo = byStrength.slice(-2);
-
-    if (topTwo.length === 2 && topTwo[0].team === topTwo[1].team) {
-        problems.push(`Two strongest skaters must be split: ${topTwo.map(p => `${p.firstName || ''} ${p.lastName || ''}`.trim()).join(' and ')} are both on ${topTwo[0].team}.`);
-    }
-
-    if (bottomTwo.length === 2 && bottomTwo[0].team === bottomTwo[1].team) {
-        problems.push(`Two weakest skaters must be split: ${bottomTwo.map(p => `${p.firstName || ''} ${p.lastName || ''}`.trim()).join(' and ')} are both on ${bottomTwo[0].team}.`);
-    }
-
-    return problems;
-}
-
 function computeTeamBalanceObjective(whiteTeam = [], darkTeam = []) {
     const white = summarizeTeamMetrics(whiteTeam);
     const dark = summarizeTeamMetrics(darkTeam);
-    const extremePenalty = getExtremeSkaterSeparationProblems(whiteTeam, darkTeam).length * 10000;
-
     return (
-        extremePenalty +
         Math.abs(white.totalBalance - dark.totalBalance) * 1.0 +
         Math.abs(white.skating - dark.skating) * 0.9 +
         Math.abs(white.hockeySense - dark.hockeySense) * 1.1 +
@@ -4294,7 +4260,6 @@ function buildRosterTeamRuleValidation(teams = {}) {
         problems.push(`Two-goalie roster must have one goalie per team: White ${whiteGoalies}, Dark ${darkGoalies}.`);
     }
 
-    problems.push(...getExtremeSkaterSeparationProblems(whiteTeam, darkTeam));
 
     // Full-capacity hockey rule: 20 skaters + 2 goalies = 10 skaters and 1 goalie per team.
     if (totalPlayers === MAX_ROSTER_SPOTS) {
