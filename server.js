@@ -5356,6 +5356,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
     const {
         firstName,
         lastName,
+        nickname,
         phone,
         paymentMethod,
         rating,
@@ -5434,6 +5435,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
             id: Date.now(),
             firstName: cleanFirstName,
             lastName: cleanLastName,
+            nickname: cleanNickname,
             phone: cleanPhone,
             paymentMethod,
             rating: skillProfile.finalRating,
@@ -5507,6 +5509,7 @@ app.post('/api/register-init', registrationLimiter, async (req, res) => {
         tempData: {
             firstName: cleanFirstName,
             lastName: cleanLastName,
+            nickname: cleanNickname,
             phone: cleanPhone,
             paymentMethod,
             rating: skillProfile.finalRating,
@@ -5553,6 +5556,7 @@ app.post('/api/register-final', async (req, res) => {
         id: Date.now(),
         firstName: tempData.firstName,
         lastName: tempData.lastName,
+        nickname: normalizeNickname(tempData.nickname),
         phone: tempData.phone,
         paymentMethod: tempData.paymentMethod,
         paid: false,
