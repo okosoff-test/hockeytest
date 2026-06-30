@@ -242,6 +242,12 @@ app.use(schedulerCatchupMiddleware);
 
 // --- DATA STORE ---
 const MAX_SKATERS = 20;
+function normalizeSkaterCapacity(value, fallback = MAX_SKATERS) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(0, Math.min(30, Math.floor(parsed)));
+}
 let configuredMaxSkaters = MAX_SKATERS;
 const MAX_ROSTER_SPOTS = 22;
 let playerSpots = configuredMaxSkaters;
@@ -2149,8 +2155,8 @@ async function loadDataFromDB() {
             settings[row.key] = parsePersistedSettingValue(row.value);
         });
         
-        if (settings.configuredMaxSkaters !== undefined) configuredMaxSkaters = Number(settings.configuredMaxSkaters) || MAX_SKATERS;
-        if (settings.playerSpots !== undefined) playerSpots = Number(settings.playerSpots) || 0;
+        if (settings.configuredMaxSkaters !== undefined) configuredMaxSkaters = normalizeSkaterCapacity(settings.configuredMaxSkaters, MAX_SKATERS);
+        if (settings.playerSpots !== undefined) playerSpots = normalizeSkaterCapacity(settings.playerSpots, 0);
         if (settings.gameLocation) gameLocation = settings.gameLocation;
         if (settings.gameTime) gameTime = settings.gameTime;
         if (settings.gameDate) gameDate = settings.gameDate;
@@ -2791,10 +2797,13 @@ async function createManualSnapshot(reason = 'manual-create-snapshot', req = nul
 function applySnapshotToMemory(snapshot) {
     if (!snapshot || typeof snapshot !== 'object') return;
 
-    configuredMaxSkaters = Number(snapshot.configuredMaxSkaters || snapshot.maxSkaters || snapshot.skaterCapacity || MAX_SKATERS) || MAX_SKATERS;
-    playerSpots = snapshot.playerSpots ?? Math.max(0, configuredMaxSkaters - players.filter(p => !(p && p.isGoalie)).length);
+    const snapshotCapacity = snapshot.configuredMaxSkaters ?? snapshot.maxSkaters ?? snapshot.skaterCapacity;
+    configuredMaxSkaters = normalizeSkaterCapacity(snapshotCapacity, MAX_SKATERS);
     players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile) : [];
     waitlist = Array.isArray(snapshot.waitlist) ? snapshot.waitlist.map(hydratePlayerRatingProfile) : [];
+    playerSpots = snapshot.playerSpots !== undefined && snapshot.playerSpots !== null
+        ? normalizeSkaterCapacity(snapshot.playerSpots, 0)
+        : Math.max(0, configuredMaxSkaters - players.filter(p => !(p && p.isGoalie)).length);
     gameLocation = snapshot.gameLocation ?? gameLocation;
     gameTime = snapshot.gameTime ?? gameTime;
     gameDate = snapshot.gameDate ?? calculateNextGameDate();
@@ -3652,12 +3661,15 @@ function loadDataFromFile() {
         const bestSnapshot = getBestLocalSnapshot();
         if (bestSnapshot && bestSnapshot.data) {
             const data = bestSnapshot.data;
-            playerSpots = data.playerSpots ?? 20;
+            configuredMaxSkaters = normalizeSkaterCapacity(data.configuredMaxSkaters ?? data.maxSkaters ?? data.skaterCapacity, MAX_SKATERS);
             players = Array.isArray(data.players) ? data.players.map(player => hydratePlayerRatingProfile({
                 ...player,
                 registeredAt: player.registeredAt || player.registered_at || player.createdAt || null
             })) : [];
             waitlist = Array.isArray(data.waitlist) ? data.waitlist.map(hydratePlayerRatingProfile) : [];
+            playerSpots = data.playerSpots !== undefined && data.playerSpots !== null
+                ? normalizeSkaterCapacity(data.playerSpots, 0)
+                : Math.max(0, configuredMaxSkaters - players.filter(p => !(p && p.isGoalie)).length);
             gameLocation = data.gameLocation ?? "Capri Recreation Complex";
             gameTime = data.gameTime ?? "Friday 9:30 PM";
             gameDate = data.gameDate ?? calculateNextGameDate();
@@ -7226,8 +7238,8 @@ app.post('/api/admin/remove-player', async (req, res) => {
 app.post('/api/admin/update-spots', async (req, res) => {
     const { password, sessionToken, newSpots } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
-    const spotCount = parseInt(newSpots, 10);
-    if (isNaN(spotCount) || spotCount < 0 || spotCount > 30) return res.status(400).json({ error: "Invalid player spot capacity (0-30 allowed)" });
+    const spotCount = normalizeSkaterCapacity(newSpots, NaN);
+    if (!Number.isFinite(spotCount) || spotCount < 0 || spotCount > 30) return res.status(400).json({ error: "Invalid player spot capacity (0-30 allowed)" });
     const nonGoalieCount = players.filter(p => !(p && p.isGoalie)).length;
     try {
         await runProtectedMutation('update-spots', req, async () => {
