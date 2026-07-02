@@ -12378,5 +12378,44 @@ document.addEventListener('keydown', function(e){
 }
 </style>
 
+
+<style id="admin-mobile-collapsible-title-cutoff-fix-v1">
+/* Mobile: prevent collapsed section titles from being clipped while keeping arrows aligned. */
+@media (max-width: 700px) {
+    .mobile-collapsible > .mobile-collapse-header,
+    .admin-collapsible-section > .admin-collapsible-title,
+    .admin-ui-collapsible-section > .admin-ui-collapsible-title {
+        display: flex !important;
+        align-items: center !important;
+        min-height: 64px !important;
+        padding: 10px 62px 10px 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .mobile-collapsible > .mobile-collapse-header > .mobile-collapse-title,
+    .mobile-collapse-title h1,
+    .mobile-collapse-title h2,
+    .mobile-collapse-title h3,
+    .mobile-collapse-title .section-header,
+    .admin-collapsible-section > .admin-collapsible-title,
+    .admin-ui-collapsible-section > .admin-ui-collapsible-title {
+        display: flex !important;
+        align-items: center !important;
+        min-height: 44px !important;
+        line-height: 1.25 !important;
+        overflow: visible !important;
+        white-space: normal !important;
+        box-sizing: border-box !important;
+    }
+
+    .mobile-collapsible,
+    .admin-collapsible-section,
+    .admin-ui-collapsible-section {
+        overflow: visible !important;
+    }
+}
+</style>
+
 </body>
 </html>
