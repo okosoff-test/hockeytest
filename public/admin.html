@@ -11310,6 +11310,15 @@ document.addEventListener('keydown', function(e){
         const summary = document.createElement('div');
         summary.className = 'mobile-collapse-summary';
         summary.textContent = summaryText;
+        if(section.classList.contains('waitlist-section')){
+            const wc=section.querySelector('#waitlistCount');
+            if(wc){
+              const sync=()=>{titleWrap.innerHTML=`⏳ Waitlist (<span id="waitlistCount">${wc.textContent}</span>)`;};
+              sync();
+              const mo=new MutationObserver(sync);
+              mo.observe(wc,{childList:true,characterData:true,subtree:true});
+            }
+        }
 
         section.insertBefore(header, section.firstChild);
         section.appendChild(body);
