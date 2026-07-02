@@ -12325,5 +12325,58 @@ document.addEventListener('keydown', function(e){
 })();
 </script>
 
+<style id="admin-mobile-arrow-alignment-fix-v1">
+/* Keep all collapsed-section arrows uniform and fixed to the same card position on mobile. */
+@media (max-width: 700px) {
+    .mobile-collapsible,
+    .admin-collapsible-section,
+    .admin-ui-collapsible-section {
+        position: relative !important;
+    }
+
+    .mobile-collapsible > .mobile-collapse-header,
+    .admin-collapsible-section > .admin-collapsible-title,
+    .admin-ui-collapsible-section > .admin-ui-collapsible-title {
+        position: static !important;
+        display: block !important;
+        padding-right: 62px !important;
+        min-height: 46px !important;
+    }
+
+    .mobile-collapsible > .mobile-collapse-header > .mobile-collapse-title,
+    .admin-collapsible-section > .admin-collapsible-title > :not(.admin-collapse-arrow),
+    .admin-ui-collapsible-section > .admin-ui-collapsible-title > :not(.admin-ui-collapse-arrow) {
+        min-width: 0 !important;
+        max-width: 100% !important;
+    }
+
+    .mobile-collapsible > .mobile-collapse-header > .mobile-collapse-chevron,
+    .admin-collapsible-section > .admin-collapsible-title > .admin-collapse-arrow,
+    .admin-ui-collapsible-section > .admin-ui-collapsible-title > .admin-ui-collapse-arrow,
+    .game-setup-section .mobile-collapse-chevron {
+        position: absolute !important;
+        top: 18px !important;
+        right: 18px !important;
+        left: auto !important;
+        margin: 0 !important;
+        min-width: 44px !important;
+        width: 44px !important;
+        height: 44px !important;
+        min-height: 44px !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 999px !important;
+        font-size: 1.25rem !important;
+        line-height: 1 !important;
+        z-index: 2 !important;
+    }
+
+    .mobile-collapsible.is-collapsed > .mobile-collapse-summary {
+        padding-right: 62px !important;
+    }
+}
+</style>
+
 </body>
 </html>
