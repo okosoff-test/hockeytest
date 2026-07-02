@@ -1214,6 +1214,13 @@
             .game-setup-section, .backup-goalies-section, .add-goalie-fly-section { padding: 14px; }
             .game-setup-grid { grid-template-columns: 1fr; gap: 10px; }
             .game-setup-section .title-preview { font-size: 1rem; padding: 10px; }
+            .game-setup-section .custom-title-input {
+                min-height: 58px !important;
+                line-height: 1.35 !important;
+                padding-top: 12px !important;
+                padding-bottom: 12px !important;
+                overflow: hidden !important;
+            }
             .game-setup-preview-line { font-size: 0.88rem; }
         }
     
@@ -5653,6 +5660,27 @@ th, td{padding:2px 3px !important;}
     }
 }
 </style>
+
+<style id="mobile-game-title-input-fix-v2">
+    @media (max-width: 600px) {
+        .game-setup-section .custom-title-input,
+        textarea#customTitleInput.custom-title-input {
+            box-sizing: border-box !important;
+            min-height: 64px !important;
+            height: auto;
+            font-size: 1.05rem !important;
+            font-weight: 600 !important;
+            line-height: 1.3 !important;
+            padding: 13px 12px 11px 12px !important;
+            overflow: hidden !important;
+            display: block !important;
+            vertical-align: top !important;
+            -webkit-appearance: none;
+            appearance: none;
+        }
+    }
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 <!-- MAINTENANCE BULLETIN - Shows when activated -->
@@ -7187,7 +7215,12 @@ th, td{padding:2px 3px !important;}
             const input = document.getElementById('customTitleInput');
             if (!input) return;
             input.style.height = 'auto';
-            input.style.height = `${input.scrollHeight}px`;
+            const isMobile = window.matchMedia && window.matchMedia('(max-width: 600px)').matches;
+            // Mobile browsers can clip tall/bold textarea text when the height is too tight.
+            // Keep desktop unchanged, but give mobile extra vertical room.
+            const minimumHeight = isMobile ? 64 : 52;
+            const breathingRoom = isMobile ? 18 : 6;
+            input.style.height = `${Math.max(input.scrollHeight + breathingRoom, minimumHeight)}px`;
         }
 
         function setCustomTitleInput(value) {
