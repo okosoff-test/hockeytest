@@ -12451,5 +12451,54 @@ document.addEventListener('keydown', function(e){
 }
 </style>
 
+
+<style id="admin-mobile-card-header-layout-fix-v4">
+/* Mobile card header cleanup: keep title on its own line, put live summary below it, and keep the arrow fixed right. */
+@media (max-width: 700px) {
+    .mobile-collapsible > .mobile-collapse-header {
+        display: block !important;
+        position: relative !important;
+        min-height: 64px !important;
+        padding: 10px 62px 10px 0 !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .mobile-collapsible > .mobile-collapse-header > .mobile-collapse-title {
+        display: block !important;
+        min-height: 0 !important;
+        max-width: 100% !important;
+        line-height: 1.25 !important;
+        white-space: normal !important;
+        overflow: visible !important;
+        box-sizing: border-box !important;
+    }
+
+    .mobile-collapse-title .admin-collapsible-live-summary {
+        display: block !important;
+        width: 100% !important;
+        margin: 5px 0 0 0 !important;
+        text-align: left !important;
+        color: #b9c7d6 !important;
+        font-size: 0.8rem !important;
+        font-weight: 600 !important;
+        line-height: 1.22 !important;
+        white-space: normal !important;
+        overflow: visible !important;
+    }
+
+    .game-setup-section .mobile-collapse-title {
+        color: #ffffff !important;
+        font-size: 0.92rem !important;
+        font-weight: 700 !important;
+    }
+
+    .game-setup-section .mobile-collapse-title .admin-collapsible-live-summary {
+        font-size: 0.8rem !important;
+        margin-top: 5px !important;
+    }
+}
+</style>
+
 </body>
 </html>
