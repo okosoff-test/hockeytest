@@ -5983,7 +5983,7 @@ th, td{padding:2px 3px !important;}
 </div>
 
 <div class="registered-players-box">
-<h3 class="section-header">🏒 Registered Players<br><span style="font-size:0.9em;font-weight:500;">(<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</span></h3>
+<h3 class="section-header registered-players-header">🏒 <span class="registered-title-main">Registered Players</span><span class="registered-title-count">(<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</span></h3>
 <div class="add-player-form">
 <h3 id="manualAddPlayerHeading">➕ Add Player Manually</h3>
 <div class="form-row">
@@ -12560,6 +12560,41 @@ document.addEventListener('keydown', function(e){
     .waitlist-section .admin-collapsible-live-summary,
     .waitlist-section .admin-section-live-summary {
         display: none !important;
+    }
+}
+</style>
+
+
+
+<style id="registered-players-header-option1-v1">
+/* Registered Players header: clean two-line mobile layout with lighter count line. */
+.registered-players-header .registered-title-count {
+    margin-left: 0.35rem;
+}
+
+@media (max-width: 700px) {
+    .registered-players-box .mobile-collapse-title .registered-players-header,
+    .registered-players-box .registered-players-header {
+        display: block !important;
+        line-height: 1.18 !important;
+        white-space: normal !important;
+        overflow: visible !important;
+    }
+
+    .registered-players-box .registered-title-main {
+        display: inline !important;
+        font-size: 0.92rem !important;
+        font-weight: 700 !important;
+    }
+
+    .registered-players-box .registered-title-count {
+        display: block !important;
+        margin: 3px 0 0 1.65rem !important;
+        font-size: 0.78rem !important;
+        font-weight: 500 !important;
+        line-height: 1.2 !important;
+        color: #ff8a1c !important;
+        white-space: normal !important;
     }
 }
 </style>
