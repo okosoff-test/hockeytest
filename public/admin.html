@@ -5769,7 +5769,84 @@ th, td{padding:2px 3px !important;}
 </style>
 
 
-
+<style id="admin-account-button-topright-visible-v1">
+/* Account button: original size, top-right, white circle, yellow person icon */
+.admin-account-menu{
+    display:flex !important;
+    justify-content:flex-end !important;
+    align-items:center !important;
+    width:100% !important;
+    margin:0 0 12px 0 !important;
+    position:relative !important;
+    z-index:50 !important;
+}
+.admin-account-btn{
+    width:44px !important;
+    height:44px !important;
+    min-width:44px !important;
+    min-height:44px !important;
+    border:2px solid rgba(255,255,255,0.85) !important;
+    background:rgba(255,255,255,0.08) !important;
+    color:transparent !important;
+    font-size:0 !important;
+    line-height:1 !important;
+    box-shadow:0 0 14px rgba(0,0,0,0.35) !important;
+    animation:none !important;
+    transform:none !important;
+    position:relative !important;
+    overflow:hidden !important;
+}
+.admin-account-btn::before{
+    content:"";
+    position:absolute;
+    top:9px;
+    left:50%;
+    width:12px;
+    height:12px;
+    border-radius:50%;
+    background:#FFC107;
+    transform:translateX(-50%);
+    box-shadow:0 0 8px rgba(255,193,7,0.45);
+}
+.admin-account-btn::after{
+    content:"";
+    position:absolute;
+    left:50%;
+    bottom:8px;
+    width:22px;
+    height:13px;
+    border-radius:14px 14px 8px 8px;
+    background:#FFC107;
+    transform:translateX(-50%);
+    box-shadow:0 0 8px rgba(255,193,7,0.35);
+}
+.admin-account-btn:hover,
+.admin-account-btn:focus{
+    background:rgba(255,255,255,0.16) !important;
+    border-color:#ffffff !important;
+    outline:none !important;
+    box-shadow:0 0 14px rgba(0,0,0,0.35), 0 0 12px rgba(255,193,7,0.35) !important;
+}
+@media (max-width:700px){
+    .admin-account-menu{ margin:0 0 10px 0 !important; }
+    .admin-account-btn{
+        width:42px !important;
+        height:42px !important;
+        min-width:42px !important;
+        min-height:42px !important;
+    }
+    .admin-account-btn::before{
+        top:8px;
+        width:12px;
+        height:12px;
+    }
+    .admin-account-btn::after{
+        bottom:8px;
+        width:21px;
+        height:12px;
+    }
+}
+</style>
 
 </head>
 <body class="admin-layout-option-1">
