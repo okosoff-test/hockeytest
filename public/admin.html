@@ -11485,7 +11485,8 @@ document.addEventListener('keydown', function(e){
 
         makeCollapsible(document.querySelector('.cancellations-section'), {
             collapsedByDefault: true,
-            summary: 'Cancelled players hidden. Tap to expand.'
+            summary: 'Recent cancellations hidden. Tap to expand.',
+            storageKey: 'adminCollapse:registered-recent-cancellations-v2'
         });
 
         makeCollapsible(document.querySelector('.history-delete-box'), {
@@ -11500,7 +11501,8 @@ document.addEventListener('keydown', function(e){
 
         makeCollapsible(document.querySelector('.waitlist-section'), {
             collapsedByDefault: true,
-            summary: 'Waitlist hidden. Tap to expand.'
+            summary: 'Waitlist hidden. Tap to expand.',
+            storageKey: 'adminCollapse:registered-waitlist-v2'
         });
 
         makeCollapsible(document.querySelector('.roster-status'), {
@@ -12722,5 +12724,70 @@ document.addEventListener('keydown', function(e){
 }
 </style>
 
+
+<script id="registeredPlayersNestedHiddenSectionsV1">
+(function () {
+    'use strict';
+
+    function text(id) {
+        const el = document.getElementById(id);
+        return el ? String(el.textContent || '').trim() : '0';
+    }
+
+    function setSummary(section, value) {
+        if (!section) return;
+        const summary = section.querySelector(':scope > .mobile-collapse-summary');
+        if (summary) summary.textContent = value;
+        const title = section.querySelector('.mobile-collapse-title');
+        if (title) {
+            if (section.classList.contains('waitlist-section')) {
+                title.innerHTML = '⏳ Waitlist (<span id="waitlistCount">' + text('waitlistCount') + '</span>)';
+            }
+            if (section.classList.contains('cancellations-section')) {
+                title.innerHTML = '📋 Recent Cancellations (<span id="cancellationCount">' + text('cancellationCount') + '</span>)';
+            }
+        }
+    }
+
+    function closeNestedRegisteredSections() {
+        const sections = [
+            { selector: '.registered-players-box .waitlist-section', summary: function () { return 'Waitlist hidden · ' + text('waitlistCount') + ' waiting. Tap to expand.'; } },
+            { selector: '.registered-players-box .cancellations-section', summary: function () { return 'Recent cancellations hidden · ' + text('cancellationCount') + ' listed. Tap to expand.'; } }
+        ];
+
+        sections.forEach(function (item) {
+            const section = document.querySelector(item.selector);
+            if (!section) return;
+            section.classList.add('is-collapsed');
+            const header = section.querySelector(':scope > .mobile-collapse-header');
+            if (header) header.setAttribute('aria-expanded', 'false');
+            setSummary(section, item.summary());
+        });
+    }
+
+    function init() {
+        closeNestedRegisteredSections();
+        ['waitlistCount', 'cancellationCount'].forEach(function (id) {
+            const el = document.getElementById(id);
+            if (!el || !window.MutationObserver) return;
+            new MutationObserver(closeNestedRegisteredSections).observe(el, { childList: true, characterData: true, subtree: true });
+        });
+    }
+
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init);
+    else init();
+    window.addEventListener('load', closeNestedRegisteredSections);
+})();
+</script>
+<style id="registeredPlayersNestedHiddenSectionsStyleV1">
+.registered-players-box .waitlist-section,
+.registered-players-box .cancellations-section {
+    margin-top: 14px !important;
+}
+.registered-players-box .waitlist-section.is-collapsed,
+.registered-players-box .cancellations-section.is-collapsed {
+    padding-bottom: 14px !important;
+}
+</style>
 </body>
 </html>
