@@ -5833,30 +5833,6 @@ th, td{padding:2px 3px !important;}
 
 
 
-<div class="admin-header-box">
-<div class="admin-header-top">
-<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
-<h1 style="margin:0;">Portal Backup</h1>
-<div style="display:flex; gap:10px; flex-wrap:wrap;">
-<button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Backup Portal</button>
-<button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
-<button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
-<button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Portal</button>
-<input accept=".json,application/json" id="restoreBackupFile" onchange="restoreBackupFromFile(event)" style="display:none;" type="file"/>
-</div>
-</div>
-</div>
-<div class="admin-header-bottom">
-<div class="maintenance-control">
-<div class="maintenance-toggle">
-<input class="maintenance-checkbox" id="maintenanceCheckbox" onchange="toggleMaintenance()" type="checkbox"/>
-<label class="maintenance-label" for="maintenanceCheckbox" id="maintenanceLabel">Maintenance Mode Off</label>
-<div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
-</div>
-</div>
-</div>
-</div>
-
 <div class="success-message" id="releaseSuccess">
             ✅ Roster Released Successfully! Players can now see the teams.
         </div>
@@ -6412,6 +6388,31 @@ th, td{padding:2px 3px !important;}
                 ⚠️ Payment and rating data is hidden from public view. Only admins can see this information.
             </p>
 </div>
+
+<div class="admin-header-box">
+<div class="admin-header-top">
+<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; gap:10px; flex-wrap:wrap;">
+<h1 style="margin:0;">Portal Backup</h1>
+<div style="display:flex; gap:10px; flex-wrap:wrap;">
+<button class="control-btn" onclick="downloadBackup()" style="background:#2e7d32;">⬇ Backup Portal</button>
+<button class="control-btn" onclick="previewLatestServerBackup()" style="background:#5c6bc0;">👁 Preview Latest</button>
+<button class="control-btn" onclick="restoreLatestServerBackup()" style="background:#3949ab;">♻ Restore Latest</button>
+<button class="control-btn" onclick="document.getElementById('restoreBackupFile').click()" style="background:#8e24aa;">⤴ Restore Portal</button>
+<input accept=".json,application/json" id="restoreBackupFile" onchange="restoreBackupFromFile(event)" style="display:none;" type="file"/>
+</div>
+</div>
+</div>
+<div class="admin-header-bottom">
+<div class="maintenance-control">
+<div class="maintenance-toggle">
+<input class="maintenance-checkbox" id="maintenanceCheckbox" onchange="toggleMaintenance()" type="checkbox"/>
+<label class="maintenance-label" for="maintenanceCheckbox" id="maintenanceLabel">Maintenance Mode Off</label>
+<div class="maintenance-status inactive" id="maintenanceStatus">PORTAL ACTIVE</div>
+</div>
+</div>
+</div>
+</div>
+
 
 <div class="snapshot-pro-section">
 <h3>🧠 Quick Restore</h3>
