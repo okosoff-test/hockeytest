@@ -2228,7 +2228,7 @@ button {
 .compact-pay-btn{
     border:none;
     background:transparent;
-    color:#fff;
+    color:#FFC107;
     margin:0 !important;
     cursor:pointer;
     line-height:1;
@@ -5376,6 +5376,19 @@ th, td{padding:2px 3px !important;}
     background:rgba(255,255,255,0.16);
     outline:none;
 }
+
+.admin-account-btn i,
+.admin-account-btn .fa,
+.admin-account-btn .fas,
+.admin-account-btn .far{
+    color:#FFC107 !important;
+    animation:accountIconPulse 2s ease-in-out infinite;
+}
+@keyframes accountIconPulse{
+  0%,100%{transform:scale(1);filter:drop-shadow(0 0 0 rgba(255,193,7,0));}
+  50%{transform:scale(1.18);filter:drop-shadow(0 0 6px rgba(255,193,7,.9));}
+}
+
 .admin-account-dropdown{
     position:absolute;
     top:52px;
