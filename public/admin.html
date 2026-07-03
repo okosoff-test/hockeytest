@@ -12779,7 +12779,17 @@ document.addEventListener('keydown', function(e){
     window.addEventListener('load', closeNestedRegisteredSections);
 })();
 </script>
-<style id="registeredPlayersNestedHiddenSectionsStyleV1">
+<style id="registeredPlayersNestedHiddenSectionsStyleV2">
+/* Keep nested Waitlist + Recent Cancellations completely hidden until Registered Players is expanded. */
+.registered-players-box.admin-collapsed > .waitlist-section,
+.registered-players-box.admin-collapsed > .cancellations-section,
+.registered-players-box.admin-ui-collapsed > .waitlist-section,
+.registered-players-box.admin-ui-collapsed > .cancellations-section,
+.registered-players-box.is-collapsed > .mobile-collapse-body > .waitlist-section,
+.registered-players-box.is-collapsed > .mobile-collapse-body > .cancellations-section {
+    display: none !important;
+}
+
 .registered-players-box .waitlist-section,
 .registered-players-box .cancellations-section {
     margin-top: 14px !important;
