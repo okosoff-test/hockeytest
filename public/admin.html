@@ -6019,23 +6019,7 @@ th, td{padding:2px 3px !important;}
 <div id="overrideDetails"></div>
 </div>
 </div>
-</div>
-
-<div class="details-box">
-<h3>📍 Game Details</h3>
-<div class="control-row">
-<input id="locationInput" placeholder="Location" readonly="" style="flex:1;" type="text"/>
-<input id="timeInput" placeholder="Time" readonly="" style="flex:1;" type="text"/>
-</div>
-<div class="control-row" style="margin-top:10px;">
-<input id="dateInput" style="flex:1;" type="date"/>
-<button class="control-btn" onclick="updateDetails()">Update Date Only</button>
-</div>
-<div class="status-display" style="margin-top:10px; margin-left:0;">
-<span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
-</div>
-</div>
-
+<div class="game-setup-subsection announcement-inline-section">
 <div class="announcement-control compact-announcement-control">
 <div class="announcement-topbar">
 <h3>📢 Announcement</h3>
@@ -6075,6 +6059,25 @@ th, td{padding:2px 3px !important;}
 <button class="control-btn secondary-btn" onclick="clearAnnouncementSettings()" type="button">Clear</button>
 </div>
 </div>
+</div>
+</div>
+
+<div class="details-box">
+<h3>📍 Game Details</h3>
+<div class="control-row">
+<input id="locationInput" placeholder="Location" readonly="" style="flex:1;" type="text"/>
+<input id="timeInput" placeholder="Time" readonly="" style="flex:1;" type="text"/>
+</div>
+<div class="control-row" style="margin-top:10px;">
+<input id="dateInput" style="flex:1;" type="date"/>
+<button class="control-btn" onclick="updateDetails()">Update Date Only</button>
+</div>
+<div class="status-display" style="margin-top:10px; margin-left:0;">
+<span id="currentDateDisplay">--</span> | <span id="currentLocation">--</span> | <span id="currentTime">--</span>
+</div>
+</div>
+
+
 
 <div class="registered-players-box">
 <h3 class="section-header registered-players-header">🏒 <span class="registered-title-main">Registered Players</span><span class="registered-title-count">(<span id="playerCount">0</span> Players, <span id="goalieCountDisplay">0</span> Goalies)</span></h3>
