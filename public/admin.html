@@ -5770,26 +5770,26 @@ th, td{padding:2px 3px !important;}
 
 
 <style id="admin-account-button-topright-visible-v1">
-/* Account button: compact top-right, bright yellow person icon, icon-only pulse */
+/* Account button: about half-size, top-right, bright yellow person icon, icon-only pulse */
 .admin-account-menu{
     display:flex !important;
     justify-content:flex-end !important;
     align-items:center !important;
     width:100% !important;
-    margin:0 0 10px 0 !important;
+    margin:0 0 8px 0 !important;
     position:relative !important;
     z-index:50 !important;
 }
 .admin-account-btn{
-    width:34px !important;
-    height:34px !important;
-    min-width:34px !important;
-    min-height:34px !important;
-    max-width:34px !important;
-    max-height:34px !important;
+    width:22px !important;
+    height:22px !important;
+    min-width:22px !important;
+    min-height:22px !important;
+    max-width:22px !important;
+    max-height:22px !important;
     padding:0 !important;
     margin:0 !important;
-    border:2px solid rgba(255,255,255,0.85) !important;
+    border:1.5px solid rgba(255,255,255,0.9) !important;
     border-radius:50% !important;
     background:rgba(255,255,255,0.08) !important;
     color:transparent !important;
@@ -5798,7 +5798,7 @@ th, td{padding:2px 3px !important;}
     display:flex !important;
     align-items:center !important;
     justify-content:center !important;
-    box-shadow:0 0 10px rgba(0,0,0,0.35) !important;
+    box-shadow:0 0 6px rgba(0,0,0,0.35) !important;
     animation:none !important;
     transform:none !important;
     position:relative !important;
@@ -5807,27 +5807,27 @@ th, td{padding:2px 3px !important;}
 .admin-account-btn::before{
     content:"";
     position:absolute;
-    top:7px;
+    top:4px;
     left:50%;
-    width:8px;
-    height:8px;
+    width:5px;
+    height:5px;
     border-radius:50%;
     background:#FFD400;
     transform:translateX(-50%);
-    box-shadow:0 0 8px rgba(255,212,0,0.75);
+    box-shadow:0 0 6px rgba(255,212,0,0.8);
     animation:adminAccountIconPulse 1.7s ease-in-out infinite;
 }
 .admin-account-btn::after{
     content:"";
     position:absolute;
     left:50%;
-    bottom:7px;
-    width:16px;
-    height:9px;
-    border-radius:12px 12px 7px 7px;
+    bottom:4px;
+    width:10px;
+    height:6px;
+    border-radius:8px 8px 5px 5px;
     background:#FFD400;
     transform:translateX(-50%);
-    box-shadow:0 0 8px rgba(255,212,0,0.65);
+    box-shadow:0 0 6px rgba(255,212,0,0.7);
     animation:adminAccountIconPulse 1.7s ease-in-out infinite;
 }
 .admin-account-btn:hover,
@@ -5835,31 +5835,21 @@ th, td{padding:2px 3px !important;}
     background:rgba(255,255,255,0.16) !important;
     border-color:#ffffff !important;
     outline:none !important;
-    box-shadow:0 0 10px rgba(0,0,0,0.35), 0 0 10px rgba(255,212,0,0.35) !important;
+    box-shadow:0 0 6px rgba(0,0,0,0.35), 0 0 8px rgba(255,212,0,0.35) !important;
 }
 @keyframes adminAccountIconPulse{
     0%,100%{ opacity:1; filter:brightness(1); }
     50%{ opacity:0.72; filter:brightness(1.55); }
 }
 @media (max-width:700px){
-    .admin-account-menu{ margin:0 0 8px 0 !important; }
+    .admin-account-menu{ margin:0 0 6px 0 !important; }
     .admin-account-btn{
-        width:32px !important;
-        height:32px !important;
-        min-width:32px !important;
-        min-height:32px !important;
-        max-width:32px !important;
-        max-height:32px !important;
-    }
-    .admin-account-btn::before{
-        top:7px;
-        width:8px;
-        height:8px;
-    }
-    .admin-account-btn::after{
-        bottom:7px;
-        width:15px;
-        height:8px;
+        width:22px !important;
+        height:22px !important;
+        min-width:22px !important;
+        min-height:22px !important;
+        max-width:22px !important;
+        max-height:22px !important;
     }
 }
 </style>
