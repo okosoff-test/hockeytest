@@ -9074,11 +9074,12 @@ ${rosterLink}
                             const rawMethod = String(p.paymentMethod || '').toLowerCase();
                             const isCashPaid = isPaid && rawMethod.includes('cash');
                             const compactAmount = isPia
-                                ? 0
+                                ? (Number.isFinite(parseFloat(p.paidAmount)) ? parseFloat(p.paidAmount) : 0)
                                 : (isPaid ? parseFloat(p.paidAmount) : 15);
                             const amountText = Number.isInteger(compactAmount) ? String(compactAmount) : compactAmount.toFixed(2).replace(/\.00$/, '').replace(/0$/, '');
                             const piaDateText = isPia ? formatPiaDateShort(p.piaDate) : '';
-                            const compactLabel = isPia ? `PIA${piaDateText ? ' ' + piaDateText : ''}` : (isPaid ? `${isCashPaid ? '' : 'E'}$${amountText}` : 'OWES');
+                            const piaAmountText = compactAmount > 0 ? ` $${amountText}` : '';
+                            const compactLabel = isPia ? `PIA${piaAmountText}${piaDateText ? ' ' + piaDateText : ''}` : (isPaid ? `${isCashPaid ? '' : 'E'}$${amountText}` : 'OWES');
                             const compactClass = isPia ? 'is-pia' : (isPaid ? (isCashPaid ? 'is-paid-cash' : 'is-paid-etransfer') : 'is-unpaid');
                             const compactMethod = isCashPaid ? 'Cash' : 'E-Transfer';
                             paidInput = `
@@ -9340,7 +9341,9 @@ function todayDateInputValue(){
                         sessionToken: sessionToken,
                         playerId: playerId,
                         status: status,
-                        piaDate: options.piaDate || ''
+                        piaDate: options.piaDate || '',
+                        amount: Object.prototype.hasOwnProperty.call(options, 'amount') ? options.amount : null,
+                        paymentMethod: options.paymentMethod || 'E-Transfer'
                     })
                 });
 
@@ -11409,7 +11412,8 @@ async function markPaymentPia(){
     if(wrap){ wrap.dataset.busy = '1'; wrap.style.opacity = '0.7'; }
     try {
         const piaDate = document.getElementById('paymentSliderPiaDate')?.value || todayDateInputValue();
-        await updatePaymentStatus(playerId, 'pia', { piaDate });
+        const amount = Math.max(0, Number(document.getElementById('paymentSliderNumber')?.value || 0));
+        await updatePaymentStatus(playerId, 'pia', { piaDate, amount, paymentMethod: activePaymentMethod });
         closePaymentSlider();
         await loadData();
     } finally {
@@ -11452,7 +11456,7 @@ document.addEventListener('keydown', function(e){
 <button class="payment-slider-preset" onclick="paymentSliderPreset(0)" type="button">$0</button>
 </div>
 <div class="payment-slider-pia-date-wrap">
-<label for="paymentSliderPiaDate">PIA Date</label>
+<label for="paymentSliderPiaDate">PIA Expires / Date</label>
 <input id="paymentSliderPiaDate" type="date"/>
 </div>
 <div class="payment-slider-actions">

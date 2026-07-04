@@ -3177,9 +3177,19 @@ function applyPaymentStatusToPlayer(player, status, options = {}) {
 
     if (normalized === 'pia') {
         player.paid = true;
-        // PIA means paid in advance and must always carry a $0 collected amount.
-        // Do not preserve a prior $15/default payment when switching to PIA.
-        player.paidAmount = 0;
+        // PIA can carry the amount being paid in advance, while keeping its expiry/date marker.
+        // If no amount is supplied, preserve the current amount; otherwise default to $0.
+        if (Object.prototype.hasOwnProperty.call(options, 'paidAmount')) {
+            const piaAmount = toNumericOrNull(options.paidAmount);
+            player.paidAmount = piaAmount == null ? 0 : Math.max(0, piaAmount);
+        } else if (player.paidAmount == null || player.paidAmount === '') {
+            player.paidAmount = 0;
+        }
+        if (Object.prototype.hasOwnProperty.call(options, 'paymentMethod')) {
+            player.paymentMethod = normalizeCollectionPaymentMethod(options.paymentMethod, player.paymentMethod || 'E-Transfer');
+        } else if (!player.paymentMethod || String(player.paymentMethod).toUpperCase() === 'N/A') {
+            player.paymentMethod = 'E-Transfer';
+        }
         if (Object.prototype.hasOwnProperty.call(options, 'piaDate')) {
             player.piaDate = normalizePiaDate(options.piaDate);
         } else if (!player.piaDate) {
@@ -7384,7 +7394,7 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
 
 // Update payment status endpoint: paid / pia / owes without adding another admin-table column
 app.post('/api/admin/update-payment-status', async (req, res) => {
-    const { password, sessionToken, playerId, status, piaDate } = req.body;
+    const { password, sessionToken, playerId, status, piaDate, amount, paymentMethod } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
 
     const normalizedPlayerId = parseInt(playerId, 10);
@@ -7398,7 +7408,11 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
             player.paymentMethod = normalizeCollectionPaymentMethod(req.body?.paymentMethod, player.paymentMethod || 'E-Transfer');
             applyPaymentStatusToPlayer(player, 'paid', { ensureAmount: true, defaultAmount: 15 });
         } else if (paymentStatus === 'pia') {
-            applyPaymentStatusToPlayer(player, 'pia', { piaDate });
+            applyPaymentStatusToPlayer(player, 'pia', {
+                piaDate,
+                paidAmount: amount,
+                paymentMethod: normalizeCollectionPaymentMethod(paymentMethod, player.paymentMethod || 'E-Transfer')
+            });
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
         }
