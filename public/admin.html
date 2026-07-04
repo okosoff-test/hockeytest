@@ -5854,6 +5854,26 @@ th, td{padding:2px 3px !important;}
 }
 </style>
 
+
+<style id="admin-white-date-picker-icons-v1">
+/* Make native date picker calendar icons visible on dark fields (Chrome/Edge/Safari). */
+input[type="date"] {
+    color-scheme: dark !important;
+}
+input[type="date"]::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(2.8) contrast(1.4) !important;
+    opacity: 1 !important;
+    cursor: pointer !important;
+}
+.payment-slider-pia-date-wrap input[type="date"]::-webkit-calendar-picker-indicator,
+#paymentSliderPiaDate::-webkit-calendar-picker-indicator,
+#newPiaDate::-webkit-calendar-picker-indicator,
+#dateInput::-webkit-calendar-picker-indicator {
+    filter: invert(1) brightness(3.5) contrast(1.6) drop-shadow(0 0 2px rgba(255,255,255,0.65)) !important;
+    opacity: 1 !important;
+}
+</style>
+
 </head>
 <body class="admin-layout-option-1">
 <!-- MAINTENANCE BULLETIN - Shows when activated -->
@@ -6020,7 +6040,7 @@ th, td{padding:2px 3px !important;}
                 Select a day, set its 4-digit default code, then save.
             </div>
 <div class="schedule-editor">
-<h4 style="margin:10px 0 8px 0;">📅 Schedules (ET)</h4>
+<h4 style="margin:10px 0 8px 0;">🗓️ Schedules (ET)</h4>
 <div class="schedule-grid">
 <div class="schedule-card">
 <div class="schedule-title">🔒 Signup Lock Window</div>
