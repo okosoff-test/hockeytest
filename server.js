@@ -2178,6 +2178,7 @@ async function loadDataFromDB() {
         if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
+        if (settings.regularSkatersByDay !== undefined) regularSkatersByDay = normalizeRegularSkatersByDayMap(settings.regularSkatersByDay);
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.persistentPlayerNicknames) persistentPlayerNicknames = normalizePersistentPlayerNicknames(settings.persistentPlayerNicknames);
         if (settings.extraGoalieContacts !== undefined) {
