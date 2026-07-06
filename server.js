@@ -453,13 +453,14 @@ const AUTO_SCHEDULE_LOCK_MINUTE = 0;
 const AUTO_SCHEDULE_RESET_HOUR = 0;
 const AUTO_SCHEDULE_RESET_MINUTE = 0;
 
-// Weekly reset is intentionally exact-minute only.
-// This prevents restored snapshots or Render wake-ups from replaying a missed reset via catch-up.
-const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = 0;
+// Weekly reset catch-up window.
+// Scheduled jobs only execute while the server process is awake. If the exact minute is missed,
+// allow the latest scheduled reset occurrence to run once when the server next wakes.
+const WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT = 36 * 60;
 
 // Weekly reset may be scheduled any time after the configured game time,
 // provided the roster has been released and reset arm is ON.
-// The exact-minute scheduler and run marker prevent replay on Render wake-ups.
+// The occurrence run marker prevents replay, while the catch-up window handles missed minutes.
 
 // Admin-configurable schedules (interpreted in America/New_York, repeats weekly)
 let signupLockSchedule = {
@@ -1110,6 +1111,13 @@ function isEtTimeOnOrAfterParts(etDate, parts) {
     return Number.isFinite(nowKey) && Number.isFinite(targetKey) && nowKey >= targetKey;
 }
 
+
+function getWeeklyResetCatchupMinutes() {
+    const configured = Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES);
+    if (Number.isFinite(configured) && configured >= 0) return configured;
+    return WEEKLY_RESET_CATCHUP_MINUTES_DEFAULT;
+}
+
 function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWeekSchedule && resetWeekSchedule.at, resetCheck = null) {
     const registeredPlayerCount = Array.isArray(players) ? players.length : 0;
     const waitlistCount = Array.isArray(waitlist) ? waitlist.length : 0;
@@ -1121,7 +1129,7 @@ function canSafelyRunWeeklyReset(etTime = getCurrentETTime(), resetAt = resetWee
     const resetLagMinutes = resetCheck && Number.isFinite(resetCheck.lagMinutes)
         ? Number(resetCheck.lagMinutes)
         : minutesSinceLatestWeeklyOccurrence(resetAt, etTime);
-    const maxResetCatchupMinutes = Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 180);
+    const maxResetCatchupMinutes = getWeeklyResetCatchupMinutes();
 
     if (!Number.isFinite(resetLagMinutes) || resetLagMinutes < 0 || resetLagMinutes > maxResetCatchupMinutes) {
         return {
@@ -1735,7 +1743,7 @@ async function checkWeeklyReset() {
         resetWeekSchedule.at,
         lastExactResetRunAt,
         etTime,
-        Number(process.env.WEEKLY_RESET_CATCHUP_MINUTES || 180)
+        getWeeklyResetCatchupMinutes()
     );
     if (!resetCheck.shouldRun) return false;
 
@@ -4961,7 +4969,7 @@ app.get('/api/debug-time', (req, res) => {
     const etTime = getCurrentETTime();
     const shouldLock = shouldBeLocked();
     const resetCheck = resetWeekSchedule && resetWeekSchedule.at
-        ? shouldRunScheduledAction(resetWeekSchedule.at, lastExactResetRunAt, etTime, 0, { exactMinuteOnly: true })
+        ? shouldRunScheduledAction(resetWeekSchedule.at, lastExactResetRunAt, etTime, getWeeklyResetCatchupMinutes())
         : { shouldRun: false, reason: 'missing_schedule' };
     const resetSafety = resetWeekSchedule && resetWeekSchedule.at
         ? canSafelyRunWeeklyReset(etTime, resetWeekSchedule.at, resetCheck)
@@ -4984,8 +4992,8 @@ app.get('/api/debug-time', (req, res) => {
         signupLockSchedule,
         rosterReleaseSchedule,
         resetWeekSchedule,
-        resetCatchupMinutes: 0,
-        resetMode: 'exact_minute_only',
+        resetCatchupMinutes: getWeeklyResetCatchupMinutes(),
+        resetMode: 'exact_minute_plus_catchup_once_per_occurrence',
         resetCheck,
         resetSafety,
         requirePlayerCode: requirePlayerCode,
