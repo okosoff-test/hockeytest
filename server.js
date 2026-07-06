@@ -7482,6 +7482,61 @@ app.post('/api/admin/update-nickname', async (req, res) => {
     }
 });
 
+
+// Admin override for player phone number. Updates registered players, waitlist, current roster history payload, and persistent profile keys.
+app.post('/api/admin/update-phone', async (req, res) => {
+    const { password, sessionToken, playerId, phone } = req.body;
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
+
+    const normalizedPlayerId = parseInt(playerId, 10);
+    if (!Number.isFinite(normalizedPlayerId)) return res.status(400).json({ error: "Invalid player id" });
+    if (!validatePhoneNumber(phone)) return res.status(400).json({ error: "Please enter a valid 10-digit phone number." });
+
+    const cleanPhone = formatPhoneNumber(phone);
+    const cleanPhoneDigits = normalizePhoneDigits(cleanPhone);
+    const player = players.find(p => parseInt(p.id, 10) === normalizedPlayerId) || waitlist.find(p => parseInt(p.id, 10) === normalizedPlayerId);
+    if (!player) return res.status(404).json({ error: "Player not found" });
+
+    const duplicate = [...players, ...waitlist].find(p =>
+        parseInt(p.id, 10) !== normalizedPlayerId &&
+        normalizePhoneDigits(p.phone) === cleanPhoneDigits
+    );
+    if (duplicate) {
+        return res.status(400).json({ error: `That phone number already belongs to ${duplicate.firstName || 'another'} ${duplicate.lastName || 'player'}.` });
+    }
+
+    try {
+        await runProtectedMutation('update-phone', req, async () => {
+            player.phone = cleanPhone;
+            rememberPersistentPlayerNickname(player, player.nickname);
+            rememberPersistentAdminRating(player, player.adminRating ?? player.finalRating ?? player.rating);
+
+            for (const teamKey of ['whiteTeam', 'darkTeam']) {
+                if (!Array.isArray(currentWeekData?.[teamKey])) continue;
+                const currentPlayer = currentWeekData[teamKey].find(p => parseInt(p.id, 10) === normalizedPlayerId);
+                if (currentPlayer) currentPlayer.phone = cleanPhone;
+            }
+
+            if (pool) {
+                await pool.query('UPDATE players SET phone = $1 WHERE id = $2', [cleanPhone, normalizedPlayerId]);
+                await pool.query('UPDATE waitlist SET phone = $1 WHERE id = $2', [cleanPhone, normalizedPlayerId]).catch(() => {});
+            }
+
+            if (rosterReleased) {
+                const etNow = getCurrentETTime();
+                const { week, year } = getWeekNumber(etNow);
+                await saveWeekHistory(year, week, currentWeekData.whiteTeam || [], currentWeekData.darkTeam || []);
+            }
+        }, { playerId: normalizedPlayerId, phone: cleanPhone });
+
+        await saveData();
+        res.json({ success: true, player, displayName: getRosterFullName(player) });
+    } catch (err) {
+        console.error('Error updating phone:', err);
+        res.status(500).json({ error: "Failed to update phone safely" });
+    }
+});
+
 // Admin override for final player rating
 app.post('/api/admin/update-rating', async (req, res) => {
     const { password, sessionToken, playerId, newRating } = req.body;
