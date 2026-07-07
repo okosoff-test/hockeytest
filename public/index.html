@@ -3065,10 +3065,19 @@ function updateCalculatedRating() {
             const generalText = String(data.announcementText || '').trim();
             const rosterText = String(data.rosterReleaseAnnouncementText || '').trim();
             const defaultRosterText = "Etransfer: okosoff@outlook.com\n{spots}\n{joinMessage}";
-            const rawText = isRosterReleased ? (rosterText || defaultRosterText) : generalText;
             const images = Array.isArray(data.announcementImages) ? data.announcementImages : [];
-            const image = (!isRosterReleased && images.length) ? String(images[0] || '').trim() : '';
-            const shouldShow = isRosterReleased ? !!rawText : (generalEnabled && (!!rawText || !!image));
+            const image = (generalEnabled && images.length) ? String(images[0] || '').trim() : '';
+            const hasGeneralAnnouncement = generalEnabled && (!!generalText || !!image);
+
+            // General announcements are intentionally independent of roster release.
+            // If enabled, they can be posted before, during, or after roster release.
+            // When no general announcement is enabled, the automatic roster-release
+            // payment/spots message still appears after the roster is released.
+            const isRosterAnnouncement = !hasGeneralAnnouncement && isRosterReleased;
+            const rawText = hasGeneralAnnouncement
+                ? generalText
+                : (isRosterAnnouncement ? (rosterText || defaultRosterText) : '');
+            const shouldShow = hasGeneralAnnouncement || (isRosterAnnouncement && !!rawText);
 
             if (!shouldShow) {
                 bulletin.classList.remove('active');
@@ -3104,7 +3113,7 @@ function updateCalculatedRating() {
                 ? "'Join Game', recheck roster, see you at the rink."
                 : "'Join Waitlist', 1st on waitlist is guaranteed a spot if a player cancels.";
 
-            if (isRosterReleased) {
+            if (isRosterAnnouncement) {
                 if (text.includes('{joinMessage}')) {
                     text = text.split('{joinMessage}').join(joinMessage);
                 } else if (/You\s+can\s+still\s+['’‘"]?Join Game['’‘"]?/i.test(text)) {
