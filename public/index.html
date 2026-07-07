@@ -812,6 +812,17 @@
             word-break: break-word;
         }
 
+        .player-rating-footnote {
+            display: inline-block;
+            margin-left: 3px;
+            font-size: 0.72em;
+            line-height: 1;
+            vertical-align: super;
+            opacity: 0.78;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+        }
+
         .goalie-label {
             color: #ff6b00;
             font-size: 0.7rem;
@@ -3657,6 +3668,13 @@ function updateCalculatedRating() {
             }
         }
 
+        function formatPlayerRatingFootnote(player) {
+            const raw = player.finalRating ?? player.rating ?? player.directRating ?? '';
+            const rating = parseFloat(raw);
+            if (!Number.isFinite(rating)) return '';
+            return rating.toFixed(1).replace('.', '·');
+        }
+
         function renderPlayers(players) {
             const grid = document.getElementById('playersGrid');
             const countSpan = document.getElementById('registeredCount');
@@ -3704,6 +3722,8 @@ function updateCalculatedRating() {
 
                 const initials = ((firstName[0] || '') + (lastName[0] || '')).toUpperCase();
                 const goalieLabel = isGoalie ? '<div class="goalie-badge">GOALIE</div>' : '';
+                const ratingFootnote = formatPlayerRatingFootnote(player);
+                const ratingHtml = ratingFootnote ? `<span class="player-rating-footnote">${ratingFootnote}</span>` : '';
                 const protectedLabel = isProtected ? '<div class="protected-label">PROTECTED</div>' : '';
                 const isSubbedIn = !!(player.promotedFromWaitlist && player.subbedInForName && !player.lateAddedAfterRelease && !player.isLateAddition);
                 const subbedInLabel = isSubbedIn ? '<div class="subbed-in-label">SUBBED IN</div>' : '';
@@ -3717,7 +3737,7 @@ function updateCalculatedRating() {
                 card.innerHTML = `
                     <div class="player-avatar">${initials}</div>
                     <div class="player-info-simple">
-                        <div class="player-name-simple">${firstName} ${lastName}</div>
+                        <div class="player-name-simple">${firstName} ${lastName}${ratingHtml}</div>
                         ${goalieLabel}
                         ${protectedLabel}
                         ${subbedInLabel}
