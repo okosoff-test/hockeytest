@@ -5241,9 +5241,13 @@ app.get('/api/status', (req, res) => {
         firstName: p.firstName,
         lastName: p.lastName,
         isGoalie: p.isGoalie,
+        // Public display-only rating marker beside registered names.
+        // Uses the current saved player rating at render time; it is not frozen by weekly reset.
+        rating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
+        finalRating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         // Phan Ly cannot cancel from signup page - only admin can remove
         canCancel: cancellationAllowedNow && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
-        // Public replacement display fields only. Still excludes rating, payment, and phone.
+        // Public replacement display fields only. Still excludes payment and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
         isLateAddition: !!p.lateAddedAfterRelease,
