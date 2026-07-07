@@ -9115,7 +9115,7 @@ ${rosterLink}
                         const raw = player.finalRating ?? player.rating ?? player.directRating ?? '';
                         const rating = parseFloat(raw);
                         if (!Number.isFinite(rating)) return '';
-                        return String(Math.round(rating));
+                        return parseFloat(rating.toFixed(1)).toString();
                     };
 
                     sortedPlayers.forEach(p => {
