@@ -6422,11 +6422,12 @@ th, td{padding:2px 3px !important;}
 </div>
 <div class="roster-text-export-box" id="rosterTextExportBox">
 <h4>📱 Mass Text Signup Players</h4>
-<p>Use this anytime to text the current signup list from Android. Phan Ly and all goalies are automatically excluded.</p>
+<p>Use this anytime to text the current signup list. Android can open a group text directly. iPhone users should copy the numbers, open Messages, tap To, then paste. Phan Ly and all goalies are automatically excluded.</p>
 <div class="roster-text-export-actions">
 <button class="control-btn" onclick="copySignupPhonesOnly()" style="background:#2e7d32;">Copy Phone Numbers</button>
 <button class="control-btn" onclick="copySignupNamesAndPhones()" style="background:#4a90e2;">Copy Names + Phones</button>
-<button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Open Android Text</button>
+<button class="control-btn" onclick="copySignupIphoneNumbers()" style="background:#111827;">iPhone: Copy for Messages</button>
+<button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Android: Open Text</button>
 <button class="control-btn" onclick="downloadSignupContactsCsv()" style="background:#546e7a;">Download CSV</button>
 </div>
 <textarea class="roster-text-export-preview" id="rosterTextExportPreview" placeholder="Signup contact export appears here after players sign up." readonly=""></textarea>
@@ -8695,6 +8696,15 @@ Date: ${selectedGameDate}`);
         async function copySignupNamesAndPhones() {
             const data = buildSignupMassTextExport();
             await copyTextToClipboard(data.namePhoneLines, `Copied ${data.total || 0} signup names and phone numbers.`);
+        }
+
+        async function copySignupIphoneNumbers() {
+            const data = buildSignupMassTextExport();
+            if (!data.phoneOnly) {
+                alert('No eligible signup phone numbers available. Phan Ly and goalies are excluded automatically.');
+                return;
+            }
+            await copyTextToClipboard(data.phoneOnly, `Copied ${data.total || 0} numbers. On iPhone, open Messages, start a new message, tap To, then paste.`);
         }
 
         async function openSignupSmsDraft() {
