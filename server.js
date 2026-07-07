@@ -726,6 +726,10 @@ let persistentAdminRatings = {};
 // Keyed primarily by normalized 10-digit phone number, with a name fallback.
 let persistentPlayerNicknames = {};
 
+// Persistent paid-in-advance records that survive weekly reset until their expiry date.
+// Keyed the same way as ratings/nicknames, preferring phone number.
+let persistentPiaPayments = {};
+
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
     const lastName = String(input.lastName || '').trim();
@@ -1689,14 +1693,15 @@ async function addAutoPlayers() {
 
         applyPersistentPlayerNickname(newPlayer);
         applyPersistentAdminRating(newPlayer);
+        applyPersistentPiaPayment(newPlayer);
 
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
+                    `INSERT INTO players (id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, pia_date, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
                     [newPlayer.id, newPlayer.firstName, newPlayer.lastName, normalizeNickname(newPlayer.nickname) || null, newPlayer.phone,
-                     newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), newPlayer.rating,
+                     newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), normalizePiaDate(newPlayer.piaDate) || null, newPlayer.rating,
                      toNumericOrNull(newPlayer.adminRating), toNumericOrNull(newPlayer.adminAdjustment), toNumericOrNull(newPlayer.finalRating),
                      autoPlayer.isGoalie, null, newPlayer.registeredAt, true]
                 );
@@ -1763,6 +1768,7 @@ async function checkWeeklyReset() {
     // Preserve persistent player profile fields before clearing the weekly roster.
     rememberCurrentAdminRatings();
     rememberCurrentPlayerNicknames();
+    rememberCurrentPiaPaymentsAndExpire(etTime);
 
     if (
         rosterReleased &&
@@ -2189,6 +2195,7 @@ async function loadDataFromDB() {
         if (settings.regularSkatersByDay !== undefined) regularSkatersByDay = normalizeRegularSkatersByDayMap(settings.regularSkatersByDay);
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.persistentPlayerNicknames) persistentPlayerNicknames = normalizePersistentPlayerNicknames(settings.persistentPlayerNicknames);
+        if (settings.persistentPiaPayments) persistentPiaPayments = normalizePersistentPiaPayments(settings.persistentPiaPayments);
         if (settings.extraGoalieContacts !== undefined) {
             extraGoalieContacts = normalizePersistedGoalieContacts(settings.extraGoalieContacts, extraGoalieContacts);
         }
@@ -2329,6 +2336,20 @@ async function loadDataFromDB() {
                 persistentAdminRatings = normalizePersistentAdminRatings(JSON.parse(appSettings.persistentAdminRatings || '{}'));
             } catch {
                 persistentAdminRatings = normalizePersistentAdminRatings(persistentAdminRatings);
+            }
+        }
+        if (appSettings.persistentPlayerNicknames !== undefined) {
+            try {
+                persistentPlayerNicknames = normalizePersistentPlayerNicknames(JSON.parse(appSettings.persistentPlayerNicknames || '{}'));
+            } catch {
+                persistentPlayerNicknames = normalizePersistentPlayerNicknames(persistentPlayerNicknames);
+            }
+        }
+        if (appSettings.persistentPiaPayments !== undefined) {
+            try {
+                persistentPiaPayments = normalizePersistentPiaPayments(JSON.parse(appSettings.persistentPiaPayments || '{}'));
+            } catch {
+                persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
             }
         }
         if (appSettings.extraGoalieContacts !== undefined) {
@@ -3250,6 +3271,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['extraGoalieContacts', extraGoalieContacts],
             ['persistentAdminRatings', persistentAdminRatings],
             ['persistentPlayerNicknames', persistentPlayerNicknames],
+            ['persistentPiaPayments', persistentPiaPayments],
             ['customSignupCode', customSignupCode],
             ['editableDefaultSignupCode', editableDefaultSignupCode],
             ['weeklyDefaultSignupCodes', weeklyDefaultSignupCodes],
@@ -3285,6 +3307,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['extraGoalieContacts', JSON.stringify(extraGoalieContacts)],
             ['persistentAdminRatings', JSON.stringify(persistentAdminRatings)],
             ['persistentPlayerNicknames', JSON.stringify(persistentPlayerNicknames)],
+            ['persistentPiaPayments', JSON.stringify(persistentPiaPayments)],
             ['regularSkatersByDay', JSON.stringify(regularSkatersByDay)],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
@@ -3491,6 +3514,7 @@ function buildFullDataSnapshot() {
         extraGoalieContacts,
         persistentAdminRatings,
         persistentPlayerNicknames,
+        persistentPiaPayments,
         customSignupCode,
         editableDefaultSignupCode,
         weeklyDefaultSignupCodes,
@@ -3624,6 +3648,8 @@ function getSettingsSnapshot() {
         regularSkatersByDay,
         extraGoalieContacts,
         persistentAdminRatings,
+        persistentPlayerNicknames,
+        persistentPiaPayments,
         customSignupCode,
         editableDefaultSignupCode,
         weeklyDefaultSignupCodes,
@@ -3733,6 +3759,7 @@ function loadDataFromFile() {
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             persistentPlayerNicknames = normalizePersistentPlayerNicknames(data.persistentPlayerNicknames || data.appSettings?.persistentPlayerNicknames || {});
+            persistentPiaPayments = normalizePersistentPiaPayments(data.persistentPiaPayments || data.appSettings?.persistentPiaPayments || {});
             customSignupCode = String(data.customSignupCode || '').trim();
             editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
             if (data.weeklyDefaultSignupCodes !== undefined) weeklyDefaultSignupCodes = normalizeWeeklyDefaultSignupCodes(data.weeklyDefaultSignupCodes);
@@ -3932,6 +3959,140 @@ function rememberPersistentPlayerNickname(player = {}, nicknameValue = player?.n
         delete persistentPlayerNicknames[key];
     }
     return true;
+}
+
+
+function getETDateString(date = getCurrentETTime()) {
+    const d = date instanceof Date ? date : getCurrentETTime();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+}
+
+function isPiaDateExpired(piaDate, referenceDate = getCurrentETTime()) {
+    const cleanDate = normalizePiaDate(piaDate);
+    if (!cleanDate) return true;
+    // PIA remains active through the expiry date. It expires the next ET day.
+    return cleanDate < getETDateString(referenceDate);
+}
+
+function normalizePersistentPiaPayments(input = {}) {
+    const output = {};
+    if (!input || typeof input !== 'object') return output;
+    for (const [rawKey, rawValue] of Object.entries(input)) {
+        const key = String(rawKey || '').trim();
+        const value = rawValue && typeof rawValue === 'object' ? rawValue : {};
+        const piaDate = normalizePiaDate(value.piaDate);
+        if (!key || !piaDate || isPiaDateExpired(piaDate)) continue;
+        const paidAmount = toNumericOrNull(value.paidAmount);
+        output[key] = {
+            paymentStatus: 'pia',
+            paid: true,
+            paidAmount: paidAmount == null ? 0 : Math.max(0, paidAmount),
+            paymentMethod: normalizeCollectionPaymentMethod(value.paymentMethod, 'E-Transfer'),
+            piaDate
+        };
+    }
+    return output;
+}
+
+function forgetPersistentPiaPayment(player = {}) {
+    const key = getPersistentRatingKeyForPlayer(player);
+    if (!key) return false;
+    persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
+    if (Object.prototype.hasOwnProperty.call(persistentPiaPayments, key)) {
+        delete persistentPiaPayments[key];
+        return true;
+    }
+    return false;
+}
+
+function rememberPersistentPiaPayment(player = {}, referenceDate = getCurrentETTime()) {
+    const key = getPersistentRatingKeyForPlayer(player);
+    if (!key) return false;
+    persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
+    const status = normalizePaymentStatus(player.paymentStatus, player);
+    const piaDate = normalizePiaDate(player.piaDate);
+
+    if (status !== 'pia' || !piaDate || isPiaDateExpired(piaDate, referenceDate)) {
+        delete persistentPiaPayments[key];
+        return false;
+    }
+
+    const paidAmount = toNumericOrNull(player.paidAmount);
+    persistentPiaPayments[key] = {
+        paymentStatus: 'pia',
+        paid: true,
+        paidAmount: paidAmount == null ? 0 : Math.max(0, paidAmount),
+        paymentMethod: normalizeCollectionPaymentMethod(player.paymentMethod, 'E-Transfer'),
+        piaDate
+    };
+    return true;
+}
+
+function getPersistentPiaPayment(player = {}, referenceDate = getCurrentETTime()) {
+    persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
+    const primaryKey = getPersistentRatingKeyForPlayer(player);
+    if (primaryKey && persistentPiaPayments[primaryKey]) {
+        const saved = persistentPiaPayments[primaryKey];
+        if (!isPiaDateExpired(saved.piaDate, referenceDate)) return saved;
+        delete persistentPiaPayments[primaryKey];
+    }
+
+    const phoneKey = normalizePhoneDigits(player.phone || '');
+    const phoneMapKey = phoneKey ? `phone:${phoneKey}` : '';
+    if (phoneMapKey && persistentPiaPayments[phoneMapKey]) {
+        const saved = persistentPiaPayments[phoneMapKey];
+        if (!isPiaDateExpired(saved.piaDate, referenceDate)) return saved;
+        delete persistentPiaPayments[phoneMapKey];
+    }
+
+    const first = String(player.firstName || '').trim().toLowerCase();
+    const last = String(player.lastName || '').trim().toLowerCase();
+    const nameKey = `name:${first}|${last}`;
+    if ((first || last) && persistentPiaPayments[nameKey]) {
+        const saved = persistentPiaPayments[nameKey];
+        if (!isPiaDateExpired(saved.piaDate, referenceDate)) return saved;
+        delete persistentPiaPayments[nameKey];
+    }
+
+    return null;
+}
+
+function applyPersistentPiaPayment(player = {}, referenceDate = getCurrentETTime()) {
+    if (!player || typeof player !== 'object') return player;
+    const saved = getPersistentPiaPayment(player, referenceDate);
+    if (!saved) return player;
+    return applyPaymentStatusToPlayer(player, 'pia', {
+        piaDate: saved.piaDate,
+        paidAmount: saved.paidAmount,
+        paymentMethod: saved.paymentMethod
+    });
+}
+
+function rememberCurrentPiaPaymentsAndExpire(referenceDate = getCurrentETTime()) {
+    let activeCount = 0;
+    const activeEntries = [
+        ...(Array.isArray(players) ? players : []),
+        ...(Array.isArray(waitlist) ? waitlist : [])
+    ];
+
+    for (const player of activeEntries) {
+        if (!player) continue;
+        if (normalizePaymentStatus(player.paymentStatus, player) !== 'pia') {
+            forgetPersistentPiaPayment(player);
+            continue;
+        }
+        if (rememberPersistentPiaPayment(player, referenceDate)) {
+            activeCount += 1;
+        } else {
+            applyPaymentStatusToPlayer(player, 'owes');
+        }
+    }
+
+    persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
+    return activeCount;
 }
 
 function rememberCurrentPlayerNicknames() {
@@ -5707,6 +5868,7 @@ app.post('/api/register-final', async (req, res) => {
     // Returning players keep the admin-adjusted rating saved from prior weeks.
     applyPersistentPlayerNickname(newPlayer);
         applyPersistentAdminRating(newPlayer);
+        applyPersistentPiaPayment(newPlayer);
 
     try {
         await runProtectedMutation('player-signup', req, async () => {
@@ -7301,6 +7463,7 @@ app.post('/api/admin/add-player', async (req, res) => {
     });
     applyPersistentPlayerNickname(newPlayer);
         applyPersistentAdminRating(newPlayer);
+        applyPersistentPiaPayment(newPlayer);
     try { await runProtectedMutation('admin-add-player', req, async () => { players.push(newPlayer); if (!isGoalieBool) remainingSkaterSpots = Math.max(0, remainingSkaterSpots - 1); if (rosterReleased) rebalanceReleasedRoster('admin-add-player-after-release'); }, { playerId: newPlayer.id, rosterReleased, assignTeam: teamForLateAdd }); }
     catch (err) { console.error('Error adding player:', err); return res.status(500).json({ error: "Failed to add player safely" }); }
     res.json({ success: true, player: newPlayer, inWaitlist: false, assignTeam: teamForLateAdd, rosterReleased });
@@ -7385,13 +7548,22 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
     try {
         player.paidAmount = paidAmount;
 
-        if (paidAmount !== null && paidAmount > 0) {
+        if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
+            applyPaymentStatusToPlayer(player, 'pia', {
+                paidAmount,
+                paymentMethod: normalizeCollectionPaymentMethod(paymentMethod, player.paymentMethod || 'E-Transfer')
+            });
+        } else if (paidAmount !== null && paidAmount > 0) {
             player.paymentMethod = normalizeCollectionPaymentMethod(paymentMethod, player.paymentMethod || 'E-Transfer');
             applyPaymentStatusToPlayer(player, 'paid');
-        } else if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
-            applyPaymentStatusToPlayer(player, 'pia');
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
+        }
+
+        if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
+            rememberPersistentPiaPayment(player);
+        } else {
+            forgetPersistentPiaPayment(player);
         }
 
         if (pool) {
@@ -7438,6 +7610,12 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
             });
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
+        }
+
+        if (normalizePaymentStatus(player.paymentStatus, player) === 'pia') {
+            rememberPersistentPiaPayment(player);
+        } else {
+            forgetPersistentPiaPayment(player);
         }
 
         if (pool) {
@@ -7926,6 +8104,7 @@ app.post('/api/admin/manual-reset', async (req, res) => {
             // Preserve persistent player profile fields before clearing the weekly roster.
             rememberCurrentAdminRatings();
             rememberCurrentPlayerNicknames();
+            rememberCurrentPiaPaymentsAndExpire(etTime);
             remainingSkaterSpots = skaterCapacity; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
             manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
