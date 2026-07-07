@@ -822,15 +822,32 @@ function clearAnnouncementState() {
 const BACKUP_GOALIES = [];
 
 // --- ARENA OPTIONS ---
-const ARENA_OPTIONS = [
+const DEFAULT_ARENA_OPTIONS = [
     "WFCU Bowl",
-    "WFCU Greenshield", 
+    "WFCU Greenshield",
     "WFCU Grenon",
     "WFCU AM800",
     "Capri Recreation Complex",
     "Vollmer Lasalle Arena",
     "Atlas Tube Lakeshore"
 ];
+
+let arenaOptions = [...DEFAULT_ARENA_OPTIONS];
+
+function normalizeArenaOptions(value) {
+    const source = Array.isArray(value) ? value : DEFAULT_ARENA_OPTIONS;
+    const seen = new Set();
+    const cleaned = [];
+    for (const item of source) {
+        const name = String(item || '').trim();
+        if (!name) continue;
+        const key = name.toLowerCase();
+        if (seen.has(key)) continue;
+        seen.add(key);
+        cleaned.push(name);
+    }
+    return cleaned.length ? cleaned : [...DEFAULT_ARENA_OPTIONS];
+}
 
 // --- DAY/TIME OPTIONS FOR TITLE ---
 const DAY_TIME_OPTIONS = [
@@ -2352,6 +2369,14 @@ async function loadDataFromDB() {
                 persistentPiaPayments = normalizePersistentPiaPayments(persistentPiaPayments);
             }
         }
+        if (appSettings.arenaOptions !== undefined) {
+            try {
+                arenaOptions = normalizeArenaOptions(JSON.parse(appSettings.arenaOptions || '[]'));
+            } catch (err) {
+                arenaOptions = normalizeArenaOptions(appSettings.arenaOptions);
+            }
+        }
+
         if (appSettings.extraGoalieContacts !== undefined) {
             const appExtraGoalies = normalizePersistedGoalieContacts(appSettings.extraGoalieContacts, null);
             // Prefer a non-empty app_settings list, but do not let a stale blank app_settings row wipe
@@ -2971,6 +2996,7 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
                 if (typeof s.collectorPageEnabled === 'boolean') collectorPageEnabled = s.collectorPageEnabled;
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
+        if (Array.isArray(s.arenaOptions)) arenaOptions = normalizeArenaOptions(s.arenaOptions);
     }
 
     remainingSkaterSpots = Math.max(0, skaterCapacity - players.filter(p => !(p && p.isGoalie)).length);
@@ -3311,6 +3337,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['regularSkatersByDay', JSON.stringify(regularSkatersByDay)],
             ['selectedDayTime', gameTime],
             ['selectedArena', gameLocation],
+            ['arenaOptions', JSON.stringify(arenaOptions)],
             ['gameDate', gameDate]
         ];
         for (const [key, value] of appSettingsEntries) {
@@ -3568,6 +3595,7 @@ function buildFullDataSnapshot() {
         collectorPageEnabled,
             selectedDayTime: gameTime,
             selectedArena: gameLocation,
+            arenaOptions,
             requirePlayerCode,
             playerSignupCode
         },
@@ -5469,7 +5497,7 @@ app.get('/api/status', (req, res) => {
         announcementImages: announcementImages,
         paymentEmail: paymentEmail,
         rosterReleaseAnnouncementText: rosterReleaseAnnouncementText,
-        arenaOptions: ARENA_OPTIONS,
+        arenaOptions: arenaOptions,
         dayTimeOptions: DAY_TIME_OPTIONS,
         gameDayName: signupMessageData.gameDayName,
         nextOpenAt: signupMessageData.nextOpenAtIso,
@@ -6180,7 +6208,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         selectedDayTime: gameTime,
         selectedArena: gameLocation,
         gameDate,
-        arenaOptions: ARENA_OPTIONS,
+        arenaOptions: arenaOptions,
         dayTimeOptions: DAY_TIME_OPTIONS,
         backupGoalies: BACKUP_GOALIES,
         extraGoalieContacts,
@@ -6193,7 +6221,7 @@ app.post('/api/admin/app-settings', (req, res) => {
 app.post('/api/admin/update-app-settings', async (req, res) => {
     const { sessionToken, maintenanceMode: newMaintenance, customTitle: newTitle,
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
-            rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, gameDate: newGameDate,
+            rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, arenaOptions: newArenaOptions, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay, collectorPageEnabled: newCollectorPageEnabled } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
@@ -6215,6 +6243,9 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newRegularSkatersByDay !== undefined) {
                 regularSkatersByDay = normalizeRegularSkatersByDayMap(newRegularSkatersByDay);
             }
+            if (newArenaOptions !== undefined) {
+                arenaOptions = normalizeArenaOptions(newArenaOptions);
+            }
             if (selectedDayTime) {
                 gameTime = selectedDayTime;
                 if (canAutoRebuildSchedules()) {
@@ -6229,7 +6260,12 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
                     lastExactRosterReleaseMinuteKey = rosterGuard.minuteKey;
                 }
             }
-            if (selectedArena) gameLocation = selectedArena;
+            if (selectedArena) {
+                gameLocation = String(selectedArena || '').trim();
+                if (gameLocation && !arenaOptions.some(a => a.toLowerCase() === gameLocation.toLowerCase())) {
+                    arenaOptions = normalizeArenaOptions([...arenaOptions, gameLocation]);
+                }
+            }
             if (newGameDate) {
                 gameDate = newGameDate;
                 if (canAutoRebuildSchedules()) {
@@ -6251,6 +6287,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             collectorPageEnabled,
             gameTime,
             gameLocation,
+            arenaOptions,
             gameDate
         });
     } catch (err) {
@@ -6909,6 +6946,7 @@ app.post('/api/admin/restore-backup', async (req, res) => {
                 if (typeof s.collectorPageEnabled === 'boolean') collectorPageEnabled = s.collectorPageEnabled;
                 if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
                 if (typeof s.playerSignupCode === 'string') playerSignupCode = s.playerSignupCode;
+                if (Array.isArray(s.arenaOptions)) arenaOptions = normalizeArenaOptions(s.arenaOptions);
             }
         }
 

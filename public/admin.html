@@ -887,6 +887,26 @@
             margin: 0;
         }
 
+
+        .arena-add-btn {
+            width: 38px;
+            min-width: 38px;
+            height: 38px;
+            border: 1px solid rgba(255,255,255,0.28);
+            border-radius: 10px;
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            font-size: 1.3rem;
+            font-weight: 800;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .arena-add-btn:hover {
+            background: rgba(255,255,255,0.22);
+            transform: translateY(-1px);
+        }
+
         .update-arena-btn {
             background: #00bcd4;
             margin: 0;
@@ -6034,9 +6054,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 <option value="WFCU Grenon">WFCU Grenon</option>
 <option value="WFCU AM800">WFCU AM800</option>
 <option value="Capri Recreation Complex">Capri Recreation Complex</option>
-<option value="Vollmer Recreation Complex">Vollmer Recreation Complex</option>
-<option value="Atlas Tube Recreation Centre">Atlas Tube Recreation Centre</option>
+<option value="Vollmer Lasalle Arena">Vollmer Lasalle Arena</option>
+<option value="Atlas Tube Lakeshore">Atlas Tube Lakeshore</option>
 </select>
+<button class="arena-add-btn" type="button" onclick="addArenaOption()" title="Add arena">+</button>
 </div>
 </div>
 </div>
@@ -7614,6 +7635,9 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                 }
                 
                 // Update arena selector
+                if (Array.isArray(data.arenaOptions)) {
+                    setArenaOptions(data.arenaOptions, data.selectedArena);
+                }
                 if (data.selectedArena) {
                     document.getElementById('arenaSelect').value = data.selectedArena;
                     document.getElementById('currentArenaDisplay').innerText = data.selectedArena;
@@ -7784,6 +7808,76 @@ input[type="date"]::-webkit-calendar-picker-indicator{
             updateGameSetupPreview();
         }
 
+
+        function getArenaOptionsFromSelect() {
+            const select = document.getElementById('arenaSelect');
+            if (!select) return [];
+            return Array.from(select.options || [])
+                .map(option => String(option.value || option.textContent || '').trim())
+                .filter(Boolean);
+        }
+
+        function setArenaOptions(options, selectedArena) {
+            const select = document.getElementById('arenaSelect');
+            if (!select) return;
+            const current = String(selectedArena || select.value || '').trim();
+            const seen = new Set();
+            const cleaned = [];
+            (Array.isArray(options) ? options : []).forEach(item => {
+                const name = String(item || '').trim();
+                if (!name) return;
+                const key = name.toLowerCase();
+                if (seen.has(key)) return;
+                seen.add(key);
+                cleaned.push(name);
+            });
+            if (current && !seen.has(current.toLowerCase())) cleaned.push(current);
+            select.innerHTML = cleaned.map(name => `<option value="${escapeHtml(name)}">${escapeHtml(name)}</option>`).join('');
+            if (current) select.value = current;
+            updateGameSetupPreview();
+        }
+
+        async function addArenaOption() {
+            const entered = prompt('Add Arena\n\nEnter arena name:');
+            const arenaName = String(entered || '').trim();
+            if (!arenaName) return;
+            const existing = getArenaOptionsFromSelect();
+            if (existing.some(name => name.toLowerCase() === arenaName.toLowerCase())) {
+                document.getElementById('arenaSelect').value = existing.find(name => name.toLowerCase() === arenaName.toLowerCase());
+                updateGameSetupPreview();
+                alert('Arena already exists. It has been selected.');
+                return;
+            }
+            const updatedOptions = [...existing, arenaName];
+            setArenaOptions(updatedOptions, arenaName);
+            try {
+                const res = await fetch(`${API_URL}/api/admin/update-app-settings`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({
+                        sessionToken: sessionToken,
+                        arenaOptions: updatedOptions,
+                        selectedArena: arenaName
+                    })
+                });
+                const result = await res.json().catch(() => ({}));
+                if (res.ok) {
+                    document.getElementById('currentArenaDisplay').innerText = arenaName;
+                    const locationInput = document.getElementById('locationInput');
+                    if (locationInput) locationInput.value = arenaName;
+                    alert(`✅ Arena added: ${arenaName}`);
+                    await loadSettings();
+                } else {
+                    alert(result.error || 'Failed to add arena');
+                    await loadAppSettings();
+                }
+            } catch (err) {
+                console.error('Error adding arena:', err);
+                alert('Error adding arena');
+                await loadAppSettings();
+            }
+        }
+
         function updateGameSetupPreview() {
             const titleText = getPublicTitleFromInput((document.getElementById('dynamicTitlePreview')?.innerText || document.getElementById('titlePreview')?.innerText || "Phan's Hockey").trim());
             const arenaText = (document.getElementById('arenaSelect')?.value || document.getElementById('currentArenaDisplay')?.innerText || '--').trim() || '--';
@@ -7821,7 +7915,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                             customTitle: newTitle,
                             selectedDayTime: dayTime,
                             gameDate: selectedGameDate,
-                            selectedArena: arena
+                            selectedArena: arena,
+                            arenaOptions: getArenaOptionsFromSelect()
                         })
                     });
 
@@ -7912,7 +8007,8 @@ Date: ${selectedGameDate}`);
                         headers: getAdminHeaders(),
                         body: JSON.stringify({ 
                             sessionToken: sessionToken,
-                            selectedArena: arena
+                            selectedArena: arena,
+                            arenaOptions: getArenaOptionsFromSelect()
                         })
                     });
 
