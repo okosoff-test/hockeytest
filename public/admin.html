@@ -6154,7 +6154,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 </div>
 <div class="compact-row">
 <label for="selectedDayCodeInput">Default Code</label>
-<input id="selectedDayCodeInput" maxlength="4" placeholder="9855" type="text"/>
+<input id="selectedDayCodeInput" maxlength="4" placeholder="4-digit code" type="text"/>
 </div>
 <button class="control-btn compact-save-btn" onclick="saveSelectedDayCode()">Save Selected Day Code</button>
 <button class="control-btn compact-save-btn" onclick="generateSelectedDayCode()" style="background:#4a90e2;">Auto Generate</button>
@@ -8682,7 +8682,7 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
         }
 
 
-        let adminDefaultSignupCode = '9855';
+        let adminDefaultSignupCode = ''; // loaded from saved portal settings
 
         let weeklyCodeState = {
             sunday: adminDefaultSignupCode,
@@ -9190,7 +9190,7 @@ ${rosterLink}
         }
 
         async function manualReset() {
-            if (!confirm("⚠️ WARNING: This will reset ALL data for a new week. The code will remain as 9855. Continue?")) return;
+            if (!confirm("⚠️ WARNING: This will reset ALL data for a new week. The current signup code will remain unchanged. Continue?")) return;
             try {
                 const res = await fetch(`${API_URL}/api/admin/manual-reset`, {
                     method: 'POST',

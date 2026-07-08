@@ -243,18 +243,56 @@ app.use(schedulerCatchupMiddleware);
 // --- DATA STORE ---
 // Single-source portal defaults. Same codebase can run Friday, Sunday, or any other game
 // by changing saved settings or environment variables instead of editing source code.
+// One-time bootstrap defaults for first install/migration only.
+// Normal runtime reads from saved settings, not hidden fallback literals.
+const PORTAL_BOOTSTRAP_DEFAULTS = {
+    timezone: 'America/Toronto',
+    signupCode: '9855',
+    gameLocation: 'Capri Recreation Complex',
+    gameTime: 'Friday 9:30 PM'
+};
+
 const PORTAL_DEFAULTS = {
-    timezone: String(process.env.PORTAL_TIMEZONE || 'America/Toronto'),
+    timezone: String(process.env.PORTAL_TIMEZONE || PORTAL_BOOTSTRAP_DEFAULTS.timezone).trim(),
     skaterCapacity: Number(process.env.DEFAULT_SKATER_CAPACITY || 20),
     maxSkaterCapacityInput: Number(process.env.MAX_SKATER_CAPACITY_INPUT || 50),
     maxGoalies: Number(process.env.DEFAULT_MAX_GOALIES || 2),
-    signupCode: String(process.env.DEFAULT_SIGNUP_CODE || '9855').trim(),
-    gameLocation: String(process.env.DEFAULT_GAME_LOCATION || 'Capri Recreation Complex').trim(),
-    gameTime: String(process.env.DEFAULT_GAME_TIME || 'Friday 9:30 PM').trim(),
+    signupCode: String(process.env.DEFAULT_SIGNUP_CODE || PORTAL_BOOTSTRAP_DEFAULTS.signupCode).trim(),
+    gameLocation: String(process.env.DEFAULT_GAME_LOCATION || PORTAL_BOOTSTRAP_DEFAULTS.gameLocation).trim(),
+    gameTime: String(process.env.DEFAULT_GAME_TIME || PORTAL_BOOTSTRAP_DEFAULTS.gameTime).trim(),
     announcementImageBytes: Number(process.env.MAX_ANNOUNCEMENT_IMAGE_BYTES || (900 * 1024)),
     announcementImages: Number(process.env.MAX_ANNOUNCEMENT_IMAGES || 1),
     cancellationCutoffHours: Number(process.env.DEFAULT_CANCELLATION_CUTOFF_HOURS || 3)
 };
+
+const REQUIRED_PORTAL_SETTING_KEYS = ['timezone', 'signupCode', 'gameLocation', 'gameTime'];
+let portalSettingsWarnings = [];
+
+function getBootstrapPortalSettings(existing = {}) {
+    return {
+        timezone: String(existing.timezone || existing.portalTimezone || PORTAL_DEFAULTS.timezone).trim(),
+        signupCode: String(existing.signupCode || existing.playerSignupCode || existing.editableDefaultSignupCode || PORTAL_DEFAULTS.signupCode).trim(),
+        gameLocation: String(existing.gameLocation || existing.selectedArena || PORTAL_DEFAULTS.gameLocation).trim(),
+        gameTime: String(existing.gameTime || existing.selectedDayTime || PORTAL_DEFAULTS.gameTime).trim()
+    };
+}
+
+function validateRequiredPortalSettings(settings = {}) {
+    const warnings = [];
+    if (!String(settings.timezone || '').trim()) warnings.push('Portal timezone is missing.');
+    if (!/^\d{4}$/.test(String(settings.signupCode || '').trim())) warnings.push('Default signup code is missing or invalid.');
+    if (!String(settings.gameLocation || '').trim()) warnings.push('Game arena/location is missing.');
+    if (!parseGameTimeStringLoose(settings.gameTime)) warnings.push('Game day/time is missing or invalid.');
+    portalSettingsWarnings = warnings;
+    return warnings;
+}
+
+function applyRequiredPortalSettings(settings = {}) {
+    const migrated = getBootstrapPortalSettings(settings);
+    validateRequiredPortalSettings(migrated);
+    return migrated;
+}
+
 
 const MAX_SKATERS = Number.isFinite(PORTAL_DEFAULTS.skaterCapacity) ? PORTAL_DEFAULTS.skaterCapacity : 20;
 function normalizeSkaterCapacity(value, fallback = MAX_SKATERS) {
@@ -279,8 +317,8 @@ const ADMIN_SESSION_TOKEN_TTL_HOURS = Number(process.env.ADMIN_SESSION_HOURS || 
 const ADMIN_SESSION_FILE = './admin-sessions.json';
 
 // Game details - FRIDAY HOCKEY
-let gameLocation = PORTAL_DEFAULTS.gameLocation || "Capri Recreation Complex";
-let gameTime = PORTAL_DEFAULTS.gameTime || "Friday 9:30 PM";
+let gameLocation = PORTAL_DEFAULTS.gameLocation;
+let gameTime = PORTAL_DEFAULTS.gameTime;
 let gameDate = "";
 
 // ---- Game-day helpers (dynamic Friday/Sunday etc.) ----
@@ -345,20 +383,26 @@ const DAY_NAME_TO_INDEX = {
 };
 const INDEX_TO_DAY_NAME = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
 
-function parseGameTimeString(gameTimeStr) {
-    // Expected formats: "Friday 9:30 PM", "Sunday 10:00 AM"
+function parseGameTimeStringLoose(gameTimeStr) {
     const m = String(gameTimeStr || "").trim().match(/^([A-Za-z]+)\s+(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
-    if (!m) {
-        return parseGameTimeString(PORTAL_DEFAULTS.gameTime || "Friday 9:30 PM"); // safe fallback
-    }
+    if (!m) return null;
     const dayNameRaw = m[1].toLowerCase();
-    const dayIndex = DAY_NAME_TO_INDEX[dayNameRaw] ?? 5;
+    if (!(dayNameRaw in DAY_NAME_TO_INDEX)) return null;
     const hour12 = parseInt(m[2], 10);
     const minute = m[3] ? parseInt(m[3], 10) : 0;
-    const ampm = m[4].toUpperCase();
+    if (hour12 < 1 || hour12 > 12 || minute < 0 || minute > 59) return null;
+    const dayIndex = DAY_NAME_TO_INDEX[dayNameRaw];
     let hour24 = hour12 % 12;
-    if (ampm === "PM") hour24 += 12;
+    if (m[4].toUpperCase() === "PM") hour24 += 12;
     return { dayName: INDEX_TO_DAY_NAME[dayIndex], dayIndex, hour24, minute };
+}
+
+function parseGameTimeString(gameTimeStr) {
+    // Expected formats: "Friday 9:30 PM", "Sunday 10:00 AM"
+    const parsed = parseGameTimeStringLoose(gameTimeStr);
+    if (parsed) return parsed;
+    portalSettingsWarnings = [...new Set([...(portalSettingsWarnings || []), 'Game day/time is missing or invalid.'])];
+    return parseGameTimeStringLoose(PORTAL_DEFAULTS.gameTime);
 }
 
 function getGameDayName() {
@@ -366,7 +410,7 @@ function getGameDayName() {
 }
 
 
-const DEFAULT_SIGNUP_CODE = /^\d{4}$/.test(PORTAL_DEFAULTS.signupCode) ? PORTAL_DEFAULTS.signupCode : '9855';
+const DEFAULT_SIGNUP_CODE = /^\d{4}$/.test(PORTAL_DEFAULTS.signupCode) ? PORTAL_DEFAULTS.signupCode : '';
 
 // One permanent default code, plus optional temporary override.
 let editableDefaultSignupCode = DEFAULT_SIGNUP_CODE;
@@ -406,7 +450,8 @@ function getDynamicSignupCode(dayName = getGameDayName()) {
         return editableDefaultSignupCode;
     }
 
-    return DEFAULT_SIGNUP_CODE;
+    portalSettingsWarnings = [...new Set([...(portalSettingsWarnings || []), 'Default signup code is missing or invalid.'])];
+    return '';
 }
 
 
@@ -2436,6 +2481,12 @@ async function loadDataFromDB() {
             settings[row.key] = parsePersistedSettingValue(row.value);
         });
         
+        const requiredPortalSettings = applyRequiredPortalSettings({
+            timezone: settings.timezone,
+            signupCode: settings.playerSignupCode || settings.editableDefaultSignupCode,
+            gameLocation: settings.gameLocation,
+            gameTime: settings.gameTime
+        });
         if (settings.skaterCapacity !== undefined || settings.configuredMaxSkaters !== undefined) skaterCapacity = normalizeSkaterCapacity(settings.skaterCapacity ?? settings.configuredMaxSkaters, MAX_SKATERS);
         if (settings.cancellationCutoffHours !== undefined) {
             cancellationCutoffHours = normalizeCancellationCutoffHours(settings.cancellationCutoffHours, cancellationCutoffHours);
@@ -2443,11 +2494,11 @@ async function loadDataFromDB() {
         }
         if (settings.maxGoalies !== undefined) { const mg = Number(settings.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
         if (settings.remainingSkaterSpots !== undefined || settings.playerSpots !== undefined) remainingSkaterSpots = normalizeSkaterCapacity(settings.remainingSkaterSpots ?? settings.playerSpots, 0);
-        if (settings.gameLocation) gameLocation = settings.gameLocation;
-        if (settings.gameTime) gameTime = settings.gameTime;
+        gameLocation = String(settings.gameLocation || requiredPortalSettings.gameLocation).trim();
+        gameTime = String(settings.gameTime || requiredPortalSettings.gameTime).trim();
         if (settings.gameDate) gameDate = settings.gameDate;
         else gameDate = calculateNextGameDate();
-        if (settings.playerSignupCode) playerSignupCode = settings.playerSignupCode;
+        playerSignupCode = /^\d{4}$/.test(String(settings.playerSignupCode || '').trim()) ? String(settings.playerSignupCode).trim() : requiredPortalSettings.signupCode;
         if (settings.requirePlayerCode !== undefined) requirePlayerCode = settings.requirePlayerCode;
         if (settings.manualOverride !== undefined) manualOverride = settings.manualOverride;
         if (settings.manualOverrideState !== undefined) manualOverrideState = settings.manualOverrideState;
@@ -2468,7 +2519,7 @@ async function loadDataFromDB() {
             extraGoalieContacts = normalizePersistedGoalieContacts(settings.extraGoalieContacts, extraGoalieContacts);
         }
         if (settings.customSignupCode !== undefined) customSignupCode = String(settings.customSignupCode || '').trim();
-        if (settings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(settings.editableDefaultSignupCode || '').trim()) ? String(settings.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
+        if (settings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(settings.editableDefaultSignupCode || '').trim()) ? String(settings.editableDefaultSignupCode).trim() : requiredPortalSettings.signupCode;
         if (settings.weeklyDefaultSignupCodes !== undefined) weeklyDefaultSignupCodes = normalizeWeeklyDefaultSignupCodes(settings.weeklyDefaultSignupCodes);
         if (settings.scheduleMode !== undefined) scheduleMode = String(settings.scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
         if (settings.signupLockStartAt !== undefined) signupLockStartAt = settings.signupLockStartAt || '';
@@ -2583,7 +2634,7 @@ async function loadDataFromDB() {
         });
         
         if (appSettings.maxGoalies !== undefined) { const mg = Number(appSettings.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
-        if (appSettings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(appSettings.editableDefaultSignupCode || '').trim()) ? String(appSettings.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
+        if (appSettings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(appSettings.editableDefaultSignupCode || '').trim()) ? String(appSettings.editableDefaultSignupCode).trim() : editableDefaultSignupCode;
         if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
@@ -3599,6 +3650,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['rosterReleaseSchedule', rosterReleaseSchedule],
             ['resetWeekSchedule', resetWeekSchedule],
             ['cancellationCutoffHours', cancellationCutoffHours],
+            ['timezone', PORTAL_DEFAULTS.timezone],
             ['noShowPolicyText', NO_SHOW_POLICY_TEXT],
             ['gameRules', GAME_RULES]
         ];
@@ -3628,10 +3680,12 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['arenaOptions', JSON.stringify(arenaOptions)],
             ['gameDate', gameDate],
             ['cancellationCutoffHours', cancellationCutoffHours],
+            ['timezone', PORTAL_DEFAULTS.timezone],
             ['noShowPolicyText', NO_SHOW_POLICY_TEXT],
             ['gameRules', JSON.stringify(GAME_RULES)],
             ['cancellationCutoffHours', cancellationCutoffHours],
             ['portalDefaults', JSON.stringify(PORTAL_DEFAULTS)],
+            ['portalSettingsWarnings', JSON.stringify(portalSettingsWarnings)],
             ['maxGoalies', String(maxGoalies)],
             ['editableDefaultSignupCode', editableDefaultSignupCode]
         ];
@@ -3890,6 +3944,7 @@ function buildFullDataSnapshot() {
             cancellationCutoffHours
         },
         portalDefaults: PORTAL_DEFAULTS,
+        portalSettingsWarnings,
         appSettings: {
             maintenanceMode,
             customTitle,
@@ -3998,6 +4053,7 @@ function getSettingsSnapshot() {
         editableDefaultSignupCode,
         weeklyDefaultSignupCodes,
         scheduleMode,
+        portalSettingsWarnings,
         lastExactResetMinuteKey,
         lastExactRosterReleaseMinuteKey
     };
@@ -4068,6 +4124,12 @@ function loadDataFromFile() {
         const bestSnapshot = getBestLocalSnapshot();
         if (bestSnapshot && bestSnapshot.data) {
             const data = bestSnapshot.data;
+            const requiredPortalSettings = applyRequiredPortalSettings({
+                timezone: data.timezone || data.appSettings?.timezone,
+                signupCode: data.playerSignupCode || data.editableDefaultSignupCode || data.appSettings?.playerSignupCode || data.appSettings?.editableDefaultSignupCode,
+                gameLocation: data.gameLocation || data.appSettings?.selectedArena,
+                gameTime: data.gameTime || data.appSettings?.selectedDayTime
+            });
             skaterCapacity = normalizeSkaterCapacity(data.skaterCapacity ?? data.configuredMaxSkaters ?? data.maxSkaters, MAX_SKATERS);
             if (data.maxGoalies !== undefined || data.appSettings?.maxGoalies !== undefined || data.summary?.maxGoalies !== undefined) { const mg = Number(data.maxGoalies ?? data.appSettings?.maxGoalies ?? data.summary?.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
             players = Array.isArray(data.players) ? data.players.map(player => hydratePlayerRatingProfile({
@@ -4080,10 +4142,10 @@ function loadDataFromFile() {
                 ? normalizeSkaterCapacity(savedRemainingSpots, 0)
                 : Math.max(0, skaterCapacity - players.filter(p => !(p && p.isGoalie)).length);
             if (data.cancellationCutoffHours !== undefined || data.appSettings?.cancellationCutoffHours !== undefined) { cancellationCutoffHours = normalizeCancellationCutoffHours(data.cancellationCutoffHours ?? data.appSettings?.cancellationCutoffHours, cancellationCutoffHours); DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText(); }
-            gameLocation = data.gameLocation ?? data.appSettings?.selectedArena ?? PORTAL_DEFAULTS.gameLocation;
-            gameTime = data.gameTime ?? data.appSettings?.selectedDayTime ?? PORTAL_DEFAULTS.gameTime;
+            gameLocation = String(data.gameLocation ?? data.appSettings?.selectedArena ?? requiredPortalSettings.gameLocation).trim();
+            gameTime = String(data.gameTime ?? data.appSettings?.selectedDayTime ?? requiredPortalSettings.gameTime).trim();
             gameDate = data.gameDate ?? calculateNextGameDate();
-            playerSignupCode = data.playerSignupCode ?? data.appSettings?.playerSignupCode ?? DEFAULT_SIGNUP_CODE;
+            playerSignupCode = /^\d{4}$/.test(String(data.playerSignupCode ?? data.appSettings?.playerSignupCode ?? '').trim()) ? String(data.playerSignupCode ?? data.appSettings?.playerSignupCode).trim() : requiredPortalSettings.signupCode;
             requirePlayerCode = data.requirePlayerCode ?? true;
             manualOverride = data.manualOverride ?? false;
             manualOverrideState = data.manualOverrideState ?? null;
@@ -4113,7 +4175,7 @@ function loadDataFromFile() {
             persistentPlayerNicknames = normalizePersistentPlayerNicknames(data.persistentPlayerNicknames || data.appSettings?.persistentPlayerNicknames || {});
             persistentPiaPayments = normalizePersistentPiaPayments(data.persistentPiaPayments || data.appSettings?.persistentPiaPayments || {});
             customSignupCode = String(data.customSignupCode || '').trim();
-            editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
+            editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode).trim() : requiredPortalSettings.signupCode;
             if (data.weeklyDefaultSignupCodes !== undefined) weeklyDefaultSignupCodes = normalizeWeeklyDefaultSignupCodes(data.weeklyDefaultSignupCodes);
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -7607,7 +7669,8 @@ app.post('/api/admin/settings', (req, res) => {
         weeklyDefaultSignupCodes,
         cancellationCutoffHours,
         noShowPolicyText: NO_SHOW_POLICY_TEXT,
-        portalDefaults: PORTAL_DEFAULTS
+        portalDefaults: PORTAL_DEFAULTS,
+        portalSettingsWarnings
     });
 });
 
@@ -9537,6 +9600,8 @@ initDatabase().then(async () => {
         await reconcileFromFileBackup();
         await runDatabaseSelfHeal('startup');
     }
+    // Persist required portal settings after bootstrap migration so normal runtime has a saved source of truth.
+    await saveData('startup-required-settings-check');
     checkAutoLock();
     refreshPersistedStateFingerprint();
     await runSchedulerTick();
