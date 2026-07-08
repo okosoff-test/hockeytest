@@ -764,6 +764,33 @@ let persistentPlayerNicknames = {};
 // Keyed the same way as ratings/nicknames, preferring phone number.
 let persistentPiaPayments = {};
 
+
+function getNormalizedPlayerFullName(player = {}) {
+    return `${String(player.firstName || '').trim()} ${String(player.lastName || '').trim()}`.trim().toLowerCase().replace(/\s+/g, ' ');
+}
+
+function isLegacyPhanLyPlayer(player = {}) {
+    return getNormalizedPlayerFullName(player) === 'phan ly';
+}
+
+function isProtectedOrAdminOnlyPlayer(player = {}) {
+    return !!(player && (player.protected || player.adminOnlyRemove));
+}
+
+function applyProtectedPlayerFlags(player = {}) {
+    if (!player || typeof player !== 'object') return player;
+    if (isLegacyPhanLyPlayer(player)) {
+        player.protected = true;
+        player.adminOnlyRemove = true;
+        player.isFree = player.isFree ?? true;
+        player.paymentMethod = player.paymentMethod || 'FREE';
+        if (player.paidAmount === undefined || player.paidAmount === null) player.paidAmount = 0;
+        if (player.paymentStatus === undefined || player.paymentStatus === null) player.paymentStatus = 'paid';
+        if (player.paid === undefined || player.paid === null) player.paid = true;
+    }
+    return player;
+}
+
 function normalizeAutoAddEntry(input = {}, defaults = {}) {
     const firstName = String(input.firstName || defaults.firstName || '').trim();
     const lastName = String(input.lastName || defaults.lastName || '').trim();
@@ -772,7 +799,7 @@ function normalizeAutoAddEntry(input = {}, defaults = {}) {
     const rating = Number.isFinite(ratingNumber) ? Math.max(1, Math.min(10, Number(ratingNumber.toFixed(1)))) : 5;
     const paymentMethodRaw = String(input.paymentMethod || defaults.paymentMethod || 'N/A').trim();
 
-    return {
+    return applyProtectedPlayerFlags({
         firstName,
         lastName,
         phone,
@@ -783,7 +810,7 @@ function normalizeAutoAddEntry(input = {}, defaults = {}) {
         protected: !!(input.protected ?? defaults.protected),
         adminOnlyRemove: !!(input.adminOnlyRemove ?? defaults.adminOnlyRemove),
         regularGoalie: !!(input.regularGoalie ?? defaults.regularGoalie)
-    };
+    });
 }
 
 function normalizeAutoAddByDayMap(input = undefined, defaultMap = {}, entryDefaults = {}) {
@@ -880,7 +907,7 @@ function normalizeRegularSkaterEntry(input = {}) {
     const rating = Number.isFinite(ratingNumber) ? Math.max(1, Math.min(10, Number(ratingNumber.toFixed(1)))) : 5;
     const paymentMethodRaw = String(input.paymentMethod || 'N/A').trim();
 
-    return {
+    return applyProtectedPlayerFlags({
         firstName,
         lastName,
         phone,
@@ -889,7 +916,7 @@ function normalizeRegularSkaterEntry(input = {}) {
         isFree: !!input.isFree,
         paymentMethod: paymentMethodRaw || 'N/A',
         protected: !!input.protected
-    };
+    });
 }
 
 function normalizeRegularSkatersByDayMap(input = {}) {
@@ -2500,7 +2527,7 @@ async function loadDataFromDB() {
             protected: !!p.protected,
             adminOnlyRemove: !!p.admin_only_remove,
             regularGoalie: !!p.regular_goalie
-        }));
+        })).map(applyProtectedPlayerFlags);
         
         // FIX: Recalculate remainingSkaterSpots based on actual player count
         const nonGoalieCount = players.filter(p => !p.isGoalie).length;
@@ -3095,7 +3122,7 @@ function applySnapshotToMemory(snapshot) {
 
     const snapshotCapacity = snapshot.skaterCapacity ?? snapshot.configuredMaxSkaters ?? snapshot.maxSkaters;
     skaterCapacity = normalizeSkaterCapacity(snapshotCapacity, MAX_SKATERS);
-    players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile) : [];
+    players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile).map(applyProtectedPlayerFlags) : [];
     waitlist = Array.isArray(snapshot.waitlist) ? snapshot.waitlist.map(hydratePlayerRatingProfile) : [];
     const snapshotRemainingSpots = snapshot.remainingSkaterSpots ?? snapshot.playerSpots;
     remainingSkaterSpots = snapshotRemainingSpots !== undefined && snapshotRemainingSpots !== null
@@ -4013,7 +4040,7 @@ function loadDataFromFile() {
             players = Array.isArray(data.players) ? data.players.map(player => hydratePlayerRatingProfile({
                 ...player,
                 registeredAt: player.registeredAt || player.registered_at || player.createdAt || null
-            })) : [];
+            })).map(applyProtectedPlayerFlags) : [];
             waitlist = Array.isArray(data.waitlist) ? data.waitlist.map(hydratePlayerRatingProfile) : [];
             const savedRemainingSpots = data.remainingSkaterSpots ?? data.playerSpots;
             remainingSkaterSpots = savedRemainingSpots !== undefined && savedRemainingSpots !== null
@@ -5169,8 +5196,8 @@ function buildPaymentReportCsv() {
     });
 
     const totalCollected = players.reduce((sum, p) => sum + (parseFloat(p.paidAmount) || 0), 0);
-    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
+    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
 
     csvRows.push('');
     csvRows.push([escapeCsvValue('SUMMARY'), '', '', '', '', '', '', '', '', ''].join(','));
@@ -5716,6 +5743,7 @@ app.get('/api/status', (req, res) => {
         // Protected/admin-only players cannot cancel from signup page - only admin can remove
         canCancel: cancellationAllowedNow && !(p.protected || p.adminOnlyRemove),
         protected: !!p.protected,
+        adminOnlyRemove: !!p.adminOnlyRemove,
         // Public replacement display fields only. Still excludes payment and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
@@ -5808,7 +5836,7 @@ app.get('/api/waitlist', (req, res) => {
         lastName: p.lastName,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie,
-        canCancel: cancellationAllowedNow && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly')
+        canCancel: cancellationAllowedNow && !isProtectedOrAdminOnlyPlayer(p)
         // EXCLUDED: rating, phone, paymentMethod
     }));
     
@@ -6225,10 +6253,6 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(400).json({ error: "Phone number is required." });
     }
 
-    const isProtectedPlayer = (p) => !!(p?.protected || p?.adminOnlyRemove) ||
-        (String(p?.firstName || '').toLowerCase() === 'phan' &&
-        String(p?.lastName || '').toLowerCase() === 'ly');
-
     const findById = (arr) => arr.findIndex(p => String(p.id).trim() === idToRemove);
 
     const playerIndex = findById(players);
@@ -6240,7 +6264,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(404).json({ error: "Player not found." });
     }
 
-    if (isProtectedPlayer(foundPlayer)) {
+    if (isProtectedOrAdminOnlyPlayer(foundPlayer)) {
         return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
     }
 
@@ -6860,8 +6884,8 @@ app.post('/api/admin/players-full', (req, res) => {
         return sum;
     }, 0);
     
-    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const paidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) !== 'owes' && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
+    const unpaidCount = players.filter(p => normalizePaymentStatus(p.paymentStatus, p) === 'owes' && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
     
     // Return FULL data including payment info AND ratings (admin only)
     res.json({ 
@@ -7267,10 +7291,10 @@ app.post('/api/admin/restore-backup', async (req, res) => {
         const originalWaitlist = Array.isArray(waitlist) ? waitlist.map(clonePlain) : [];
 
         if (mode === 'replace') {
-            players = restoredPlayers.map(clonePlain);
+            players = restoredPlayers.map(clonePlain).map(applyProtectedPlayerFlags);
             waitlist = restoredWaitlist.map(clonePlain);
         } else {
-            players = mergeUnique(originalPlayers, restoredPlayers);
+            players = mergeUnique(originalPlayers, restoredPlayers).map(applyProtectedPlayerFlags);
             waitlist = mergeUnique(originalWaitlist, restoredWaitlist);
         }
 
@@ -7375,8 +7399,8 @@ app.post('/api/admin/players', (req, res) => {
         }
         return sum;
     }, 0);
-    const paidCount = players.filter(p => p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
-    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !(p.firstName === 'Phan' && p.lastName === 'Ly')).length;
+    const paidCount = players.filter(p => p.paid && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
+    const unpaidCount = players.filter(p => !p.paid && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)).length;
 
     return res.json({
         remainingSkaterSpots,
@@ -8288,6 +8312,8 @@ function buildAdminRosterContactExport() {
             phoneDigits,
             team: teamName,
             isGoalie: !!(full.isGoalie || publicPlayer.isGoalie),
+            protected: !!(full.protected || publicPlayer.protected),
+            adminOnlyRemove: !!(full.adminOnlyRemove || publicPlayer.adminOnlyRemove),
             cancelled: !!publicPlayer.cancelled
         };
     };
@@ -8302,8 +8328,8 @@ function buildAdminRosterContactExport() {
             .toLowerCase()
             .replace(/\s+/g, ' ');
 
-        // Exclude Phan Ly from Android Mass Text Export contact lists.
-        if (normalizedName === 'phan ly') return false;
+        // Exclude protected/admin-only players from Android Mass Text Export contact lists.
+        if (isProtectedOrAdminOnlyPlayer(player)) return false;
 
         return true;
     };

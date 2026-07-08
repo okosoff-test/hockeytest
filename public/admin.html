@@ -6551,7 +6551,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 </div>
 <div class="roster-text-export-box" id="rosterTextExportBox">
 <h4>📱 Mass Text Signup Players</h4>
-<p>Use this anytime to text the current signup list. Android can open a group text directly. iPhone users should copy the numbers, open Messages, tap To, then paste. Phan Ly and all goalies are automatically excluded.</p>
+<p>Use this anytime to text the current signup list. Android can open a group text directly. iPhone users should copy the numbers, open Messages, tap To, then paste. Protected players and all goalies are automatically excluded.</p>
 <div class="roster-text-export-actions">
 <button class="control-btn" onclick="copySignupPhonesOnly()" style="background:#2e7d32;">Copy Phone Numbers</button>
 <button class="control-btn" onclick="copySignupNamesAndPhones()" style="background:#4a90e2;">Copy Names + Phones</button>
@@ -8966,9 +8966,8 @@ Date: ${selectedGameDate}`);
         }
 
 
-        function isPhanLyOrProtectedPlayer(player) {
-            const name = `${String(player.firstName || '').trim()} ${String(player.lastName || '').trim()}`.trim().toLowerCase().replace(/\s+/g, ' ');
-            return !!(player.protected || player.adminOnlyRemove) || name === 'phan ly';
+        function isProtectedOrAdminOnlyPlayer(player) {
+            return !!(player && (player.protected || player.adminOnlyRemove));
         }
 
         function buildSignupMassTextExport() {
@@ -8986,7 +8985,7 @@ Date: ${selectedGameDate}`);
                     if (!player.phoneDigits || player.phoneDigits.length !== 10) return false;
                     if (seenPhones.has(player.phoneDigits)) return false;
                     if (player.isGoalie) return false;
-                    if (isPhanLyOrProtectedPlayer(player)) return false;
+                    if (isProtectedOrAdminOnlyPlayer(player)) return false;
                     seenPhones.add(player.phoneDigits);
                     return true;
                 });
@@ -9007,7 +9006,7 @@ Date: ${selectedGameDate}`);
             const data = buildSignupMassTextExport();
             preview.value = data.total
                 ? `Signup Mass Text Contacts (${data.total})\n\n${data.namePhoneLines}`
-                : 'No eligible signup players found. Phan Ly and goalies are excluded automatically.';
+                : 'No eligible signup players found. Protected players and goalies are excluded automatically.';
         }
 
         async function copySignupPhonesOnly() {
@@ -9023,7 +9022,7 @@ Date: ${selectedGameDate}`);
         async function copySignupIphoneNumbers() {
             const data = buildSignupMassTextExport();
             if (!data.phoneOnly) {
-                alert('No eligible signup phone numbers available. Phan Ly and goalies are excluded automatically.');
+                alert('No eligible signup phone numbers available. Protected players and goalies are excluded automatically.');
                 return;
             }
             await copyTextToClipboard(data.phoneOnly, `Copied ${data.total || 0} numbers. On iPhone, open Messages, start a new message, tap To, then paste.`);
@@ -9032,7 +9031,7 @@ Date: ${selectedGameDate}`);
         async function openSignupSmsDraft() {
             const data = buildSignupMassTextExport();
             if (!data.phoneOnly) {
-                alert('No eligible signup phone numbers available. Phan Ly and goalies are excluded automatically.');
+                alert('No eligible signup phone numbers available. Protected players and goalies are excluded automatically.');
                 return;
             }
 
@@ -9434,10 +9433,10 @@ ${rosterLink}
                     tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; color:#666; padding:30px;">No players registered</td></tr>';
                 } else {
                     const sortedPlayers = [...data.players].sort((a, b) => {
-                        const aIsPhan = String(a.firstName || '').trim().toLowerCase() === 'phan';
-                        const bIsPhan = String(b.firstName || '').trim().toLowerCase() === 'phan';
-                        if (aIsPhan && !bIsPhan) return -1;
-                        if (!aIsPhan && bIsPhan) return 1;
+                        const aProtected = isProtectedOrAdminOnlyPlayer(a);
+                        const bProtected = isProtectedOrAdminOnlyPlayer(b);
+                        if (aProtected && !bProtected) return -1;
+                        if (!aProtected && bProtected) return 1;
                         if (a.isGoalie && !b.isGoalie) return -1;
                         if (!a.isGoalie && b.isGoalie) return 1;
                         return 0;
@@ -9455,14 +9454,13 @@ ${rosterLink}
                         const adminRatingFootnote = formatAdminRatingFootnote(p);
                         const adminRatingHtml = adminRatingFootnote ? `<span class="admin-rating-footnote">${adminRatingFootnote}</span>` : '';
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.protected || p.adminOnlyRemove || (String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly')) ? 
+                        const protectedBadge = isProtectedOrAdminOnlyPlayer(p) ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
                         const regularInfo = getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
-                        const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
-                        const isProtectedPlayer = !!(p.protected || p.adminOnlyRemove) || isPhan;
+                        const isProtectedPlayer = isProtectedOrAdminOnlyPlayer(p);
                         const hideAdminPaymentUi = !!p.isGoalie || isProtectedPlayer;
 
                         let paidInput = '';
@@ -9495,8 +9493,7 @@ ${rosterLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const isPhanLyPlayer = isProtectedPlayer;
-                        const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isPhanLyPlayer;
+                        const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isProtectedPlayer;
                         const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
                             : '';

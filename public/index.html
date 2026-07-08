@@ -3681,13 +3681,13 @@ function updateCalculatedRating() {
                 const bFirst = String(b.firstName || '').toLowerCase();
                 const bLast = String(b.lastName || '').toLowerCase();
 
-                const aIsPhan = aFirst === 'phan' && aLast === 'ly';
-                const bIsPhan = bFirst === 'phan' && bLast === 'ly';
+                const aProtected = !!(a.protected || a.adminOnlyRemove);
+                const bProtected = !!(b.protected || b.adminOnlyRemove);
                 const aIsGoalie = !!a.isGoalie;
                 const bIsGoalie = !!b.isGoalie;
 
                 if (aIsGoalie !== bIsGoalie) return aIsGoalie ? -1 : 1;
-                if (aIsPhan !== bIsPhan) return aIsPhan ? -1 : 1;
+                if (aProtected !== bProtected) return aProtected ? -1 : 1;
 
                 const nameA = `${aLast} ${aFirst}`.trim();
                 const nameB = `${bLast} ${bFirst}`.trim();
@@ -3702,7 +3702,7 @@ function updateCalculatedRating() {
 
                 const firstName = String(player.firstName || '');
                 const lastName = String(player.lastName || '');
-                const isProtected = firstName.toLowerCase() === 'phan' && lastName.toLowerCase() === 'ly';
+                const isProtected = !!(player.protected || player.adminOnlyRemove);
                 const isGoalie = !!player.isGoalie;
 
                 let cardClass = 'player-card';
