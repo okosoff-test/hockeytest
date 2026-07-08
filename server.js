@@ -252,7 +252,8 @@ const PORTAL_DEFAULTS = {
     gameLocation: String(process.env.DEFAULT_GAME_LOCATION || 'Capri Recreation Complex').trim(),
     gameTime: String(process.env.DEFAULT_GAME_TIME || 'Friday 9:30 PM').trim(),
     announcementImageBytes: Number(process.env.MAX_ANNOUNCEMENT_IMAGE_BYTES || (900 * 1024)),
-    announcementImages: Number(process.env.MAX_ANNOUNCEMENT_IMAGES || 1)
+    announcementImages: Number(process.env.MAX_ANNOUNCEMENT_IMAGES || 1),
+    cancellationCutoffHours: Number(process.env.DEFAULT_CANCELLATION_CUTOFF_HOURS || 3)
 };
 
 const MAX_SKATERS = Number.isFinite(PORTAL_DEFAULTS.skaterCapacity) ? PORTAL_DEFAULTS.skaterCapacity : 20;
@@ -642,8 +643,24 @@ let currentWeekData = {
     darkTeam: []
 };
 
+function normalizeCancellationCutoffHours(value, fallback = 3) {
+    if (value === undefined || value === null || value === '') return fallback;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return fallback;
+    return Math.max(0, Math.min(72, Math.round(parsed * 100) / 100));
+}
+let cancellationCutoffHours = normalizeCancellationCutoffHours(PORTAL_DEFAULTS.cancellationCutoffHours, 3);
+function formatCancellationCutoffHours(value = cancellationCutoffHours) {
+    const hours = normalizeCancellationCutoffHours(value, 3);
+    return Number.isInteger(hours) ? String(hours) : String(hours).replace(/\.0+$/, '');
+}
+function buildDefaultNoShowPolicyText(hours = cancellationCutoffHours) {
+    const h = formatCancellationCutoffHours(hours);
+    const hourWord = Number(h) === 1 ? 'hour' : 'hours';
+    return `Cancel anytime. Last-minute cancellations must be made at least ${h} ${hourWord} before game time to give waitlisted players a chance to play. After the ${h}-${hourWord} deadline, the spot is your responsibility. No-show owes.`;
+}
 let maxGoalies = Number.isFinite(PORTAL_DEFAULTS.maxGoalies) ? Math.max(0, Math.floor(PORTAL_DEFAULTS.maxGoalies)) : 2;
-const DEFAULT_NO_SHOW_POLICY_TEXT = 'Cancel anytime. Last-minute cancellations must be made at least 3 hours before game time to give waitlisted players a chance to play. After the 3-hour deadline, the spot is your responsibility. No-show owes.';
+let DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText();
 let NO_SHOW_POLICY_TEXT = DEFAULT_NO_SHOW_POLICY_TEXT;
 
 const DEFAULT_GAME_RULES = [
@@ -673,6 +690,7 @@ function extractNoShowPolicyFromRules(rules) {
 }
 
 function syncNoShowPolicyWithRules() {
+    DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText();
     NO_SHOW_POLICY_TEXT = String(NO_SHOW_POLICY_TEXT || DEFAULT_NO_SHOW_POLICY_TEXT).trim() || DEFAULT_NO_SHOW_POLICY_TEXT;
     GAME_RULES = normalizeGameRules(GAME_RULES);
     const idx = GAME_RULES.findIndex(rule => /no[- ]?show owes/i.test(rule) || /last[- ]?minute cancellations/i.test(rule));
@@ -2419,6 +2437,10 @@ async function loadDataFromDB() {
         });
         
         if (settings.skaterCapacity !== undefined || settings.configuredMaxSkaters !== undefined) skaterCapacity = normalizeSkaterCapacity(settings.skaterCapacity ?? settings.configuredMaxSkaters, MAX_SKATERS);
+        if (settings.cancellationCutoffHours !== undefined) {
+            cancellationCutoffHours = normalizeCancellationCutoffHours(settings.cancellationCutoffHours, cancellationCutoffHours);
+            DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText();
+        }
         if (settings.maxGoalies !== undefined) { const mg = Number(settings.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
         if (settings.remainingSkaterSpots !== undefined || settings.playerSpots !== undefined) remainingSkaterSpots = normalizeSkaterCapacity(settings.remainingSkaterSpots ?? settings.playerSpots, 0);
         if (settings.gameLocation) gameLocation = settings.gameLocation;
@@ -2565,6 +2587,10 @@ async function loadDataFromDB() {
         if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
+        if (appSettings.cancellationCutoffHours !== undefined) {
+            cancellationCutoffHours = normalizeCancellationCutoffHours(appSettings.cancellationCutoffHours, cancellationCutoffHours);
+            DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText();
+        }
         if (appSettings.selectedArena) gameLocation = appSettings.selectedArena;
         if (appSettings.announcementEnabled !== undefined) announcementEnabled = appSettings.announcementEnabled === 'true';
         if (appSettings.announcementText !== undefined) announcementText = appSettings.announcementText || '';
@@ -3163,6 +3189,7 @@ function applySnapshotToMemory(snapshot) {
     announcementText = snapshot.announcementText ?? announcementText;
     announcementImages = Array.isArray(snapshot.announcementImages) ? snapshot.announcementImages : [];
     paymentEmail = typeof snapshot.paymentEmail === 'string' ? snapshot.paymentEmail : paymentEmail;
+    if (snapshot.cancellationCutoffHours !== undefined) { cancellationCutoffHours = normalizeCancellationCutoffHours(snapshot.cancellationCutoffHours, cancellationCutoffHours); DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText(); }
     if (typeof snapshot.noShowPolicyText === 'string') NO_SHOW_POLICY_TEXT = snapshot.noShowPolicyText.trim() || DEFAULT_NO_SHOW_POLICY_TEXT;
     if (Array.isArray(snapshot.gameRules)) GAME_RULES = normalizeGameRules(snapshot.gameRules);
     syncNoShowPolicyWithRules();
@@ -3249,6 +3276,7 @@ async function restoreSnapshotItem(item, req, auditAction = 'restore-snapshot-re
         if (typeof s.requirePlayerCode === 'boolean') requirePlayerCode = s.requirePlayerCode;
         if (typeof s.playerSignupCode === 'string' && s.playerSignupCode.trim()) playerSignupCode = s.playerSignupCode.trim();
         if (Array.isArray(s.arenaOptions)) arenaOptions = normalizeArenaOptions(s.arenaOptions);
+        if (s.cancellationCutoffHours !== undefined) { cancellationCutoffHours = normalizeCancellationCutoffHours(s.cancellationCutoffHours, cancellationCutoffHours); DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText(); }
         if (typeof s.noShowPolicyText === 'string') NO_SHOW_POLICY_TEXT = s.noShowPolicyText.trim() || DEFAULT_NO_SHOW_POLICY_TEXT;
         if (Array.isArray(s.gameRules)) GAME_RULES = normalizeGameRules(s.gameRules);
         syncNoShowPolicyWithRules();
@@ -3570,6 +3598,7 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['signupLockSchedule', signupLockSchedule],
             ['rosterReleaseSchedule', rosterReleaseSchedule],
             ['resetWeekSchedule', resetWeekSchedule],
+            ['cancellationCutoffHours', cancellationCutoffHours],
             ['noShowPolicyText', NO_SHOW_POLICY_TEXT],
             ['gameRules', GAME_RULES]
         ];
@@ -3598,8 +3627,10 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['selectedArena', gameLocation],
             ['arenaOptions', JSON.stringify(arenaOptions)],
             ['gameDate', gameDate],
+            ['cancellationCutoffHours', cancellationCutoffHours],
             ['noShowPolicyText', NO_SHOW_POLICY_TEXT],
             ['gameRules', JSON.stringify(GAME_RULES)],
+            ['cancellationCutoffHours', cancellationCutoffHours],
             ['portalDefaults', JSON.stringify(PORTAL_DEFAULTS)],
             ['maxGoalies', String(maxGoalies)],
             ['editableDefaultSignupCode', editableDefaultSignupCode]
@@ -3844,6 +3875,7 @@ function buildFullDataSnapshot() {
         paymentEmail,
         rosterReleaseAnnouncementText,
         collectorPageEnabled,
+        cancellationCutoffHours,
         noShowPolicyText: NO_SHOW_POLICY_TEXT,
         gameRules: GAME_RULES,
         summary: {
@@ -3854,7 +3886,8 @@ function buildFullDataSnapshot() {
             requirePlayerCode,
             playerSignupCode,
             editableDefaultSignupCode,
-            maxGoalies
+            maxGoalies,
+            cancellationCutoffHours
         },
         portalDefaults: PORTAL_DEFAULTS,
         appSettings: {
@@ -3864,6 +3897,7 @@ function buildFullDataSnapshot() {
             announcementText,
             announcementImages,
             paymentEmail,
+            cancellationCutoffHours,
             noShowPolicyText: NO_SHOW_POLICY_TEXT,
             gameRules: GAME_RULES,
             protectedPlayersByDay,
@@ -3933,6 +3967,7 @@ function getSettingsSnapshot() {
         paymentEmail,
         rosterReleaseAnnouncementText,
         collectorPageEnabled,
+        cancellationCutoffHours,
         noShowPolicyText: NO_SHOW_POLICY_TEXT,
         gameRules: GAME_RULES,
         gameTime,
@@ -4044,6 +4079,7 @@ function loadDataFromFile() {
             remainingSkaterSpots = savedRemainingSpots !== undefined && savedRemainingSpots !== null
                 ? normalizeSkaterCapacity(savedRemainingSpots, 0)
                 : Math.max(0, skaterCapacity - players.filter(p => !(p && p.isGoalie)).length);
+            if (data.cancellationCutoffHours !== undefined || data.appSettings?.cancellationCutoffHours !== undefined) { cancellationCutoffHours = normalizeCancellationCutoffHours(data.cancellationCutoffHours ?? data.appSettings?.cancellationCutoffHours, cancellationCutoffHours); DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText(); }
             gameLocation = data.gameLocation ?? data.appSettings?.selectedArena ?? PORTAL_DEFAULTS.gameLocation;
             gameTime = data.gameTime ?? data.appSettings?.selectedDayTime ?? PORTAL_DEFAULTS.gameTime;
             gameDate = data.gameDate ?? calculateNextGameDate();
@@ -4187,7 +4223,7 @@ function getCancellationTimingStatus(etNow = getCurrentETTime()) {
     return {
         gameStart,
         hoursUntilGame,
-        isLateCancelWindow: hoursUntilGame < 3
+        isLateCancelWindow: hoursUntilGame < cancellationCutoffHours
     };
 }
 
@@ -5547,6 +5583,7 @@ app.get('/api/rules', (req, res) => {
     syncNoShowPolicyWithRules();
     res.json({
         rules: GAME_RULES,
+        cancellationCutoffHours,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         customTitle,
         gameDayName: getGameDayName()
@@ -5791,6 +5828,7 @@ app.get('/api/status', (req, res) => {
         formattedDate: formatGameDate(gameDate),
         rosterReleased: getEffectiveRosterReleasedState(),
         resetArmed: resetArmed,
+        cancellationCutoffHours,
         noShowPolicy: NO_SHOW_POLICY_TEXT,
         rosterReleaseTime: currentWeekData.rosterReleaseTime,
         currentWeek: week,
@@ -5825,6 +5863,7 @@ app.get('/api/status', (req, res) => {
         rosterReleaseAtLocal: dynamicScheduleDates.rosterReleaseAt,
         resetWeekAt: dynamicScheduleDates.resetWeekAt,
         scheduleMode,
+        cancellationCutoffHours,
         cancellationDeadlineLine: NO_SHOW_POLICY_TEXT,
         cancellationAllowedNow,
         hoursUntilGame: cancellationTiming.hoursUntilGame
@@ -5876,6 +5915,7 @@ app.get('/api/roster', (req, res) => {
         darkActiveCount: rosterPayload.darkActiveCount,
         whiteRating: rosterPayload.whiteRating,
         darkRating: rosterPayload.darkRating,
+        cancellationCutoffHours,
         cancellationPolicy: NO_SHOW_POLICY_TEXT,
         cancellationAllowedNow: !getCancellationTimingStatus().isLateCancelWindow,
         hoursUntilGame: getCancellationTimingStatus().hoursUntilGame,
@@ -6288,7 +6328,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
     if (isLateCancelWindow) {
         return res.status(403).json({
-            error: "Cancellation cutoff has passed. Players can cancel only until 3 hours before game time. Please contact the admin.",
+            error: `Cancellation cutoff has passed. Players can cancel only until ${formatCancellationCutoffHours()} ${Number(formatCancellationCutoffHours()) === 1 ? 'hour' : 'hours'} before game time. Please contact the admin.`,
             lateCancel: false,
             cancellationAllowedNow: false,
             policy: NO_SHOW_POLICY_TEXT,
@@ -6512,6 +6552,7 @@ app.post('/api/admin/app-settings', (req, res) => {
         paymentEmail,
         rosterReleaseAnnouncementText,
         collectorPageEnabled,
+        cancellationCutoffHours,
         noShowPolicyText: NO_SHOW_POLICY_TEXT,
         gameRules: GAME_RULES,
         selectedDayTime: gameTime,
@@ -6534,7 +6575,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, arenaOptions: newArenaOptions, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay, collectorPageEnabled: newCollectorPageEnabled,
-            noShowPolicyText: newNoShowPolicyText, gameRules: newGameRules, maxGoalies: newMaxGoalies } = req.body;
+            noShowPolicyText: newNoShowPolicyText, gameRules: newGameRules, maxGoalies: newMaxGoalies, cancellationCutoffHours: newCancellationCutoffHours } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -6551,6 +6592,14 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             if (newGameRules !== undefined) {
                 GAME_RULES = normalizeGameRules(newGameRules);
                 NO_SHOW_POLICY_TEXT = extractNoShowPolicyFromRules(GAME_RULES) || NO_SHOW_POLICY_TEXT;
+            }
+            if (newCancellationCutoffHours !== undefined) {
+                const previousDefault = DEFAULT_NO_SHOW_POLICY_TEXT;
+                cancellationCutoffHours = normalizeCancellationCutoffHours(newCancellationCutoffHours, cancellationCutoffHours);
+                DEFAULT_NO_SHOW_POLICY_TEXT = buildDefaultNoShowPolicyText();
+                if (!newNoShowPolicyText && (!NO_SHOW_POLICY_TEXT || NO_SHOW_POLICY_TEXT === previousDefault || /Last-minute cancellations must be made at least \d+(?:\.\d+)? hours? before game time/i.test(NO_SHOW_POLICY_TEXT))) {
+                    NO_SHOW_POLICY_TEXT = DEFAULT_NO_SHOW_POLICY_TEXT;
+                }
             }
             if (newNoShowPolicyText !== undefined) NO_SHOW_POLICY_TEXT = String(newNoShowPolicyText || DEFAULT_NO_SHOW_POLICY_TEXT).trim() || DEFAULT_NO_SHOW_POLICY_TEXT;
             syncNoShowPolicyWithRules();
@@ -6602,6 +6651,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementText,
             rosterReleaseAnnouncementText,
             announcementImages,
+            cancellationCutoffHours,
             noShowPolicyText: NO_SHOW_POLICY_TEXT,
             gameRules: GAME_RULES,
             regularSkatersByDay,
@@ -7554,7 +7604,10 @@ app.post('/api/admin/settings', (req, res) => {
         usingCustomSignupCode: /^\d{4}$/.test(String(customSignupCode || '').trim()),
         regularSkatersByDay,
                 defaultSignupCode: getDynamicSignupCode(),
-        weeklyDefaultSignupCodes
+        weeklyDefaultSignupCodes,
+        cancellationCutoffHours,
+        noShowPolicyText: NO_SHOW_POLICY_TEXT,
+        portalDefaults: PORTAL_DEFAULTS
     });
 });
 

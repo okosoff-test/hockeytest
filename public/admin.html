@@ -6081,6 +6081,13 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <button class="arena-add-btn" type="button" onclick="addArenaOption()" title="Add arena">+</button>
 </div>
 </div>
+<div class="title-control-group">
+<label for="cancellationCutoffHoursInput">Cancellation cutoff</label>
+<div style="display:flex; align-items:center; gap:8px;">
+<input class="control-input" id="cancellationCutoffHoursInput" min="0" max="72" step="0.5" type="number" value="3" style="max-width:120px;"/>
+<span class="custom-title-note" style="margin:0;">hours before game</span>
+</div>
+</div>
 </div>
 <div class="game-setup-preview-line">
 <strong>Preview:</strong>
@@ -7922,6 +7929,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
                 const newTitle = getPublicTitleFromInput(defaultTitle);
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
+                const cancellationCutoffHours = Number(document.getElementById('cancellationCutoffHoursInput')?.value ?? 3);
 
                 const hiddenInput = document.getElementById('titleDayTime');
                 if (hiddenInput) {
@@ -7938,6 +7946,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
                             selectedDayTime: dayTime,
                             gameDate: selectedGameDate,
                             selectedArena: arena,
+                            cancellationCutoffHours: cancellationCutoffHours,
                             arenaOptions: getArenaOptionsFromSelect(),
                             gameRules: getRulesFromGameSetupInput()
                         })
@@ -7956,7 +7965,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 Title: ${newTitle}
 Arena: ${arena}
 Time: ${formatEtDateTimeLocal(buildDatetimeLocal(parts.dateVal, parts.hour24, parts.minute))}
-Date: ${selectedGameDate}`);
+Date: ${selectedGameDate}
+Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours === 1 ? '' : 's'} before game`);
                         await loadSettings();
                     } else {
                         alert(result.error || 'Failed to update game setup');
@@ -7982,6 +7992,7 @@ Date: ${selectedGameDate}`);
                 const newTitle = getPublicTitleFromInput(defaultTitle);
                 const dayTime = `${parts.weekday} ${formatTime12(parts.hour24, parts.minute)}`;
                 const selectedGameDate = parts.dateVal;
+                const cancellationCutoffHours = Number(document.getElementById('cancellationCutoffHoursInput')?.value ?? 3);
 
                 const hiddenInput = document.getElementById('titleDayTime');
                 if (hiddenInput) {
@@ -8487,6 +8498,8 @@ Date: ${selectedGameDate}`);
                 document.getElementById('locationInput').value = data.location;
                 document.getElementById('timeInput').value = data.time;
                 document.getElementById('dateInput').value = data.date || '';
+                const cancellationCutoffInput = document.getElementById('cancellationCutoffHoursInput');
+                if (cancellationCutoffInput) cancellationCutoffInput.value = data.cancellationCutoffHours ?? data.portalDefaults?.cancellationCutoffHours ?? 3;
                 document.getElementById('currentCodeDisplay').innerText = data.code;
                 
                 const weeklyCodes = data.weeklyDefaultSignupCodes || {};
