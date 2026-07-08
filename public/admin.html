@@ -6446,6 +6446,18 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 <div class="regular-summary-list" id="regularSkatersList"></div>
 </div>
 
+<div class="regular-summary-section">
+<h3>🛡️ Protected Auto-Add Players</h3>
+<p class="regular-summary-note">These players return every weekly reset, are marked protected, and can only be removed by admin.</p>
+<div class="regular-summary-list" id="protectedPlayersList"></div>
+</div>
+
+<div class="regular-summary-section">
+<h3>🥅 Regular Goalies</h3>
+<p class="regular-summary-note">These goalies return every weekly reset from saved admin settings instead of hard-coded weekly state.</p>
+<div class="regular-summary-list" id="regularGoaliesList"></div>
+</div>
+
 <div class="goalies-section">
 <h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
 <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
@@ -7275,6 +7287,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{
         let selectedSnapshotFingerprint = "";
         let latestSnapshotKey = null;
         let currentRegularSkatersByDay = normalizeRegularDayBucketMap({});
+        let currentProtectedPlayersByDay = normalizeRegularDayBucketMap({});
+        let currentRegularGoaliesByDay = normalizeRegularDayBucketMap({});
         let adminPlayersById = {};
         let adminWaitlist = [];
         let latestRosterContactExport = null;
@@ -7460,6 +7474,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                     showDashboard();
                     loadData();
                     loadSettings();
+                    loadAutoAddSettings();
                     loadAppSettings();
                     loadPaymentReportSnapshots();
                     loadSessionInfo();
@@ -7509,6 +7524,7 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                     showDashboard();
                     loadData();
                     loadSettings();
+                    loadAutoAddSettings();
                     loadAppSettings();
                     loadPaymentReportSnapshots();
                     loadSessionInfo();
@@ -8402,6 +8418,109 @@ Date: ${selectedGameDate}`);
                     </div>
                 `;
             }).join('');
+        }
+
+        function getAutoAddEntriesFlat(map = {}) {
+            const entries = [];
+            Object.entries(normalizeRegularDayBucketMap(map)).forEach(([bucket, list]) => {
+                (Array.isArray(list) ? list : []).forEach(player => entries.push({ ...player, bucket }));
+            });
+            return entries;
+        }
+
+        function renderAutoAddList(elementId, map, emptyText, removeFnName) {
+            const wrap = document.getElementById(elementId);
+            if (!wrap) return;
+
+            const entries = getAutoAddEntriesFlat(map);
+            if (!entries.length) {
+                wrap.innerHTML = `<div class="regular-skater-empty">${emptyText}</div>`;
+                return;
+            }
+
+            wrap.innerHTML = entries.map(player => {
+                const tags = [
+                    player.bucket || 'everyday',
+                    `Rating ${player.rating ?? '--'}`,
+                    player.isGoalie ? 'Goalie' : 'Skater',
+                    player.protected ? 'Protected' : 'Not protected'
+                ].join(' • ');
+                const phoneKey = String(player.phone || '').replace(/'/g, "\'");
+                return `
+                    <div class="regular-skater-card">
+                        <div>
+                            <strong>${player.firstName} ${player.lastName}</strong>
+                            <div class="regular-skater-meta">${player.phone || ''}<br>${tags}</div>
+                        </div>
+                        <button type="button" class="remove-btn" onclick="${removeFnName}('${phoneKey}')">Remove</button>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderAutoAddSettings() {
+            renderAutoAddList('protectedPlayersList', currentProtectedPlayersByDay, 'No protected auto-add players set.', 'removeProtectedPlayer');
+            renderAutoAddList('regularGoaliesList', currentRegularGoaliesByDay, 'No regular goalies set.', 'removeRegularGoalie');
+        }
+
+        async function loadAutoAddSettings() {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/auto-add-settings`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken })
+                });
+                if (!res.ok) return;
+                const data = await res.json();
+                currentProtectedPlayersByDay = normalizeRegularDayBucketMap(data.protectedPlayersByDay || {});
+                currentRegularGoaliesByDay = normalizeRegularDayBucketMap(data.regularGoaliesByDay || {});
+                if (data.regularSkatersByDay) {
+                    currentRegularSkatersByDay = normalizeRegularDayBucketMap(data.regularSkatersByDay);
+                    saveLocalRegularSkaters(currentRegularSkatersByDay);
+                    renderRegularSkatersList();
+                }
+                renderAutoAddSettings();
+            } catch (err) {
+                console.error('Error loading auto-add settings:', err);
+            }
+        }
+
+        async function removeProtectedPlayer(phone) {
+            if (!confirm('Remove this protected player from weekly auto-add?')) return;
+            try {
+                const res = await fetch(`${API_URL}/api/admin/remove-protected-player`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, phone })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to remove protected player');
+                currentProtectedPlayersByDay = normalizeRegularDayBucketMap(data.protectedPlayersByDay || {});
+                renderAutoAddSettings();
+                await loadData();
+            } catch (err) {
+                console.error('Error removing protected player:', err);
+                alert(`❌ ${err.message || 'Failed to remove protected player.'}`);
+            }
+        }
+
+        async function removeRegularGoalie(phone) {
+            if (!confirm('Remove this goalie from weekly auto-add?')) return;
+            try {
+                const res = await fetch(`${API_URL}/api/admin/remove-regular-goalie`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, phone })
+                });
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || !data.success) throw new Error(data.error || 'Failed to remove regular goalie');
+                currentRegularGoaliesByDay = normalizeRegularDayBucketMap(data.regularGoaliesByDay || {});
+                renderAutoAddSettings();
+                await loadData();
+            } catch (err) {
+                console.error('Error removing regular goalie:', err);
+                alert(`❌ ${err.message || 'Failed to remove regular goalie.'}`);
+            }
         }
 
         async function removeRegularPlayer(phone) {

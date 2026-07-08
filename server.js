@@ -677,20 +677,29 @@ function syncNoShowPolicyWithRules() {
 // ============================================
 
 // --- AUTO-ADD PLAYERS CONFIG ---
-const AUTO_ADD_CORE_PLAYERS = [
-    {
-        firstName: "Phan",
-        lastName: "Ly",
-        phone: "(519) 566-9288",
-        rating: 6,
-        isGoalie: false,
-        isFree: true,
-        paymentMethod: "FREE",
-        protected: true  // Cannot be cancelled from signup page
-    }
-];
+// Defaults are only used to seed persisted admin-managed settings.
+// Protected players and regular goalies are now saved settings, not hard-coded weekly state.
+const DEFAULT_PROTECTED_PLAYERS_BY_DAY = {
+    everyday: [
+        {
+            firstName: "Phan",
+            lastName: "Ly",
+            phone: "(519) 566-9288",
+            rating: 6,
+            isGoalie: false,
+            isFree: true,
+            paymentMethod: "FREE",
+            protected: true,
+            adminOnlyRemove: true
+        }
+    ],
+    friday: [],
+    sunday: []
+};
 
-const REGULAR_GOALIES_BY_DAY = {
+let protectedPlayersByDay = JSON.parse(JSON.stringify(DEFAULT_PROTECTED_PLAYERS_BY_DAY));
+
+const DEFAULT_REGULAR_GOALIES_BY_DAY = {
     friday: [
         {
             firstName: "Craig",
@@ -733,6 +742,8 @@ const REGULAR_GOALIES_BY_DAY = {
     ]
 };
 
+let regularGoaliesByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_GOALIES_BY_DAY));
+
 // --- REGULAR SKATERS FOR WEEKLY RESET AUTO-ADD ---
 // Supported keys: everyday, friday, sunday, wednesday, saturday, etc.
 // protected: false is recommended for most regulars so they can still cancel from the signup page.
@@ -755,6 +766,101 @@ let persistentPlayerNicknames = {};
 // Persistent paid-in-advance records that survive weekly reset until their expiry date.
 // Keyed the same way as ratings/nicknames, preferring phone number.
 let persistentPiaPayments = {};
+
+function normalizeAutoAddEntry(input = {}, defaults = {}) {
+    const firstName = String(input.firstName || defaults.firstName || '').trim();
+    const lastName = String(input.lastName || defaults.lastName || '').trim();
+    const phone = String(input.phone || defaults.phone || '').trim();
+    const ratingNumber = Number(input.rating ?? defaults.rating);
+    const rating = Number.isFinite(ratingNumber) ? Math.max(1, Math.min(10, Number(ratingNumber.toFixed(1)))) : 5;
+    const paymentMethodRaw = String(input.paymentMethod || defaults.paymentMethod || 'N/A').trim();
+
+    return {
+        firstName,
+        lastName,
+        phone,
+        rating,
+        isGoalie: !!(input.isGoalie ?? defaults.isGoalie),
+        isFree: !!(input.isFree ?? defaults.isFree),
+        paymentMethod: paymentMethodRaw || 'N/A',
+        protected: !!(input.protected ?? defaults.protected),
+        adminOnlyRemove: !!(input.adminOnlyRemove ?? defaults.adminOnlyRemove)
+    };
+}
+
+function normalizeAutoAddByDayMap(input = {}, defaultMap = {}, entryDefaults = {}) {
+    const allowedKeys = new Set([
+        'everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'
+    ]);
+
+    const merged = JSON.parse(JSON.stringify(defaultMap || {}));
+    if (!input || typeof input !== 'object') return merged;
+
+    for (const [rawKey, rawList] of Object.entries(input)) {
+        const key = String(rawKey || '').trim().toLowerCase();
+        if (!allowedKeys.has(key)) continue;
+        const list = Array.isArray(rawList) ? rawList : [];
+        merged[key] = list
+            .map(player => normalizeAutoAddEntry(player, entryDefaults))
+            .filter(player => player.firstName && player.lastName && normalizePhoneDigits(player.phone).length === 10);
+    }
+
+    return merged;
+}
+
+function normalizeProtectedPlayersByDayMap(input = {}) {
+    return normalizeAutoAddByDayMap(input, DEFAULT_PROTECTED_PLAYERS_BY_DAY, {
+        isGoalie: false,
+        isFree: true,
+        paymentMethod: 'FREE',
+        protected: true,
+        adminOnlyRemove: true
+    });
+}
+
+function normalizeRegularGoaliesByDayMap(input = {}) {
+    return normalizeAutoAddByDayMap(input, DEFAULT_REGULAR_GOALIES_BY_DAY, {
+        isGoalie: true,
+        isFree: false,
+        paymentMethod: 'N/A',
+        protected: false,
+        adminOnlyRemove: false
+    });
+}
+
+function getProtectedPlayersForDay(dayName = getGameDayName()) {
+    const dayKey = String(dayName || '').trim().toLowerCase();
+    const everydayPlayers = Array.isArray(protectedPlayersByDay.everyday) ? protectedPlayersByDay.everyday : [];
+    const dayPlayers = Array.isArray(protectedPlayersByDay[dayKey]) ? protectedPlayersByDay[dayKey] : [];
+    return [...everydayPlayers, ...dayPlayers].map(player => ({
+        ...player,
+        protected: true,
+        adminOnlyRemove: true
+    }));
+}
+
+function getRegularGoaliesForDay(dayName = getGameDayName()) {
+    const dayKey = String(dayName || '').trim().toLowerCase();
+    return Array.isArray(regularGoaliesByDay[dayKey])
+        ? regularGoaliesByDay[dayKey]
+        : (Array.isArray(regularGoaliesByDay.friday) ? regularGoaliesByDay.friday : []);
+}
+
+function removeAutoAddPlayerByPhone(map, phone) {
+    const normalized = normalizePhoneDigits(phone);
+    if (!normalized || !map || typeof map !== 'object') return false;
+    let removed = false;
+    for (const key of Object.keys(map)) {
+        const list = Array.isArray(map[key]) ? map[key] : [];
+        const next = list.filter(player => {
+            const keep = normalizePhoneDigits(player.phone) !== normalized;
+            if (!keep) removed = true;
+            return keep;
+        });
+        map[key] = next;
+    }
+    return removed;
+}
 
 function normalizeRegularSkaterEntry(input = {}) {
     const firstName = String(input.firstName || '').trim();
@@ -809,9 +915,10 @@ function getRegularSkatersForDay(dayName = getGameDayName()) {
 
 function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
-    const goalieList = REGULAR_GOALIES_BY_DAY[dayKey] || REGULAR_GOALIES_BY_DAY.friday;
+    const protectedList = getProtectedPlayersForDay(dayKey);
+    const goalieList = getRegularGoaliesForDay(dayKey);
     const skaterList = getRegularSkatersForDay(dayKey);
-    return [...AUTO_ADD_CORE_PLAYERS, ...goalieList, ...skaterList].map(player => ({ ...player }));
+    return [...protectedList, ...goalieList, ...skaterList].map(player => ({ ...player }));
 }
 
 function buildRosterReleasePaymentAnnouncement() {
@@ -2235,6 +2342,8 @@ async function loadDataFromDB() {
         if (settings.resetArmed !== undefined) resetArmed = !!settings.resetArmed;
         if (settings.currentWeekData) currentWeekData = settings.currentWeekData;
         if (settings.cancelledRegistrations) cancelledRegistrations = Array.isArray(settings.cancelledRegistrations) ? settings.cancelledRegistrations : [];
+        if (settings.protectedPlayersByDay !== undefined) protectedPlayersByDay = normalizeProtectedPlayersByDayMap(settings.protectedPlayersByDay);
+        if (settings.regularGoaliesByDay !== undefined) regularGoaliesByDay = normalizeRegularGoaliesByDayMap(settings.regularGoaliesByDay);
         if (settings.regularSkatersByDay !== undefined) regularSkatersByDay = normalizeRegularSkatersByDayMap(settings.regularSkatersByDay);
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.persistentPlayerNicknames) persistentPlayerNicknames = normalizePersistentPlayerNicknames(settings.persistentPlayerNicknames);
@@ -3339,6 +3448,8 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['resetArmed', resetArmed],
             ['currentWeekData', currentWeekData],
             ['cancelledRegistrations', cancelledRegistrations],
+            ['protectedPlayersByDay', protectedPlayersByDay],
+            ['regularGoaliesByDay', regularGoaliesByDay],
             ['regularSkatersByDay', regularSkatersByDay],
             ['extraGoalieContacts', extraGoalieContacts],
             ['persistentAdminRatings', persistentAdminRatings],
@@ -3587,6 +3698,8 @@ function buildFullDataSnapshot() {
         players,
         waitlist,
         cancelledRegistrations,
+        protectedPlayersByDay,
+        regularGoaliesByDay,
         regularSkatersByDay,
         extraGoalieContacts,
         persistentAdminRatings,
@@ -3645,6 +3758,8 @@ function buildFullDataSnapshot() {
             paymentEmail,
             noShowPolicyText: NO_SHOW_POLICY_TEXT,
             gameRules: GAME_RULES,
+            protectedPlayersByDay,
+            regularGoaliesByDay,
             rosterReleaseAnnouncementText,
             collectorPageEnabled,
             selectedDayTime: gameTime,
@@ -3729,6 +3844,8 @@ function getSettingsSnapshot() {
         resetArmed,
         currentWeekData,
         cancelledRegistrations,
+        protectedPlayersByDay,
+        regularGoaliesByDay,
         regularSkatersByDay,
         extraGoalieContacts,
         persistentAdminRatings,
@@ -3840,6 +3957,8 @@ function loadDataFromFile() {
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
+            protectedPlayersByDay = normalizeProtectedPlayersByDayMap(data.protectedPlayersByDay || data.appSettings?.protectedPlayersByDay || {});
+            regularGoaliesByDay = normalizeRegularGoaliesByDayMap(data.regularGoaliesByDay || data.appSettings?.regularGoaliesByDay || {});
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             persistentPlayerNicknames = normalizePersistentPlayerNicknames(data.persistentPlayerNicknames || data.appSettings?.persistentPlayerNicknames || {});
@@ -6017,9 +6136,9 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(400).json({ error: "Phone number is required." });
     }
 
-    const isProtectedPlayer = (p) =>
-        String(p?.firstName || '').toLowerCase() === 'phan' &&
-        String(p?.lastName || '').toLowerCase() === 'ly';
+    const isProtectedPlayer = (p) => !!(p?.protected || p?.adminOnlyRemove) ||
+        (String(p?.firstName || '').toLowerCase() === 'phan' &&
+        String(p?.lastName || '').toLowerCase() === 'ly');
 
     const findById = (arr) => arr.findIndex(p => String(p.id).trim() === idToRemove);
 
@@ -6539,6 +6658,78 @@ app.post('/api/admin/update-regular-skaters', async (req, res) => {
         res.status(500).json({ error: 'Failed to save regular skaters' });
     }
 });
+
+app.post('/api/admin/auto-add-settings', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) {
+        return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    res.json({
+        success: true,
+        protectedPlayersByDay,
+        regularGoaliesByDay,
+        regularSkatersByDay
+    });
+});
+
+app.post('/api/admin/update-protected-players', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    try {
+        await runProtectedMutation('update-protected-players', req, async () => {
+            protectedPlayersByDay = normalizeProtectedPlayersByDayMap(req.body.protectedPlayersByDay || {});
+        });
+        res.json({ success: true, protectedPlayersByDay });
+    } catch (err) {
+        console.error('Error saving protected players:', err);
+        res.status(500).json({ error: 'Failed to save protected players' });
+    }
+});
+
+app.post('/api/admin/update-regular-goalies', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    try {
+        await runProtectedMutation('update-regular-goalies', req, async () => {
+            regularGoaliesByDay = normalizeRegularGoaliesByDayMap(req.body.regularGoaliesByDay || {});
+        });
+        res.json({ success: true, regularGoaliesByDay });
+    } catch (err) {
+        console.error('Error saving regular goalies:', err);
+        res.status(500).json({ error: 'Failed to save regular goalies' });
+    }
+});
+
+app.post('/api/admin/remove-protected-player', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    try {
+        const phone = String(req.body.phone || '').trim();
+        if (!phone) return res.status(400).json({ error: 'Phone is required' });
+        let removed = false;
+        await runProtectedMutation('remove-protected-player', req, async () => {
+            removed = removeAutoAddPlayerByPhone(protectedPlayersByDay, phone);
+        }, { phone });
+        return res.json({ success: true, removed, protectedPlayersByDay });
+    } catch (err) {
+        console.error('Error removing protected player:', err);
+        return res.status(500).json({ error: 'Failed to remove protected player' });
+    }
+});
+
+app.post('/api/admin/remove-regular-goalie', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    try {
+        const phone = String(req.body.phone || '').trim();
+        if (!phone) return res.status(400).json({ error: 'Phone is required' });
+        let removed = false;
+        await runProtectedMutation('remove-regular-goalie', req, async () => {
+            removed = removeAutoAddPlayerByPhone(regularGoaliesByDay, phone);
+        }, { phone });
+        return res.json({ success: true, removed, regularGoaliesByDay });
+    } catch (err) {
+        console.error('Error removing regular goalie:', err);
+        return res.status(500).json({ error: 'Failed to remove regular goalie' });
+    }
+});
+
 
 // Add backup goalie to roster
 app.post('/api/admin/add-backup-goalie', async (req, res) => {
@@ -8719,7 +8910,7 @@ function isCurrentlyRegisteredGoalieContact(goalie = {}) {
 
 function getRegularGoalieContacts() {
     const list = [];
-    for (const [day, goalies] of Object.entries(REGULAR_GOALIES_BY_DAY || {})) {
+    for (const [day, goalies] of Object.entries(regularGoaliesByDay || {})) {
         for (const goalie of (Array.isArray(goalies) ? goalies : [])) {
             if (isCurrentlyRegisteredGoalieContact(goalie)) continue;
             list.push({
