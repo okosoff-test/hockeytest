@@ -6351,7 +6351,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 <summary>Manage Spare / Quick Goalies</summary>
 <div class="spare-goalie-ratings-section nested-spare-goalie-ratings">
 <h3>🥅 Manage Spare / Quick Goalies</h3>
-<p class="spare-goalie-rating-note">One goalie list for Admin quick-select and the private goalie page. Built-in goalies stay visible; saved spares/ratings sync through the server.</p>
+<p class="spare-goalie-rating-note">One goalie list for Admin quick-select and the private goalie page. Saved spares/ratings sync through the server. Regular goalies are set with the Regular button after a goalie is added.</p>
 <div class="spare-goalie-add-grid">
 <input id="adminSpareGoalieFirst" placeholder="First name" type="text"/>
 <input id="adminSpareGoalieLast" placeholder="Last name" type="text"/>
@@ -6449,49 +6449,16 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 </div>
 
 <div class="goalies-section">
-<h3>🥅 Auto-Add Regular Goalies (Weekly Reset)</h3>
+<h3>🥅 Regular Goalies (Weekly Reset)</h3>
 <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                These goalies can be added manually now. Weekly reset is dynamic: Friday auto-adds Craig + Hao, Sunday auto-adds Craig + Mat.
+                No goalies are hard-coded anymore. Add a goalie manually or from Quick Select, then use the Regular button in the registered players table. Regular goalies carry over after weekly reset and are still managed through the Goalies portal.
             </p>
-<div class="goalie-list" id="predefinedGoalies">
-<div class="goalie-item">
-<div class="goalie-checkbox-wrapper">
-<input id="goalieCraig" type="checkbox" value="Craig Scolack"/>
-<label for="goalieCraig">Craig Scolack</label>
-</div>
-<div class="goalie-rating">
-<label>Rating:</label>
-<input id="ratingCraig" max="10" min="1" type="number" value="9"/>
-</div>
-</div>
-<div class="goalie-item">
-<div class="goalie-checkbox-wrapper">
-<input id="goalieHao" type="checkbox" value="Hao Chau"/>
-<label for="goalieHao">Hao Chau</label>
-</div>
-<div class="goalie-rating">
-<label>Rating:</label>
-<input id="ratingHao" max="10" min="1" type="number" value="8"/>
-</div>
-</div>
-<div class="goalie-item">
-<div class="goalie-checkbox-wrapper">
-<input id="goalieMat" type="checkbox" value="Mat Carriere"/>
-<label for="goalieMat">Mat Carriere</label>
-</div>
-<div class="goalie-rating">
-<label>Rating:</label>
-<input id="ratingMat" max="10" min="1" type="number" value="7"/>
-</div>
-</div>
-</div>
-<button class="add-goalies-btn" onclick="addSelectedGoalies()">➕ Add Selected Goalies Now</button>
 </div>
 
 <div class="backup-goalies-section">
 <h3>🔄 Backup Goalies (Substitutions)</h3>
 <p style="color: #aaa; font-size: 0.9rem; margin-bottom: 15px;">
-                Select a backup goalie to substitute when needed. Sunday regular setup now uses Craig + Mat.
+                Select a backup goalie to substitute when needed. Regular goalies are managed with the Regular button, not hard-coded names.
             </p>
 <div class="backup-goalie-select">
 <select id="backupGoalieSelect">
@@ -7284,12 +7251,8 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
         let latestRosterContactExport = null;
         let latestAdminPlayers = [];
 
-        // Pre-defined goalie data
-        const PREDEFINED_GOALIES = [
-            { id: 'goalieCraig', name: 'Craig Scolack', phone: '(519) 982-6311', defaultRating: 9 },
-            { id: 'goalieHao', name: 'Hao Chau', phone: '(519) 995-9884', defaultRating: 8 },
-            { id: 'goalieMat', name: 'Mat Carriere', phone: '(226) 350-0217', defaultRating: 7 }
-        ];
+        // Regular goalies are admin-managed data. No goalie names are hard-coded.
+        const PREDEFINED_GOALIES = [];
 
         function formatAuditAction(action) {
             return String(action || '')
@@ -8221,83 +8184,10 @@ Date: ${selectedGameDate}`);
         }
 
         // Add selected predefined goalies
+        // Legacy compatibility: predefined hard-coded goalies were removed.
         async function addSelectedGoalies() {
-            const selectedGoalies = [];
-            
-            PREDEFINED_GOALIES.forEach(goalie => {
-                const checkbox = document.getElementById(goalie.id);
-                if (checkbox && checkbox.checked) {
-                    const ratingInput = document.getElementById('rating' + goalie.id.replace('goalie', ''));
-                    const rating = parseInt(ratingInput.value) || goalie.defaultRating;
-                    selectedGoalies.push({
-                        ...goalie,
-                        rating: rating
-                    });
-                }
-            });
-
-            if (selectedGoalies.length === 0) {
-                alert("Please select at least one goalie to add.");
-                return;
-            }
-
-            if (selectedGoalies.length > maxGoalies) {
-                alert(`You can only add up to ${maxGoalies} goalies. Please uncheck some goalies.`);
-                return;
-            }
-
-            if (currentGoalies + selectedGoalies.length > maxGoalies) {
-                alert(`Only ${maxGoalies - currentGoalies} goalie spot(s) remaining. Please uncheck some goalies.`);
-                return;
-            }
-
-            let addedCount = 15;
-            let errors = [];
-
-            for (const goalie of selectedGoalies) {
-                try {
-                    const res = await fetch(`${API_URL}/api/admin/add-player`, {
-                        method: 'POST',
-                        headers: getAdminHeaders(),
-                        body: JSON.stringify({ 
-                            sessionToken: sessionToken, 
-                            firstName: goalie.name.split(' ')[0], 
-                            lastName: goalie.name.split(' ').slice(1).join(' '), 
-                            phone: goalie.phone, 
-                            rating: goalie.rating,
-                            paymentMethod: 'N/A', 
-                            isGoalie: true,
-                            toWaitlist: false 
-                        })
-                    });
-
-                    if (res.ok) {
-                        addedCount++;
-                    } else {
-                        const err = await res.json();
-                        errors.push(`${goalie.name}: ${err.error}`);
-                    }
-                } catch (err) {
-                    console.error("Add goalie error:", err);
-                    errors.push(`${goalie.name}: Network error`);
-                }
-            }
-
-            // Uncheck all
-            PREDEFINED_GOALIES.forEach(goalie => {
-                const checkbox = document.getElementById(goalie.id);
-                if (checkbox) checkbox.checked = false;
-            });
-
-            loadData();
-
-            if (addedCount > 0) {
-                alert(`✅ Successfully added ${addedCount} goalie(s)!\n${errors.length > 0 ? '\nErrors:\n' + errors.join('\n') : ''}`);
-            } else {
-                alert(`❌ Failed to add goalies:\n${errors.join('\n')}`);
-            }
+            alert('Hard-coded goalies have been removed. Add a goalie manually or from Quick Select, then tap Regular in the registered players table.');
         }
-
 
         function normalizeRegularDayBucketMap(input = {}) {
             const defaults = {
@@ -8374,6 +8264,26 @@ Date: ${selectedGameDate}`);
             }
 
             return { active: false, bucket: null, player: null };
+        }
+
+        function getGoalieRegularInfo(goalie) {
+            const goaliePhone = normalizePhoneDigitsClient(goalie && goalie.phone);
+            const first = String(goalie && goalie.firstName || '').trim().toLowerCase();
+            const last = String(goalie && goalie.lastName || '').trim().toLowerCase();
+            const map = normalizeRegularDayBucketMap(currentRegularGoaliesByDay);
+            const order = ['everyday','friday','sunday','wednesday','saturday','monday','tuesday','thursday'];
+
+            for (const day of order) {
+                const match = (map[day] || []).find(existing => {
+                    const existingPhone = normalizePhoneDigitsClient(existing.phone);
+                    if (goaliePhone && existingPhone && existingPhone === goaliePhone) return true;
+                    return String(existing.firstName || '').trim().toLowerCase() === first &&
+                           String(existing.lastName || '').trim().toLowerCase() === last;
+                });
+                if (match) return { active: true, bucket: day, goalie: match };
+            }
+
+            return { active: false, bucket: null, goalie: null };
         }
 
         function renderRegularSkatersList() {
@@ -9346,6 +9256,29 @@ ${rosterLink}
             }
         }
 
+
+        async function toggleGoalieRegular(playerId) {
+            try {
+                const res = await fetch(`${API_URL}/api/admin/toggle-goalie-regular`, {
+                    method: 'POST',
+                    headers: getAdminHeaders(),
+                    body: JSON.stringify({ sessionToken, playerId })
+                });
+
+                const data = await res.json().catch(() => ({}));
+                if (!res.ok || data.success === false) {
+                    throw new Error(data.error || 'Failed to update regular goalie');
+                }
+
+                currentRegularGoaliesByDay = normalizeRegularDayBucketMap(data.regularGoaliesByDay || {});
+                renderAutoAddSettings();
+                await loadData();
+            } catch (err) {
+                console.error('Toggle goalie regular error:', err);
+                alert(`❌ ${err.message || 'Failed to update regular goalie.'}`);
+            }
+        }
+
         async function loadData() {
             try {
                 const res = await fetch(`${API_URL}/api/admin/players-full`, {
@@ -9456,7 +9389,7 @@ ${rosterLink}
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
                         const protectedBadge = isProtectedOrAdminOnlyPlayer(p) ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
-                        const regularInfo = getPlayerRegularInfo(p);
+                        const regularInfo = p.isGoalie ? getGoalieRegularInfo(p) : getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
@@ -9490,15 +9423,16 @@ ${rosterLink}
                             `;
                         }
 
-                        const regularCell = hideAdminPaymentUi
-                            ? ''
-                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
+                        const regularCell = p.isGoalie
+                            ? `<button class="control-btn ${regularClass}" onclick="toggleGoalieRegular(${p.id})">${regularLabel}</button>`
+                            : (hideAdminPaymentUi ? '' : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`);
                         const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isProtectedPlayer;
                         const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
                             : '';
                         const actionCell = hideAdminPaymentUi
                             ? `<div class="action-stack registered-action-stack">
+                                    ${regularCell}
                                     <button class="remove-btn" onclick="removePlayer(${p.id})">Remove</button>
                                </div>`
                             : `<div class="action-stack registered-action-stack">

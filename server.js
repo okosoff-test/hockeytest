@@ -697,46 +697,10 @@ const DEFAULT_PROTECTED_PLAYERS_BY_DAY = {
 let protectedPlayersByDay = JSON.parse(JSON.stringify(DEFAULT_PROTECTED_PLAYERS_BY_DAY));
 
 const DEFAULT_REGULAR_GOALIES_BY_DAY = {
-    friday: [
-        {
-            firstName: "Craig",
-            lastName: "Scolack",
-            phone: "(519) 982-6311",
-            rating: 9,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        },
-        {
-            firstName: "Hao",
-            lastName: "Chau",
-            phone: "(519) 995-9884",
-            rating: 8,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        }
-    ],
-    sunday: [
-        {
-            firstName: "Craig",
-            lastName: "Scolack",
-            phone: "(519) 982-6311",
-            rating: 9,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        },
-        {
-            firstName: "Mat",
-            lastName: "Carriere",
-            phone: "(226) 350-0217",
-            rating: 7,
-            isGoalie: true,
-            isFree: false,
-            paymentMethod: "N/A"
-        }
-    ]
+    // Intentionally empty. Regular goalies are now admin-managed data, not hard-coded names.
+    everyday: [],
+    friday: [],
+    sunday: []
 };
 
 let regularGoaliesByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_GOALIES_BY_DAY));
@@ -878,9 +842,9 @@ function getProtectedPlayersForDay(dayName = getGameDayName()) {
 
 function getRegularGoaliesForDay(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
-    return Array.isArray(regularGoaliesByDay[dayKey])
-        ? regularGoaliesByDay[dayKey]
-        : (Array.isArray(regularGoaliesByDay.friday) ? regularGoaliesByDay.friday : []);
+    const everydayGoalies = Array.isArray(regularGoaliesByDay.everyday) ? regularGoaliesByDay.everyday : [];
+    const dayGoalies = Array.isArray(regularGoaliesByDay[dayKey]) ? regularGoaliesByDay[dayKey] : [];
+    return [...everydayGoalies, ...dayGoalies];
 }
 
 function removeAutoAddPlayerByPhone(map, phone) {
@@ -2447,10 +2411,8 @@ async function loadDataFromDB() {
         if (settings.protectedPlayersByDay !== undefined) protectedPlayersByDay = normalizeProtectedPlayersByDayMap(settings.protectedPlayersByDay);
         if (settings.regularGoaliesByDay !== undefined) regularGoaliesByDay = normalizeRegularGoaliesByDayMap(settings.regularGoaliesByDay);
         if (settings.regularSkatersByDay !== undefined) regularSkatersByDay = normalizeRegularSkatersByDayMap(settings.regularSkatersByDay);
-        // Safety repair for prior builds that accidentally saved empty auto-add maps.
-        // This preserves the intended defaults unless Admin has an actual saved list.
+        // Safety repair for protected players only. Regular goalies are admin-managed data and may validly be empty.
         if (!autoAddMapHasEntries(protectedPlayersByDay)) protectedPlayersByDay = normalizeProtectedPlayersByDayMap(undefined);
-        if (!autoAddMapHasEntries(regularGoaliesByDay)) regularGoaliesByDay = normalizeRegularGoaliesByDayMap(undefined);
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.persistentPlayerNicknames) persistentPlayerNicknames = normalizePersistentPlayerNicknames(settings.persistentPlayerNicknames);
         if (settings.persistentPiaPayments) persistentPiaPayments = normalizePersistentPiaPayments(settings.persistentPiaPayments);
@@ -6648,6 +6610,83 @@ function removeRegularPlayerByPhone(phone) {
     return removed;
 }
 
+function findRegularBucketForGoalie(goalie = {}) {
+    regularGoaliesByDay = normalizeRegularGoaliesByDayMap(regularGoaliesByDay || {});
+    const normalizedPhone = normalizePhoneDigits(goalie.phone);
+    const firstName = String(goalie.firstName || '').trim().toLowerCase();
+    const lastName = String(goalie.lastName || '').trim().toLowerCase();
+
+    for (const bucket of getRegularBucketsOrder()) {
+        const list = Array.isArray(regularGoaliesByDay[bucket]) ? regularGoaliesByDay[bucket] : [];
+        const match = list.find(existing => {
+            const existingPhone = normalizePhoneDigits(existing.phone);
+            if (normalizedPhone && existingPhone && normalizedPhone === existingPhone) return true;
+            return String(existing.firstName || '').trim().toLowerCase() === firstName &&
+                   String(existing.lastName || '').trim().toLowerCase() === lastName;
+        });
+        if (match) return bucket;
+    }
+    return null;
+}
+
+function removeRegularGoalieByPhone(phone) {
+    regularGoaliesByDay = normalizeRegularGoaliesByDayMap(regularGoaliesByDay || {});
+    return removeAutoAddPlayerByPhone(regularGoaliesByDay, phone);
+}
+
+function normalizeRegularGoalieEntryFromPlayer(player = {}) {
+    return normalizeAutoAddEntry({
+        firstName: player.firstName,
+        lastName: player.lastName,
+        phone: player.phone,
+        rating: Number(player.finalRating ?? player.rating ?? 7),
+        isGoalie: true,
+        isFree: false,
+        paymentMethod: 'N/A',
+        protected: false,
+        adminOnlyRemove: false,
+        regularGoalie: true
+    }, {
+        isGoalie: true,
+        isFree: false,
+        paymentMethod: 'N/A',
+        protected: false,
+        adminOnlyRemove: false,
+        regularGoalie: true
+    });
+}
+
+
+app.post('/api/admin/toggle-goalie-regular', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: "Unauthorized" });
+    try {
+        const playerId = Number(req.body.playerId);
+        if (!Number.isFinite(playerId)) return res.status(400).json({ error: 'Invalid goalie id' });
+        const goalie = players.find(p => Number(p.id) === playerId && !!p.isGoalie);
+        if (!goalie) return res.status(404).json({ error: 'Goalie not found in registered goalies' });
+
+        const existingBucket = findRegularBucketForGoalie(goalie);
+        if (existingBucket) {
+            await runProtectedMutation('toggle-goalie-regular-remove', req, async () => {
+                removeRegularGoalieByPhone(goalie.phone);
+            }, { playerId, removedFrom: existingBucket });
+            return res.json({ success: true, active: false, removedFrom: existingBucket, regularGoaliesByDay });
+        }
+
+        const regularGoalie = normalizeRegularGoalieEntryFromPlayer(goalie);
+        await runProtectedMutation('toggle-goalie-regular-add', req, async () => {
+            regularGoaliesByDay = normalizeRegularGoaliesByDayMap(regularGoaliesByDay || {});
+            regularGoaliesByDay.everyday = Array.isArray(regularGoaliesByDay.everyday) ? regularGoaliesByDay.everyday : [];
+            regularGoaliesByDay.everyday.push(regularGoalie);
+        }, { playerId, bucket: 'everyday' });
+
+        return res.json({ success: true, active: true, bucket: 'everyday', regularGoaliesByDay });
+    } catch (err) {
+        console.error('Error toggling goalie regular status:', err);
+        return res.status(500).json({ error: 'Failed to update regular goalie' });
+    }
+});
+
 app.post('/api/admin/promote-player-to-regular', async (req, res) => {
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -6834,7 +6873,7 @@ app.post('/api/admin/remove-regular-goalie', async (req, res) => {
         if (!phone) return res.status(400).json({ error: 'Phone is required' });
         let removed = false;
         await runProtectedMutation('remove-regular-goalie', req, async () => {
-            removed = removeAutoAddPlayerByPhone(regularGoaliesByDay, phone);
+            removed = removeRegularGoalieByPhone(phone);
         }, { phone });
         return res.json({ success: true, removed, regularGoaliesByDay });
     } catch (err) {
