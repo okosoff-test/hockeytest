@@ -3181,10 +3181,11 @@ function updateCalculatedRating() {
                 ? "'Join Game', recheck roster, see you at the rink."
                 : "'Join Waitlist', 1st on waitlist is guaranteed a spot if a player cancels.";
 
-            if (isRosterAnnouncement) {
-                if (text.includes('{joinMessage}')) {
-                    text = text.split('{joinMessage}').join(joinMessage);
-                } else if (/You\s+can\s+still\s+['’‘"]?Join Game['’‘"]?/i.test(text)) {
+            const hadJoinMessagePlaceholder = text.includes('{joinMessage}');
+            text = text.split('{joinMessage}').join(joinMessage);
+
+            if (isRosterAnnouncement && !hadJoinMessagePlaceholder) {
+                if (/You\s+can\s+still\s+['’‘"]?Join Game['’‘"]?/i.test(text)) {
                     text = text
                         .split('\n')
                         .map(line => /You\s+can\s+still\s+['’‘"]?Join Game['’‘"]?/i.test(line) ? joinMessage : line)
