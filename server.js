@@ -754,19 +754,8 @@ function syncNoShowPolicyWithRules() {
 // Defaults are only used to seed persisted admin-managed settings.
 // Protected players and regular goalies are now saved settings, not hard-coded weekly state.
 const DEFAULT_PROTECTED_PLAYERS_BY_DAY = {
-    everyday: [
-        {
-            firstName: "Phan",
-            lastName: "Ly",
-            phone: "(519) 566-9288",
-            rating: 6,
-            isGoalie: false,
-            isFree: true,
-            paymentMethod: "FREE",
-            protected: true,
-            adminOnlyRemove: true
-        }
-    ],
+    // Protected players are intentionally omitted. Use Regular players for weekly auto-add.
+    everyday: [],
     friday: [],
     sunday: []
 };
@@ -786,7 +775,19 @@ let regularGoaliesByDay = JSON.parse(JSON.stringify(DEFAULT_REGULAR_GOALIES_BY_D
 // Supported keys: everyday, friday, sunday, wednesday, saturday, etc.
 // protected: false is recommended for most regulars so they can still cancel from the signup page.
 const DEFAULT_REGULAR_SKATERS_BY_DAY = {
-    everyday: [],
+    everyday: [
+        {
+            firstName: "Phan",
+            lastName: "Ly",
+            phone: "(519) 566-9288",
+            rating: 6,
+            isGoalie: false,
+            isFree: true,
+            paymentMethod: "FREE",
+            protected: false,
+            adminOnlyRemove: false
+        }
+    ],
     friday: [],
     sunday: []
 };
@@ -818,11 +819,16 @@ function isProtectedOrAdminOnlyPlayer(player = {}) {
     return !!(player && (player.protected || player.adminOnlyRemove));
 }
 
+function isPublicCancelLockedPlayer(player = {}) {
+    // Phan is managed with the normal Regular toggle in Admin, but never gets a public Cancel button.
+    return isLegacyPhanLyPlayer(player);
+}
+
 function applyProtectedPlayerFlags(player = {}) {
     if (!player || typeof player !== 'object') return player;
     if (isLegacyPhanLyPlayer(player)) {
-        player.protected = true;
-        player.adminOnlyRemove = true;
+        player.protected = false;
+        player.adminOnlyRemove = false;
         player.isFree = player.isFree ?? true;
         player.paymentMethod = player.paymentMethod || 'FREE';
         if (player.paidAmount === undefined || player.paidAmount === null) player.paidAmount = 0;
@@ -886,13 +892,18 @@ function autoAddMapHasEntries(map) {
 }
 
 function normalizeProtectedPlayersByDayMap(input = undefined) {
-    return normalizeAutoAddByDayMap(input, DEFAULT_PROTECTED_PLAYERS_BY_DAY, {
+    const normalized = normalizeAutoAddByDayMap(input, DEFAULT_PROTECTED_PLAYERS_BY_DAY, {
         isGoalie: false,
         isFree: true,
         paymentMethod: 'FREE',
-        protected: true,
-        adminOnlyRemove: true
+        protected: false,
+        adminOnlyRemove: false
     });
+    // Drop legacy Phan protected entries. Phan now belongs in Regular Skaters, not Protected.
+    Object.keys(normalized).forEach(bucket => {
+        normalized[bucket] = (normalized[bucket] || []).filter(player => !isLegacyPhanLyPlayer(player));
+    });
+    return normalized;
 }
 
 function normalizeRegularGoaliesByDayMap(input = undefined) {
@@ -910,11 +921,7 @@ function getProtectedPlayersForDay(dayName = getGameDayName()) {
     const dayKey = String(dayName || '').trim().toLowerCase();
     const everydayPlayers = Array.isArray(protectedPlayersByDay.everyday) ? protectedPlayersByDay.everyday : [];
     const dayPlayers = Array.isArray(protectedPlayersByDay[dayKey]) ? protectedPlayersByDay[dayKey] : [];
-    return [...everydayPlayers, ...dayPlayers].map(player => ({
-        ...player,
-        protected: true,
-        adminOnlyRemove: true
-    }));
+    return [...everydayPlayers, ...dayPlayers].filter(player => !isLegacyPhanLyPlayer(player));
 }
 
 function getRegularGoaliesForDay(dayName = getGameDayName()) {
@@ -965,16 +972,22 @@ function normalizeRegularSkatersByDayMap(input = {}) {
         'everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'
     ]);
 
-    const merged = { ...DEFAULT_REGULAR_SKATERS_BY_DAY };
-    if (!input || typeof input !== 'object') return merged;
+    const merged = JSON.parse(JSON.stringify(DEFAULT_REGULAR_SKATERS_BY_DAY));
+    if (input && typeof input === 'object') {
+        for (const [rawKey, rawList] of Object.entries(input)) {
+            const key = String(rawKey || '').trim().toLowerCase();
+            if (!allowedKeys.has(key)) continue;
+            const list = Array.isArray(rawList) ? rawList : [];
+            merged[key] = list
+                .map(normalizeRegularSkaterEntry)
+                .filter(player => player.firstName && player.lastName && normalizePhoneDigits(player.phone).length === 10);
+        }
+    }
 
-    for (const [rawKey, rawList] of Object.entries(input)) {
-        const key = String(rawKey || '').trim().toLowerCase();
-        if (!allowedKeys.has(key)) continue;
-        const list = Array.isArray(rawList) ? rawList : [];
-        merged[key] = list
-            .map(normalizeRegularSkaterEntry)
-            .filter(player => player.firstName && player.lastName && normalizePhoneDigits(player.phone).length === 10);
+    const hasPhan = Object.values(merged).some(list => Array.isArray(list) && list.some(isLegacyPhanLyPlayer));
+    if (!hasPhan) {
+        merged.everyday = Array.isArray(merged.everyday) ? merged.everyday : [];
+        merged.everyday.push(normalizeRegularSkaterEntry(DEFAULT_REGULAR_SKATERS_BY_DAY.everyday[0]));
     }
 
     return merged;
@@ -5767,8 +5780,9 @@ function buildPublicRosterPayload() {
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
         const protectedPlayer = !!(p.protected || p.adminOnlyRemove);
+        const cancelLockedPlayer = isPublicCancelLockedPlayer(p);
         const isGoalie = !!p.isGoalie;
-        const canCancel = !isGoalie && !cancelled && cancellationAllowedNow && !protectedPlayer;
+        const canCancel = !isGoalie && !cancelled && cancellationAllowedNow && !protectedPlayer && !cancelLockedPlayer;
         return {
             id: p.id,
             firstName: getReleasedRosterFirstName(p),
@@ -5844,9 +5858,9 @@ app.get('/api/status', (req, res) => {
         rating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         finalRating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         // Protected/admin-only players cannot cancel from signup page - only admin can remove
-        canCancel: cancellationAllowedNow && !p.isGoalie && !(p.protected || p.adminOnlyRemove),
-        protected: !!p.protected,
-        adminOnlyRemove: !!p.adminOnlyRemove,
+        canCancel: cancellationAllowedNow && !p.isGoalie && !(p.protected || p.adminOnlyRemove) && !isPublicCancelLockedPlayer(p),
+        protected: isPublicCancelLockedPlayer(p) ? false : !!p.protected,
+        adminOnlyRemove: isPublicCancelLockedPlayer(p) ? false : !!p.adminOnlyRemove,
         // Public replacement display fields only. Still excludes payment and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
@@ -5943,7 +5957,7 @@ app.get('/api/waitlist', (req, res) => {
         lastName: p.lastName,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie,
-        canCancel: cancellationAllowedNow && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)
+        canCancel: cancellationAllowedNow && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p) && !isPublicCancelLockedPlayer(p)
         // EXCLUDED: rating, phone, paymentMethod
     }));
     
@@ -6372,7 +6386,7 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
         return res.status(404).json({ error: "Player not found." });
     }
 
-    if (isProtectedOrAdminOnlyPlayer(foundPlayer)) {
+    if (isProtectedOrAdminOnlyPlayer(foundPlayer) || isPublicCancelLockedPlayer(foundPlayer)) {
         return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
     }
 
@@ -6887,7 +6901,8 @@ app.post('/api/admin/promote-player-to-regular', async (req, res) => {
             rating: Number(player.finalRating ?? player.rating ?? 5),
             paymentMethod: player.paymentMethod || 'N/A',
             isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'),
-            protected: !!player.protected
+            protected: false,
+            adminOnlyRemove: false
         });
 
         await runProtectedMutation('promote-player-to-regular', req, async () => {
@@ -6922,7 +6937,7 @@ app.post('/api/admin/toggle-player-regular', async (req, res) => {
         const promotedRegular = normalizeRegularSkaterEntry({
             firstName: player.firstName, lastName: player.lastName, phone: player.phone,
             rating: Number(player.finalRating ?? player.rating ?? 5), paymentMethod: player.paymentMethod || 'N/A',
-            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'), protected: !!player.protected
+            isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'), protected: false, adminOnlyRemove: false
         });
         await runProtectedMutation('toggle-player-regular-add', req, async () => {
             regularSkatersByDay = normalizeRegularSkatersByDayMap(regularSkatersByDay || {});

@@ -6403,9 +6403,9 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <div class="regular-summary-list" id="regularSkatersList"></div>
 </div>
 
-<div class="regular-summary-section">
+<div class="regular-summary-section" style="display:none !important;">
 <h3>🛡️ Protected Auto-Add Players</h3>
-<p class="regular-summary-note">These players return every weekly reset, are marked protected, and can only be removed by admin.</p>
+<p class="regular-summary-note">Protected players omitted. Use Regular players for weekly auto-add.</p>
 <div class="regular-summary-list" id="protectedPlayersList"></div>
 </div>
 
@@ -8854,7 +8854,14 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
         }
 
 
+        function isLegacyPhanLyPlayerAdmin(player) {
+            const first = String(player?.firstName || '').trim().toLowerCase();
+            const last = String(player?.lastName || '').trim().toLowerCase();
+            return first === 'phan' && last === 'ly';
+        }
+
         function isProtectedOrAdminOnlyPlayer(player) {
+            if (isLegacyPhanLyPlayerAdmin(player)) return false;
             return !!(player && (player.protected || player.adminOnlyRemove));
         }
 
@@ -9365,14 +9372,13 @@ ${rosterLink}
                         const adminRatingFootnote = formatAdminRatingFootnote(p);
                         const adminRatingHtml = adminRatingFootnote ? `<span class="admin-rating-footnote">${adminRatingFootnote}</span>` : '';
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = isProtectedOrAdminOnlyPlayer(p) ? 
-                            '<span class="protected-badge">PROTECTED</span>' : '';
+                        const protectedBadge = '';
                         const regularInfo = p.isGoalie ? getGoalieRegularInfo(p) : getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
                         const isProtectedPlayer = isProtectedOrAdminOnlyPlayer(p);
-                        const hideAdminPaymentUi = !!p.isGoalie || isProtectedPlayer;
+                        const hideAdminPaymentUi = !!p.isGoalie;
 
                         let paidInput = '';
                         if (!hideAdminPaymentUi) {
@@ -9403,7 +9409,7 @@ ${rosterLink}
 
                         const regularCell = p.isGoalie
                             ? `<button class="control-btn ${regularClass}" onclick="toggleGoalieRegular(${p.id})">${regularLabel}</button>`
-                            : (hideAdminPaymentUi ? '' : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`);
+                            : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
                         const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isProtectedPlayer;
                         const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
@@ -13337,5 +13343,108 @@ document.addEventListener('keydown', function(e){
     document.addEventListener('click', openPiaDatePickerFromWrap, true);
 })();
 </script>
+
+<style id="managePlayersMobileCompactV1">
+/* Mobile-only Admin Registered Players compression. Desktop remains effectively unchanged. */
+@media (max-width: 700px) {
+    .registered-players-box,
+    .registered-players-box .mobile-collapse-body {
+        padding-left: 8px !important;
+        padding-right: 8px !important;
+    }
+
+    .registered-players-box table {
+        width: 100% !important;
+        table-layout: fixed !important;
+        border-spacing: 0 !important;
+    }
+
+    .registered-players-box #playerList td {
+        padding: 5px 3px !important;
+        vertical-align: middle !important;
+    }
+
+    .registered-players-box #playerList td:nth-child(1) { width: 39% !important; }
+    .registered-players-box #playerList td:nth-child(3) { width: 16% !important; }
+    .registered-players-box #playerList td:nth-child(4) { width: 20% !important; }
+    .registered-players-box #playerList td:nth-child(5) { width: 25% !important; }
+
+    #playerList .player-name-cell {
+        padding-left: 4px !important;
+        padding-right: 2px !important;
+    }
+
+    #playerList .player-name-main {
+        line-height: 1.08 !important;
+        display: inline-block !important;
+    }
+
+    #playerList .player-phone-sub,
+    #playerList .player-time-sub {
+        margin-top: 1px !important;
+        line-height: 1.05 !important;
+    }
+
+    #playerList .locked-time-chip {
+        padding: 1px 4px !important;
+        font-size: 10px !important;
+    }
+
+    #playerList .rating-wrap,
+    #playerList .waitlist-rating-wrap {
+        justify-content: center !important;
+        margin: 0 !important;
+    }
+
+    #playerList .rating-pill-input {
+        width: 46px !important;
+        min-width: 46px !important;
+        height: 30px !important;
+        padding: 2px 3px !important;
+        font-size: 13px !important;
+    }
+
+    #playerList .compact-pay {
+        width: 100% !important;
+        min-width: 0 !important;
+    }
+
+    #playerList .compact-pay-btn {
+        width: 100% !important;
+        min-width: 48px !important;
+        height: 30px !important;
+        padding: 2px 4px !important;
+        font-size: 11px !important;
+        white-space: nowrap !important;
+    }
+
+    #playerList .registered-action-stack {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr !important;
+        gap: 3px !important;
+        align-items: stretch !important;
+        width: 100% !important;
+    }
+
+    #playerList .registered-action-stack .control-btn,
+    #playerList .registered-action-stack .regular-toggle-btn,
+    #playerList .registered-action-stack .notify-player-btn,
+    #playerList .registered-action-stack .remove-btn {
+        width: 100% !important;
+        min-width: 0 !important;
+        height: 30px !important;
+        padding: 2px 3px !important;
+        font-size: 10.5px !important;
+        line-height: 1 !important;
+        margin: 0 !important;
+        border-radius: 8px !important;
+    }
+
+    #playerList .registered-action-stack .remove-btn:nth-child(3) {
+        grid-column: 1 / -1 !important;
+    }
+}
+</style>
+
 </body>
 </html>
