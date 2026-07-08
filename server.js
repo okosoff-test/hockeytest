@@ -811,6 +811,12 @@ function normalizeAutoAddByDayMap(input = undefined, defaultMap = {}, entryDefau
     return merged;
 }
 
+
+
+function autoAddMapHasEntries(map) {
+    return !!(map && typeof map === 'object' && Object.values(map).some(list => Array.isArray(list) && list.length > 0));
+}
+
 function normalizeProtectedPlayersByDayMap(input = undefined) {
     return normalizeAutoAddByDayMap(input, DEFAULT_PROTECTED_PLAYERS_BY_DAY, {
         isGoalie: false,
@@ -940,6 +946,30 @@ function normalizeWeeklyCarryoverPlayer(player = {}) {
     }, {});
     normalized.nickname = normalizeNickname(player.nickname) || '';
     return normalized;
+}
+
+
+
+function autoAddEntryKey(player = {}) {
+    const phoneKey = normalizePhoneDigits(player.phone);
+    if (phoneKey) return `phone:${phoneKey}`;
+    return `name:${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}`;
+}
+
+function mergeAutoAddPlayers(...groups) {
+    const seen = new Set();
+    const merged = [];
+    for (const group of groups) {
+        if (!Array.isArray(group)) continue;
+        for (const player of group) {
+            if (!player) continue;
+            const key = autoAddEntryKey(player);
+            if (!key || seen.has(key)) continue;
+            seen.add(key);
+            merged.push({ ...player });
+        }
+    }
+    return merged;
 }
 
 function getWeeklyCarryoverPlayersFromRoster() {
@@ -1957,7 +1987,7 @@ async function checkWeeklyReset() {
     rememberCurrentAdminRatings();
     rememberCurrentPlayerNicknames();
     rememberCurrentPiaPaymentsAndExpire(etTime);
-    const weeklyCarryovers = getWeeklyCarryoverPlayersFromRoster();
+    const weeklyAutoAdds = mergeAutoAddPlayers(getWeeklyAutoAddPlayers(), getWeeklyCarryoverPlayersFromRoster());
 
     if (
         rosterReleased &&
@@ -2009,7 +2039,7 @@ async function checkWeeklyReset() {
         }
     }
 
-    await addAutoPlayers(weeklyCarryovers);
+    await addAutoPlayers(weeklyAutoAdds);
     await saveData();
     return true;
 }
@@ -2390,6 +2420,10 @@ async function loadDataFromDB() {
         if (settings.protectedPlayersByDay !== undefined) protectedPlayersByDay = normalizeProtectedPlayersByDayMap(settings.protectedPlayersByDay);
         if (settings.regularGoaliesByDay !== undefined) regularGoaliesByDay = normalizeRegularGoaliesByDayMap(settings.regularGoaliesByDay);
         if (settings.regularSkatersByDay !== undefined) regularSkatersByDay = normalizeRegularSkatersByDayMap(settings.regularSkatersByDay);
+        // Safety repair for prior builds that accidentally saved empty auto-add maps.
+        // This preserves the intended defaults unless Admin has an actual saved list.
+        if (!autoAddMapHasEntries(protectedPlayersByDay)) protectedPlayersByDay = normalizeProtectedPlayersByDayMap(undefined);
+        if (!autoAddMapHasEntries(regularGoaliesByDay)) regularGoaliesByDay = normalizeRegularGoaliesByDayMap(undefined);
         if (settings.persistentAdminRatings) persistentAdminRatings = normalizePersistentAdminRatings(settings.persistentAdminRatings);
         if (settings.persistentPlayerNicknames) persistentPlayerNicknames = normalizePersistentPlayerNicknames(settings.persistentPlayerNicknames);
         if (settings.persistentPiaPayments) persistentPiaPayments = normalizePersistentPiaPayments(settings.persistentPiaPayments);
@@ -8464,13 +8498,13 @@ app.post('/api/admin/manual-reset', async (req, res) => {
             rememberCurrentAdminRatings();
             rememberCurrentPlayerNicknames();
             rememberCurrentPiaPaymentsAndExpire(etTime);
-            const weeklyCarryovers = getWeeklyCarryoverPlayersFromRoster();
+            const weeklyAutoAdds = mergeAutoAddPlayers(getWeeklyAutoAddPlayers(), getWeeklyCarryoverPlayersFromRoster());
             remainingSkaterSpots = skaterCapacity; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
             manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
-            await addAutoPlayers(weeklyCarryovers);
+            await addAutoPlayers(weeklyAutoAdds);
         }, { week, year });
     } catch (err) {
         console.error('Error resetting:', err);
