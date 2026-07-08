@@ -3089,7 +3089,7 @@ function updateCalculatedRating() {
                             : '';
                         const safeFirstName = String(player.firstName || '').replace(/'/g, "\'");
                         const safeLastName = String(player.lastName || '').replace(/'/g, "\'");
-                        const buttonHtml = (!player.cancelled && player.canCancel !== false && player.id != null)
+                        const buttonHtml = (!player.isGoalie && !player.cancelled && player.canCancel !== false && player.id != null)
                             ? `<button class="cancel-btn" onclick="openCancelModal(${JSON.stringify(player.id)}, '${safeFirstName}', '${safeLastName}')">Cancel</button>`
                             : '';
                         li.innerHTML = `<span class="player-name">${player.firstName || ''} ${player.lastName || ''} ${goalieBadge} ${cancelBadge} ${subBadge}${subNote}</span>${buttonHtml}`;

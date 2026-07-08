@@ -5628,7 +5628,8 @@ function buildPublicRosterPayload() {
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
         const protectedPlayer = !!(p.protected || p.adminOnlyRemove);
-        const canCancel = !cancelled && cancellationAllowedNow && !protectedPlayer;
+        const isGoalie = !!p.isGoalie;
+        const canCancel = !isGoalie && !cancelled && cancellationAllowedNow && !protectedPlayer;
         return {
             id: p.id,
             firstName: getReleasedRosterFirstName(p),
@@ -5703,7 +5704,7 @@ app.get('/api/status', (req, res) => {
         rating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         finalRating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         // Protected/admin-only players cannot cancel from signup page - only admin can remove
-        canCancel: cancellationAllowedNow && !(p.protected || p.adminOnlyRemove),
+        canCancel: cancellationAllowedNow && !p.isGoalie && !(p.protected || p.adminOnlyRemove),
         protected: !!p.protected,
         adminOnlyRemove: !!p.adminOnlyRemove,
         // Public replacement display fields only. Still excludes payment and phone.
@@ -5798,7 +5799,7 @@ app.get('/api/waitlist', (req, res) => {
         lastName: p.lastName,
         fullName: `${p.firstName} ${p.lastName}`,
         isGoalie: p.isGoalie,
-        canCancel: cancellationAllowedNow && !isProtectedOrAdminOnlyPlayer(p)
+        canCancel: cancellationAllowedNow && !p.isGoalie && !isProtectedOrAdminOnlyPlayer(p)
         // EXCLUDED: rating, phone, paymentMethod
     }));
     
@@ -6228,6 +6229,10 @@ app.post('/api/cancel-registration', cancelRegistrationLimiter, async (req, res)
 
     if (isProtectedOrAdminOnlyPlayer(foundPlayer)) {
         return res.status(403).json({ error: "This player cannot be cancelled online. Please contact admin." });
+    }
+
+    if (foundPlayer.isGoalie) {
+        return res.status(403).json({ error: "Goalies cannot cancel from the public roster. Please manage goalie changes through the Goalies portal." });
     }
 
     const storedPhone = normalizePhoneDigits(foundPlayer.phone);
