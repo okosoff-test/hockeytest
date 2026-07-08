@@ -6730,6 +6730,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 </div>
 <script>
         const API_URL = window.location.origin;
+        let PORTAL_TIMEZONE = 'America/Toronto';
         const SESSION_KEY = 'hockey_admin_session';
         const REMEMBER_KEY = 'hockey_admin_remember_device';
         const REGULARS_LOCAL_KEY = 'hockey_admin_regulars_local';
@@ -6812,7 +6813,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
 
         function getETNowDate() {
             // Creates a Date object representing "now" in America/New_York (approx).
-            return new Date(new Date().toLocaleString("en-US", { timeZone: "America/New_York" }));
+            return new Date(new Date().toLocaleString("en-US", { timeZone: PORTAL_TIMEZONE }));
         }
 
         function nextOccurrenceDate(dow, hour, minute) {
@@ -8518,6 +8519,7 @@ Date: ${selectedGameDate}`);
                     return;
                 }
                 const data = await res.json();
+                PORTAL_TIMEZONE = data.timezone || data.portalDefaults?.timezone || PORTAL_TIMEZONE;
                 
                 document.getElementById('currentLocation').innerText = data.location;
                 document.getElementById('currentTime').innerText = data.time;
@@ -8528,14 +8530,15 @@ Date: ${selectedGameDate}`);
                 document.getElementById('currentCodeDisplay').innerText = data.code;
                 
                 const weeklyCodes = data.weeklyDefaultSignupCodes || {};
+                adminDefaultSignupCode = data.defaultSignupCode || data.code || adminDefaultSignupCode;
                 weeklyCodeState = {
-                    sunday: weeklyCodes.sunday || data.defaultSignupCode || '9855',
-                    monday: weeklyCodes.monday || data.defaultSignupCode || '9855',
-                    tuesday: weeklyCodes.tuesday || data.defaultSignupCode || '9855',
-                    wednesday: weeklyCodes.wednesday || data.defaultSignupCode || '9855',
-                    thursday: weeklyCodes.thursday || data.defaultSignupCode || '9855',
-                    friday: weeklyCodes.friday || data.defaultSignupCode || '9855',
-                    saturday: weeklyCodes.saturday || data.defaultSignupCode || '9855'
+                    sunday: weeklyCodes.sunday || adminDefaultSignupCode,
+                    monday: weeklyCodes.monday || adminDefaultSignupCode,
+                    tuesday: weeklyCodes.tuesday || adminDefaultSignupCode,
+                    wednesday: weeklyCodes.wednesday || adminDefaultSignupCode,
+                    thursday: weeklyCodes.thursday || adminDefaultSignupCode,
+                    friday: weeklyCodes.friday || adminDefaultSignupCode,
+                    saturday: weeklyCodes.saturday || adminDefaultSignupCode
                 };
                 loadSelectedDayCode();
                 updateWeeklyCodeSummary();
@@ -8706,20 +8709,22 @@ Date: ${selectedGameDate}`);
         }
 
 
+        let adminDefaultSignupCode = '9855';
+
         let weeklyCodeState = {
-            sunday: '9855',
-            monday: '9855',
-            tuesday: '9855',
-            wednesday: '9855',
-            thursday: '9855',
-            friday: '9855',
-            saturday: '9855'
+            sunday: adminDefaultSignupCode,
+            monday: adminDefaultSignupCode,
+            tuesday: adminDefaultSignupCode,
+            wednesday: adminDefaultSignupCode,
+            thursday: adminDefaultSignupCode,
+            friday: adminDefaultSignupCode,
+            saturday: adminDefaultSignupCode
         };
 
         function loadSelectedDayCode() {
             const day = document.getElementById('weeklyDaySelect')?.value || 'sunday';
             const input = document.getElementById('selectedDayCodeInput');
-            if (input) input.value = weeklyCodeState[day] || '9855';
+            if (input) input.value = weeklyCodeState[day] || adminDefaultSignupCode;
         }
 
         function updateWeeklyCodeSummary() {
@@ -8737,7 +8742,7 @@ Date: ${selectedGameDate}`);
             };
 
             summary.innerText = Object.keys(labels)
-                .map(day => `${labels[day]}: ${weeklyCodeState[day] || '9855'}`)
+                .map(day => `${labels[day]}: ${weeklyCodeState[day] || adminDefaultSignupCode}`)
                 .join(' • ');
         }
 
@@ -11068,7 +11073,7 @@ Continue?`;
             const date = new Date(value);
             if (Number.isNaN(date.getTime())) return String(value);
             return date.toLocaleString('en-US', {
-                timeZone: 'America/New_York',
+                timeZone: PORTAL_TIMEZONE,
                 year: 'numeric',
                 month: 'short',
                 day: 'numeric',

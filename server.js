@@ -241,15 +241,29 @@ app.use(durableMutationGuardMiddleware);
 app.use(schedulerCatchupMiddleware);
 
 // --- DATA STORE ---
-const MAX_SKATERS = 20;
+// Single-source portal defaults. Same codebase can run Friday, Sunday, or any other game
+// by changing saved settings or environment variables instead of editing source code.
+const PORTAL_DEFAULTS = {
+    timezone: String(process.env.PORTAL_TIMEZONE || 'America/Toronto'),
+    skaterCapacity: Number(process.env.DEFAULT_SKATER_CAPACITY || 20),
+    maxSkaterCapacityInput: Number(process.env.MAX_SKATER_CAPACITY_INPUT || 50),
+    maxGoalies: Number(process.env.DEFAULT_MAX_GOALIES || 2),
+    signupCode: String(process.env.DEFAULT_SIGNUP_CODE || '9855').trim(),
+    gameLocation: String(process.env.DEFAULT_GAME_LOCATION || 'Capri Recreation Complex').trim(),
+    gameTime: String(process.env.DEFAULT_GAME_TIME || 'Friday 9:30 PM').trim(),
+    announcementImageBytes: Number(process.env.MAX_ANNOUNCEMENT_IMAGE_BYTES || (900 * 1024)),
+    announcementImages: Number(process.env.MAX_ANNOUNCEMENT_IMAGES || 1)
+};
+
+const MAX_SKATERS = Number.isFinite(PORTAL_DEFAULTS.skaterCapacity) ? PORTAL_DEFAULTS.skaterCapacity : 20;
 function normalizeSkaterCapacity(value, fallback = MAX_SKATERS) {
     if (value === undefined || value === null || value === '') return fallback;
     const parsed = Number(value);
     if (!Number.isFinite(parsed)) return fallback;
-    return Math.max(0, Math.min(50, Math.floor(parsed)));
+    return Math.max(0, Math.min(PORTAL_DEFAULTS.maxSkaterCapacityInput || 50, Math.floor(parsed)));
 }
 let skaterCapacity = MAX_SKATERS;
-const MAX_ROSTER_SPOTS = 22;
+function getMaxRosterSpots() { return skaterCapacity + maxGoalies; }
 let remainingSkaterSpots = skaterCapacity;
 let players = []; 
 let waitlist = [];
@@ -264,14 +278,14 @@ const ADMIN_SESSION_TOKEN_TTL_HOURS = Number(process.env.ADMIN_SESSION_HOURS || 
 const ADMIN_SESSION_FILE = './admin-sessions.json';
 
 // Game details - FRIDAY HOCKEY
-let gameLocation = "Capri Recreation Complex";
-let gameTime = "Friday 9:30 PM";
+let gameLocation = PORTAL_DEFAULTS.gameLocation || "Capri Recreation Complex";
+let gameTime = PORTAL_DEFAULTS.gameTime || "Friday 9:30 PM";
 let gameDate = "";
 
 // ---- Game-day helpers (dynamic Friday/Sunday etc.) ----
 
-const MAX_ANNOUNCEMENT_IMAGE_BYTES = 900 * 1024;
-const MAX_ANNOUNCEMENT_IMAGES = 1;
+const MAX_ANNOUNCEMENT_IMAGE_BYTES = PORTAL_DEFAULTS.announcementImageBytes || (900 * 1024);
+const MAX_ANNOUNCEMENT_IMAGES = PORTAL_DEFAULTS.announcementImages || 1;
 const ALLOWED_ANNOUNCEMENT_IMAGE_PREFIXES = [
     'data:image/jpeg;base64,',
     'data:image/jpg;base64,',
@@ -334,7 +348,7 @@ function parseGameTimeString(gameTimeStr) {
     // Expected formats: "Friday 9:30 PM", "Sunday 10:00 AM"
     const m = String(gameTimeStr || "").trim().match(/^([A-Za-z]+)\s+(\d{1,2})(?::(\d{2}))?\s*(AM|PM)$/i);
     if (!m) {
-        return { dayName: "Friday", dayIndex: 5, hour24: 21, minute: 30 }; // safe fallback
+        return parseGameTimeString(PORTAL_DEFAULTS.gameTime || "Friday 9:30 PM"); // safe fallback
     }
     const dayNameRaw = m[1].toLowerCase();
     const dayIndex = DAY_NAME_TO_INDEX[dayNameRaw] ?? 5;
@@ -351,7 +365,7 @@ function getGameDayName() {
 }
 
 
-const DEFAULT_SIGNUP_CODE = '9855';
+const DEFAULT_SIGNUP_CODE = /^\d{4}$/.test(PORTAL_DEFAULTS.signupCode) ? PORTAL_DEFAULTS.signupCode : '9855';
 
 // One permanent default code, plus optional temporary override.
 let editableDefaultSignupCode = DEFAULT_SIGNUP_CODE;
@@ -413,7 +427,7 @@ function refreshDynamicSignupCode() {
 function calculateNextGameDate() {
     // Calculate next occurrence of the configured game day/time in America/New_York
     const now = new Date();
-    const etNow = new Date(now.toLocaleString("en-US", { timeZone: "America/New_York" }));
+    const etNow = new Date(now.toLocaleString("en-US", { timeZone: PORTAL_DEFAULTS.timezone }));
     const { dayIndex, hour24, minute } = parseGameTimeString(gameTime);
 
     const currentDow = etNow.getDay();
@@ -628,7 +642,7 @@ let currentWeekData = {
     darkTeam: []
 };
 
-const MAX_GOALIES = 2;
+let maxGoalies = Number.isFinite(PORTAL_DEFAULTS.maxGoalies) ? Math.max(0, Math.floor(PORTAL_DEFAULTS.maxGoalies)) : 2;
 const DEFAULT_NO_SHOW_POLICY_TEXT = 'Cancel anytime. Last-minute cancellations must be made at least 3 hours before game time to give waitlisted players a chance to play. After the 3-hour deadline, the spot is your responsibility. No-show owes.';
 let NO_SHOW_POLICY_TEXT = DEFAULT_NO_SHOW_POLICY_TEXT;
 
@@ -1023,7 +1037,17 @@ const DEFAULT_ARENA_OPTIONS = [
     "Atlas Tube Lakeshore"
 ];
 
-let arenaOptions = [...DEFAULT_ARENA_OPTIONS];
+let arenaOptions = normalizeArenaOptionSeed([...DEFAULT_ARENA_OPTIONS, PORTAL_DEFAULTS.gameLocation]);
+
+function normalizeArenaOptionSeed(value) {
+    const seen = new Set();
+    return (Array.isArray(value) ? value : []).map(v => String(v || '').trim()).filter(Boolean).filter(v => {
+        const key = v.toLowerCase();
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+    });
+}
 
 function normalizeArenaOptions(value) {
     const source = Array.isArray(value) ? value : DEFAULT_ARENA_OPTIONS;
@@ -1041,7 +1065,8 @@ function normalizeArenaOptions(value) {
 }
 
 // --- DAY/TIME OPTIONS FOR TITLE ---
-const DAY_TIME_OPTIONS = [
+const DAY_TIME_OPTIONS = normalizeArenaOptionSeed([
+    PORTAL_DEFAULTS.gameTime,
     "Sunday 8:30 PM",
     "Sunday 9:30 PM",
     "Sunday 10:00 PM",
@@ -1054,7 +1079,7 @@ const DAY_TIME_OPTIONS = [
     "Saturday 8:30 PM",
     "Saturday 9:30 PM",
     "Saturday 10:00 PM"
-];
+]);
 
 // --- APP SETTINGS ---
 let maintenanceMode = false;
@@ -1075,7 +1100,7 @@ let collectorPageEnabled = false; // Payment page ON/OFF toggle from main admin;
 function getCurrentETTime() {
     const now = new Date();
     const etString = now.toLocaleString('en-US', {
-        timeZone: 'America/New_York',
+        timeZone: PORTAL_DEFAULTS.timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -2394,6 +2419,7 @@ async function loadDataFromDB() {
         });
         
         if (settings.skaterCapacity !== undefined || settings.configuredMaxSkaters !== undefined) skaterCapacity = normalizeSkaterCapacity(settings.skaterCapacity ?? settings.configuredMaxSkaters, MAX_SKATERS);
+        if (settings.maxGoalies !== undefined) { const mg = Number(settings.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
         if (settings.remainingSkaterSpots !== undefined || settings.playerSpots !== undefined) remainingSkaterSpots = normalizeSkaterCapacity(settings.remainingSkaterSpots ?? settings.playerSpots, 0);
         if (settings.gameLocation) gameLocation = settings.gameLocation;
         if (settings.gameTime) gameTime = settings.gameTime;
@@ -2534,6 +2560,8 @@ async function loadDataFromDB() {
             appSettings[row.key] = row.value;
         });
         
+        if (appSettings.maxGoalies !== undefined) { const mg = Number(appSettings.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
+        if (appSettings.editableDefaultSignupCode !== undefined) editableDefaultSignupCode = /^\d{4}$/.test(String(appSettings.editableDefaultSignupCode || '').trim()) ? String(appSettings.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
         if (appSettings.maintenanceMode) maintenanceMode = appSettings.maintenanceMode === 'true';
         if (appSettings.customTitle) customTitle = appSettings.customTitle;
         if (appSettings.selectedDayTime) gameTime = appSettings.selectedDayTime;
@@ -2696,7 +2724,7 @@ function sanitizeFileSegment(value, fallback = 'backup') {
 function getEtDateParts(date = new Date()) {
     const source = date instanceof Date ? date : new Date(date);
     const etString = source.toLocaleString('en-US', {
-        timeZone: 'America/New_York',
+        timeZone: PORTAL_DEFAULTS.timezone,
         year: 'numeric',
         month: '2-digit',
         day: '2-digit',
@@ -3084,14 +3112,15 @@ function applySnapshotToMemory(snapshot) {
 
     const snapshotCapacity = snapshot.skaterCapacity ?? snapshot.configuredMaxSkaters ?? snapshot.maxSkaters;
     skaterCapacity = normalizeSkaterCapacity(snapshotCapacity, MAX_SKATERS);
+    if (snapshot.maxGoalies !== undefined || snapshot.appSettings?.maxGoalies !== undefined || snapshot.summary?.maxGoalies !== undefined) { const mg = Number(snapshot.maxGoalies ?? snapshot.appSettings?.maxGoalies ?? snapshot.summary?.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
     players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile).map(applyProtectedPlayerFlags) : [];
     waitlist = Array.isArray(snapshot.waitlist) ? snapshot.waitlist.map(hydratePlayerRatingProfile) : [];
     const snapshotRemainingSpots = snapshot.remainingSkaterSpots ?? snapshot.playerSpots;
     remainingSkaterSpots = snapshotRemainingSpots !== undefined && snapshotRemainingSpots !== null
         ? normalizeSkaterCapacity(snapshotRemainingSpots, 0)
         : Math.max(0, skaterCapacity - players.filter(p => !(p && p.isGoalie)).length);
-    gameLocation = snapshot.gameLocation ?? gameLocation;
-    gameTime = snapshot.gameTime ?? gameTime;
+    gameLocation = snapshot.gameLocation ?? snapshot.appSettings?.selectedArena ?? gameLocation;
+    gameTime = snapshot.gameTime ?? snapshot.appSettings?.selectedDayTime ?? gameTime;
     gameDate = snapshot.gameDate ?? calculateNextGameDate();
     playerSignupCode = snapshot.playerSignupCode ?? playerSignupCode;
     requirePlayerCode = snapshot.requirePlayerCode ?? requirePlayerCode;
@@ -3570,7 +3599,10 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
             ['arenaOptions', JSON.stringify(arenaOptions)],
             ['gameDate', gameDate],
             ['noShowPolicyText', NO_SHOW_POLICY_TEXT],
-            ['gameRules', JSON.stringify(GAME_RULES)]
+            ['gameRules', JSON.stringify(GAME_RULES)],
+            ['portalDefaults', JSON.stringify(PORTAL_DEFAULTS)],
+            ['maxGoalies', String(maxGoalies)],
+            ['editableDefaultSignupCode', editableDefaultSignupCode]
         ];
         for (const [key, value] of appSettingsEntries) {
             await client.query(
@@ -3820,8 +3852,11 @@ function buildFullDataSnapshot() {
             gameDate,
             rosterReleased,
             requirePlayerCode,
-            playerSignupCode
+            playerSignupCode,
+            editableDefaultSignupCode,
+            maxGoalies
         },
+        portalDefaults: PORTAL_DEFAULTS,
         appSettings: {
             maintenanceMode,
             customTitle,
@@ -3999,6 +4034,7 @@ function loadDataFromFile() {
         if (bestSnapshot && bestSnapshot.data) {
             const data = bestSnapshot.data;
             skaterCapacity = normalizeSkaterCapacity(data.skaterCapacity ?? data.configuredMaxSkaters ?? data.maxSkaters, MAX_SKATERS);
+            if (data.maxGoalies !== undefined || data.appSettings?.maxGoalies !== undefined || data.summary?.maxGoalies !== undefined) { const mg = Number(data.maxGoalies ?? data.appSettings?.maxGoalies ?? data.summary?.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
             players = Array.isArray(data.players) ? data.players.map(player => hydratePlayerRatingProfile({
                 ...player,
                 registeredAt: player.registeredAt || player.registered_at || player.createdAt || null
@@ -4008,10 +4044,10 @@ function loadDataFromFile() {
             remainingSkaterSpots = savedRemainingSpots !== undefined && savedRemainingSpots !== null
                 ? normalizeSkaterCapacity(savedRemainingSpots, 0)
                 : Math.max(0, skaterCapacity - players.filter(p => !(p && p.isGoalie)).length);
-            gameLocation = data.gameLocation ?? "Capri Recreation Complex";
-            gameTime = data.gameTime ?? "Friday 9:30 PM";
+            gameLocation = data.gameLocation ?? data.appSettings?.selectedArena ?? PORTAL_DEFAULTS.gameLocation;
+            gameTime = data.gameTime ?? data.appSettings?.selectedDayTime ?? PORTAL_DEFAULTS.gameTime;
             gameDate = data.gameDate ?? calculateNextGameDate();
-            playerSignupCode = data.playerSignupCode ?? '9855';
+            playerSignupCode = data.playerSignupCode ?? data.appSettings?.playerSignupCode ?? DEFAULT_SIGNUP_CODE;
             requirePlayerCode = data.requirePlayerCode ?? true;
             manualOverride = data.manualOverride ?? false;
             manualOverrideState = data.manualOverrideState ?? null;
@@ -4041,7 +4077,7 @@ function loadDataFromFile() {
             persistentPlayerNicknames = normalizePersistentPlayerNicknames(data.persistentPlayerNicknames || data.appSettings?.persistentPlayerNicknames || {});
             persistentPiaPayments = normalizePersistentPiaPayments(data.persistentPiaPayments || data.appSettings?.persistentPiaPayments || {});
             customSignupCode = String(data.customSignupCode || '').trim();
-            editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
+            editableDefaultSignupCode = /^\d{4}$/.test(String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode || '').trim()) ? String(data.editableDefaultSignupCode || data.appSettings?.editableDefaultSignupCode).trim() : DEFAULT_SIGNUP_CODE;
             if (data.weeklyDefaultSignupCodes !== undefined) weeklyDefaultSignupCodes = normalizeWeeklyDefaultSignupCodes(data.weeklyDefaultSignupCodes);
             scheduleMode = String(data.scheduleMode || scheduleMode || 'auto').toLowerCase() === 'manual' ? 'manual' : 'auto';
             currentWeekData = data.currentWeekData ?? {
@@ -4781,7 +4817,7 @@ function getGoalieCount() {
 }
 
 function isGoalieSpotsAvailable() {
-    return getGoalieCount() < MAX_GOALIES;
+    return getGoalieCount() < maxGoalies;
 }
 
 function getLevelPlayedBoost(levelPlayed) {
@@ -4902,12 +4938,16 @@ function buildRosterTeamRuleValidation(teams = {}) {
 
 
     // Full-capacity hockey rule: 20 skaters + 2 goalies = 10 skaters and 1 goalie per team.
-    if (totalPlayers === MAX_ROSTER_SPOTS) {
-        if (totalSkaters !== MAX_SKATERS || totalGoalies !== MAX_GOALIES) {
-            problems.push(`Full roster must be ${MAX_SKATERS} skaters and ${MAX_GOALIES} goalies; found ${totalSkaters} skaters and ${totalGoalies} goalies.`);
+    if (totalPlayers === getMaxRosterSpots()) {
+        if (totalSkaters !== skaterCapacity || totalGoalies !== maxGoalies) {
+            problems.push(`Full roster must be ${skaterCapacity} skaters and ${maxGoalies} goalies; found ${totalSkaters} skaters and ${totalGoalies} goalies.`);
         }
-        if (whiteSkaters !== 10 || darkSkaters !== 10 || whiteGoalies !== 1 || darkGoalies !== 1) {
-            problems.push(`Full roster must be White 10 skaters + 1 goalie and Dark 10 skaters + 1 goalie; found White ${whiteSkaters}+${whiteGoalies}, Dark ${darkSkaters}+${darkGoalies}.`);
+        const targetWhiteSkaters = Math.ceil(skaterCapacity / 2);
+        const targetDarkSkaters = Math.floor(skaterCapacity / 2);
+        const targetWhiteGoalies = Math.ceil(maxGoalies / 2);
+        const targetDarkGoalies = Math.floor(maxGoalies / 2);
+        if (whiteSkaters !== targetWhiteSkaters || darkSkaters !== targetDarkSkaters || whiteGoalies !== targetWhiteGoalies || darkGoalies !== targetDarkGoalies) {
+            problems.push(`Full roster must be White ${targetWhiteSkaters} skaters + ${targetWhiteGoalies} goalie(s) and Dark ${targetDarkSkaters} skaters + ${targetDarkGoalies} goalie(s); found White ${whiteSkaters}+${whiteGoalies}, Dark ${darkSkaters}+${darkGoalies}.`);
         }
     }
 
@@ -5547,7 +5587,7 @@ function etPartsToIso(etParts) {
 
     const probe = new Date(Date.UTC(etParts.year, etParts.month - 1, etParts.day, 12, 0, 0));
     const tzName = new Intl.DateTimeFormat('en-US', {
-        timeZone: 'America/New_York',
+        timeZone: PORTAL_DEFAULTS.timezone,
         timeZoneName: 'short'
     }).formatToParts(probe).find(p => p.type === 'timeZoneName')?.value || 'EST';
 
@@ -5671,6 +5711,7 @@ function buildPublicRosterPayload() {
 
     return {
         released: getEffectiveRosterReleasedState(),
+        timezone: PORTAL_DEFAULTS.timezone,
         whiteTeam: whiteSource.map(sanitizePlayer),
         darkTeam: darkSource.map(sanitizePlayer),
         whiteActiveCount: activeWhite.length,
@@ -5729,10 +5770,12 @@ app.get('/api/status', (req, res) => {
     res.json({
         playerSpotsRemaining: remainingSkaterSpots > 0 ? remainingSkaterSpots : 0,
         goalieCount: goalieCount,
-        goalieSpotsAvailable: MAX_GOALIES - goalieCount,
-        maxGoalies: MAX_GOALIES,
+        goalieSpotsAvailable: maxGoalies - goalieCount,
+        maxGoalies: maxGoalies,
         maxSkaters: skaterCapacity,
-        maxRosterSpots: MAX_ROSTER_SPOTS,
+        maxRosterSpots: getMaxRosterSpots(),
+        timezone: PORTAL_DEFAULTS.timezone,
+        portalDefaults: PORTAL_DEFAULTS,
         totalPlayers: players.length,
         isFull: remainingSkaterSpots === 0,
         waitlistCount: waitlist.length,
@@ -6476,6 +6519,9 @@ app.post('/api/admin/app-settings', (req, res) => {
         gameDate,
         arenaOptions: arenaOptions,
         dayTimeOptions: DAY_TIME_OPTIONS,
+        timezone: PORTAL_DEFAULTS.timezone,
+        portalDefaults: PORTAL_DEFAULTS,
+        maxGoalies,
         backupGoalies: BACKUP_GOALIES,
         extraGoalieContacts,
         regularSkatersByDay
@@ -6488,7 +6534,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             announcementEnabled: newAnnouncementEnabled, announcementText: newAnnouncementText, announcementImages: newAnnouncementImages,
             rosterReleaseAnnouncementText: newRosterReleaseAnnouncementText, paymentEmail: newPaymentEmail, selectedDayTime, selectedArena, arenaOptions: newArenaOptions, gameDate: newGameDate,
             regularSkatersByDay: newRegularSkatersByDay, collectorPageEnabled: newCollectorPageEnabled,
-            noShowPolicyText: newNoShowPolicyText, gameRules: newGameRules } = req.body;
+            noShowPolicyText: newNoShowPolicyText, gameRules: newGameRules, maxGoalies: newMaxGoalies } = req.body;
 
     if (!isAuthorizedAdminRequest(req)) {
         return res.status(401).json({ error: "Unauthorized" });
@@ -6508,6 +6554,7 @@ app.post('/api/admin/update-app-settings', async (req, res) => {
             }
             if (newNoShowPolicyText !== undefined) NO_SHOW_POLICY_TEXT = String(newNoShowPolicyText || DEFAULT_NO_SHOW_POLICY_TEXT).trim() || DEFAULT_NO_SHOW_POLICY_TEXT;
             syncNoShowPolicyWithRules();
+            if (newMaxGoalies !== undefined) { const mg = Number(newMaxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
             if (newCollectorPageEnabled !== undefined) collectorPageEnabled = !!newCollectorPageEnabled;
             if (newAnnouncementImages !== undefined) {
                 announcementImages = normalizeAnnouncementImages(newAnnouncementImages);
@@ -6938,9 +6985,9 @@ app.post('/api/admin/players-full', (req, res) => {
         playerSpotsRemaining: remainingSkaterSpots,
         playerCount,
         goalieCount,
-        maxGoalies: MAX_GOALIES,
+        maxGoalies: maxGoalies,
         maxSkaters: skaterCapacity,
-        maxRosterSpots: MAX_ROSTER_SPOTS,
+        maxRosterSpots: getMaxRosterSpots(),
         totalPlayers: players.length,
         totalPaid: totalPaid.toFixed(2),
         paidCount: paidCount,
@@ -7452,9 +7499,9 @@ app.post('/api/admin/players', (req, res) => {
         playerSpotsRemaining: remainingSkaterSpots,
         playerCount,
         goalieCount,
-        maxGoalies: MAX_GOALIES,
+        maxGoalies: maxGoalies,
         maxSkaters: skaterCapacity,
-        maxRosterSpots: MAX_ROSTER_SPOTS,
+        maxRosterSpots: getMaxRosterSpots(),
         totalPlayers: players.length,
         totalPaid: totalPaid.toFixed(2),
         paidCount,
@@ -9445,7 +9492,7 @@ initDatabase().then(async () => {
         cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
             await runSchedulerTick();
         }, {
-            timezone: 'America/New_York'
+            timezone: PORTAL_DEFAULTS.timezone
         });
     }
 
@@ -9486,7 +9533,7 @@ app.listen(PORT, () => {
         cron.schedule(process.env.INTERNAL_SCHEDULER_CRON || '* * * * *', async () => {
             await runSchedulerTick();
         }, {
-            timezone: 'America/New_York'
+            timezone: PORTAL_DEFAULTS.timezone
         });
     }
 

@@ -2302,6 +2302,7 @@
 
     <script>
         const API_URL = window.location.origin;
+        let PORTAL_TIMEZONE = 'America/Toronto';
         let verifiedCode = null;
         let codeRequired = true;
         let currentLocation = "";
@@ -3274,7 +3275,7 @@ function updateCalculatedRating() {
             }
 
             const datePart = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/New_York',
+                timeZone: PORTAL_TIMEZONE,
                 weekday: 'long',
                 month: 'long',
                 day: 'numeric',
@@ -3282,7 +3283,7 @@ function updateCalculatedRating() {
             }).format(releaseDate);
 
             const timePart = new Intl.DateTimeFormat('en-US', {
-                timeZone: 'America/New_York',
+                timeZone: PORTAL_TIMEZONE,
                 hour: 'numeric',
                 minute: '2-digit',
                 hour12: true
@@ -3556,7 +3557,7 @@ function updateCalculatedRating() {
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
                         ? new Intl.DateTimeFormat('en-US', {
-                            timeZone: 'America/New_York',
+                            timeZone: PORTAL_TIMEZONE,
                             weekday: 'long',
                             month: 'long',
                             day: 'numeric',
