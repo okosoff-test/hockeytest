@@ -9354,7 +9354,7 @@ ${rosterLink}
                     });
 
                     const formatAdminRatingFootnote = (player) => {
-                        const raw = player.finalRating ?? player.rating ?? player.directRating ?? '';
+                        const raw = player.selfRatingRaw ?? player.finalRating ?? player.rating ?? player.directRating ?? '';
                         const rating = parseFloat(raw);
                         if (!Number.isFinite(rating)) return '';
                         return parseFloat(rating.toFixed(1)).toString();
