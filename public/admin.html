@@ -6018,6 +6018,37 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
     cursor: pointer !important;
 }
 </style>
+<style id="hp-final-white-date-icons-v4">
+
+/* HP global date/datetime picker icon fix: hide dark native glyph and show a uniform white calendar icon. */
+input[type="date"],
+input[type="datetime-local"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    color-scheme: dark !important;
+    padding-right: 42px !important;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='4' width='18' height='18' rx='3' ry='3'/%3E%3Cline x1='16' y1='2' x2='16' y2='6'/%3E%3Cline x1='8' y1='2' x2='8' y2='6'/%3E%3Cline x1='3' y1='10' x2='21' y2='10'/%3E%3Ccircle cx='8' cy='14' r='1.2' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='12' cy='14' r='1.2' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='16' cy='14' r='1.2' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='8' cy='18' r='1.2' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='12' cy='18' r='1.2' fill='%23ffffff' stroke='none'/%3E%3Ccircle cx='16' cy='18' r='1.2' fill='%23ffffff' stroke='none'/%3E%3C/svg%3E") !important;
+    background-repeat: no-repeat !important;
+    background-position: right 12px center !important;
+    background-size: 18px 18px !important;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator {
+    opacity: 0 !important;
+    filter: none !important;
+    cursor: pointer !important;
+    width: 42px !important;
+    height: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+input[type="date"]::-webkit-inner-spin-button,
+input[type="datetime-local"]::-webkit-inner-spin-button,
+input[type="date"]::-webkit-clear-button,
+input[type="datetime-local"]::-webkit-clear-button {
+    display: none !important;
+}
+</style>
 </head>
 <body class="admin-layout-option-1">
 <!-- MAINTENANCE BULLETIN - Shows when activated -->
