@@ -6067,6 +6067,11 @@ input[type="date"]::-webkit-calendar-picker-indicator{
 <span class="preview-sep">•</span>
 <span id="currentArenaDisplay">--</span>
 </div>
+<div class="title-control-group" style="margin-top:14px;">
+<label for="gameRulesInput">Game Rules <span style="font-weight:500; color:#666;">(one rule per line)</span></label>
+<textarea class="custom-title-input" id="gameRulesInput" rows="8" placeholder="Enter one rule per line"></textarea>
+<div class="custom-title-note">Rules shown on the public Rules page. The no-show policy stays synchronized from this list.</div>
+</div>
 <div class="game-setup-savebar">
 <button class="update-title-btn" id="updateGameSetupBtn" onclick="updateGameSetup()">Save Game Setup</button>
 </div>
@@ -7643,6 +7648,10 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                     document.getElementById('currentArenaDisplay').innerText = data.selectedArena;
                     updateGameSetupPreview();
                 }
+                const gameRulesInput = document.getElementById('gameRulesInput');
+                if (gameRulesInput && Array.isArray(data.gameRules)) {
+                    gameRulesInput.value = data.gameRules.join('\n');
+                }
                 
                 // Store backup goalies data
                 if (data.backupGoalies) {
@@ -7886,6 +7895,12 @@ input[type="date"]::-webkit-calendar-picker-indicator{
             return `${titleText} • ${arenaText}`;
         }
 
+        function getRulesFromGameSetupInput() {
+            const el = document.getElementById('gameRulesInput');
+            if (!el) return undefined;
+            return el.value.split(/\r?\n/).map(rule => rule.trim()).filter(Boolean);
+        }
+
         async function updateGameSetup() {
             const button = document.getElementById('updateGameSetupBtn');
             return withBusyButton(button, 'Saving...', async () => {
@@ -7916,7 +7931,8 @@ input[type="date"]::-webkit-calendar-picker-indicator{
                             selectedDayTime: dayTime,
                             gameDate: selectedGameDate,
                             selectedArena: arena,
-                            arenaOptions: getArenaOptionsFromSelect()
+                            arenaOptions: getArenaOptionsFromSelect(),
+                            gameRules: getRulesFromGameSetupInput()
                         })
                     });
 
