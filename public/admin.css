@@ -71,3 +71,17 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator{
   cursor: pointer !important;
 }
 
+
+
+/* Force white calendar icons consistently across browsers */
+input[type="date"],
+input[type="datetime-local"]{
+  -webkit-appearance: none;
+  appearance: none;
+  color-scheme: dark !important;
+}
+input[type="date"]::-webkit-calendar-picker-indicator,
+input[type="datetime-local"]::-webkit-calendar-picker-indicator{
+  filter: brightness(0) invert(1) !important;
+  opacity: 1 !important;
+}
