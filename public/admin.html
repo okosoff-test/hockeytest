@@ -13451,3 +13451,69 @@ document.addEventListener('keydown', function(e){
     }
 }
 </style>
+
+<style id="mobile-registered-name-cutoff-fix-v2">
+/* Fix mobile Registered Players cutoff: keep the wider name column, but never clip phone/time info. */
+@media (max-width: 600px) {
+    table:has(#playerList) {
+        table-layout: auto !important;
+        width: 100% !important;
+    }
+
+    #playerList td:nth-child(1),
+    #playerList th:nth-child(1) {
+        width: 42% !important;
+        max-width: none !important;
+        min-width: 95px !important;
+        overflow: visible !important;
+    }
+
+    #playerList td:nth-child(3),
+    #playerList th:nth-child(3) {
+        width: 14% !important;
+        max-width: none !important;
+    }
+
+    #playerList td:nth-child(4),
+    #playerList th:nth-child(4) {
+        width: 18% !important;
+        max-width: none !important;
+    }
+
+    #playerList td:nth-child(5),
+    #playerList th:nth-child(5) {
+        width: 26% !important;
+        max-width: none !important;
+    }
+
+    #playerList .player-name-cell,
+    #playerList .player-name-nickname-row,
+    #playerList .nickname-tap-target,
+    #playerList .player-name-main,
+    #playerList .player-phone-sub,
+    #playerList .player-time-sub,
+    #playerList .locked-time-chip {
+        max-width: none !important;
+        overflow: visible !important;
+        text-overflow: clip !important;
+    }
+
+    #playerList .player-name-nickname-row {
+        flex-wrap: wrap !important;
+    }
+
+    #playerList .player-name-main {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: break-word !important;
+    }
+
+    #playerList .player-phone-sub,
+    #playerList .player-time-sub,
+    #playerList .locked-time-chip {
+        white-space: normal !important;
+        word-break: normal !important;
+        overflow-wrap: anywhere !important;
+    }
+}
+</style>
