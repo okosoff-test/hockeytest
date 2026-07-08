@@ -634,17 +634,14 @@ let NO_SHOW_POLICY_TEXT = DEFAULT_NO_SHOW_POLICY_TEXT;
 
 const DEFAULT_GAME_RULES = [
     "No contact. Board tie-ups only.",
-    "No slashing. Lift sticks. Injury = done + possible ban.",
-    "Move the puck. Don’t hog it.",
-    "Control slapshots. Head shots = no more slapshots.",
-    "Short shifts. Be fair with ice time.",
+    "No slashing.",
+    "Don't hog the puck. Pass it often—it's a team sport.",
+    "Your slapshot = injury = no more slapshots for you.",
+    "Quick, short shifts. Be considerate of your teammates.",
     "No negativity. Keep it positive.",
-    "Skate hard, change often.",
-    "No excessive aggression. It’s pickup.",
-    "Don’t be “that guy.” You know who you are.",
-    "Handshake/fist bump after the game. Have fun.",
-    DEFAULT_NO_SHOW_POLICY_TEXT,
-    "Respect the game and players — or you’re done."
+    "No excessive aggression. You'll feel like 💩 if someone ends up getting injured.",
+    "Respect the game and your fellow players.",
+    "Don't forget the handshake/fist bump after the game. Goalies meet at centre ice, followed by the players."
 ];
 let GAME_RULES = [...DEFAULT_GAME_RULES];
 
@@ -784,19 +781,25 @@ function normalizeAutoAddEntry(input = {}, defaults = {}) {
         isFree: !!(input.isFree ?? defaults.isFree),
         paymentMethod: paymentMethodRaw || 'N/A',
         protected: !!(input.protected ?? defaults.protected),
-        adminOnlyRemove: !!(input.adminOnlyRemove ?? defaults.adminOnlyRemove)
+        adminOnlyRemove: !!(input.adminOnlyRemove ?? defaults.adminOnlyRemove),
+        regularGoalie: !!(input.regularGoalie ?? defaults.regularGoalie)
     };
 }
 
-function normalizeAutoAddByDayMap(input = {}, defaultMap = {}, entryDefaults = {}) {
+function normalizeAutoAddByDayMap(input = undefined, defaultMap = {}, entryDefaults = {}) {
     const allowedKeys = new Set([
         'everyday','sunday','monday','tuesday','wednesday','thursday','friday','saturday'
     ]);
 
-    const merged = JSON.parse(JSON.stringify(defaultMap || {}));
-    if (!input || typeof input !== 'object') return merged;
+    // Defaults are a first-run seed only. Once a saved/admin-provided map exists,
+    // do not merge defaults back in; otherwise Admin removal would not stick.
+    const hasSavedMap = input && typeof input === 'object';
+    const sourceMap = hasSavedMap ? input : (defaultMap || {});
+    const merged = {};
 
-    for (const [rawKey, rawList] of Object.entries(input)) {
+    for (const key of allowedKeys) merged[key] = [];
+
+    for (const [rawKey, rawList] of Object.entries(sourceMap)) {
         const key = String(rawKey || '').trim().toLowerCase();
         if (!allowedKeys.has(key)) continue;
         const list = Array.isArray(rawList) ? rawList : [];
@@ -808,7 +811,7 @@ function normalizeAutoAddByDayMap(input = {}, defaultMap = {}, entryDefaults = {
     return merged;
 }
 
-function normalizeProtectedPlayersByDayMap(input = {}) {
+function normalizeProtectedPlayersByDayMap(input = undefined) {
     return normalizeAutoAddByDayMap(input, DEFAULT_PROTECTED_PLAYERS_BY_DAY, {
         isGoalie: false,
         isFree: true,
@@ -818,13 +821,14 @@ function normalizeProtectedPlayersByDayMap(input = {}) {
     });
 }
 
-function normalizeRegularGoaliesByDayMap(input = {}) {
+function normalizeRegularGoaliesByDayMap(input = undefined) {
     return normalizeAutoAddByDayMap(input, DEFAULT_REGULAR_GOALIES_BY_DAY, {
         isGoalie: true,
         isFree: false,
         paymentMethod: 'N/A',
         protected: false,
-        adminOnlyRemove: false
+        adminOnlyRemove: false,
+        regularGoalie: true
     });
 }
 
@@ -919,6 +923,39 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const goalieList = getRegularGoaliesForDay(dayKey);
     const skaterList = getRegularSkatersForDay(dayKey);
     return [...protectedList, ...goalieList, ...skaterList].map(player => ({ ...player }));
+}
+
+function normalizeWeeklyCarryoverPlayer(player = {}) {
+    const normalized = normalizeAutoAddEntry({
+        firstName: player.firstName,
+        lastName: player.lastName,
+        phone: player.phone,
+        rating: Number(player.finalRating ?? player.adminRating ?? player.rating ?? 5),
+        isGoalie: !!player.isGoalie,
+        isFree: !!(player.paidAmount === 0 && String(player.paymentMethod || '').toUpperCase() === 'FREE'),
+        paymentMethod: player.paymentMethod || (player.paidAmount === 0 ? 'FREE' : 'N/A'),
+        protected: !!player.protected,
+        adminOnlyRemove: !!player.adminOnlyRemove,
+        regularGoalie: !!player.regularGoalie
+    }, {});
+    normalized.nickname = normalizeNickname(player.nickname) || '';
+    return normalized;
+}
+
+function getWeeklyCarryoverPlayersFromRoster() {
+    const seen = new Set();
+    const carryovers = [];
+    for (const player of Array.isArray(players) ? players : []) {
+        const shouldCarry = !!(player && (player.protected || player.adminOnlyRemove || (player.isGoalie && player.regularGoalie)));
+        if (!shouldCarry) continue;
+        const phoneKey = normalizePhoneDigits(player.phone);
+        const nameKey = `${String(player.firstName || '').trim().toLowerCase()}|${String(player.lastName || '').trim().toLowerCase()}`;
+        const key = phoneKey || nameKey;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        carryovers.push(normalizeWeeklyCarryoverPlayer(player));
+    }
+    return carryovers;
 }
 
 function buildRosterReleasePaymentAnnouncement() {
@@ -1805,8 +1842,7 @@ async function autoReleaseRoster() {
 }
 
 // --- AUTO-ADD PLAYERS FUNCTION ---
-async function addAutoPlayers() {
-    const autoPlayers = getWeeklyAutoAddPlayers();
+async function addAutoPlayers(autoPlayers = getWeeklyAutoAddPlayers()) {
     console.log(`Adding auto-players for new week (${getGameDayName()}): ${autoPlayers.map(p => `${p.firstName} ${p.lastName}`).join(', ')}`);
     let addedCount = 0;
 
@@ -1838,7 +1874,9 @@ async function addAutoPlayers() {
             team: null,
             registeredAt: new Date().toISOString(),
             rulesAgreed: true,
-            protected: autoPlayer.protected || false
+            protected: !!autoPlayer.protected,
+            adminOnlyRemove: !!autoPlayer.adminOnlyRemove,
+            regularGoalie: !!autoPlayer.regularGoalie
         };
 
         applyPersistentPlayerNickname(newPlayer);
@@ -1848,12 +1886,12 @@ async function addAutoPlayers() {
         try {
             if (pool) {
                 await pool.query(
-                    `INSERT INTO players (id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, pia_date, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed)
-                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)`,
+                    `INSERT INTO players (id, first_name, last_name, nickname, phone, payment_method, paid, paid_amount, payment_status, pia_date, rating, admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed, protected, admin_only_remove, regular_goalie)
+                     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)`,
                     [newPlayer.id, newPlayer.firstName, newPlayer.lastName, normalizeNickname(newPlayer.nickname) || null, newPlayer.phone,
                      newPlayer.paymentMethod, newPlayer.paid, newPlayer.paidAmount, normalizePaymentStatus(newPlayer.paymentStatus, newPlayer), normalizePiaDate(newPlayer.piaDate) || null, newPlayer.rating,
                      toNumericOrNull(newPlayer.adminRating), toNumericOrNull(newPlayer.adminAdjustment), toNumericOrNull(newPlayer.finalRating),
-                     autoPlayer.isGoalie, null, newPlayer.registeredAt, true]
+                     autoPlayer.isGoalie, null, newPlayer.registeredAt, true, !!newPlayer.protected, !!newPlayer.adminOnlyRemove, !!newPlayer.regularGoalie]
                 );
             }
 
@@ -1919,6 +1957,7 @@ async function checkWeeklyReset() {
     rememberCurrentAdminRatings();
     rememberCurrentPlayerNicknames();
     rememberCurrentPiaPaymentsAndExpire(etTime);
+    const weeklyCarryovers = getWeeklyCarryoverPlayersFromRoster();
 
     if (
         rosterReleased &&
@@ -1970,7 +2009,7 @@ async function checkWeeklyReset() {
         }
     }
 
-    await addAutoPlayers();
+    await addAutoPlayers(weeklyCarryovers);
     await saveData();
     return true;
 }
@@ -2124,7 +2163,10 @@ async function initDatabase() {
                 is_goalie BOOLEAN DEFAULT false,
                 team VARCHAR(10),
                 registered_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                rules_agreed BOOLEAN DEFAULT false
+                rules_agreed BOOLEAN DEFAULT false,
+                protected BOOLEAN DEFAULT false,
+                admin_only_remove BOOLEAN DEFAULT false,
+                regular_goalie BOOLEAN DEFAULT false
             )
         `);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS nickname VARCHAR(100)`);
@@ -2153,6 +2195,9 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS subbed_in_for_player_id BIGINT`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS subbed_in_for_name VARCHAR(220)`);
         await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS subbed_in_at TIMESTAMP`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS protected BOOLEAN DEFAULT false`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS admin_only_remove BOOLEAN DEFAULT false`);
+        await pool.query(`ALTER TABLE players ADD COLUMN IF NOT EXISTS regular_goalie BOOLEAN DEFAULT false`);
         
         await pool.query(`
             CREATE TABLE IF NOT EXISTS waitlist (
@@ -2417,7 +2462,10 @@ async function loadDataFromDB() {
             lateAddedAfterRelease: !!p.late_added_after_release,
             subbedInForPlayerId: p.subbed_in_for_player_id == null ? null : Number(p.subbed_in_for_player_id),
             subbedInForName: p.subbed_in_for_name || null,
-            subbedInAt: p.subbed_in_at || null
+            subbedInAt: p.subbed_in_at || null,
+            protected: !!p.protected,
+            adminOnlyRemove: !!p.admin_only_remove,
+            regularGoalie: !!p.regular_goalie
         }));
         
         // FIX: Recalculate remainingSkaterSpots based on actual player count
@@ -3517,9 +3565,10 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
                     passing_rating, shooting_rating, defensive_rating, speed_burst_rating, position_played,
                     level_played, peer_comparison, confidence_level, self_rating_raw, derived_rating,
                     admin_rating, admin_adjustment, final_rating, is_goalie, team, registered_at, rules_agreed,
-                    promoted_from_waitlist, late_added_after_release, subbed_in_for_player_id, subbed_in_for_name, subbed_in_at
+                    promoted_from_waitlist, late_added_after_release, subbed_in_for_player_id, subbed_in_for_name, subbed_in_at,
+                    protected, admin_only_remove, regular_goalie
                 ) VALUES (
-                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38
+                    $1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31,$32,$33,$34,$35,$36,$37,$38,$39,$40,$41
                 )`,
                 [
                     player.id, player.firstName, player.lastName, normalizeNickname(player.nickname) || null, player.phone, player.paymentMethod || null, !!player.paid,
@@ -3528,7 +3577,8 @@ async function replaceDatabaseStateFromMemory(reason = 'saveData', snapshot = nu
                     toNumericOrNull(player.passingRating), toNumericOrNull(player.shootingRating), toNumericOrNull(player.defensiveRating), toNumericOrNull(player.speedBurstRating), player.positionPlayed || null,
                     player.levelPlayed || null, player.peerComparison || null, player.confidenceLevel || null, toNumericOrNull(player.selfRatingRaw), toNumericOrNull(player.derivedRating),
                     toNumericOrNull(player.adminRating), toNumericOrNull(player.adminAdjustment), toNumericOrNull(player.finalRating), !!player.isGoalie, player.team || null, player.registeredAt || new Date().toISOString(), !!player.rulesAgreed,
-                    !!player.promotedFromWaitlist, !!player.lateAddedAfterRelease, player.subbedInForPlayerId || null, player.subbedInForName || null, player.subbedInAt || null
+                    !!player.promotedFromWaitlist, !!player.lateAddedAfterRelease, player.subbedInForPlayerId || null, player.subbedInForName || null, player.subbedInAt || null,
+                    !!player.protected, !!player.adminOnlyRemove, !!player.regularGoalie
                 ]
             );
         }
@@ -3957,8 +4007,12 @@ function loadDataFromFile() {
             rosterReleaseSchedule = data.rosterReleaseSchedule ?? rosterReleaseSchedule;
             resetWeekSchedule = data.resetWeekSchedule ?? resetWeekSchedule;
             cancelledRegistrations = Array.isArray(data.cancelledRegistrations) ? data.cancelledRegistrations : [];
-            protectedPlayersByDay = normalizeProtectedPlayersByDayMap(data.protectedPlayersByDay || data.appSettings?.protectedPlayersByDay || {});
-            regularGoaliesByDay = normalizeRegularGoaliesByDayMap(data.regularGoaliesByDay || data.appSettings?.regularGoaliesByDay || {});
+            if (data.protectedPlayersByDay !== undefined || data.appSettings?.protectedPlayersByDay !== undefined) {
+                protectedPlayersByDay = normalizeProtectedPlayersByDayMap(data.protectedPlayersByDay ?? data.appSettings?.protectedPlayersByDay);
+            }
+            if (data.regularGoaliesByDay !== undefined || data.appSettings?.regularGoaliesByDay !== undefined) {
+                regularGoaliesByDay = normalizeRegularGoaliesByDayMap(data.regularGoaliesByDay ?? data.appSettings?.regularGoaliesByDay);
+            }
             regularSkatersByDay = normalizeRegularSkatersByDayMap(data.regularSkatersByDay || {});
             persistentAdminRatings = normalizePersistentAdminRatings(data.persistentAdminRatings || data.appSettings?.persistentAdminRatings || {});
             persistentPlayerNicknames = normalizePersistentPlayerNicknames(data.persistentPlayerNicknames || data.appSettings?.persistentPlayerNicknames || {});
@@ -5550,7 +5604,7 @@ function buildPublicRosterPayload() {
 
     const sanitizePlayer = (p) => {
         const cancelled = isLateCancelledPlayer(p);
-        const protectedPlayer = String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly';
+        const protectedPlayer = !!(p.protected || p.adminOnlyRemove);
         const canCancel = !cancelled && cancellationAllowedNow && !protectedPlayer;
         return {
             id: p.id,
@@ -5625,8 +5679,9 @@ app.get('/api/status', (req, res) => {
         // Uses the current saved player rating at render time; it is not frozen by weekly reset.
         rating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
         finalRating: roundRating(p.finalRating ?? p.rating ?? p.derivedRating ?? p.selfRatingRaw ?? 5),
-        // Phan Ly cannot cancel from signup page - only admin can remove
-        canCancel: cancellationAllowedNow && !(String(p.firstName || '').toLowerCase() === 'phan' && String(p.lastName || '').toLowerCase() === 'ly'),
+        // Protected/admin-only players cannot cancel from signup page - only admin can remove
+        canCancel: cancellationAllowedNow && !(p.protected || p.adminOnlyRemove),
+        protected: !!p.protected,
         // Public replacement display fields only. Still excludes payment and phone.
         promotedFromWaitlist: !!p.promotedFromWaitlist,
         lateAddedAfterRelease: !!p.lateAddedAfterRelease,
@@ -8409,12 +8464,13 @@ app.post('/api/admin/manual-reset', async (req, res) => {
             rememberCurrentAdminRatings();
             rememberCurrentPlayerNicknames();
             rememberCurrentPiaPaymentsAndExpire(etTime);
+            const weeklyCarryovers = getWeeklyCarryoverPlayersFromRoster();
             remainingSkaterSpots = skaterCapacity; players = []; waitlist = []; rosterReleased = false; resetArmed = false; lastResetWeek = week; gameDate = calculateNextGameDate();
             currentWeekData = { weekNumber: week, year, releaseDate: null, whiteTeam: [], darkTeam: [] };
             manualOverride = true; manualOverrideState = `reset-lock:${nowETMinuteKey(etTime)}`; requirePlayerCode = true; clearAnnouncementState();
             syncScheduledActionRunMarker(resetWeekSchedule.at, 'reset', etTime);
             syncScheduledActionRunMarker(rosterReleaseSchedule.at, 'release', etTime);
-            await addAutoPlayers();
+            await addAutoPlayers(weeklyCarryovers);
         }, { week, year });
     } catch (err) {
         console.error('Error resetting:', err);

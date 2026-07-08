@@ -8978,7 +8978,7 @@ Date: ${selectedGameDate}`);
 
         function isPhanLyOrProtectedPlayer(player) {
             const name = `${String(player.firstName || '').trim()} ${String(player.lastName || '').trim()}`.trim().toLowerCase().replace(/\s+/g, ' ');
-            return !!player.protected || name === 'phan ly';
+            return !!(player.protected || player.adminOnlyRemove) || name === 'phan ly';
         }
 
         function buildSignupMassTextExport() {
@@ -9465,14 +9465,15 @@ ${rosterLink}
                         const adminRatingFootnote = formatAdminRatingFootnote(p);
                         const adminRatingHtml = adminRatingFootnote ? `<span class="admin-rating-footnote">${adminRatingFootnote}</span>` : '';
                         const goalieBadge = p.isGoalie ? '<span class="goalie-badge">GOALIE</span>' : '';
-                        const protectedBadge = (p.firstName.toLowerCase() === 'phan' && p.lastName.toLowerCase() === 'ly') ? 
+                        const protectedBadge = (p.protected || p.adminOnlyRemove || (String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly')) ? 
                             '<span class="protected-badge">PROTECTED</span>' : '';
                         const regularInfo = getPlayerRegularInfo(p);
                         const regularLabel = 'Regular';
                         const regularClass = regularInfo.active ? 'regular-toggle-btn active' : 'regular-toggle-btn';
 
                         const isPhan = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
-                        const hideAdminPaymentUi = !!p.isGoalie || isPhan;
+                        const isProtectedPlayer = !!(p.protected || p.adminOnlyRemove) || isPhan;
+                        const hideAdminPaymentUi = !!p.isGoalie || isProtectedPlayer;
 
                         let paidInput = '';
                         if (!hideAdminPaymentUi) {
@@ -9504,7 +9505,7 @@ ${rosterLink}
                         const regularCell = hideAdminPaymentUi
                             ? ''
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const isPhanLyPlayer = String(p.firstName || '').trim().toLowerCase() === 'phan' && String(p.lastName || '').trim().toLowerCase() === 'ly';
+                        const isPhanLyPlayer = isProtectedPlayer;
                         const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isPhanLyPlayer;
                         const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
