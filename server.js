@@ -824,6 +824,37 @@ function isPublicCancelLockedPlayer(player = {}) {
     return isLegacyPhanLyPlayer(player);
 }
 
+function getFirstNameSortKey(player = {}) {
+    return `${String(player.firstName || '').trim()} ${String(player.lastName || '').trim()}`.trim().toLowerCase();
+}
+
+function comparePlayersByFirstName(a = {}, b = {}) {
+    return getFirstNameSortKey(a).localeCompare(getFirstNameSortKey(b));
+}
+
+function compareWeeklyRegisteredOrder(a = {}, b = {}) {
+    const aGoalie = !!a.isGoalie;
+    const bGoalie = !!b.isGoalie;
+    if (aGoalie && !bGoalie) return -1;
+    if (!aGoalie && bGoalie) return 1;
+    if (aGoalie && bGoalie) return comparePlayersByFirstName(a, b);
+
+    const aPhan = isLegacyPhanLyPlayer(a);
+    const bPhan = isLegacyPhanLyPlayer(b);
+    if (aPhan && !bPhan) return -1;
+    if (!aPhan && bPhan) return 1;
+
+    return comparePlayersByFirstName(a, b);
+}
+
+function compareRosterTeamDisplayOrder(a = {}, b = {}) {
+    const aGoalie = !!a.isGoalie;
+    const bGoalie = !!b.isGoalie;
+    if (aGoalie && !bGoalie) return -1;
+    if (!aGoalie && bGoalie) return 1;
+    return comparePlayersByFirstName(a, b);
+}
+
 function applyProtectedPlayerFlags(player = {}) {
     if (!player || typeof player !== 'object') return player;
     if (isLegacyPhanLyPlayer(player)) {
@@ -1009,7 +1040,9 @@ function getWeeklyAutoAddPlayers(dayName = getGameDayName()) {
     const protectedList = getProtectedPlayersForDay(dayKey);
     const goalieList = getRegularGoaliesForDay(dayKey);
     const skaterList = getRegularSkatersForDay(dayKey);
-    return [...protectedList, ...goalieList, ...skaterList].map(player => ({ ...player }));
+    return [...protectedList, ...goalieList, ...skaterList]
+        .map(player => ({ ...player }))
+        .sort(compareWeeklyRegisteredOrder);
 }
 
 function normalizeWeeklyCarryoverPlayer(player = {}) {
@@ -1050,7 +1083,7 @@ function mergeAutoAddPlayers(...groups) {
             merged.push({ ...player });
         }
     }
-    return merged;
+    return merged.sort(compareWeeklyRegisteredOrder);
 }
 
 function getWeeklyCarryoverPlayersFromRoster() {
@@ -5097,11 +5130,7 @@ function generateFairTeams() {
     const goalies = players.filter(p => p.isGoalie).map(hydratePlayerRatingProfile).sort(sortByBalance);
     const skaters = players.filter(p => !p.isGoalie).map(hydratePlayerRatingProfile).sort(sortByBalance);
 
-    const sortTeamForDisplay = (team) => team.sort((a, b) => {
-        if (a.isGoalie && !b.isGoalie) return -1;
-        if (!a.isGoalie && b.isGoalie) return 1;
-        return `${a.firstName} ${a.lastName}`.toLowerCase().localeCompare(`${b.firstName} ${b.lastName}`.toLowerCase());
-    });
+    const sortTeamForDisplay = (team) => team.sort(compareRosterTeamDisplayOrder);
 
     const assignSkatersAndOptimize = (initialWhite = [], initialDark = [], label = 'default') => {
         let whiteTeam = initialWhite.map(p => ({ ...p, team: 'White' }));
@@ -5766,13 +5795,7 @@ function isLateCancelledPlayer(player = {}) {
 }
 
 function buildPublicRosterPayload() {
-    const sortPlayers = (a, b) => {
-        if (a.isGoalie && !b.isGoalie) return -1;
-        if (!a.isGoalie && b.isGoalie) return 1;
-        const nameA = `${a.firstName || ''} ${a.lastName || ''}`.trim().toLowerCase();
-        const nameB = `${b.firstName || ''} ${b.lastName || ''}`.trim().toLowerCase();
-        return nameA.localeCompare(nameB);
-    };
+    const sortPlayers = compareRosterTeamDisplayOrder;
 
     const cancellationTiming = getCancellationTimingStatus();
     const cancellationAllowedNow = !cancellationTiming.isLateCancelWindow;
@@ -5848,7 +5871,7 @@ app.get('/api/status', (req, res) => {
     // Players see: id, name, goalie status, cancel permission ONLY
     const cancellationTiming = getCancellationTimingStatus();
     const cancellationAllowedNow = !cancellationTiming.isLateCancelWindow;
-    const publicPlayers = players.map(p => ({
+    const publicPlayers = [...players].sort(compareWeeklyRegisteredOrder).map(p => ({
         id: p.id,
         firstName: p.firstName,
         lastName: p.lastName,
@@ -8648,16 +8671,8 @@ app.post('/api/admin/release-roster', async (req, res) => {
 function rebuildCurrentWeekTeamsFromPlayers() {
     const whiteTeam = players.filter(p => p && p.team === 'White').map(p => ({ ...p, team: 'White' }));
     const darkTeam = players.filter(p => p && p.team === 'Dark').map(p => ({ ...p, team: 'Dark' }));
-    const sortedWhite = whiteTeam.sort((a, b) => {
-        if (a.isGoalie && !b.isGoalie) return -1;
-        if (!a.isGoalie && b.isGoalie) return 1;
-        return `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase().localeCompare(`${b.firstName || ''} ${b.lastName || ''}`.toLowerCase());
-    });
-    const sortedDark = darkTeam.sort((a, b) => {
-        if (a.isGoalie && !b.isGoalie) return -1;
-        if (!a.isGoalie && b.isGoalie) return 1;
-        return `${a.firstName || ''} ${a.lastName || ''}`.toLowerCase().localeCompare(`${b.firstName || ''} ${b.lastName || ''}`.toLowerCase());
-    });
+    const sortedWhite = whiteTeam.sort(compareRosterTeamDisplayOrder);
+    const sortedDark = darkTeam.sort(compareRosterTeamDisplayOrder);
     const whiteMetrics = summarizeTeamMetrics(sortedWhite);
     const darkMetrics = summarizeTeamMetrics(sortedDark);
     return {

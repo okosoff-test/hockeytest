@@ -9410,7 +9410,7 @@ ${rosterLink}
                         const regularCell = p.isGoalie
                             ? `<button class="control-btn ${regularClass}" onclick="toggleGoalieRegular(${p.id})">${regularLabel}</button>`
                             : `<button class="control-btn ${regularClass}" onclick="togglePlayerRegular(${p.id})">${regularLabel}</button>`;
-                        const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isProtectedPlayer;
+                        const shouldShowNotifyPlayer = !hideAdminPaymentUi && !p.isGoalie && !isProtectedPlayer && !isLegacyPhanLyPlayerAdmin(p);
                         const notifyPlayerBtn = shouldShowNotifyPlayer
                             ? `<button class="control-btn notify-player-btn" onclick="openPlayerInRosterSms(${p.id})">Text In</button>`
                             : '';
