@@ -536,10 +536,9 @@
                         </div>
                     `;
 
-                    // Add cancel button if allowed
-                    if (player.canCancel !== false) {
-                        html += `<button type="button" class="cancel-btn" data-player-id="${player.id}">Cancel</button>`;
-                    }
+                    // Waitlisted players can always open the self-cancel flow.
+                    // The server still verifies the matching phone number before removal.
+                    html += `<button type="button" class="cancel-btn" data-player-id="${player.id}">Cancel</button>`;
 
                     li.innerHTML = html;
 
