@@ -7206,6 +7206,7 @@ app.post('/api/admin/players-full', (req, res) => {
         currentWeekData, 
         playerSignupCode, 
         requirePlayerCode,
+        regularGoaliesByDay,
         regularSkatersByDay,
         extraGoalieContacts 
     });
