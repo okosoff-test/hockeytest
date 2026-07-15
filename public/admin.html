@@ -6571,6 +6571,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <div class="payment-stat-value unpaid" id="unpaidCountDisplay">0</div>
 <div class="payment-stat-label">Unpaid Players</div>
 </div>
+<div class="payment-stat">
+<div class="payment-stat-value unpaid" id="noShowCountDisplay">0</div>
+<div class="payment-stat-label">No Shows</div>
+</div>
 </div>
 <button class="export-btn" onclick="exportToExcel()">
                 📥 Download Full Payment Report (CSV)
@@ -9390,6 +9394,8 @@ ${rosterLink}
                 if (etransferCollectedEl) etransferCollectedEl.innerText = '$' + paymentEtTotal.toFixed(2);
                 document.getElementById('paidCountDisplay').innerText = data.paidCount || 0;
                 document.getElementById('unpaidCountDisplay').innerText = data.unpaidCount || 0;
+                const noShowCountEl = document.getElementById('noShowCountDisplay');
+                if (noShowCountEl) noShowCountEl.innerText = data.noShowCount || 0;
                 
                 // Update counts
                 document.getElementById('currentPlayerSpotsDisplay').innerText = window.currentMaxSkaters;
@@ -13108,6 +13114,7 @@ white-space:pre-wrap !important;
         const waitlistCount = getNumText('waitlistCount');
         const paidCount = getNumText('paidCountDisplay');
         const owingCount = getNumText('unpaidCountDisplay');
+        const noShowCount = getNumText('noShowCountDisplay');
         const piaCount = String(getPiaCount());
         const totalCollected = safeText(byId('totalCollected')) || '$0.00';
         const cashCollected = safeText(byId('cashCollected')) || '$0.00';
@@ -13125,14 +13132,14 @@ white-space:pre-wrap !important;
         set('weeklyStatusGoalies', goalieMax ? `${goalieCount}/${goalieMax}` : goalieCount);
         set('weeklyStatusRoster', roster);
         const paymentsEl = byId('weeklyStatusPayments');
-        if (paymentsEl) paymentsEl.innerHTML = `Paid: ${escapeWeeklyStatusHtml(paidCount)}<br>Owing: ${escapeWeeklyStatusHtml(owingCount)}`;
+        if (paymentsEl) paymentsEl.innerHTML = `Paid: ${escapeWeeklyStatusHtml(paidCount)}<br>Owing: ${escapeWeeklyStatusHtml(owingCount)}<br>No Show: ${escapeWeeklyStatusHtml(noShowCount)}`;
         set('weeklyStatusPia', piaCount);
         set('weeklyStatusWaitlist', waitlistCount);
         set('weeklyStatusNow', etNow);
 
         setSummaryForSection('.game-setup-section', `${details.date} · ${details.time} · ${details.loc}${code ? ' · Code ' + code : ''}`);
         setSummaryForSection('.waitlist-section', `${waitlistCount} waitlist`);
-        setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${piaCount} PIA · ${totalCollected} · Cash ${cashCollected} · ET$ ${etransferCollected}`);
+        setSummaryForSection('.payment-summary-box', `${paidCount} paid · ${owingCount} owing · ${noShowCount} no show · ${piaCount} PIA · ${totalCollected} · Cash ${cashCollected} · ET$ ${etransferCollected}`);
         setSummaryForSection('.roster-status', roster);
         setSummaryForSection('.snapshot-pro-section', `${safeText(byId('snapshotStatCount')) || '--'} snapshots`);
         setSummaryForSection('.history-delete-box', 'History / delete old history');
