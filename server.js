@@ -3615,6 +3615,7 @@ function normalizePaymentStatus(status, player = {}) {
     const raw = String(status || player.paymentStatus || '').trim().toLowerCase();
     if (raw === 'pia' || raw === 'paid_in_advance') return 'pia';
     if (raw === 'paid') return 'paid';
+    if (raw === 'no_show' || raw === 'noshow' || raw === 'no-show') return 'no_show';
     if (raw === 'owes' || raw === 'unpaid') return 'owes';
 
     const amount = Number(player.paidAmount);
@@ -3671,6 +3672,11 @@ function applyPaymentStatusToPlayer(player, status, options = {}) {
         if (options.ensureAmount && (!Number.isFinite(amount) || amount <= 0)) {
             player.paidAmount = Number(options.defaultAmount || 15);
         }
+        player.piaDate = '';
+    } else if (normalized === 'no_show') {
+        player.paid = false;
+        player.paidAmount = null;
+        player.paymentMethod = 'No Show';
         player.piaDate = '';
     } else {
         player.paid = false;
@@ -8302,7 +8308,7 @@ app.post('/api/admin/update-paid-amount', async (req, res) => {
     }
 });
 
-// Update payment status endpoint: paid / pia / owes without adding another admin-table column
+// Update payment status endpoint: paid / pia / owes / no_show without adding another admin-table column
 app.post('/api/admin/update-payment-status', async (req, res) => {
     const { password, sessionToken, playerId, status, piaDate, amount, paymentMethod } = req.body;
     if (!isAuthorizedAdminRequest(req)) return res.status(401).send("Unauthorized");
@@ -8323,6 +8329,8 @@ app.post('/api/admin/update-payment-status', async (req, res) => {
                 paidAmount: amount,
                 paymentMethod: normalizeCollectionPaymentMethod(paymentMethod, player.paymentMethod || 'E-Transfer')
             });
+        } else if (paymentStatus === 'no_show') {
+            applyPaymentStatusToPlayer(player, 'no_show');
         } else {
             applyPaymentStatusToPlayer(player, 'owes');
         }
