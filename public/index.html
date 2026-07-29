@@ -2202,8 +2202,8 @@
                 </div>
 
                 <div class="direct-rating-box hidden" id="directRatingBox">
-                    <label for="directRating" style="display:block; margin-bottom:6px; color:#d6ffd6; font-weight:600;">Enter your known rating (3.0-9.8)</label>
-                    <input type="number" id="directRating" min="3" max="9.8" step="0.1" placeholder="Example: 6.5" style="margin:0; background:#182118; border:1px solid #4CAF50;">
+                    <label for="directRating" style="display:block; margin-bottom:6px; color:#d6ffd6; font-weight:600;">Enter your known rating (1.0-10.0)</label>
+                    <input type="number" id="directRating" min="1" max="10" step="0.1" placeholder="Example: 6.5" style="margin:0; background:#182118; border:1px solid #4CAF50;">
                     <div class="small-note">Use this only if you already know your true rating and are confident in it.</div>
                 </div>
 
@@ -2789,9 +2789,9 @@ function buildRatingProfilePayload() {
     ) / 100;
 
     let derivedRating = roundRatingValue(weightedFivePointScore * 2);
-    const levelMinimums = { beginner: 1.0, intermediate: 4.0, competitive: 7.0, junior: 8.5 };
+    const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
     if (levelMinimums[levelPlayed]) derivedRating = Math.max(derivedRating, levelMinimums[levelPlayed]);
-    derivedRating = Math.max(1.0, Math.min(10.0, derivedRating));
+    derivedRating = Math.max(3.0, Math.min(9.8, derivedRating));
     const weightedSkill = derivedRating;
 
     return {
@@ -2831,7 +2831,7 @@ function updateCalculatedRating() {
             if (!profile) {
                 const mode = getSelectedRatingMode();
                 showSignupError(mode === 'direct'
-                    ? 'Please enter your direct rating from 1 to 10.'
+                    ? 'Please enter your direct rating from 1.0 to 10.0.'
                     : 'Please complete the full skill profile so your teams can be balanced properly.');
                 return false;
             }
