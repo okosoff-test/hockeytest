@@ -198,6 +198,7 @@
 
 
         .rating-mode-box {
+            display: none !important;
             background: linear-gradient(135deg, #222, #2d2d2d);
             border: 1px solid #4a4a4a;
             border-radius: 10px;
@@ -2069,24 +2070,24 @@
                 <input type="text" id="lastName" placeholder="Last Name" required>
                 <input type="tel" id="phone" placeholder="Phone Number (e.g., 519-123-4567)" required>
                 
-                <div class="rating-mode-box" style="display:none;">
+                <div class="rating-mode-box">
                     <div style="color:#dcdcdc; font-weight:600;">Choose how you want to enter your skill rating</div>
                     <div style="color:#aaa; font-size:0.9rem; margin-top:4px;">Use the balanced profile for the fairest team matching, or bypass it if you already know your number.</div>
                     <div class="rating-mode-options">
                         <label class="rating-mode-option active" id="ratingModeProfileCard">
-                            <input type="radio" name="ratingMode" id="ratingModeProfile" value="profile">
+                            <input type="radio" name="ratingMode" id="ratingModeProfile" value="profile" checked>
                             <strong style="display:block; margin-bottom:4px; color:var(--accent);">Balanced profile</strong>
                             <span style="color:#bbb; font-size:0.9rem;">Answer the questions and let the algorithm calculate your rating.</span>
                         </label>
                         <label class="rating-mode-option" id="ratingModeDirectCard">
-                            <input type="radio" name="ratingMode" id="ratingModeDirect" value="direct" checked>
+                            <input type="radio" name="ratingMode" id="ratingModeDirect" value="direct">
                             <strong style="display:block; margin-bottom:4px; color:#4CAF50;">I already know my rating</strong>
                             <span style="color:#bbb; font-size:0.9rem;">Skip the profile and enter your rating directly.</span>
                         </label>
                     </div>
                 </div>
 
-                <div id="skillProfileWrapper" class="skill-profile-wrapper hidden">
+                <div id="skillProfileWrapper" class="skill-profile-wrapper">
                 <div style="margin: 15px 0 5px 0; color: #aaa; font-size: 0.9rem;">Player Skill Profile:</div>
                 <div class="rating-grid">
                     <div class="rating-card">
@@ -2167,14 +2168,14 @@
                         </select>
                     </div>
                     <div class="rating-card">
-                        <label for="effortRating">Compete / effort level</label>
+                        <label for="effortRating">Physical play / compete level</label>
                         <select id="effortRating" required style="margin:0;">
                             <option value="">Select one</option>
-                            <option value="1">Casual effort</option>
-                            <option value="2">Below-average compete</option>
-                            <option value="3">Average effort</option>
-                            <option value="4">Works hard most shifts</option>
-                            <option value="5">High compete every shift</option>
+                            <option value="1">Avoids contact / casual compete</option>
+                            <option value="2">Light physical play / below-average compete</option>
+                            <option value="3">Average physical play and effort</option>
+                            <option value="4">Strong on pucks / works hard most shifts</option>
+                            <option value="5">Very strong physical play / high compete every shift</option>
                         </select>
                     </div>
                     <div class="rating-card">
@@ -2201,26 +2202,24 @@
                 </div>
                 </div>
 
-                <div class="direct-rating-box" id="directRatingBox">
-                    <label for="directRating" style="display:block; margin-bottom:8px; color:#d6ffd6; font-weight:700;">Player rating: <span id="directRatingValue">5.0</span> / 10</label>
-                    <input type="range" id="directRating" min="1" max="10" step="0.5" value="5" required style="width:100%; margin:4px 0 8px; accent-color:#4CAF50;">
-                    <div style="display:flex; justify-content:space-between; color:#aaa; font-size:0.82rem;"><span>1 — Beginner</span><span>5 — Average</span><span>10 — Elite</span></div>
-                    <div class="small-note" style="margin-top:8px;">Choose the number that best represents your current playing ability.</div>
+                <div class="direct-rating-box hidden" id="directRatingBox">
+                    <label for="directRating" style="display:block; margin-bottom:6px; color:#d6ffd6; font-weight:600;">Enter your known rating (3.0-9.8)</label>
+                    <input type="number" id="directRating" min="3" max="9.8" step="0.1" placeholder="Example: 6.5" style="margin:0; background:#182118; border:1px solid #4CAF50;">
+                    <div class="small-note">Use this only if you already know your true rating and are confident in it.</div>
                 </div>
 
                 <div class="rating-summary-box">
                     <div style="margin-bottom:6px; color:#d6ffd6;">Calculated team-balance rating</div>
                     <input type="number" id="rating" min="1" max="10" step="0.1" readonly required style="width:100%; padding:12px; margin:0; background:#182118; border:1px solid #4CAF50; color:#fff; border-radius:5px; font-size:1.1rem; text-align:center; font-weight:bold;">
-                    <div class="small-note">Built from your skill profile so teams are matched more evenly. Admin may fine-tune after games.</div>
+                    <div class="small-note">Calculated on a 1–10 scale from your answers. Skating and hockey IQ carry the most weight. Admin ratings still override self-assessments.</div>
                 </div>
                 <div class="rating-info" style="background: #1a1a1a; padding: 12px; border-radius: 5px; margin-top: 10px; line-height: 1.6;">
                     <strong style="color: var(--accent);">Quick guide:</strong><br>
-                    <strong>3-4:</strong> lower recreational / newer player<br>
-                    <strong>5:</strong> average pickup player<br>
-                    <strong>6:</strong> solid pickup player<br>
-                    <strong>7:</strong> strong player<br>
-                    <strong>8:</strong> elite pickup player<br>
-                    <strong>9-10:</strong> rare high-end player for this skate
+                    <strong>1-2:</strong> beginner<br>
+                    <strong>3-4:</strong> developing player<br>
+                    <strong>5-6:</strong> average recreational player<br>
+                    <strong>7-8:</strong> strong player<br>
+                    <strong>9-10:</strong> elite player
                 </div>
 
                 <div style="margin: 15px 0; color: #aaa; font-size: 0.9rem;">Payment Method:</div>
@@ -2364,8 +2363,8 @@
                 firstName: capitalizeFullName(profile.firstName),
                 lastName: capitalizeFullName(profile.lastName),
                 phone: formatPhoneInputValue(phoneDigits),
-                ratingMode: 'direct',
-                directRating: profile.directRating || profile.rating || profile.finalRating || 5,
+                ratingMode: profile.ratingMode === 'direct' ? 'direct' : 'profile',
+                directRating: profile.directRating || '',
                 skatingRating: profile.skatingRating || '',
                 puckSkillsRating: profile.puckSkillsRating || '',
                 hockeySenseRating: profile.hockeySenseRating || '',
@@ -2412,7 +2411,7 @@
             const modeRadio = document.querySelector(`input[name="ratingMode"][value="${sanitized.ratingMode}"]`);
             if (modeRadio) modeRadio.checked = true;
 
-            document.getElementById('directRating').value = sanitized.directRating || sanitized.rating || 5;
+            document.getElementById('directRating').value = sanitized.directRating || '';
             document.getElementById('skatingRating').value = sanitized.skatingRating || '';
             document.getElementById('puckSkillsRating').value = sanitized.puckSkillsRating || '';
             document.getElementById('hockeySenseRating').value = sanitized.hockeySenseRating || '';
@@ -2689,7 +2688,8 @@
         }
 
         function getSelectedRatingMode() {
-            return 'direct';
+            // Signup ratings are always calculated from the skill questionnaire.
+            return 'profile';
         }
 
         function updateRatingModeUi() {
@@ -2726,7 +2726,7 @@
 
             const directRatingEl = document.getElementById('directRating');
             if (directRatingEl) {
-                directRatingEl.required = true;
+                directRatingEl.required = (mode === 'direct');
                 if (mode !== 'direct') directRatingEl.setCustomValidity('');
             }
         }
@@ -2736,7 +2736,7 @@ function buildRatingProfilePayload() {
     if (ratingMode === 'direct') {
         const directRating = clampRatingInput(document.getElementById('directRating')?.value);
         if (directRating === null) return null;
-        const rounded = Math.round(Math.max(1, Math.min(10, directRating)) * 2) / 2;
+        const rounded = roundRatingValue(Math.max(3, Math.min(9.8, directRating)));
         return {
             ratingMode: 'direct',
             directRating: rounded,
@@ -2775,24 +2775,20 @@ function buildRatingProfilePayload() {
         return null;
     }
 
-    // Phan Friday 1-10 formula: answers are 1-5, converted to 3.0-9.8.
-    // Weights: skating 17, speed burst 8, conditioning 15, puck 14, IQ 14, passing 10, shooting 8, compete 9, shift discipline 5.
+    // Questionnaire weighting for the 1-10 team-balance rating.
+    // Skating 35%, hockey IQ 25%, puck control 15%, passing 10%,
+    // shooting 10%, and physical play / compete 5%.
     const weightedFivePointScore = (
-        (skating * 17) +
-        (speedBurst * 8) +
-        (conditioning * 15) +
-        (puck * 14) +
-        (sense * 14) +
+        (skating * 35) +
+        (sense * 25) +
+        (puck * 15) +
         (passing * 10) +
-        (shooting * 8) +
-        (effort * 9) +
-        (shiftDiscipline * 5)
+        (shooting * 10) +
+        (effort * 5)
     ) / 100;
 
     let derivedRating = roundRatingValue(weightedFivePointScore * 2);
-    const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
-    if (levelMinimums[levelPlayed]) derivedRating = Math.max(derivedRating, levelMinimums[levelPlayed]);
-    derivedRating = Math.max(3.0, Math.min(9.8, derivedRating));
+    derivedRating = Math.max(1.0, Math.min(10.0, derivedRating));
     const weightedSkill = derivedRating;
 
     return {
@@ -2824,8 +2820,6 @@ function updateCalculatedRating() {
             if (!ratingEl) return;
             const profile = buildRatingProfilePayload();
             ratingEl.value = profile ? profile.derivedRating.toFixed(1) : '';
-            const ratingValueEl = document.getElementById('directRatingValue');
-            if (ratingValueEl) ratingValueEl.textContent = profile ? profile.derivedRating.toFixed(1) : '5.0';
             saveFormData();
         }
 
@@ -2860,10 +2854,10 @@ function updateCalculatedRating() {
                 document.getElementById('firstName').value = capitalizeFullName(data.firstName || '');
                 document.getElementById('lastName').value = capitalizeFullName(data.lastName || '');
                 document.getElementById('phone').value = formatPhoneInputValue(data.phone || '');
-                const savedMode = 'direct';
+                const savedMode = data.ratingMode || 'profile';
                 const savedModeRadio = document.querySelector(`input[name="ratingMode"][value="${savedMode}"]`);
                 if (savedModeRadio) savedModeRadio.checked = true;
-                document.getElementById('directRating').value = data.directRating || data.rating || 5;
+                document.getElementById('directRating').value = data.directRating || '';
                 document.getElementById('skatingRating').value = data.skatingRating || '';
                 document.getElementById('puckSkillsRating').value = data.puckSkillsRating || '';
                 document.getElementById('hockeySenseRating').value = data.hockeySenseRating || '';
