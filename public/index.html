@@ -2069,24 +2069,24 @@
                 <input type="text" id="lastName" placeholder="Last Name" required>
                 <input type="tel" id="phone" placeholder="Phone Number (e.g., 519-123-4567)" required>
                 
-                <div class="rating-mode-box">
+                <div class="rating-mode-box" style="display:none;">
                     <div style="color:#dcdcdc; font-weight:600;">Choose how you want to enter your skill rating</div>
                     <div style="color:#aaa; font-size:0.9rem; margin-top:4px;">Use the balanced profile for the fairest team matching, or bypass it if you already know your number.</div>
                     <div class="rating-mode-options">
                         <label class="rating-mode-option active" id="ratingModeProfileCard">
-                            <input type="radio" name="ratingMode" id="ratingModeProfile" value="profile" checked>
+                            <input type="radio" name="ratingMode" id="ratingModeProfile" value="profile">
                             <strong style="display:block; margin-bottom:4px; color:var(--accent);">Balanced profile</strong>
                             <span style="color:#bbb; font-size:0.9rem;">Answer the questions and let the algorithm calculate your rating.</span>
                         </label>
                         <label class="rating-mode-option" id="ratingModeDirectCard">
-                            <input type="radio" name="ratingMode" id="ratingModeDirect" value="direct">
+                            <input type="radio" name="ratingMode" id="ratingModeDirect" value="direct" checked>
                             <strong style="display:block; margin-bottom:4px; color:#4CAF50;">I already know my rating</strong>
                             <span style="color:#bbb; font-size:0.9rem;">Skip the profile and enter your rating directly.</span>
                         </label>
                     </div>
                 </div>
 
-                <div id="skillProfileWrapper" class="skill-profile-wrapper">
+                <div id="skillProfileWrapper" class="skill-profile-wrapper hidden">
                 <div style="margin: 15px 0 5px 0; color: #aaa; font-size: 0.9rem;">Player Skill Profile:</div>
                 <div class="rating-grid">
                     <div class="rating-card">
@@ -2201,10 +2201,11 @@
                 </div>
                 </div>
 
-                <div class="direct-rating-box hidden" id="directRatingBox">
-                    <label for="directRating" style="display:block; margin-bottom:6px; color:#d6ffd6; font-weight:600;">Enter your known rating (3.0-9.8)</label>
-                    <input type="number" id="directRating" min="3" max="9.8" step="0.1" placeholder="Example: 6.5" style="margin:0; background:#182118; border:1px solid #4CAF50;">
-                    <div class="small-note">Use this only if you already know your true rating and are confident in it.</div>
+                <div class="direct-rating-box" id="directRatingBox">
+                    <label for="directRating" style="display:block; margin-bottom:8px; color:#d6ffd6; font-weight:700;">Player rating: <span id="directRatingValue">5.0</span> / 10</label>
+                    <input type="range" id="directRating" min="1" max="10" step="0.5" value="5" required style="width:100%; margin:4px 0 8px; accent-color:#4CAF50;">
+                    <div style="display:flex; justify-content:space-between; color:#aaa; font-size:0.82rem;"><span>1 — Beginner</span><span>5 — Average</span><span>10 — Elite</span></div>
+                    <div class="small-note" style="margin-top:8px;">Choose the number that best represents your current playing ability.</div>
                 </div>
 
                 <div class="rating-summary-box">
@@ -2363,8 +2364,8 @@
                 firstName: capitalizeFullName(profile.firstName),
                 lastName: capitalizeFullName(profile.lastName),
                 phone: formatPhoneInputValue(phoneDigits),
-                ratingMode: profile.ratingMode === 'direct' ? 'direct' : 'profile',
-                directRating: profile.directRating || '',
+                ratingMode: 'direct',
+                directRating: profile.directRating || profile.rating || profile.finalRating || 5,
                 skatingRating: profile.skatingRating || '',
                 puckSkillsRating: profile.puckSkillsRating || '',
                 hockeySenseRating: profile.hockeySenseRating || '',
@@ -2411,7 +2412,7 @@
             const modeRadio = document.querySelector(`input[name="ratingMode"][value="${sanitized.ratingMode}"]`);
             if (modeRadio) modeRadio.checked = true;
 
-            document.getElementById('directRating').value = sanitized.directRating || '';
+            document.getElementById('directRating').value = sanitized.directRating || sanitized.rating || 5;
             document.getElementById('skatingRating').value = sanitized.skatingRating || '';
             document.getElementById('puckSkillsRating').value = sanitized.puckSkillsRating || '';
             document.getElementById('hockeySenseRating').value = sanitized.hockeySenseRating || '';
@@ -2688,7 +2689,7 @@
         }
 
         function getSelectedRatingMode() {
-            return document.querySelector('input[name="ratingMode"]:checked')?.value || 'profile';
+            return 'direct';
         }
 
         function updateRatingModeUi() {
@@ -2725,7 +2726,7 @@
 
             const directRatingEl = document.getElementById('directRating');
             if (directRatingEl) {
-                directRatingEl.required = (mode === 'direct');
+                directRatingEl.required = true;
                 if (mode !== 'direct') directRatingEl.setCustomValidity('');
             }
         }
@@ -2735,7 +2736,7 @@ function buildRatingProfilePayload() {
     if (ratingMode === 'direct') {
         const directRating = clampRatingInput(document.getElementById('directRating')?.value);
         if (directRating === null) return null;
-        const rounded = roundRatingValue(Math.max(3, Math.min(9.8, directRating)));
+        const rounded = Math.round(Math.max(1, Math.min(10, directRating)) * 2) / 2;
         return {
             ratingMode: 'direct',
             directRating: rounded,
@@ -2823,6 +2824,8 @@ function updateCalculatedRating() {
             if (!ratingEl) return;
             const profile = buildRatingProfilePayload();
             ratingEl.value = profile ? profile.derivedRating.toFixed(1) : '';
+            const ratingValueEl = document.getElementById('directRatingValue');
+            if (ratingValueEl) ratingValueEl.textContent = profile ? profile.derivedRating.toFixed(1) : '5.0';
             saveFormData();
         }
 
@@ -2857,10 +2860,10 @@ function updateCalculatedRating() {
                 document.getElementById('firstName').value = capitalizeFullName(data.firstName || '');
                 document.getElementById('lastName').value = capitalizeFullName(data.lastName || '');
                 document.getElementById('phone').value = formatPhoneInputValue(data.phone || '');
-                const savedMode = data.ratingMode || 'profile';
+                const savedMode = 'direct';
                 const savedModeRadio = document.querySelector(`input[name="ratingMode"][value="${savedMode}"]`);
                 if (savedModeRadio) savedModeRadio.checked = true;
-                document.getElementById('directRating').value = data.directRating || '';
+                document.getElementById('directRating').value = data.directRating || data.rating || 5;
                 document.getElementById('skatingRating').value = data.skatingRating || '';
                 document.getElementById('puckSkillsRating').value = data.puckSkillsRating || '';
                 document.getElementById('hockeySenseRating').value = data.hockeySenseRating || '';
