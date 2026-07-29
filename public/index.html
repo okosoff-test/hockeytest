@@ -198,7 +198,6 @@
 
 
         .rating-mode-box {
-            display: none !important;
             background: linear-gradient(135deg, #222, #2d2d2d);
             border: 1px solid #4a4a4a;
             border-radius: 10px;
@@ -2168,14 +2167,14 @@
                         </select>
                     </div>
                     <div class="rating-card">
-                        <label for="effortRating">Physical play / compete level</label>
+                        <label for="effortRating">Compete / effort level</label>
                         <select id="effortRating" required style="margin:0;">
                             <option value="">Select one</option>
-                            <option value="1">Avoids contact / casual compete</option>
-                            <option value="2">Light physical play / below-average compete</option>
-                            <option value="3">Average physical play and effort</option>
-                            <option value="4">Strong on pucks / works hard most shifts</option>
-                            <option value="5">Very strong physical play / high compete every shift</option>
+                            <option value="1">Casual effort</option>
+                            <option value="2">Below-average compete</option>
+                            <option value="3">Average effort</option>
+                            <option value="4">Works hard most shifts</option>
+                            <option value="5">High compete every shift</option>
                         </select>
                     </div>
                     <div class="rating-card">
@@ -2211,15 +2210,16 @@
                 <div class="rating-summary-box">
                     <div style="margin-bottom:6px; color:#d6ffd6;">Calculated team-balance rating</div>
                     <input type="number" id="rating" min="1" max="10" step="0.1" readonly required style="width:100%; padding:12px; margin:0; background:#182118; border:1px solid #4CAF50; color:#fff; border-radius:5px; font-size:1.1rem; text-align:center; font-weight:bold;">
-                    <div class="small-note">Calculated on a 1–10 scale from your answers. Skating and hockey IQ carry the most weight. Admin ratings still override self-assessments.</div>
+                    <div class="small-note">Built from your skill profile so teams are matched more evenly. Admin may fine-tune after games.</div>
                 </div>
                 <div class="rating-info" style="background: #1a1a1a; padding: 12px; border-radius: 5px; margin-top: 10px; line-height: 1.6;">
                     <strong style="color: var(--accent);">Quick guide:</strong><br>
-                    <strong>1-2:</strong> beginner<br>
-                    <strong>3-4:</strong> developing player<br>
-                    <strong>5-6:</strong> average recreational player<br>
-                    <strong>7-8:</strong> strong player<br>
-                    <strong>9-10:</strong> elite player
+                    <strong>3-4:</strong> lower recreational / newer player<br>
+                    <strong>5:</strong> average pickup player<br>
+                    <strong>6:</strong> solid pickup player<br>
+                    <strong>7:</strong> strong player<br>
+                    <strong>8:</strong> elite pickup player<br>
+                    <strong>9-10:</strong> rare high-end player for this skate
                 </div>
 
                 <div style="margin: 15px 0; color: #aaa; font-size: 0.9rem;">Payment Method:</div>
@@ -2688,8 +2688,7 @@
         }
 
         function getSelectedRatingMode() {
-            // Signup ratings are always calculated from the skill questionnaire.
-            return 'profile';
+            return document.querySelector('input[name="ratingMode"]:checked')?.value || 'profile';
         }
 
         function updateRatingModeUi() {
@@ -2775,20 +2774,24 @@ function buildRatingProfilePayload() {
         return null;
     }
 
-    // Questionnaire weighting for the 1-10 team-balance rating.
-    // Skating 35%, hockey IQ 25%, puck control 15%, passing 10%,
-    // shooting 10%, and physical play / compete 5%.
+    // Phan Friday 1-10 formula: answers are 1-5, converted to 3.0-9.8.
+    // Weights: skating 17, speed burst 8, conditioning 15, puck 14, IQ 14, passing 10, shooting 8, compete 9, shift discipline 5.
     const weightedFivePointScore = (
-        (skating * 35) +
-        (sense * 25) +
-        (puck * 15) +
+        (skating * 17) +
+        (speedBurst * 8) +
+        (conditioning * 15) +
+        (puck * 14) +
+        (sense * 14) +
         (passing * 10) +
-        (shooting * 10) +
-        (effort * 5)
+        (shooting * 8) +
+        (effort * 9) +
+        (shiftDiscipline * 5)
     ) / 100;
 
     let derivedRating = roundRatingValue(weightedFivePointScore * 2);
-    derivedRating = Math.max(1.0, Math.min(10.0, derivedRating));
+    const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
+    if (levelMinimums[levelPlayed]) derivedRating = Math.max(derivedRating, levelMinimums[levelPlayed]);
+    derivedRating = Math.max(3.0, Math.min(9.8, derivedRating));
     const weightedSkill = derivedRating;
 
     return {
