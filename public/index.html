@@ -2735,7 +2735,7 @@ function buildRatingProfilePayload() {
     if (ratingMode === 'direct') {
         const directRating = clampRatingInput(document.getElementById('directRating')?.value);
         if (directRating === null) return null;
-        const rounded = roundRatingValue(Math.max(3, Math.min(9.8, directRating)));
+        const rounded = roundRatingValue(Math.max(1.0, Math.min(10.0, directRating)));
         return {
             ratingMode: 'direct',
             directRating: rounded,
@@ -2789,9 +2789,9 @@ function buildRatingProfilePayload() {
     ) / 100;
 
     let derivedRating = roundRatingValue(weightedFivePointScore * 2);
-    const levelMinimums = { beginner: 3.0, intermediate: 5.0, competitive: 7.0, junior: 8.0 };
+    const levelMinimums = { beginner: 1.0, intermediate: 4.0, competitive: 7.0, junior: 8.5 };
     if (levelMinimums[levelPlayed]) derivedRating = Math.max(derivedRating, levelMinimums[levelPlayed]);
-    derivedRating = Math.max(3.0, Math.min(9.8, derivedRating));
+    derivedRating = Math.max(1.0, Math.min(10.0, derivedRating));
     const weightedSkill = derivedRating;
 
     return {
