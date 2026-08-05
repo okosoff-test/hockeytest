@@ -2501,6 +2501,48 @@ async function initDatabase() {
         await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS waitlist_count INTEGER DEFAULT 0`);
         await pool.query(`ALTER TABLE data_snapshots ADD COLUMN IF NOT EXISTS snapshot_saved_at TIMESTAMP`);
         
+
+        // Temporary peer player-rating module
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rating_sessions (
+                id SERIAL PRIMARY KEY,
+                title VARCHAR(150) NOT NULL DEFAULT 'Player Ratings',
+                is_open BOOLEAN NOT NULL DEFAULT false,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                closed_at TIMESTAMP
+            )
+        `);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS rating_participants (
+                id SERIAL PRIMARY KEY,
+                session_id INTEGER NOT NULL REFERENCES rating_sessions(id) ON DELETE CASCADE,
+                source_player_id BIGINT,
+                first_name VARCHAR(100) NOT NULL,
+                last_name VARCHAR(100) NOT NULL,
+                is_goalie BOOLEAN NOT NULL DEFAULT false,
+                access_token VARCHAR(80) NOT NULL UNIQUE,
+                photo_data TEXT,
+                submitted_at TIMESTAMP,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(session_id, source_player_id)
+            )
+        `);
+        await pool.query(`ALTER TABLE rating_participants ADD COLUMN IF NOT EXISTS is_goalie BOOLEAN NOT NULL DEFAULT false`);
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS peer_ratings (
+                id SERIAL PRIMARY KEY,
+                session_id INTEGER NOT NULL REFERENCES rating_sessions(id) ON DELETE CASCADE,
+                rater_participant_id INTEGER NOT NULL REFERENCES rating_participants(id) ON DELETE CASCADE,
+                rated_participant_id INTEGER NOT NULL REFERENCES rating_participants(id) ON DELETE CASCADE,
+                rating NUMERIC(3,1) NOT NULL CHECK (rating >= 1 AND rating <= 10),
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                UNIQUE(session_id, rater_participant_id, rated_participant_id),
+                CHECK (rater_participant_id <> rated_participant_id)
+            )
+        `);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_rating_participants_session ON rating_participants(session_id)`);
+        await pool.query(`CREATE INDEX IF NOT EXISTS idx_peer_ratings_session ON peer_ratings(session_id)`);
+
         await loadDataFromDB();
         await loadRecentDataAudit();
         await pruneDataAuditIfNeeded(true);
@@ -9778,6 +9820,173 @@ app.post('/api/collector/update-paid-amount', async (req, res) => {
     }
 });
 
+
+
+// --- TEMPORARY PEER PLAYER RATINGS ---
+function requireRatingsDb(res) {
+    if (!pool) {
+        res.status(503).json({ error: 'Player ratings require the configured PostgreSQL database.' });
+        return false;
+    }
+    return true;
+}
+function cleanRatingPhoto(value) {
+    const photo = String(value || '');
+    if (!photo) return null;
+    if (!/^data:image\/(jpeg|jpg|png|webp);base64,/i.test(photo)) throw new Error('Unsupported photo format.');
+    if (Buffer.byteLength(photo, 'utf8') > 900000) throw new Error('Photo is too large. Please use a smaller photo.');
+    return photo;
+}
+
+app.get('/ratings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ratings.html')));
+app.get('/ratings-admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'ratings-admin.html')));
+
+app.get('/api/ratings/open', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    try {
+        const session = await pool.query(`SELECT id,title,is_open FROM rating_sessions WHERE is_open=true ORDER BY created_at DESC LIMIT 1`);
+        if (!session.rows.length) return res.status(404).json({ error: 'The player ratings page is currently closed.' });
+        const active = session.rows[0];
+        const people = await pool.query(`SELECT id,first_name,last_name,is_goalie,submitted_at FROM rating_participants WHERE session_id=$1 ORDER BY first_name,last_name`, [active.id]);
+        res.json({
+            session: { id: active.id, title: active.title, isOpen: active.is_open },
+            players: people.rows.map(r => ({ id:r.id, firstName:r.first_name, lastName:r.last_name, isGoalie:!!r.is_goalie, submitted:!!r.submitted_at }))
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/ratings/select-player', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    try {
+        const participantId = Number(req.body?.participantId);
+        if (!Number.isInteger(participantId)) return res.status(400).json({ error:'Select your name.' });
+        const found = await pool.query(`
+            SELECT rp.access_token,rp.submitted_at
+            FROM rating_participants rp JOIN rating_sessions rs ON rs.id=rp.session_id
+            WHERE rp.id=$1 AND rs.is_open=true
+        `,[participantId]);
+        if (!found.rows.length) return res.status(404).json({ error:'Player not found in the open ratings session.' });
+        if (found.rows[0].submitted_at) return res.status(409).json({ error:'This player has already submitted ratings.' });
+        res.json({ token: found.rows[0].access_token });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/ratings/session/:token', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    try {
+        const own = await pool.query(`
+            SELECT rp.id, rp.first_name, rp.last_name, rp.is_goalie, rp.photo_data, rp.submitted_at,
+                   rs.id AS session_id, rs.title, rs.is_open
+            FROM rating_participants rp JOIN rating_sessions rs ON rs.id = rp.session_id
+            WHERE rp.access_token = $1
+        `, [req.params.token]);
+        if (!own.rows.length) return res.status(404).json({ error: 'This ratings link is invalid.' });
+        const me = own.rows[0];
+        if (!me.is_open) return res.status(403).json({ error: 'This player ratings page is currently closed.' });
+        const people = await pool.query(`
+            SELECT id, first_name, last_name, is_goalie, photo_data
+            FROM rating_participants WHERE session_id = $1 ORDER BY first_name, last_name
+        `, [me.session_id]);
+        const saved = await pool.query(`SELECT rated_participant_id, rating FROM peer_ratings WHERE session_id=$1 AND rater_participant_id=$2`, [me.session_id, me.id]);
+        res.json({
+            session: { id: me.session_id, title: me.title, isOpen: me.is_open },
+            me: { id: me.id, firstName: me.first_name, lastName: me.last_name, isGoalie: !!me.is_goalie, photo: me.photo_data, submitted: !!me.submitted_at },
+            players: people.rows.map(r => ({ id:r.id, firstName:r.first_name, lastName:r.last_name, isGoalie:!!r.is_goalie, photo:r.photo_data })),
+            ratings: Object.fromEntries(saved.rows.map(r => [String(r.rated_participant_id), Number(r.rating)]))
+        });
+    } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/ratings/session/:token/photo', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    try {
+        const photo = cleanRatingPhoto(req.body?.photo);
+        await pool.query(`UPDATE rating_participants rp SET photo_data=$1 FROM rating_sessions rs WHERE rp.session_id=rs.id AND rp.access_token=$2 AND rs.is_open=true`, [photo, req.params.token]);
+        res.json({ success:true });
+    } catch (err) { res.status(400).json({ error: err.message }); }
+});
+
+app.post('/api/ratings/session/:token/save', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    const client = await pool.connect();
+    try {
+        const own = await client.query(`SELECT rp.id, rp.session_id, rp.submitted_at FROM rating_participants rp JOIN rating_sessions rs ON rs.id=rp.session_id WHERE rp.access_token=$1 AND rs.is_open=true`, [req.params.token]);
+        if (!own.rows.length) return res.status(403).json({ error:'This ratings page is closed or the link is invalid.' });
+        if (own.rows[0].submitted_at) return res.status(409).json({ error:'Your ratings have already been submitted.' });
+        const list = Array.isArray(req.body?.ratings) ? req.body.ratings : [];
+        await client.query('BEGIN');
+        for (const item of list) {
+            const ratedId = Number(item.playerId), rating = Number(item.rating);
+            if (!Number.isInteger(ratedId) || ratedId === Number(own.rows[0].id) || !Number.isFinite(rating) || rating < 1 || rating > 10) continue;
+            await client.query(`INSERT INTO peer_ratings(session_id,rater_participant_id,rated_participant_id,rating) VALUES($1,$2,$3,$4)
+                ON CONFLICT(session_id,rater_participant_id,rated_participant_id) DO UPDATE SET rating=EXCLUDED.rating`, [own.rows[0].session_id, own.rows[0].id, ratedId, Math.round(rating*10)/10]);
+        }
+        await client.query('COMMIT');
+        res.json({ success:true });
+    } catch (err) { await client.query('ROLLBACK'); res.status(500).json({ error:err.message }); }
+    finally { client.release(); }
+});
+
+app.post('/api/ratings/session/:token/submit', async (req, res) => {
+    if (!requireRatingsDb(res)) return;
+    const client = await pool.connect();
+    try {
+        const own = await client.query(`SELECT rp.id, rp.session_id, rp.submitted_at FROM rating_participants rp JOIN rating_sessions rs ON rs.id=rp.session_id WHERE rp.access_token=$1 AND rs.is_open=true`, [req.params.token]);
+        if (!own.rows.length) return res.status(403).json({ error:'This ratings page is closed or the link is invalid.' });
+        if (own.rows[0].submitted_at) return res.status(409).json({ error:'Your ratings have already been submitted.' });
+        const expected = await client.query(`SELECT COUNT(*)::int AS count FROM rating_participants WHERE session_id=$1 AND id<>$2`, [own.rows[0].session_id, own.rows[0].id]);
+        const list = Array.isArray(req.body?.ratings) ? req.body.ratings : [];
+        const valid = new Map();
+        list.forEach(i => { const id=Number(i.playerId), rating=Number(i.rating); if(Number.isInteger(id)&&id!==Number(own.rows[0].id)&&Number.isFinite(rating)&&rating>=1&&rating<=10) valid.set(id,Math.round(rating*10)/10); });
+        if (valid.size !== expected.rows[0].count) return res.status(400).json({ error:`Please rate all ${expected.rows[0].count} other players before submitting.` });
+        await client.query('BEGIN');
+        for (const [ratedId,rating] of valid) await client.query(`INSERT INTO peer_ratings(session_id,rater_participant_id,rated_participant_id,rating) VALUES($1,$2,$3,$4)
+          ON CONFLICT(session_id,rater_participant_id,rated_participant_id) DO UPDATE SET rating=EXCLUDED.rating`, [own.rows[0].session_id, own.rows[0].id, ratedId, rating]);
+        await client.query(`UPDATE rating_participants SET submitted_at=NOW() WHERE id=$1`, [own.rows[0].id]);
+        await client.query('COMMIT');
+        res.json({ success:true });
+    } catch (err) { await client.query('ROLLBACK'); res.status(500).json({ error:err.message }); }
+    finally { client.release(); }
+});
+
+app.get('/api/admin/ratings', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error:'Unauthorized' });
+    if (!requireRatingsDb(res)) return;
+    try {
+        const sessions = await pool.query(`SELECT * FROM rating_sessions ORDER BY created_at DESC`);
+        let active=null, participants=[], results=[];
+        if (sessions.rows.length) {
+            active=sessions.rows[0];
+            const p = await pool.query(`SELECT id,first_name,last_name,is_goalie,access_token,photo_data,submitted_at FROM rating_participants WHERE session_id=$1 ORDER BY first_name,last_name`,[active.id]);
+            participants=p.rows.map(r=>({id:r.id,firstName:r.first_name,lastName:r.last_name,isGoalie:!!r.is_goalie,accessToken:r.access_token,photo:r.photo_data,submitted:!!r.submitted_at}));
+            const rr=await pool.query(`SELECT rp.id,rp.first_name,rp.last_name,rp.is_goalie,ROUND(AVG(pr.rating)::numeric,2) avg_rating,COUNT(pr.id)::int rating_count FROM rating_participants rp LEFT JOIN peer_ratings pr ON pr.rated_participant_id=rp.id WHERE rp.session_id=$1 GROUP BY rp.id ORDER BY avg_rating DESC NULLS LAST,rp.first_name`,[active.id]);
+            results=rr.rows.map(r=>({id:r.id,firstName:r.first_name,lastName:r.last_name,isGoalie:!!r.is_goalie,average:r.avg_rating===null?null:Number(r.avg_rating),count:r.rating_count}));
+        }
+        res.json({ sessions:sessions.rows, active, participants, results });
+    } catch(err){res.status(500).json({error:err.message});}
+});
+
+app.post('/api/admin/ratings/create', async (req,res)=>{
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    if (!requireRatingsDb(res)) return;
+    const client=await pool.connect();
+    try{
+      await client.query('BEGIN');
+      await client.query(`UPDATE rating_sessions SET is_open=false,closed_at=COALESCE(closed_at,NOW()) WHERE is_open=true`);
+      const ses=await client.query(`INSERT INTO rating_sessions(title,is_open) VALUES($1,true) RETURNING *`,[String(req.body?.title||'Player Ratings').slice(0,150)]);
+      const source=await client.query(`
+          SELECT id,first_name,last_name,COALESCE(is_goalie,false) AS is_goalie
+          FROM players
+          WHERE COALESCE(is_goalie,false)=false
+             OR LOWER(TRIM(first_name)) IN ('hao','craig','mat','lilly')
+          ORDER BY COALESCE(is_goalie,false),first_name,last_name
+      `);
+      for(const p of source.rows) await client.query(`INSERT INTO rating_participants(session_id,source_player_id,first_name,last_name,is_goalie,access_token) VALUES($1,$2,$3,$4,$5,$6)`,[ses.rows[0].id,p.id,p.first_name,p.last_name,!!p.is_goalie,crypto.randomBytes(18).toString('hex')]);
+      await client.query('COMMIT'); res.json({success:true,session:ses.rows[0],count:source.rows.length});
+    }catch(err){await client.query('ROLLBACK');res.status(500).json({error:err.message});}finally{client.release();}
+});
+app.post('/api/admin/ratings/toggle',async(req,res)=>{if(!isAuthorizedAdminRequest(req))return res.status(401).json({error:'Unauthorized'});if(!requireRatingsDb(res))return;try{const id=Number(req.body?.sessionId),open=!!req.body?.isOpen;await pool.query(`UPDATE rating_sessions SET is_open=$1,closed_at=CASE WHEN $1 THEN NULL ELSE NOW() END WHERE id=$2`,[open,id]);res.json({success:true});}catch(err){res.status(500).json({error:err.message});}});
+app.post('/api/admin/ratings/reset-player',async(req,res)=>{if(!isAuthorizedAdminRequest(req))return res.status(401).json({error:'Unauthorized'});if(!requireRatingsDb(res))return;try{const id=Number(req.body?.participantId);await pool.query(`DELETE FROM peer_ratings WHERE rater_participant_id=$1`,[id]);await pool.query(`UPDATE rating_participants SET submitted_at=NULL WHERE id=$1`,[id]);res.json({success:true});}catch(err){res.status(500).json({error:err.message});}});
 
 initDatabase().then(async () => {
     if (!STRICT_DATABASE_MODE) {
