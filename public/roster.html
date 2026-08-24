@@ -11,7 +11,7 @@
             --text: #ffffff;
             --accent: #ff6b00;
             --white-team: #ffffff;
-            --dark-team: #111827;
+            --dark-team: #666666;
             --success: #4CAF50;
             --warning: #ff9800;
         }
@@ -127,33 +127,7 @@
         }
 
         .team-dark {
-            border-color: #111827;
-            background: linear-gradient(135deg, #d9dde3, #c7cdd5);
-            box-shadow: inset 0 0 0 1px rgba(255,255,255,0.28);
-        }
-
-        /* Team Dark: dark names on a light neutral panel for strong mobile contrast. */
-        .team-dark .team-header {
-            border-bottom-color: #9aa3af;
-        }
-
-        .team-dark .player-item {
-            background: rgba(255,255,255,0.62);
-            color: #111827;
-        }
-
-        .team-dark .player-name {
-            color: #111827;
-            font-weight: 700;
-        }
-
-        .team-dark .team-rating {
-            color: #374151;
-            font-weight: 600;
-        }
-
-        .team-dark .subbed-in-note {
-            color: #1f4f7a;
+            border-color: var(--dark-team);
         }
 
         .team-header {
@@ -176,8 +150,7 @@
         }
 
         .team-dark .team-name {
-            color: #111827;
-            text-shadow: none;
+            color: var(--dark-team);
         }
 
         .team-rating {
@@ -225,6 +198,28 @@
             align-items: center;
             gap: 8px;
             flex-wrap: wrap;
+        }
+
+        /* Released roster: make Team Dark player names visually dark and mobile-readable. */
+        .team-dark .player-item {
+            background: #d9dde1;
+        }
+
+        .team-dark .player-name {
+            color: #1b1f23;
+            font-weight: 600;
+        }
+
+        .team-dark .player-item.goalie {
+            background: #d9dde1;
+        }
+
+        .team-dark .player-item.late-cancelled {
+            background: #e7c9c9;
+        }
+
+        .team-dark .player-item.late-addition {
+            background: #cddceb;
         }
 
 
@@ -310,7 +305,6 @@
         @media (max-width: 600px) {
             .container { padding: 20px; }
             .teams-container { grid-template-columns: 1fr; }
-            .team-dark .player-name { font-weight: 750; }
         }
     
         .roster-cancel-btn {
