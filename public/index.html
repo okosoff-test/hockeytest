@@ -2234,6 +2234,24 @@
 }
 </style>
 
+
+<style id="roster-release-final-tweaks">
+#rosterNotice .roster-countdown-label{display:none !important;}
+#rosterNotice .clock-hand.hour-hand,#rosterNotice .clock-hand.minute-hand{
+  width:6px !important; border-radius:4px !important; background:linear-gradient(90deg,#d9ddd9,#fff 48%,#bfc6c1) !important;
+  box-shadow:0 1px 3px #000,0 0 2px rgba(255,255,255,.4) !important;
+}
+#rosterNotice .clock-hand.hour-hand::before,#rosterNotice .clock-hand.minute-hand::before{
+  content:''; position:absolute; top:-4px; left:0; width:6px; height:10px; background:#f2f3f1; border-radius:2px 2px 0 0;
+}
+#rosterNotice .clock-hand.hour-hand::after,#rosterNotice .clock-hand.minute-hand::after{
+  content:''; position:absolute; top:-7px; left:-1px; width:22px; height:9px;
+  background:linear-gradient(#f7f7f5,#cfd5d1); border-radius:2px 7px 7px 2px; transform:rotate(-24deg); transform-origin:3px 50%;
+  box-shadow:0 1px 2px rgba(0,0,0,.65);
+}
+#rosterNotice .hour-hand{height:27% !important;}
+#rosterNotice .minute-hand{height:38% !important;}
+</style>
 </head>
 <body>
 
@@ -2355,7 +2373,7 @@
                     <div class="clock-puck"></div>
                 </div>
                 <div class="countdown-content">
-                    <h3 id="rosterNoticeHeadline">NEXT GAME</h3>
+                    <h3 id="rosterNoticeHeadline">ROSTER RELEASE IN</h3>
                     <div class="roster-countdown" id="rosterCountdown" style="display:none;">
                         <div class="countdown-unit"><span id="countdownDays">--</span><small>DAYS</small></div>
                         <span class="countdown-colon">:</span>
@@ -2366,7 +2384,7 @@
                         <div class="countdown-unit"><span id="countdownSeconds">--</span><small>SECONDS</small></div>
                         <div class="roster-countdown-value" id="rosterCountdownValue" style="display:none;">--:--:--</div>
                     </div>
-                    <div class="roster-countdown-label" id="rosterCountdownLabel">UNTIL ROSTER RELEASE</div>
+                    <div class="roster-countdown-label" id="rosterCountdownLabel" style="display:none;"></div>
                     <div class="roster-countdown-placeholder" id="rosterCountdownPlaceholder" style="display:none;">Countdown will appear once a roster release time is scheduled.</div>
                     <div class="countdown-details">
                         <div class="roster-meta" id="rosterMeta">Roster release time to be announced</div>
@@ -3728,7 +3746,7 @@ function updateCalculatedRating() {
                 document.getElementById('countdownHours').textContent = String(Math.floor((totalSeconds % 86400) / 3600)).padStart(2, '0');
                 document.getElementById('countdownMinutes').textContent = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
                 document.getElementById('countdownSeconds').textContent = String(totalSeconds % 60).padStart(2, '0');
-                countdownLabel.textContent = 'UNTIL ROSTER RELEASE';
+                countdownLabel.textContent = ''; countdownLabel.style.display = 'none';
                 countdownWrap.style.display = 'flex';
                 placeholder.style.display = 'none';
             };
@@ -3976,7 +3994,7 @@ function updateCalculatedRating() {
                 document.getElementById('gameTime').innerText = '';
                 const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
         document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
-                document.getElementById('rosterNoticeHeadline').innerText = 'NEXT GAME';
+                document.getElementById('rosterNoticeHeadline').innerText = 'ROSTER RELEASE IN';
                 document.getElementById('countdownVenue').innerText = currentLocation || '';
                 document.getElementById('rosterMeta').innerText =
                     data.rosterReleaseAt
