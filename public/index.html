@@ -5256,3 +5256,139 @@ function updateCalculatedRating() {
 }
 </style>
 
+
+<style id="roster-mobile-friendly-20260908">
+/* Mobile-first override for the 3D-puck roster countdown. Desktop styling above is unchanged. */
+@media (max-width:700px){
+  #rosterNotice.roster-notice{
+    display:block !important;
+    width:calc(100% - 14px) !important;
+    min-height:0 !important;
+    aspect-ratio:auto !important;
+    margin:12px auto 18px !important;
+    padding:0 !important;
+    overflow:hidden !important;
+    border-radius:20px !important;
+    border:1.5px solid #27df78 !important;
+    box-shadow:0 0 0 6px #101817,0 9px 16px rgba(0,0,0,.30) !important;
+    background:linear-gradient(180deg,#071916 0%,#073a27 48%,#03281e 100%) !important;
+  }
+  #rosterNotice.roster-notice::before{
+    position:relative !important;
+    display:block !important;
+    inset:auto !important;
+    width:100% !important;
+    height:132px !important;
+    background:
+      linear-gradient(180deg,rgba(2,18,15,0) 0%,rgba(3,28,21,.02) 70%,#073a27 100%),
+      url('/countdown-puck-photo.png') center 57%/cover no-repeat !important;
+    opacity:1 !important;
+  }
+  #rosterNotice.roster-notice::after{
+    width:34% !important;
+    height:62% !important;
+    top:132px !important;
+    opacity:.13 !important;
+  }
+  #rosterNotice .countdown-clock-panel{
+    display:none !important;
+  }
+  #rosterNotice .countdown-content{
+    position:relative !important;
+    display:flex !important;
+    flex-direction:column !important;
+    width:100% !important;
+    height:auto !important;
+    min-height:0 !important;
+    padding:8px 10px 12px !important;
+    box-sizing:border-box !important;
+  }
+  #rosterNotice .countdown-content h3{
+    order:1 !important;
+    width:100% !important;
+    margin:0 0 9px !important;
+    font-size:clamp(1.05rem,6vw,1.42rem) !important;
+    line-height:1 !important;
+    gap:7px !important;
+    letter-spacing:.8px !important;
+    text-align:center !important;
+  }
+  #rosterNotice .countdown-content h3::before,
+  #rosterNotice .countdown-content h3::after{
+    flex:1 1 24px !important;
+    max-width:46px !important;
+    height:1px !important;
+  }
+  #rosterNotice .roster-countdown{
+    order:2 !important;
+    display:grid !important;
+    grid-template-columns:1fr auto 1fr auto 1fr auto 1fr !important;
+    align-items:center !important;
+    gap:3px !important;
+    width:100% !important;
+    height:auto !important;
+    padding:0 !important;
+    margin:0 0 10px !important;
+  }
+  #rosterNotice .countdown-unit{
+    width:100% !important;
+    max-width:none !important;
+    min-width:0 !important;
+    height:68px !important;
+    padding:6px 2px 5px !important;
+    border-radius:7px !important;
+    border-width:1.2px !important;
+  }
+  #rosterNotice .countdown-unit span{
+    font-size:clamp(1.55rem,8vw,2rem) !important;
+    line-height:.9 !important;
+  }
+  #rosterNotice .countdown-unit small{
+    margin-top:7px !important;
+    font-size:clamp(.42rem,2.25vw,.57rem) !important;
+    letter-spacing:0 !important;
+  }
+  #rosterNotice .countdown-colon{
+    font-size:1.05rem !important;
+    margin:0 !important;
+    align-self:center !important;
+  }
+  #rosterNotice .countdown-details{
+    order:3 !important;
+    width:100% !important;
+    height:auto !important;
+    margin:0 !important;
+    padding:9px 0 0 !important;
+    border-top:1px solid rgba(180,215,197,.38) !important;
+    text-align:left !important;
+    font-size:clamp(.72rem,3.25vw,.86rem) !important;
+    line-height:1.25 !important;
+  }
+  #rosterNotice .roster-meta,
+  #rosterNotice .countdown-venue{
+    white-space:normal !important;
+  }
+  #rosterNotice .countdown-venue{margin-top:7px !important;}
+  #rosterNotice .roster-link{
+    position:static !important;
+    order:4 !important;
+    width:100% !important;
+    min-width:0 !important;
+    height:36px !important;
+    margin:11px 0 0 !important;
+    padding:0 14px !important;
+    font-size:.78rem !important;
+  }
+}
+
+@media (max-width:380px){
+  #rosterNotice.roster-notice::before{height:112px !important;}
+  #rosterNotice.roster-notice::after{top:112px !important;}
+  #rosterNotice .countdown-content{padding:7px 7px 10px !important;}
+  #rosterNotice .countdown-content h3{font-size:1rem !important;}
+  #rosterNotice .countdown-unit{height:61px !important;}
+  #rosterNotice .countdown-unit span{font-size:1.48rem !important;}
+  #rosterNotice .countdown-unit small{font-size:.40rem !important;}
+  #rosterNotice .countdown-colon{font-size:.84rem !important;}
+}
+</style>
