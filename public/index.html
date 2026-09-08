@@ -371,6 +371,43 @@
         .roster-link:hover { text-decoration:none; background:rgba(255,133,27,.08); }
         @media (max-width:720px) { .roster-notice{grid-template-columns:1fr;padding:18px 12px;gap:10px}.countdown-clock-panel{min-height:145px}.analog-clock{width:140px;border-width:5px}.clock-mark{font-size:.9rem}.clock-puck{display:none}.roster-notice h3{font-size:1.35rem;margin-bottom:12px}.roster-countdown{gap:3px}.countdown-unit{min-width:0;flex:1;padding:10px 3px 8px;border-radius:9px}.countdown-unit span{font-size:clamp(1.55rem,9vw,2.3rem)}.countdown-unit small{font-size:.48rem;letter-spacing:0;margin-top:6px}.countdown-colon{font-size:1.4rem;margin-top:-10px}.roster-countdown-label{font-size:.8rem;letter-spacing:1.5px}.roster-link{float:none;display:block;text-align:center;margin:12px auto 0;max-width:190px}.countdown-details{text-align:center;font-size:.9rem} }
 
+        /* Target hockey scoreboard treatment */
+        .roster-notice {
+            grid-template-columns:minmax(245px, 34%) 1fr; gap:22px; padding:18px 22px;
+            overflow:hidden; border:2px solid #24d96d; border-radius:24px;
+            background:
+              radial-gradient(ellipse at 7% 72%, rgba(230,245,245,.28) 0 3%, transparent 22%),
+              linear-gradient(180deg, rgba(255,255,255,.06), transparent 24%),
+              linear-gradient(110deg,#071c19 0%,#063d28 54%,#03281f 100%);
+            box-shadow:inset 0 0 0 1px rgba(95,255,159,.2), 0 12px 24px rgba(0,0,0,.28);
+        }
+        .roster-notice:before {
+            content:''; position:absolute; left:0; top:0; bottom:0; width:34%; pointer-events:none; opacity:.65;
+            background:
+              radial-gradient(ellipse at 10% 82%, #0a0f0e 0 8%, transparent 9%),
+              repeating-linear-gradient(165deg, rgba(255,255,255,.12) 0 2px, transparent 2px 9px),
+              linear-gradient(180deg,rgba(230,245,245,.08),rgba(220,245,245,.28));
+            mask-image:linear-gradient(90deg,#000 0%,#000 65%,transparent 100%);
+        }
+        .roster-notice:after {height:2px;left:18px;right:18px;background:linear-gradient(90deg,transparent,#42f58f,transparent)}
+        .countdown-clock-panel{min-height:215px}
+        .analog-clock{width:min(205px,21vw);border:7px solid #26332f;box-shadow:0 0 0 2px #36ed83,inset 0 0 28px #000,0 10px 22px rgba(0,0,0,.65)}
+        .analog-clock:after{content:'';position:absolute;inset:5px;border-radius:50%;background:repeating-conic-gradient(from -1deg,rgba(62,242,133,.95) 0 1deg,transparent 1deg 6deg);mask:radial-gradient(circle,transparent 0 88%,#000 89% 100%);opacity:.9}
+        .clock-face-numbers{position:absolute;inset:0;z-index:2}
+        .clock-face-numbers span{position:absolute;left:50%;top:50%;font-weight:800;font-size:1rem;color:#fff;text-shadow:0 2px 4px #000;transform:translate(-50%,-50%) rotate(calc(var(--i)*30deg)) translateY(-78px) rotate(calc(var(--i)*-30deg))}
+        .clock-puck{width:62px;height:25px;left:-2%;bottom:8%;background:linear-gradient(#202725,#020303);border:1px solid #303b38}
+        .roster-notice h3{font-family:Impact,'Arial Black',sans-serif;font-size:clamp(1.65rem,3.4vw,2.55rem);font-style:italic;letter-spacing:3px;margin:0 0 12px;color:#f0f2ef}
+        .countdown-unit{min-width:82px;padding:10px 8px 8px;border-radius:10px;background:linear-gradient(180deg,rgba(4,45,31,.98),rgba(3,61,36,.86))}
+        .countdown-unit span{font-size:clamp(1.9rem,4.5vw,2.85rem)}
+        .countdown-unit small{margin-top:7px;font-size:.62rem}
+        .countdown-colon{font-size:2rem;margin-top:-12px}
+        .roster-countdown-label{text-align:left;margin:12px 0 10px;font-size:.9rem;letter-spacing:2.6px}
+        .countdown-details{font-size:.9rem;padding-top:10px}
+        .roster-link{margin-top:8px;padding:7px 18px;font-size:.82rem}
+        @media (max-width:720px){
+          .roster-notice{grid-template-columns:1fr;padding:14px 10px;gap:6px;border-radius:18px}.roster-notice:before{width:100%;height:145px;bottom:auto;opacity:.35}.countdown-clock-panel{min-height:135px}.analog-clock{width:132px;border-width:5px}.clock-face-numbers span{font-size:.68rem;transform:translate(-50%,-50%) rotate(calc(var(--i)*30deg)) translateY(-49px) rotate(calc(var(--i)*-30deg))}.roster-notice h3{font-size:1.25rem}.roster-countdown-label{text-align:center}.countdown-unit{padding:8px 2px 7px}.countdown-unit small{font-size:.43rem}.countdown-details{text-align:center}.roster-link{float:none;display:block;text-align:center;margin:10px auto 0;max-width:180px}
+        }
+
         .roster-countdown-placeholder {
             position: relative;
             z-index: 1;
@@ -2047,8 +2084,11 @@
             <div class="roster-notice" id="rosterNotice">
                 <div class="countdown-clock-panel" aria-hidden="true">
                     <div class="analog-clock">
-                        <div class="clock-mark clock-mark-12">12</div><div class="clock-mark clock-mark-3">3</div>
-                        <div class="clock-mark clock-mark-6">6</div><div class="clock-mark clock-mark-9">9</div>
+                        <div class="clock-face-numbers">
+                            <span style="--i:0">12</span><span style="--i:1">1</span><span style="--i:2">2</span><span style="--i:3">3</span>
+                            <span style="--i:4">4</span><span style="--i:5">5</span><span style="--i:6">6</span><span style="--i:7">7</span>
+                            <span style="--i:8">8</span><span style="--i:9">9</span><span style="--i:10">10</span><span style="--i:11">11</span>
+                        </div>
                         <div class="clock-hand hour-hand" id="rosterClockHour"></div>
                         <div class="clock-hand minute-hand" id="rosterClockMinute"></div>
                         <div class="clock-hand second-hand" id="rosterClockSecond"></div>
