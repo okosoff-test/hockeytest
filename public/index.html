@@ -2405,19 +2405,15 @@
             </div>
 
             <div class="roster-notice" id="rosterNotice">
-                <div class="countdown-clock-panel" aria-hidden="true">
-                    <div class="analog-clock">
-                        <div class="clock-face-numbers">
-                            <span style="--i:0">12</span><span style="--i:1">1</span><span style="--i:2">2</span><span style="--i:3">3</span>
-                            <span style="--i:4">4</span><span style="--i:5">5</span><span style="--i:6">6</span><span style="--i:7">7</span>
-                            <span style="--i:8">8</span><span style="--i:9">9</span><span style="--i:10">10</span><span style="--i:11">11</span>
+                <div class="countdown-clock-panel countdown-puck-panel" aria-hidden="true">
+                    <div class="countdown-puck-scene">
+                        <div class="countdown-3d-puck">
+                            <div class="puck-top"></div>
+                            <div class="puck-side"></div>
+                            <div class="puck-rim"></div>
                         </div>
-                        <div class="clock-hand hour-hand" id="rosterClockHour"></div>
-                        <div class="clock-hand minute-hand" id="rosterClockMinute"></div>
-                        <div class="clock-hand second-hand" id="rosterClockSecond"></div>
-                        <div class="clock-pin"></div>
+                        <div class="puck-shadow"></div>
                     </div>
-                    <div class="clock-puck"></div>
                 </div>
                 <div class="countdown-content">
                     <h3 id="rosterNoticeHeadline">ROSTER RELEASE IN</h3>
@@ -3738,21 +3734,6 @@ function updateCalculatedRating() {
             return `📅 Check Back ${datePart} • Roster Release ${timePart} ET`;
         }
 
-        function updateRosterAnalogClock() {
-            const now = new Date();
-            const seconds = now.getSeconds();
-            const minutes = now.getMinutes() + seconds / 60;
-            const hours = (now.getHours() % 12) + minutes / 60;
-            const h = document.getElementById('rosterClockHour');
-            const m = document.getElementById('rosterClockMinute');
-            const sec = document.getElementById('rosterClockSecond');
-            if (h) h.style.transform = `translateX(-50%) rotate(${hours * 30}deg)`;
-            if (m) m.style.transform = `translateX(-50%) rotate(${minutes * 6}deg)`;
-            if (sec) sec.style.transform = `translateX(-50%) rotate(${seconds * 6}deg)`;
-        }
-        updateRosterAnalogClock();
-        setInterval(updateRosterAnalogClock, 1000);
-
         function renderRosterCountdown() {
             const countdownWrap = document.getElementById('rosterCountdown');
             const countdownValue = document.getElementById('rosterCountdownValue');
@@ -4937,3 +4918,111 @@ function updateCalculatedRating() {
   #rosterNotice .roster-link{height:30px !important;bottom:7px !important;font-size:clamp(.46rem,2vw,.62rem) !important;padding:0 8px !important;}
 }
 </style>
+
+<style id="roster-puck-replacement-20260908">
+/* Replace the analog clock with a CSS-rendered 3D hockey puck. */
+#rosterNotice .countdown-puck-panel{
+  position:relative !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  overflow:visible !important;
+}
+#rosterNotice .analog-clock,
+#rosterNotice .clock-face-numbers,
+#rosterNotice .clock-hand,
+#rosterNotice .clock-pin,
+#rosterNotice .clock-puck{display:none !important;}
+#rosterNotice .countdown-puck-scene{
+  position:relative !important;
+  width:min(88%,245px) !important;
+  aspect-ratio:1.48/1 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  transform:translateY(5px) !important;
+}
+#rosterNotice .countdown-3d-puck{
+  position:relative !important;
+  width:78% !important;
+  height:43% !important;
+  z-index:3 !important;
+  transform:perspective(520px) rotateX(57deg) rotateZ(-7deg) !important;
+  filter:drop-shadow(0 15px 12px rgba(0,0,0,.58)) !important;
+}
+#rosterNotice .countdown-3d-puck .puck-side{
+  position:absolute !important;
+  left:0 !important;
+  right:0 !important;
+  top:31% !important;
+  height:62% !important;
+  border-radius:0 0 50% 50% / 0 0 42% 42% !important;
+  background:
+    linear-gradient(90deg,rgba(255,255,255,.05),transparent 15% 72%,rgba(255,255,255,.025)),
+    repeating-linear-gradient(96deg,#030504 0 8px,#111714 8px 10px,#050807 10px 18px) !important;
+  border:1px solid #202724 !important;
+  box-shadow:inset 0 -18px 24px rgba(0,0,0,.82),inset 0 7px 12px rgba(255,255,255,.035) !important;
+}
+#rosterNotice .countdown-3d-puck .puck-top{
+  position:absolute !important;
+  inset:0 0 36% 0 !important;
+  border-radius:50% !important;
+  z-index:2 !important;
+  background:
+    radial-gradient(ellipse at 42% 32%,rgba(255,255,255,.12),transparent 19%),
+    repeating-radial-gradient(ellipse at 50% 50%,transparent 0 7px,rgba(170,190,180,.08) 8px 9px,transparent 10px 15px),
+    radial-gradient(ellipse at 50% 50%,#1c2421 0 12%,#0c100f 52%,#030504 78%) !important;
+  border:2px solid #323c38 !important;
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.025),inset 0 -12px 18px rgba(0,0,0,.72),0 2px 3px rgba(255,255,255,.08) !important;
+}
+#rosterNotice .countdown-3d-puck .puck-top::before{
+  content:'' !important;
+  position:absolute !important;
+  inset:12% 13% !important;
+  border-radius:50% !important;
+  opacity:.42 !important;
+  background:
+    linear-gradient(22deg,transparent 0 34%,rgba(210,224,216,.26) 35% 36%,transparent 37% 58%,rgba(210,224,216,.18) 59% 60%,transparent 61%),
+    linear-gradient(147deg,transparent 0 46%,rgba(210,224,216,.19) 47% 48%,transparent 49%) !important;
+}
+#rosterNotice .countdown-3d-puck .puck-top::after{
+  content:'PHAN HOCKEY' !important;
+  position:absolute !important;
+  left:50% !important;
+  top:50% !important;
+  transform:translate(-50%,-50%) !important;
+  color:rgba(53,239,131,.22) !important;
+  font-family:Impact,'Arial Black',sans-serif !important;
+  font-size:clamp(.55rem,1.45vw,.82rem) !important;
+  letter-spacing:1px !important;
+  white-space:nowrap !important;
+}
+#rosterNotice .countdown-3d-puck .puck-rim{
+  position:absolute !important;
+  left:1.5% !important;
+  right:1.5% !important;
+  top:27% !important;
+  height:12% !important;
+  border-radius:50% !important;
+  border-bottom:2px solid rgba(69,238,139,.20) !important;
+  z-index:4 !important;
+}
+#rosterNotice .puck-shadow{
+  position:absolute !important;
+  left:15% !important;
+  right:9% !important;
+  bottom:12% !important;
+  height:18% !important;
+  border-radius:50% !important;
+  background:rgba(0,0,0,.58) !important;
+  filter:blur(10px) !important;
+  transform:rotate(-5deg) !important;
+  z-index:1 !important;
+}
+@media(max-width:700px){
+  #rosterNotice .countdown-puck-scene{width:min(92%,165px) !important;transform:translateY(2px) !important;}
+  #rosterNotice .countdown-3d-puck{width:84% !important;height:45% !important;}
+  #rosterNotice .countdown-3d-puck .puck-top::after{font-size:.48rem !important;letter-spacing:.5px !important;}
+}
+</style>
+
