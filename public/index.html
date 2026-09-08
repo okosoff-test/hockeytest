@@ -2299,6 +2299,236 @@
 }
 </style>
 
+
+<style id="roster-exact-puck-layout-20260908">
+/* Final visual match: 3D puck artwork on the left, live portal data on the right. */
+#rosterNotice.roster-notice{
+  position:relative !important;
+  display:grid !important;
+  grid-template-columns:34% 66% !important;
+  width:100% !important;
+  min-height:0 !important;
+  aspect-ratio:3.14/1 !important;
+  padding:0 !important;
+  overflow:hidden !important;
+  border:2px solid #27df78 !important;
+  border-radius:26px !important;
+  background:linear-gradient(100deg,#071916 0%,#073a27 49%,#03281e 100%) !important;
+  box-shadow:0 0 0 10px #101817,0 12px 22px rgba(0,0,0,.34) !important;
+}
+#rosterNotice.roster-notice::before{
+  content:'' !important;
+  position:absolute !important;
+  inset:0 auto 0 0 !important;
+  width:39% !important;
+  height:100% !important;
+  background:
+    linear-gradient(90deg,rgba(2,18,15,0) 0%,rgba(3,28,21,.02) 69%,#073a27 100%),
+    url('/countdown-puck-photo.png') center/cover no-repeat !important;
+  opacity:1 !important;
+  z-index:0 !important;
+}
+#rosterNotice.roster-notice::after{
+  content:'' !important;
+  position:absolute !important;
+  right:0 !important;
+  top:0 !important;
+  width:22% !important;
+  height:100% !important;
+  background:url('/countdown-sticks.png') center/cover no-repeat !important;
+  opacity:.22 !important;
+  z-index:0 !important;
+}
+#rosterNotice .countdown-clock-panel{
+  grid-column:1 !important;
+  min-height:0 !important;
+  padding:0 !important;
+  margin:0 !important;
+  z-index:1 !important;
+}
+#rosterNotice .countdown-puck-scene,
+#rosterNotice .countdown-3d-puck,
+#rosterNotice .puck-shadow{
+  display:none !important;
+}
+#rosterNotice .countdown-content{
+  grid-column:2 !important;
+  position:relative !important;
+  z-index:2 !important;
+  display:grid !important;
+  grid-template-rows:24% 42% 34% !important;
+  align-content:stretch !important;
+  min-width:0 !important;
+  height:100% !important;
+  padding:2.8% 4.2% 2.6% 1.7% !important;
+  box-sizing:border-box !important;
+}
+#rosterNotice .countdown-content h3{
+  grid-row:1 !important;
+  align-self:center !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:12px !important;
+  margin:0 !important;
+  padding:0 !important;
+  color:#f1f2ef !important;
+  font-family:Impact,'Arial Black',sans-serif !important;
+  font-size:clamp(1.25rem,3.05vw,2.05rem) !important;
+  font-style:italic !important;
+  font-weight:900 !important;
+  line-height:.95 !important;
+  letter-spacing:1.25px !important;
+  white-space:nowrap !important;
+  text-transform:uppercase !important;
+  text-shadow:0 3px 4px #000 !important;
+}
+#rosterNotice .countdown-content h3::before,
+#rosterNotice .countdown-content h3::after{
+  content:'' !important;
+  flex:1 1 72px !important;
+  max-width:92px !important;
+  height:2px !important;
+  margin:0 !important;
+}
+#rosterNotice .countdown-content h3::before{background:linear-gradient(90deg,transparent,#2ff08a) !important;}
+#rosterNotice .countdown-content h3::after{background:linear-gradient(90deg,#2ff08a,transparent) !important;}
+#rosterNotice .roster-countdown{
+  grid-row:2 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  gap:7px !important;
+  width:100% !important;
+  height:100% !important;
+  margin:0 !important;
+  padding:0 2.5% !important;
+  box-sizing:border-box !important;
+}
+#rosterNotice .countdown-unit{
+  flex:1 1 0 !important;
+  min-width:0 !important;
+  max-width:112px !important;
+  height:80% !important;
+  padding:5px 3px !important;
+  display:flex !important;
+  flex-direction:column !important;
+  align-items:center !important;
+  justify-content:center !important;
+  box-sizing:border-box !important;
+  border:1.7px solid #26df79 !important;
+  border-radius:8px !important;
+  background:linear-gradient(180deg,rgba(3,52,37,.96),rgba(2,39,29,.98)) !important;
+  box-shadow:inset 0 0 18px rgba(0,0,0,.28),0 0 9px rgba(35,226,121,.08) !important;
+}
+#rosterNotice .countdown-unit span{
+  font-family:Impact,'Arial Black',sans-serif !important;
+  font-size:clamp(1.75rem,4.5vw,3.05rem) !important;
+  line-height:.92 !important;
+  color:#3cf08d !important;
+  font-weight:900 !important;
+  letter-spacing:.4px !important;
+}
+#rosterNotice .countdown-unit small{
+  margin-top:8px !important;
+  color:#f4f6f4 !important;
+  font-size:clamp(.45rem,1.05vw,.65rem) !important;
+  font-weight:800 !important;
+  letter-spacing:.18px !important;
+  line-height:1 !important;
+}
+#rosterNotice .countdown-colon{
+  flex:0 0 auto !important;
+  color:#38ee88 !important;
+  font-size:clamp(1.1rem,2.5vw,1.7rem) !important;
+  font-weight:900 !important;
+  line-height:1 !important;
+  margin-top:-5px !important;
+}
+#rosterNotice .countdown-details{
+  grid-row:3 !important;
+  align-self:stretch !important;
+  position:relative !important;
+  width:100% !important;
+  height:100% !important;
+  margin:0 !important;
+  padding:5.2% 36% 0 1% !important;
+  box-sizing:border-box !important;
+  border-top:1px solid rgba(180,215,197,.45) !important;
+  background:none !important;
+  text-align:left !important;
+  color:#f4f6f4 !important;
+  font-size:clamp(.63rem,1.33vw,.88rem) !important;
+  line-height:1.18 !important;
+}
+#rosterNotice .roster-meta,#rosterNotice .countdown-venue{
+  color:#f4f6f4 !important;
+  font-weight:600 !important;
+  white-space:nowrap !important;
+}
+#rosterNotice .roster-meta::before{
+  content:'▦' !important;
+  display:inline-block !important;
+  margin:0 9px 0 2px !important;
+  color:#eff4f1 !important;
+  font-size:1.2em !important;
+}
+#rosterNotice .countdown-venue{margin-top:8px !important;}
+#rosterNotice .countdown-venue:not(:empty)::before{
+  content:'◆' !important;
+  display:inline-block !important;
+  margin:0 10px 0 4px !important;
+  color:#eff4f1 !important;
+  font-size:.72em !important;
+  transform:rotate(45deg) !important;
+}
+#rosterNotice .roster-link{
+  position:absolute !important;
+  right:3.7% !important;
+  bottom:8.5% !important;
+  width:auto !important;
+  min-width:165px !important;
+  max-width:none !important;
+  height:34px !important;
+  margin:0 !important;
+  padding:0 17px !important;
+  box-sizing:border-box !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  border:1.5px solid #ff8c1f !important;
+  border-radius:999px !important;
+  background:rgba(2,27,22,.91) !important;
+  color:#ff9226 !important;
+  font-size:clamp(.60rem,1.14vw,.75rem) !important;
+  font-weight:800 !important;
+  text-decoration:none !important;
+  white-space:nowrap !important;
+}
+#rosterNotice .roster-countdown-label{display:none !important;}
+
+@media(max-width:700px){
+  #rosterNotice.roster-notice{
+    aspect-ratio:3.0/1 !important;
+    grid-template-columns:33% 67% !important;
+    border-radius:18px !important;
+    box-shadow:0 0 0 7px #101817,0 9px 15px rgba(0,0,0,.28) !important;
+  }
+  #rosterNotice.roster-notice::before{width:39% !important;}
+  #rosterNotice .countdown-content{padding:2.3% 2.8% 2.3% 1.5% !important;grid-template-rows:23% 43% 34% !important;}
+  #rosterNotice .countdown-content h3{font-size:clamp(.78rem,4.2vw,1.05rem) !important;gap:6px !important;letter-spacing:.55px !important;}
+  #rosterNotice .countdown-content h3::before,#rosterNotice .countdown-content h3::after{max-width:34px !important;height:1px !important;}
+  #rosterNotice .roster-countdown{gap:3px !important;padding:0 1% !important;}
+  #rosterNotice .countdown-unit{height:82% !important;border-width:1px !important;border-radius:5px !important;padding:3px 1px !important;}
+  #rosterNotice .countdown-unit span{font-size:clamp(1.12rem,7vw,1.62rem) !important;}
+  #rosterNotice .countdown-unit small{font-size:clamp(.28rem,1.5vw,.4rem) !important;margin-top:4px !important;letter-spacing:0 !important;}
+  #rosterNotice .countdown-colon{font-size:.86rem !important;margin-top:-3px !important;}
+  #rosterNotice .countdown-details{padding:4.2% 39% 0 0 !important;font-size:clamp(.42rem,2vw,.58rem) !important;}
+  #rosterNotice .countdown-venue{margin-top:4px !important;}
+  #rosterNotice .roster-link{right:2.2% !important;bottom:8% !important;min-width:112px !important;height:25px !important;padding:0 8px !important;font-size:clamp(.40rem,1.8vw,.52rem) !important;}
+}
+</style>
+
 </head>
 <body>
 
