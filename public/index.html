@@ -2252,6 +2252,53 @@
 #rosterNotice .hour-hand{height:27% !important;}
 #rosterNotice .minute-hand{height:38% !important;}
 </style>
+
+<style id="roster-sketch-exact-20260908">
+/* Desktop treatment tuned to the approved 768×245 sketch */
+#rosterNotice.roster-notice{
+  width:100% !important;
+  min-height:245px !important;
+  aspect-ratio:auto !important;
+  grid-template-columns:282px minmax(0,1fr) !important;
+  border-radius:28px !important;
+  border:2px solid #27dd76 !important;
+  background:linear-gradient(102deg,#071b18 0%,#053923 54%,#02291f 100%) !important;
+}
+#rosterNotice.roster-notice::before{width:36.5% !important;background:linear-gradient(90deg,rgba(2,17,14,0) 0%,rgba(2,17,14,.03) 64%,#063926 100%),url('/countdown-ice.jpg') center/cover no-repeat !important;}
+#rosterNotice.roster-notice::after{width:22% !important;opacity:.24 !important;background-size:cover !important;}
+#rosterNotice .countdown-clock-panel{min-height:245px !important;padding:12px 4px 12px 36px !important;justify-content:center !important;}
+#rosterNotice .analog-clock{width:178px !important;border-width:7px !important;box-shadow:0 0 0 2px #38ed84,0 0 0 6px rgba(1,9,7,.78),inset 0 0 22px #000,0 10px 20px rgba(0,0,0,.68) !important;}
+#rosterNotice .analog-clock::before{inset:7px !important;}
+#rosterNotice .clock-face-numbers span{font-size:.79rem !important;transform:translate(-50%,-50%) rotate(calc(var(--i)*30deg)) translateY(-66px) rotate(calc(var(--i)*-30deg)) !important;}
+#rosterNotice .hour-hand{height:27% !important;width:5px !important;}
+#rosterNotice .minute-hand{height:37% !important;width:5px !important;}
+#rosterNotice .clock-hand.hour-hand::before,#rosterNotice .clock-hand.minute-hand::before{width:5px !important;height:9px !important;}
+#rosterNotice .clock-hand.hour-hand::after,#rosterNotice .clock-hand.minute-hand::after{width:19px !important;height:8px !important;top:-6px !important;left:-1px !important;}
+#rosterNotice .second-hand{height:40% !important;width:1.5px !important;}
+#rosterNotice .clock-pin{width:11px !important;height:11px !important;border-width:1.5px !important;}
+#rosterNotice .countdown-content{padding:12px 18px 13px 12px !important;justify-content:center !important;}
+#rosterNotice .countdown-content h3{font-size:1.58rem !important;letter-spacing:1.7px !important;margin:0 0 12px !important;gap:10px !important;white-space:nowrap !important;}
+#rosterNotice .countdown-content h3::before,#rosterNotice .countdown-content h3::after{max-width:72px !important;height:2px !important;}
+#rosterNotice .roster-countdown{gap:5px !important;justify-content:flex-start !important;}
+#rosterNotice .countdown-unit{flex:0 0 78px !important;min-width:78px !important;height:80px !important;padding:7px 4px 6px !important;border-radius:7px !important;display:flex !important;flex-direction:column !important;justify-content:center !important;box-sizing:border-box !important;}
+#rosterNotice .countdown-unit span{font-size:2.25rem !important;line-height:.92 !important;}
+#rosterNotice .countdown-unit small{font-size:.51rem !important;margin-top:6px !important;letter-spacing:.25px !important;}
+#rosterNotice .countdown-colon{font-size:1.45rem !important;margin-top:-8px !important;}
+#rosterNotice .countdown-details{margin-top:12px !important;padding:10px 175px 0 0 !important;font-size:.70rem !important;line-height:1.28 !important;}
+#rosterNotice .roster-meta::before{font-size:.9rem !important;margin-right:7px !important;}
+#rosterNotice .countdown-venue{margin-top:7px !important;}
+#rosterNotice .roster-link{right:17px !important;bottom:17px !important;padding:8px 17px !important;font-size:.68rem !important;border-width:1.4px !important;}
+
+@media (max-width:900px) and (min-width:601px){
+ #rosterNotice.roster-notice{grid-template-columns:36% minmax(0,1fr) !important;min-height:235px !important;}
+ #rosterNotice .countdown-clock-panel{min-height:235px !important;padding-left:18px !important;}
+ #rosterNotice .analog-clock{width:min(170px,23vw) !important;}
+ #rosterNotice .countdown-content h3{font-size:clamp(1.25rem,3vw,1.55rem) !important;}
+ #rosterNotice .countdown-unit{flex:1 1 0 !important;min-width:56px !important;height:76px !important;}
+ #rosterNotice .countdown-details{padding-right:145px !important;}
+}
+</style>
+
 </head>
 <body>
 
