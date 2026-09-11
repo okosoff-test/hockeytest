@@ -6493,30 +6493,18 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <button class="control-btn" onclick="copySignupPhonesOnly()" style="background:#2e7d32;">Copy Phone Numbers</button>
 <button class="control-btn" onclick="copySignupNamesAndPhones()" style="background:#4a90e2;">Copy Names + Phones</button>
 <button class="control-btn" onclick="copySignupIphoneNumbers()" style="background:#111827;">iPhone: Copy for Messages</button>
+<select id="androidTextPreset" aria-label="Android predefined text" style="min-height:38px; padding:6px 8px; border-radius:6px; max-width:230px;">
+<option value="gameDayRoster">Game Day Roster</option>
+<option value="gameReminder">Game Reminder</option>
+<option value="checkRoster">Check Roster</option>
+<option value="arrivalReminder">Arrival Reminder</option>
+</select>
 <button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Android: Open Text</button>
 <button class="control-btn" onclick="openUnpaidPaymentReminderSmsDraft()" style="background:#c47f00;">Payment Reminder: Text Unpaid</button>
 <button class="control-btn" onclick="downloadSignupContactsCsv()" style="background:#546e7a;">Download CSV</button>
 </div>
 <textarea class="roster-text-export-preview" id="rosterTextExportPreview" placeholder="Signup contact export appears here after players sign up." readonly=""></textarea>
 
-<div style="margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.15);">
-<h4 style="margin:0 0 8px;">📣 Message All Registered Players + Goalies</h4>
-<p style="margin:0 0 10px; color:#aaa; font-size:0.9rem;">Sends to every currently registered player and goalie. Waitlist players and Phan Ly are excluded.</p>
-<div style="display:grid; grid-template-columns:minmax(180px, 260px) 1fr; gap:10px; align-items:start;">
-<select id="registeredBroadcastPreset" onchange="applyRegisteredBroadcastPreset()" style="width:100%; min-height:42px; padding:8px; border-radius:6px;">
-<option value="gameReminder">Game Day Reminder</option>
-<option value="rosterCheck">Check Roster</option>
-<option value="rinkReminder">Rink Reminder</option>
-<option value="custom">Custom Message</option>
-</select>
-<textarea id="registeredBroadcastMessage" rows="4" style="width:100%; box-sizing:border-box; padding:10px; border-radius:6px; resize:vertical;" placeholder="Enter message"></textarea>
-</div>
-<div class="roster-text-export-actions" style="margin-top:10px;">
-<button class="control-btn" onclick="openRegisteredBroadcastSmsDraft()" style="background:#1565c0;">Text All Registered + Goalies</button>
-<button class="control-btn" onclick="copyRegisteredBroadcastMessage()" style="background:#546e7a;">Copy Message</button>
-</div>
-<div id="registeredBroadcastCount" style="margin-top:8px; color:#aaa; font-size:0.85rem;"></div>
-</div>
 </div>
 </div>
 
@@ -8983,85 +8971,6 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             return { total: contacts.length, contacts, phoneOnly, namePhoneLines, csv };
         }
 
-        function buildRegisteredBroadcastContacts() {
-            const seenPhones = new Set();
-            const waitlistIds = new Set((adminWaitlist || []).map(player => String(player.id)));
-            const allPlayers = Object.values(adminPlayersById || {});
-
-            return allPlayers
-                .map(player => {
-                    const firstName = String(player.firstName || '').trim();
-                    const lastName = String(player.lastName || '').trim();
-                    const phoneDigits = normalizePhoneDigitsClient(player.phone);
-                    return { ...player, firstName, lastName, phoneDigits };
-                })
-                .filter(player => {
-                    if (waitlistIds.has(String(player.id))) return false;
-                    if (isLegacyPhanLyPlayerAdmin(player)) return false;
-                    if (!player.phoneDigits || player.phoneDigits.length !== 10) return false;
-                    if (seenPhones.has(player.phoneDigits)) return false;
-                    seenPhones.add(player.phoneDigits);
-                    return true;
-                });
-        }
-
-        function getRegisteredBroadcastPresets() {
-            const portalLink = window.location.origin;
-            return {
-                gameReminder: `🏒 Phan's Hockey reminder: You're registered for the upcoming game. Please arrive on time and let me know as soon as possible if anything changes.\n${portalLink}`,
-                rosterCheck: `🏒 Phan's Hockey: Please check the current roster for the latest game-day updates.\n${portalLink}`,
-                rinkReminder: `🏒 Phan's Hockey reminder: Please double-check the game time and rink before heading out. See you at the rink!\n${portalLink}`
-            };
-        }
-
-        function applyRegisteredBroadcastPreset() {
-            const select = document.getElementById('registeredBroadcastPreset');
-            const messageBox = document.getElementById('registeredBroadcastMessage');
-            if (!select || !messageBox) return;
-
-            if (select.value === 'custom') {
-                messageBox.value = '';
-                messageBox.focus();
-            } else {
-                messageBox.value = getRegisteredBroadcastPresets()[select.value] || '';
-            }
-            refreshRegisteredBroadcastCount();
-        }
-
-        function refreshRegisteredBroadcastCount() {
-            const countEl = document.getElementById('registeredBroadcastCount');
-            if (!countEl) return;
-            const contacts = buildRegisteredBroadcastContacts();
-            countEl.textContent = `${contacts.length} registered recipient${contacts.length === 1 ? '' : 's'} — includes goalies; excludes waitlist and Phan Ly.`;
-        }
-
-        function openRegisteredBroadcastSmsDraft() {
-            const contacts = buildRegisteredBroadcastContacts();
-            const phones = contacts.map(player => player.phoneDigits).join(',');
-            const messageBox = document.getElementById('registeredBroadcastMessage');
-            const smsBody = String(messageBox?.value || '').trim();
-
-            if (!phones) {
-                alert('No registered player or goalie phone numbers are available.');
-                return;
-            }
-            if (!smsBody) {
-                alert('Select or enter a message first.');
-                return;
-            }
-
-            window.location.href = `sms:${phones}?body=${encodeURIComponent(smsBody)}`;
-        }
-
-        async function copyRegisteredBroadcastMessage() {
-            const messageBox = document.getElementById('registeredBroadcastMessage');
-            const smsBody = String(messageBox?.value || '').trim();
-            if (!smsBody) {
-                alert('Select or enter a message first.');
-                return;
-            }
-            await copyTextToClipboard(smsBody, 'Broadcast message copied.');
-        }
 
         function refreshMassTextPreview() {
             const preview = document.getElementById('rosterTextExportPreview');
@@ -9091,23 +9000,44 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             await copyTextToClipboard(data.phoneOnly, `Copied ${data.total || 0} numbers. On iPhone, open Messages, start a new message, tap To, then paste.`);
         }
 
+        function getAndroidTextPresets() {
+            const portalLink = window.location.origin;
+            return {
+                gameDayRoster: `You're on game day roster. If you need to bail please do so before cancel window closes. Roster updates in real time for last-minute changes. Check again at rink.\n${portalLink}`,
+                gameReminder: `Phan's Hockey reminder: You're registered for the upcoming game. Please check the roster for the latest updates.\n${portalLink}`,
+                checkRoster: `Phan's Hockey: Please check the current roster for any last-minute changes before heading to the rink.\n${portalLink}`,
+                arrivalReminder: `Phan's Hockey reminder: Please arrive on time and check the roster again when you get to the rink.\n${portalLink}`
+            };
+        }
+
         async function openSignupSmsDraft() {
-            const data = buildSignupMassTextExport();
-
-            // Android game-day roster text must go only to registered players.
-            // adminPlayersById also contains waitlist players, so explicitly remove
-            // anyone whose ID is currently present in adminWaitlist.
+            // Android Open Text: registered players + goalies only.
+            // Excludes waitlist and Phan Ly. Protected players are included.
             const waitlistIds = new Set((adminWaitlist || []).map(player => String(player.id)));
-            const registeredContacts = (data.contacts || []).filter(player => !waitlistIds.has(String(player.id)));
-            const registeredPhonesOnly = registeredContacts.map(player => player.phoneDigits).join(',');
+            const seenPhones = new Set();
+            const registeredContacts = Object.values(adminPlayersById || {})
+                .map(player => ({
+                    ...player,
+                    phoneDigits: normalizePhoneDigitsClient(player.phone)
+                }))
+                .filter(player => {
+                    if (waitlistIds.has(String(player.id))) return false;
+                    if (isLegacyPhanLyPlayerAdmin(player)) return false;
+                    if (!player.phoneDigits || player.phoneDigits.length !== 10) return false;
+                    if (seenPhones.has(player.phoneDigits)) return false;
+                    seenPhones.add(player.phoneDigits);
+                    return true;
+                });
 
+            const registeredPhonesOnly = registeredContacts.map(player => player.phoneDigits).join(',');
             if (!registeredPhonesOnly) {
-                alert('No eligible registered player phone numbers available. Waitlist players, protected players, and goalies are excluded automatically.');
+                alert('No registered player or goalie phone numbers are available.');
                 return;
             }
 
-            const portalLink = window.location.origin;
-            const smsBody = `You're on game day roster. If you need to bail please do so before cancel window closes. Roster updates in real time for last-minute changes. Check again at rink.\n${portalLink}`;
+            const presetSelect = document.getElementById('androidTextPreset');
+            const presetKey = presetSelect?.value || 'gameDayRoster';
+            const smsBody = getAndroidTextPresets()[presetKey] || getAndroidTextPresets().gameDayRoster;
             window.location.href = `sms:${registeredPhonesOnly}?body=${encodeURIComponent(smsBody)}`;
         }
 
