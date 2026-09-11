@@ -6490,8 +6490,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <h4>📱 Mass Text Signup Players</h4>
 <p>Use this anytime to text the current signup list. Android can open a group text directly. iPhone users should copy the numbers, open Messages, tap To, then paste. Protected players and all goalies are automatically excluded.</p>
 <div class="roster-text-export-actions">
-<button class="control-btn" onclick="copySignupPhonesOnly()" style="background:#2e7d32;">Copy Phone Numbers</button>
-<button class="control-btn" onclick="copySignupNamesAndPhones()" style="background:#4a90e2;">Copy Names + Phones</button>
 <button class="control-btn" onclick="copySignupIphoneNumbers()" style="background:#111827;">iPhone: Copy for Messages</button>
 <select id="androidTextPreset" aria-label="Android predefined text" style="min-height:38px; padding:6px 8px; border-radius:6px; max-width:230px;">
 <option value="gameDayRoster">Game Day Roster</option>
@@ -6501,7 +6499,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 </select>
 <button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Android: Open Text</button>
 <button class="control-btn" onclick="openUnpaidPaymentReminderSmsDraft()" style="background:#c47f00;">Payment Reminder: Text Unpaid</button>
-<button class="control-btn" onclick="downloadSignupContactsCsv()" style="background:#546e7a;">Download CSV</button>
 </div>
 <textarea class="roster-text-export-preview" id="rosterTextExportPreview" placeholder="Signup contact export appears here after players sign up." readonly=""></textarea>
 
