@@ -5977,6 +5977,15 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   cursor: pointer !important;
   pointer-events: auto !important;
 }
+
+<style>
+@media (max-width: 700px) {
+  #registeredBroadcastPreset { width: 100%; }
+  #registeredBroadcastPreset + #registeredBroadcastMessage { width: 100%; }
+  #registeredBroadcastPreset { grid-column: 1 / -1; }
+  #registeredBroadcastMessage { grid-column: 1 / -1; }
+}
+</style>
 </style>
 </head>
 <body class="admin-layout-option-1">
@@ -6489,6 +6498,25 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <button class="control-btn" onclick="downloadSignupContactsCsv()" style="background:#546e7a;">Download CSV</button>
 </div>
 <textarea class="roster-text-export-preview" id="rosterTextExportPreview" placeholder="Signup contact export appears here after players sign up." readonly=""></textarea>
+
+<div style="margin-top:18px; padding-top:16px; border-top:1px solid rgba(255,255,255,0.15);">
+<h4 style="margin:0 0 8px;">📣 Message All Registered Players + Goalies</h4>
+<p style="margin:0 0 10px; color:#aaa; font-size:0.9rem;">Sends to every currently registered player and goalie. Waitlist players and Phan Ly are excluded.</p>
+<div style="display:grid; grid-template-columns:minmax(180px, 260px) 1fr; gap:10px; align-items:start;">
+<select id="registeredBroadcastPreset" onchange="applyRegisteredBroadcastPreset()" style="width:100%; min-height:42px; padding:8px; border-radius:6px;">
+<option value="gameReminder">Game Day Reminder</option>
+<option value="rosterCheck">Check Roster</option>
+<option value="rinkReminder">Rink Reminder</option>
+<option value="custom">Custom Message</option>
+</select>
+<textarea id="registeredBroadcastMessage" rows="4" style="width:100%; box-sizing:border-box; padding:10px; border-radius:6px; resize:vertical;" placeholder="Enter message"></textarea>
+</div>
+<div class="roster-text-export-actions" style="margin-top:10px;">
+<button class="control-btn" onclick="openRegisteredBroadcastSmsDraft()" style="background:#1565c0;">Text All Registered + Goalies</button>
+<button class="control-btn" onclick="copyRegisteredBroadcastMessage()" style="background:#546e7a;">Copy Message</button>
+</div>
+<div id="registeredBroadcastCount" style="margin-top:8px; color:#aaa; font-size:0.85rem;"></div>
+</div>
 </div>
 </div>
 
@@ -8955,6 +8983,86 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             return { total: contacts.length, contacts, phoneOnly, namePhoneLines, csv };
         }
 
+        function buildRegisteredBroadcastContacts() {
+            const seenPhones = new Set();
+            const waitlistIds = new Set((adminWaitlist || []).map(player => String(player.id)));
+            const allPlayers = Object.values(adminPlayersById || {});
+
+            return allPlayers
+                .map(player => {
+                    const firstName = String(player.firstName || '').trim();
+                    const lastName = String(player.lastName || '').trim();
+                    const phoneDigits = normalizePhoneDigitsClient(player.phone);
+                    return { ...player, firstName, lastName, phoneDigits };
+                })
+                .filter(player => {
+                    if (waitlistIds.has(String(player.id))) return false;
+                    if (isLegacyPhanLyPlayerAdmin(player)) return false;
+                    if (!player.phoneDigits || player.phoneDigits.length !== 10) return false;
+                    if (seenPhones.has(player.phoneDigits)) return false;
+                    seenPhones.add(player.phoneDigits);
+                    return true;
+                });
+        }
+
+        function getRegisteredBroadcastPresets() {
+            const portalLink = window.location.origin;
+            return {
+                gameReminder: `🏒 Phan's Hockey reminder: You're registered for the upcoming game. Please arrive on time and let me know as soon as possible if anything changes.\n${portalLink}`,
+                rosterCheck: `🏒 Phan's Hockey: Please check the current roster for the latest game-day updates.\n${portalLink}`,
+                rinkReminder: `🏒 Phan's Hockey reminder: Please double-check the game time and rink before heading out. See you at the rink!\n${portalLink}`
+            };
+        }
+
+        function applyRegisteredBroadcastPreset() {
+            const select = document.getElementById('registeredBroadcastPreset');
+            const messageBox = document.getElementById('registeredBroadcastMessage');
+            if (!select || !messageBox) return;
+
+            if (select.value === 'custom') {
+                messageBox.value = '';
+                messageBox.focus();
+            } else {
+                messageBox.value = getRegisteredBroadcastPresets()[select.value] || '';
+            }
+            refreshRegisteredBroadcastCount();
+        }
+
+        function refreshRegisteredBroadcastCount() {
+            const countEl = document.getElementById('registeredBroadcastCount');
+            if (!countEl) return;
+            const contacts = buildRegisteredBroadcastContacts();
+            countEl.textContent = `${contacts.length} registered recipient${contacts.length === 1 ? '' : 's'} — includes goalies; excludes waitlist and Phan Ly.`;
+        }
+
+        function openRegisteredBroadcastSmsDraft() {
+            const contacts = buildRegisteredBroadcastContacts();
+            const phones = contacts.map(player => player.phoneDigits).join(',');
+            const messageBox = document.getElementById('registeredBroadcastMessage');
+            const smsBody = String(messageBox?.value || '').trim();
+
+            if (!phones) {
+                alert('No registered player or goalie phone numbers are available.');
+                return;
+            }
+            if (!smsBody) {
+                alert('Select or enter a message first.');
+                return;
+            }
+
+            window.location.href = `sms:${phones}?body=${encodeURIComponent(smsBody)}`;
+        }
+
+        async function copyRegisteredBroadcastMessage() {
+            const messageBox = document.getElementById('registeredBroadcastMessage');
+            const smsBody = String(messageBox?.value || '').trim();
+            if (!smsBody) {
+                alert('Select or enter a message first.');
+                return;
+            }
+            await copyTextToClipboard(smsBody, 'Broadcast message copied.');
+        }
+
         function refreshMassTextPreview() {
             const preview = document.getElementById('rosterTextExportPreview');
             if (!preview) return;
@@ -9052,6 +9160,9 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             const box = document.getElementById('rosterTextExportBox');
             if (box) box.style.display = 'block';
             refreshMassTextPreview();
+            const broadcastMessage = document.getElementById('registeredBroadcastMessage');
+            if (broadcastMessage && !broadcastMessage.value) applyRegisteredBroadcastPreset();
+            refreshRegisteredBroadcastCount();
             return null;
         }
 
@@ -9135,7 +9246,7 @@ ${portalLink}
             const rosterLink = `${window.location.origin}/roster`;
 
             const smsBody = `
-${firstName}, you’re in for ${gameLabel}.
+Hi ${firstName}, you’re in for ${gameLabel}.
 
 Check updated roster here:
 ${rosterLink}
