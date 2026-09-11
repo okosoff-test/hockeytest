@@ -4331,6 +4331,23 @@ function updateCalculatedRating() {
                     document.getElementById('codeEntryBox').style.display = 'none';
                     document.getElementById('signupForm').style.display = 'block';
                 }
+
+                // Once the roster is released, the public signup/waitlist controls
+                // are no longer needed. Keep the released roster/countdown area visible,
+                // but hide every control that can start or refill a registration.
+                if (data.rosterReleased) {
+                    const postReleaseHideIds = [
+                        'waitlistMode',
+                        'codeSection',
+                        'quickReturnSection',
+                        'signupRulesReviewBanner',
+                        'signupForm'
+                    ];
+                    postReleaseHideIds.forEach((id) => {
+                        const el = document.getElementById(id);
+                        if (el) el.style.display = 'none';
+                    });
+                }
                 
             } catch (e) {
                 console.error("Error fetching status", e);
