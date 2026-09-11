@@ -6491,14 +6491,23 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <p>Use this anytime to text the current signup list. Android can open a group text directly. iPhone users should copy the numbers, open Messages, tap To, then paste. Protected players and all goalies are automatically excluded.</p>
 <div class="roster-text-export-actions">
 <button class="control-btn" onclick="copySignupIphoneNumbers()" style="background:#111827;">iPhone: Copy for Messages</button>
-<select id="androidTextPreset" aria-label="Android predefined text" style="min-height:38px; padding:6px 8px; border-radius:6px; max-width:230px;">
+<button class="control-btn" onclick="showAndroidTextComposer()" style="background:#8e44ad;">Android: Open Text</button>
+<button class="control-btn" onclick="openUnpaidPaymentReminderSmsDraft()" style="background:#c47f00;">Payment Reminder: Text Unpaid</button>
+</div>
+<div id="androidTextComposer" style="display:none; margin-top:10px; padding:12px; border:1px solid rgba(255,255,255,.18); border-radius:8px; background:rgba(0,0,0,.18);">
+<label for="androidTextPreset" style="display:block; font-weight:700; margin-bottom:6px;">Predefined Message</label>
+<select id="androidTextPreset" onchange="loadAndroidTextPreset()" aria-label="Android predefined text" style="width:100%; min-height:40px; padding:7px 9px; border-radius:6px; margin-bottom:8px;">
 <option value="gameDayRoster">Game Day Roster</option>
 <option value="gameReminder">Game Reminder</option>
 <option value="checkRoster">Check Roster</option>
 <option value="arrivalReminder">Arrival Reminder</option>
 </select>
-<button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Android: Open Text</button>
-<button class="control-btn" onclick="openUnpaidPaymentReminderSmsDraft()" style="background:#c47f00;">Payment Reminder: Text Unpaid</button>
+<label for="androidTextMessage" style="display:block; font-weight:700; margin-bottom:6px;">Message</label>
+<textarea id="androidTextMessage" rows="5" style="width:100%; box-sizing:border-box; padding:9px; border-radius:6px; resize:vertical;" aria-label="Editable Android mass text message"></textarea>
+<div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:8px;">
+<button class="control-btn" onclick="openSignupSmsDraft()" style="background:#8e44ad;">Open Group Text</button>
+<button class="control-btn" onclick="hideAndroidTextComposer()" style="background:#555;">Cancel</button>
+</div>
 </div>
 <textarea class="roster-text-export-preview" id="rosterTextExportPreview" placeholder="Signup contact export appears here after players sign up." readonly=""></textarea>
 
@@ -9007,8 +9016,29 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             };
         }
 
+        function loadAndroidTextPreset() {
+            const presetSelect = document.getElementById('androidTextPreset');
+            const messageBox = document.getElementById('androidTextMessage');
+            if (!messageBox) return;
+            const presetKey = presetSelect?.value || 'gameDayRoster';
+            messageBox.value = getAndroidTextPresets()[presetKey] || getAndroidTextPresets().gameDayRoster;
+        }
+
+        function showAndroidTextComposer() {
+            const composer = document.getElementById('androidTextComposer');
+            if (!composer) return;
+            composer.style.display = 'block';
+            loadAndroidTextPreset();
+            setTimeout(() => document.getElementById('androidTextMessage')?.focus(), 0);
+        }
+
+        function hideAndroidTextComposer() {
+            const composer = document.getElementById('androidTextComposer');
+            if (composer) composer.style.display = 'none';
+        }
+
         async function openSignupSmsDraft() {
-            // Android Open Text: registered players + goalies only.
+            // Android mass text: registered players + goalies only.
             // Excludes waitlist and Phan Ly. Protected players are included.
             const waitlistIds = new Set((adminWaitlist || []).map(player => String(player.id)));
             const seenPhones = new Set();
@@ -9032,9 +9062,14 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
                 return;
             }
 
-            const presetSelect = document.getElementById('androidTextPreset');
-            const presetKey = presetSelect?.value || 'gameDayRoster';
-            const smsBody = getAndroidTextPresets()[presetKey] || getAndroidTextPresets().gameDayRoster;
+            const messageBox = document.getElementById('androidTextMessage');
+            const smsBody = String(messageBox?.value || '').trim();
+            if (!smsBody) {
+                alert('Enter a message before opening the group text.');
+                messageBox?.focus();
+                return;
+            }
+
             window.location.href = `sms:${registeredPhonesOnly}?body=${encodeURIComponent(smsBody)}`;
         }
 
