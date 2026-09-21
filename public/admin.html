@@ -10173,13 +10173,26 @@ function todayDateInputValue(){
 
 
         const nicknameTapTracker = {};
+        const nicknamePromptOpenedAt = {};
 
         function handleNicknameNameDoubleTap(id, event) {
             if (event) {
                 event.preventDefault();
                 event.stopPropagation();
             }
-            nicknameTapTracker[String(id)] = 0;
+
+            // A desktop double-click fires two click events followed by dblclick.
+            // handleNicknameNameTap() already detects the second click, so without
+            // this guard the native dblclick event opens the nickname prompt again.
+            // That made admins appear to have to enter/save the nickname twice.
+            const key = String(id);
+            const now = Date.now();
+            if (nicknamePromptOpenedAt[key] && (now - nicknamePromptOpenedAt[key]) < 800) {
+                nicknameTapTracker[key] = 0;
+                return;
+            }
+            nicknamePromptOpenedAt[key] = now;
+            nicknameTapTracker[key] = 0;
             openNicknamePrompt(id);
         }
 
