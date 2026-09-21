@@ -1143,7 +1143,7 @@ function isLegacyAutoRosterAnnouncement(text = '') {
     if (!value) return true;
     return (
         /Please\s+E-?transfer/i.test(value) ||
-        /3-hour\s+cancel\s+window/i.test(value) ||
+        /\d+(?:\.\d+)?-hour\s+cancel\s+window/i.test(value) ||
         /Contact\s+Phan\s+to\s+join\s+if\s+spots\s+are\s+available/i.test(value) ||
         /You\s+can\s+['’‘"]?Join Game['’‘"]?\s+if\s+spots\s+are\s+available/i.test(value)
     );
