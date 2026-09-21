@@ -3915,7 +3915,7 @@ function updateCalculatedRating() {
 
             const rosterHtml = rosterDisplayText ? renderLines(rosterDisplayText) : '';
             const customHtml = customDisplayText ? renderLines(customDisplayText, 'custom-announcement') : '';
-            textEl.innerHTML = `${customHtml}${rosterHtml}` || 'Attention';
+            textEl.innerHTML = `${rosterHtml}${customHtml}` || 'Attention';
 
             const handleEmailCopy = (event) => {
                 const target = event.target && event.target.closest
