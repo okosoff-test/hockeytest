@@ -574,10 +574,9 @@
                 const data = await res.json();
 
                 if (data.time) {
-                    // Before roster release, the countdown/header only needs the game date and time.
-                    // Keep the arena hidden until the roster is actually released.
-                    const rosterHeaderLocation = data.released ? data.location : '';
-                    document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, rosterHeaderLocation);
+                    // Roster header/countdown shows only the game date and time.
+                    // Arena remains stored in game data but is intentionally not displayed here.
+                    document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, '');
                     document.getElementById('gameLocationTime').innerText = '';
                 }
 
