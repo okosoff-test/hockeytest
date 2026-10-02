@@ -4288,6 +4288,14 @@ function updateCalculatedRating() {
                 document.getElementById('gameTime').innerText = '';
                 const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
         document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
+
+                // Show game date/time + arena in the Join Game card only BEFORE roster release.
+                // After release, those details are already shown in the Team Roster header.
+                const joinGameDateEl = document.getElementById('gameDate');
+                const joinGameLocationEl = document.getElementById('gameLocation');
+                if (joinGameDateEl) joinGameDateEl.style.display = rosterReleased ? 'none' : 'block';
+                if (joinGameLocationEl) joinGameLocationEl.style.display = rosterReleased ? 'none' : 'block';
+
                 const countdownTargetIso = rosterReleased ? currentResetWeekAt : currentRosterReleaseAt;
                 const countdownTargetFallback = rosterReleased ? 'Portal reset time to be announced' : 'Roster release time to be announced';
                 document.getElementById('rosterMeta').innerText =
