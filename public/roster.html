@@ -576,7 +576,20 @@
 
                 if (data.time) {
                     // Keep arena hidden before release; show it directly below date/time once released.
-                    const rosterLocation = data.released ? (data.location || '') : '';
+                    // Use /api/status as a fallback because older/released week records may not contain gameLocation.
+                    let rosterLocation = '';
+                    if (data.released) {
+                        rosterLocation = String(data.location || (scheduleInfo && scheduleInfo.location) || '').trim();
+                        if (!rosterLocation) {
+                            try {
+                                const statusRes = await fetch(`${API_URL}/api/status`);
+                                const statusData = await statusRes.json();
+                                rosterLocation = String(statusData.location || '').trim();
+                            } catch (locationErr) {
+                                console.warn('Could not load arena for released roster', locationErr);
+                            }
+                        }
+                    }
                     document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, rosterLocation);
                     document.getElementById('gameLocationTime').innerText = '';
                 }
