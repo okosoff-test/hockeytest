@@ -9215,7 +9215,8 @@ ${portalLink}
             const smsBody = `
 Hi ${firstName}, you’re in for ${gameLabel}.
 
-${portalLink}
+Check updated roster here:
+${rosterLink}
 `.trim();
 
             window.location.href = `sms:${phoneDigits}?body=${encodeURIComponent(smsBody)}`;
