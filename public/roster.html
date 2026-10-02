@@ -573,8 +573,11 @@
                 const res = await fetch(`${API_URL}/api/roster`);
                 const data = await res.json();
 
-                if (data.location && data.time) {
-                    document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, data.location);
+                if (data.time) {
+                    // Before roster release, the countdown/header only needs the game date and time.
+                    // Keep the arena hidden until the roster is actually released.
+                    const rosterHeaderLocation = data.released ? data.location : '';
+                    document.getElementById('gameDate').innerHTML = formatRosterHeaderHtml(data.date, data.formattedDate, data.time, rosterHeaderLocation);
                     document.getElementById('gameLocationTime').innerText = '';
                 }
 
