@@ -2679,7 +2679,6 @@
                     <div class="roster-countdown-placeholder" id="rosterCountdownPlaceholder" style="display:none;">Countdown will appear once a roster release time is scheduled.</div>
                     <div class="countdown-details">
                         <div class="roster-meta" id="rosterMeta">Roster release time to be announced</div>
-                        <div class="countdown-venue" id="countdownVenue"></div>
                     </div>
                     <a href="/history" class="roster-link">View Past Weeks →</a>
                 </div>
@@ -4286,7 +4285,6 @@ function updateCalculatedRating() {
                 document.getElementById('gameTime').innerText = '';
                 const cleanTime = currentTime.replace(/^[A-Za-z]+\s*/, '');
         document.getElementById('gameDate').innerText = currentDate + ' • ' + cleanTime;
-                document.getElementById('countdownVenue').innerText = currentLocation || '';
                 const countdownTargetIso = rosterReleased ? currentResetWeekAt : currentRosterReleaseAt;
                 const countdownTargetFallback = rosterReleased ? 'Portal reset time to be announced' : 'Roster release time to be announced';
                 document.getElementById('rosterMeta').innerText =
