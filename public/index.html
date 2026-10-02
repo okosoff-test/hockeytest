@@ -3704,8 +3704,11 @@ function updateCalculatedRating() {
 
             const timeText = String(gameTimeValue || '').replace(/^[A-Za-z]+\s+/, '').replace(/\s+/g, ' ').trim();
             const dateTimeText = [dateText, timeText].filter(Boolean).join(' • ');
-            // Never render arena/location in the roster header.
-            return escapeHtml(dateTimeText);
+            const locationText = String(locationValue || '').trim();
+            const locationLine = locationText
+                ? `<span class="roster-location-line">${escapeHtml(locationText)}</span>`
+                : '';
+            return `<span class="roster-date-time-line">${escapeHtml(dateTimeText)}</span>${locationLine}`;
         }
 
         async function loadAndDisplayRoster() {
@@ -3722,7 +3725,7 @@ function updateCalculatedRating() {
                     data.date || currentGameDateValue,
                     data.formattedDate || currentDate,
                     data.time || currentTime,
-                    ''
+                    data.location || currentLocation
                 );
 
                 document.getElementById('whiteCount').innerText = data.whiteActiveCount ?? (Array.isArray(data.whiteTeam) ? data.whiteTeam.filter(p => !p.cancelled).length : 0);
