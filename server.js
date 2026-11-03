@@ -28,6 +28,9 @@ const { HockeyAdminPassword, validNewPassword } = require('./hockey-admin-passwo
 const app = express();
 // SECURITY-HARDENING-2026-10-31: persistent per-IP lockouts and role credential rotation.
 const authSecurity = new HockeyAuthSecurity();
+// Render-only contingency login: explicitly opt in; Pi defaults unchanged.
+const SIMPLE_STANDBY_LOGIN = process.env.HOCKEY_STANDBY_SIMPLE_LOGIN === 'true';
+if (SIMPLE_STANDBY_LOGIN) authSecurity.state.lockoutEnabled = false;
 const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
@@ -7053,7 +7056,7 @@ app.post('/api/admin/check-session', (req, res) => {
     });
 });
 
-app.post('/api/admin/login', (req, res, next) => authSecurity.check(req, res, next), (req, res) => {
+app.post('/api/admin/login', (req, res, next) => SIMPLE_STANDBY_LOGIN ? next() : authSecurity.check(req, res, next), (req, res) => {
     const { password, rememberMe, mfaCode, trustMfaDevice } = req.body || {};
     if (!hasConfiguredAdminPassword()) {
         return res.status(500).json({ success:false, error:'ADMIN_PASSWORD is not configured on the server' });
@@ -7062,7 +7065,7 @@ app.post('/api/admin/login', (req, res, next) => authSecurity.check(req, res, ne
         addAdminAuditEntry('login_failed',req,{reason:'invalid_password'});
         return authSecurity.fail(req,res);
     }
-    if (adminMfa.enabled) {
+    if (!SIMPLE_STANDBY_LOGIN && adminMfa.enabled) {
         const trusted=adminMfa.isTrusted(req);
         if (!trusted && !mfaCode) {
             return res.status(401).json({ success:false, mfaRequired:true,
@@ -7082,7 +7085,7 @@ app.post('/api/admin/login', (req, res, next) => authSecurity.check(req, res, ne
             }
         }
     }
-    authSecurity.success(req);
+    if (!SIMPLE_STANDBY_LOGIN) authSecurity.success(req);
     const sessionToken = createAdminSessionToken(rememberMe !== false);
     const decoded = decodeAdminSession(sessionToken);
     addAdminAuditEntry('login_success',req,{ mfa:adminMfa.enabled, trustedDevice:adminMfa.isTrusted(req),
@@ -7100,7 +7103,7 @@ app.get('/api/admin/mfa/status', (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
     return res.json(adminMfa.status());
 });
-app.post('/api/admin/mfa/setup', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+app.post('/api/admin/mfa/setup', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
     if (!isValidAdminPassword(req.body?.password)) return authSecurity.fail(req,res);
     if (adminMfa.enabled) return res.status(409).json({error:'MFA is already enabled.'});
@@ -7111,7 +7114,7 @@ app.post('/api/admin/mfa/setup', (req,res,next) => authSecurity.check(req,res,ne
         return res.json({success:true, ...setup});
     } catch(error) {console.error('MFA setup error:',error.message);return res.status(500).json({error:'Could not start MFA enrollment.'});}
 });
-app.post('/api/admin/mfa/confirm', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+app.post('/api/admin/mfa/confirm', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
     try {
         const codes=adminMfa.confirmSetup(req.body?.code);
@@ -7125,14 +7128,14 @@ app.post('/api/admin/mfa/confirm', (req,res,next) => authSecurity.check(req,res,
         return res.json({success:true,recoveryCodes:codes,message:'Save the recovery codes now. They are displayed only once.'});
     } catch(error) {console.error('MFA confirmation error:',error.message);return res.status(500).json({error:'Could not enable MFA.'});}
 });
-app.post('/api/admin/mfa/revoke-devices', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+app.post('/api/admin/mfa/revoke-devices', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
     if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
     adminMfa.revokeTrusted(res); authSecurity.success(req);
     addAdminAuditEntry('mfa_trusted_devices_revoked',req);
     return res.json({success:true});
 });
-app.post('/api/admin/mfa/disable', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+app.post('/api/admin/mfa/disable', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
     if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
     adminMfa.disable(res); authSecurity.success(req);
