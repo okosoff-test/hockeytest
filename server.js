@@ -22,20 +22,47 @@ const crypto = require('crypto');
 const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
 const { Pool } = require('pg');
+const { HockeyAuthSecurity } = require('./hockey-auth-security');
+const { HockeyAdminMfa } = require('./hockey-admin-mfa');
+const { HockeyAdminPassword, validNewPassword } = require('./hockey-admin-password');
 const app = express();
+// SECURITY-HARDENING-2026-10-31: persistent per-IP lockouts and role credential rotation.
+const authSecurity = new HockeyAuthSecurity();
 const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
 app.set('trust proxy', 1);
 
-// Database setup
-const HAS_DB = !!process.env.DATABASE_URL;
+// Database setup: Render/Neon remains supported, and local Pi containers
+// authenticate using a root-readable Docker secret rather than an exposed URL.
+function readSecretOrEnv(envName, fileName) {
+    const filePath = String(process.env[fileName] || '').trim();
+    if (filePath) {
+        const value = fs.readFileSync(filePath, 'utf8').trim();
+        if (!value) throw new Error(`Empty secret file for ${envName}`);
+        return value;
+    }
+    return String(process.env[envName] || '').trim();
+}
 
-// IMPORTANT: Render (and many hosts) will NOT have Postgres listening on localhost.
-// If DATABASE_URL is not set, we run in "file mode" and skip all DB calls.
-const pool = HAS_DB ? new Pool({
+const LOCAL_PG_HOST = String(process.env.DB_HOST || '').trim();
+const HAS_DB = Boolean(LOCAL_PG_HOST || process.env.DATABASE_URL);
+if (LOCAL_PG_HOST && (!process.env.DB_USER || !process.env.DB_NAME || !process.env.DB_PASSWORD_FILE)) {
+    throw new Error('Local PostgreSQL configuration incomplete: DB_HOST, DB_USER, DB_NAME and DB_PASSWORD_FILE are required');
+}
+const pgConnection = LOCAL_PG_HOST ? {
+    host: LOCAL_PG_HOST,
+    port: Number(process.env.DB_PORT || 5432),
+    database: process.env.DB_NAME,
+    user: process.env.DB_USER,
+    password: readSecretOrEnv('DB_PASSWORD', 'DB_PASSWORD_FILE'),
+    ssl: false // Docker private network: no TLS termination inside the host
+} : {
     connectionString: process.env.DATABASE_URL,
-    ssl: { rejectUnauthorized: false },
+    ssl: { rejectUnauthorized: false }
+};
+const pool = HAS_DB ? new Pool({
+    ...pgConnection,
     max: Number(process.env.PGPOOL_MAX || 5),
     min: 0,
     idleTimeoutMillis: Number(process.env.PG_IDLE_TIMEOUT_MS || 10000),
@@ -173,7 +200,9 @@ app.use(cors({ origin(origin, callback) {
 }}));
 // Never cache sensitive API responses or administrative pages.
 app.use((req, res, next) => {
-    if (req.path.startsWith('/api/admin/') || req.path === '/admin' || req.path.endsWith('/admin.html')) {
+    if (req.path.startsWith('/api/admin/') || req.path.startsWith('/api/goalies/') ||
+        req.path.startsWith('/api/collector/') || req.path === '/admin' || req.path.endsWith('/admin.html') ||
+        req.path === '/goalies' || req.path === '/payment') {
         res.setHeader('Cache-Control', 'no-store');
         res.setHeader('Pragma', 'no-cache');
     }
@@ -320,14 +349,17 @@ let remainingSkaterSpots = skaterCapacity;
 let players = []; 
 let waitlist = [];
 let cancelledRegistrations = [];
-const ADMIN_PASSWORD = String(process.env.ADMIN_PASSWORD || '').trim();
-const ADMIN_TOKEN_SECRET = String(process.env.ADMIN_TOKEN_SECRET || '').trim() || crypto.randomBytes(48).toString('hex');
-if (!String(process.env.ADMIN_TOKEN_SECRET || '').trim()) {
+const ADMIN_PASSWORD = readSecretOrEnv('ADMIN_PASSWORD', 'ADMIN_PASSWORD_FILE');
+const configuredAdminTokenSecret = readSecretOrEnv('ADMIN_TOKEN_SECRET', 'ADMIN_TOKEN_SECRET_FILE');
+const ADMIN_TOKEN_SECRET = configuredAdminTokenSecret || crypto.randomBytes(48).toString('hex');
+if (!configuredAdminTokenSecret) {
     console.warn('ADMIN_TOKEN_SECRET is not configured. Using an ephemeral secret for this server process.');
 }
-const ADMIN_REMEMBER_TOKEN_TTL_DAYS = Number(process.env.ADMIN_TOKEN_TTL_DAYS || 30);
+const ADMIN_REMEMBER_TOKEN_TTL_DAYS = 1; // hardening: max 24h for remember-me sessions
 const ADMIN_SESSION_TOKEN_TTL_HOURS = Number(process.env.ADMIN_SESSION_HOURS || 12);
-const ADMIN_SESSION_FILE = './admin-sessions.json';
+const ADMIN_SESSION_FILE = process.env.ADMIN_SESSION_FILE || './admin-sessions.json';
+const adminMfa = new HockeyAdminMfa();
+const adminPassword = new HockeyAdminPassword(ADMIN_PASSWORD);
 
 // Game details - FRIDAY HOCKEY
 let gameLocation = PORTAL_DEFAULTS.gameLocation;
@@ -558,14 +590,11 @@ let resetWeekSchedule = {
 let scheduleMode = 'auto';
 
 function hasConfiguredAdminPassword() {
-    return !!ADMIN_PASSWORD;
+    return adminPassword.isConfigured();
 }
 
 function isValidAdminPassword(password) {
-    if (!hasConfiguredAdminPassword() || typeof password !== 'string') return false;
-    const supplied = Buffer.from(password.trim(), 'utf8');
-    const expected = Buffer.from(ADMIN_PASSWORD, 'utf8');
-    return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+    return adminPassword.verify(password);
 }
 
 let adminSessionState = {
@@ -644,7 +673,7 @@ function createAdminSessionToken(rememberMe = true) {
     const remember = !!rememberMe;
     const expiresIn = remember ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
     return jwt.sign(
-        { role: 'admin', jti, remember },
+        { role: 'admin', jti, remember, pwv: adminPassword.version },
         ADMIN_TOKEN_SECRET,
         { expiresIn }
     );
@@ -659,26 +688,23 @@ function getAdminAuthToken(req) {
     return (
         req.headers['x-admin-auth'] ||
         req.headers['x-admin-token'] ||
-        req.headers['x-admin-password'] ||
         bearerToken ||
-        (req.body && (req.body.sessionToken || req.body.password)) ||
-        (req.query && (req.query.sessionToken || req.query.password)) ||
+        (req.body && req.body.sessionToken) ||
         ''
     );
 }
 
 function isValidAdminSession(token) {
     const decoded = decodeAdminSession(token);
-    if (!decoded) return false;
+    if (!decoded || Number(decoded.pwv || 0) !== adminPassword.version) return false;
+    if (!decoded || !decoded.iat || (Date.now() / 1000 - decoded.iat) > 24 * 3600) return false;
     if (decoded.jti && adminSessionState.revokedJtis && adminSessionState.revokedJtis[decoded.jti]) return false;
     if (adminSessionState.logoutAllAfter && decoded.iat && decoded.iat < Number(adminSessionState.logoutAllAfter)) return false;
     return true;
 }
 
 function isAuthorizedAdminRequest(req) {
-    const token = getAdminAuthToken(req);
-    if (isValidAdminSession(token)) return true;
-    return isValidAdminPassword(token);
+    return isValidAdminSession(getAdminAuthToken(req));
 }
 
 // Store admin sessions
@@ -2477,6 +2503,9 @@ function buildPersistedStateFingerprint(snapshot = null) {
 let lastPersistedStateFingerprint = '';
 
 async function runSchedulerTick() {
+    // A staging deployment must not release rosters or reset weeks on startup,
+    // incoming health checks, or page requests before Neon data is imported.
+    if (String(process.env.PORTAL_SCHEDULER_ACTIVE || 'true').toLowerCase() === 'false') return;
     if (schedulerRunning) return;
 
     const startedAt = Date.now();
@@ -2743,7 +2772,9 @@ async function initDatabase() {
         await pruneDataAuditIfNeeded(true);
     } catch (err) {
         console.error('Database initialization error:', err);
-        loadDataFromFile();
+        // On Pi, never quietly continue with a separate file-based dataset.
+        // That would make signup/roster changes look saved while PostgreSQL is down.
+        throw err;
     }
 }
 
@@ -3033,9 +3064,9 @@ async function saveSetting(key, value) {
     }
 }
 
-const DATA_FILE = './data.json';
-const SETTINGS_BACKUP_FILE = './app-settings.backup.json';
-const SNAPSHOT_DIR = './data-backups';
+const DATA_FILE = process.env.PORTAL_DATA_FILE || './data.json';
+const SETTINGS_BACKUP_FILE = process.env.PORTAL_SETTINGS_BACKUP_FILE || './app-settings.backup.json';
+const SNAPSHOT_DIR = process.env.PORTAL_SNAPSHOT_DIR || './data-backups';
 const SNAPSHOT_RETENTION = Number(process.env.LOCAL_SNAPSHOT_RETENTION || 100);
 const DB_SNAPSHOT_RETENTION = Number(process.env.DB_SNAPSHOT_RETENTION || 365);
 const DB_SNAPSHOT_FORCE_ON_EVERY_SAVE = String(process.env.DB_SNAPSHOT_FORCE_ON_EVERY_SAVE || 'false').toLowerCase() === 'true';
@@ -3243,6 +3274,25 @@ async function insertDatabaseSnapshot(snapshot, reason = 'saveData', clientOrPoo
     }
 
     const metadata = buildSnapshotMetadata(snapshot, reason);
+    // Avoid filling Neon with identical restore points. A pre-mutation snapshot
+    // is still retained whenever the last durable snapshot represents different data.
+    // Explicit manual, daily and reset/restore safety checkpoints are exempt.
+    const reasonKey = String(reason || '').toLowerCase();
+    const mandatoryCheckpoint = reasonKey === 'manual-create-snapshot' ||
+        reasonKey.startsWith('daily-pre-midnight') ||
+        reasonKey.includes('weekly-reset') ||
+        reasonKey.includes('restore');
+    if (!mandatoryCheckpoint) {
+        const latest = await clientOrPool.query(
+            'SELECT snapshot_json FROM data_snapshots ORDER BY id DESC LIMIT 1'
+        );
+        if (latest.rows.length) {
+            const previous = latest.rows[0].snapshot_json;
+            if (buildPersistedStateFingerprint(previous) === buildPersistedStateFingerprint(snapshot)) {
+                return { ok: true, skipped: true, reason: 'identical-to-latest-snapshot' };
+            }
+        }
+    }
     const result = await clientOrPool.query(
         `INSERT INTO data_snapshots (
             snapshot_name,
@@ -3319,7 +3369,7 @@ async function getLatestDatabaseSnapshot() {
             score: ((Number(row.players_count) || 0) * 1000000) + ((Number(row.waitlist_count) || 0) * 1000) + (Date.parse(row.snapshot_saved_at || row.created_at || data.savedAt || '') || 0),
             source: 'database',
             snapshotId: row.id,
-            snapshotSavedAt: row.snapshot_saved_at || row.created_at || data.savedAt || null,
+            snapshotSavedAt: data.savedAt || row.snapshot_saved_at || row.created_at || null,
             snapshotReason: row.snapshot_reason || null
         };
     } catch (err) {
@@ -3398,7 +3448,7 @@ async function listAvailableSnapshots(limit = 100) {
                     source: 'database',
                     snapshotId: row.id,
                     file: `db:data_snapshots:${row.id}`,
-                    snapshotSavedAt: row.snapshot_saved_at || row.created_at || data.savedAt || null,
+                    snapshotSavedAt: data.savedAt || row.snapshot_saved_at || row.created_at || null,
                     snapshotReason: row.snapshot_reason || null,
                     playersCount: row.players_count,
                     waitlistCount: row.waitlist_count,
@@ -3531,6 +3581,13 @@ function applySnapshotToMemory(snapshot) {
     const snapshotCapacity = snapshot.skaterCapacity ?? snapshot.configuredMaxSkaters ?? snapshot.maxSkaters;
     skaterCapacity = normalizeSkaterCapacity(snapshotCapacity, MAX_SKATERS);
     if (snapshot.maxGoalies !== undefined || snapshot.appSettings?.maxGoalies !== undefined || snapshot.summary?.maxGoalies !== undefined) { const mg = Number(snapshot.maxGoalies ?? snapshot.appSettings?.maxGoalies ?? snapshot.summary?.maxGoalies); if (Number.isFinite(mg)) maxGoalies = Math.max(0, Math.floor(mg)); }
+    // Migration fix: restore persistent maps before applying player flags.
+    protectedPlayersByDay = normalizeProtectedPlayersByDayMap(snapshot.protectedPlayersByDay || {});
+    regularGoaliesByDay = normalizeRegularGoaliesByDayMap(snapshot.regularGoaliesByDay || snapshot.appSettings?.regularGoaliesByDay || {});
+    persistentAdminRatings = normalizePersistentAdminRatings(snapshot.persistentAdminRatings || {});
+    persistentPlayerNicknames = normalizePersistentPlayerNicknames(snapshot.persistentPlayerNicknames || {});
+    persistentPhoneOverrides = normalizePersistentPhoneOverrides(snapshot.persistentPhoneOverrides || {});
+    persistentPiaPayments = normalizePersistentPiaPayments(snapshot.persistentPiaPayments || {});
     players = Array.isArray(snapshot.players) ? snapshot.players.map(hydratePlayerRatingProfile).map(applyProtectedPlayerFlags) : [];
     waitlist = Array.isArray(snapshot.waitlist) ? snapshot.waitlist.map(hydratePlayerRatingProfile) : [];
     const snapshotRemainingSpots = snapshot.remainingSkaterSpots ?? snapshot.playerSpots;
@@ -5945,6 +6002,7 @@ async function deleteWeekHistory(year, weekNumber) {
 
 // Debug routes
 app.get('/api/debug-time', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Admin authentication required' });
     const now = new Date();
     const etTime = getCurrentETTime();
     const shouldLock = shouldBeLocked();
@@ -5995,6 +6053,7 @@ app.get('/api/debug-time', (req, res) => {
 });
 
 app.get('/api/force-check', async (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Admin authentication required' });
     const before = { rosterReleased, players: players.length, waitlist: waitlist.length, requirePlayerCode };
     await runSchedulerTick();
     const result = checkAutoLock();
@@ -6994,30 +7053,184 @@ app.post('/api/admin/check-session', (req, res) => {
     });
 });
 
-app.post('/api/admin/login', adminLoginLimiter, (req, res) => {
-    const { password, rememberMe } = req.body || {};
-
+app.post('/api/admin/login', (req, res, next) => authSecurity.check(req, res, next), (req, res) => {
+    const { password, rememberMe, mfaCode, trustMfaDevice } = req.body || {};
     if (!hasConfiguredAdminPassword()) {
-        return res.status(500).json({ success: false, error: 'ADMIN_PASSWORD is not configured on the server' });
+        return res.status(500).json({ success:false, error:'ADMIN_PASSWORD is not configured on the server' });
     }
-
     if (!isValidAdminPassword(password)) {
-        addAdminAuditEntry('login_failed', req, { reason: 'invalid_password' });
-        return res.status(401).json({ success: false, error: 'Invalid password' });
+        addAdminAuditEntry('login_failed',req,{reason:'invalid_password'});
+        return authSecurity.fail(req,res);
     }
-
+    if (adminMfa.enabled) {
+        const trusted=adminMfa.isTrusted(req);
+        if (!trusted && !mfaCode) {
+            return res.status(401).json({ success:false, mfaRequired:true,
+                error:'Enter your six-digit authenticator or recovery code.' });
+        }
+        if (!trusted) {
+            let valid=false;
+            try { valid=adminMfa.verify(mfaCode); }
+            catch(err) {console.error('MFA login error:',err.message);return res.status(500).json({error:'MFA verification unavailable.'});}
+            if (!valid) {
+                addAdminAuditEntry('mfa_failed',req);
+                return authSecurity.fail(req,res);
+            }
+            if (trustMfaDevice === true) {
+                try { adminMfa.trust(req,res); }
+                catch(err) {console.error('Could not trust MFA device:',err.message); /* login still requires verified MFA */}
+            }
+        }
+    }
+    authSecurity.success(req);
     const sessionToken = createAdminSessionToken(rememberMe !== false);
     const decoded = decodeAdminSession(sessionToken);
-    addAdminAuditEntry('login_success', req, { rememberMe: rememberMe !== false, expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null });
-
+    addAdminAuditEntry('login_success',req,{ mfa:adminMfa.enabled, trustedDevice:adminMfa.isTrusted(req),
+        expiresAt: decoded?.exp ? new Date(decoded.exp*1000).toISOString() : null });
     res.json({
-        success: true,
-        sessionToken,
-        expiresInDays: rememberMe !== false ? ADMIN_REMEMBER_TOKEN_TTL_DAYS : null,
-        expiresInHours: rememberMe === false ? ADMIN_SESSION_TOKEN_TTL_HOURS : null,
-        expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null,
-        remember: rememberMe !== false
+        success:true,sessionToken,remember:rememberMe!==false,
+        expiresInDays:rememberMe!==false?ADMIN_REMEMBER_TOKEN_TTL_DAYS:null,
+        expiresInHours:rememberMe===false?ADMIN_SESSION_TOKEN_TTL_HOURS:null,
+        expiresAt:decoded?.exp ? new Date(decoded.exp*1000).toISOString():null
     });
+});
+
+// ADMIN-MFA-V1: optional TOTP enrollment; enabled only after administrator confirms a code.
+app.get('/api/admin/mfa/status', (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    return res.json(adminMfa.status());
+});
+app.post('/api/admin/mfa/setup', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    if (!isValidAdminPassword(req.body?.password)) return authSecurity.fail(req,res);
+    if (adminMfa.enabled) return res.status(409).json({error:'MFA is already enabled.'});
+    try {
+        const issuer = String(process.env.HOCKEY_MFA_ISSUER || process.env.LEAGUE_NAME || 'Phans Hockey Portal').slice(0,80);
+        const setup=adminMfa.beginSetup(issuer);
+        addAdminAuditEntry('mfa_setup_started',req);
+        return res.json({success:true, ...setup});
+    } catch(error) {console.error('MFA setup error:',error.message);return res.status(500).json({error:'Could not start MFA enrollment.'});}
+});
+app.post('/api/admin/mfa/confirm', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    try {
+        const codes=adminMfa.confirmSetup(req.body?.code);
+        if (!codes) return authSecurity.fail(req,res);
+        authSecurity.success(req);
+        // Invalidate old sessions after MFA enrollment. Next login must satisfy TOTP.
+        adminSessionState.logoutAllAfter=Math.floor(Date.now()/1000)+1;
+        adminSessionState.revokedJtis={};
+        saveAdminSessionState();
+        addAdminAuditEntry('mfa_enabled',req);
+        return res.json({success:true,recoveryCodes:codes,message:'Save the recovery codes now. They are displayed only once.'});
+    } catch(error) {console.error('MFA confirmation error:',error.message);return res.status(500).json({error:'Could not enable MFA.'});}
+});
+app.post('/api/admin/mfa/revoke-devices', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
+    adminMfa.revokeTrusted(res); authSecurity.success(req);
+    addAdminAuditEntry('mfa_trusted_devices_revoked',req);
+    return res.json({success:true});
+});
+app.post('/api/admin/mfa/disable', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
+    if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
+    adminMfa.disable(res); authSecurity.success(req);
+    adminSessionState.logoutAllAfter=Math.floor(Date.now()/1000)+1;
+    adminSessionState.revokedJtis={};saveAdminSessionState();
+    addAdminAuditEntry('mfa_disabled',req);
+    return res.json({success:true});
+});
+
+// HOCKEY-IP-LOCK-TOGGLE-V1: per-portal, Admin-only; security setting stored in /state.
+app.get('/api/admin/security/ip-lock', (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
+    res.setHeader('Cache-Control','no-store');
+    return res.json({enabled:authSecurity.state.lockoutEnabled!==false,mfaEnabled:adminMfa.enabled});
+});
+app.post('/api/admin/security/ip-lock', (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
+    const {enabled,currentPassword,mfaCode} = req.body || {};
+    if (typeof enabled!=='boolean') return res.status(400).json({error:'Enabled must be true or false.'});
+    if (!isValidAdminPassword(currentPassword)) {
+        addAdminAuditEntry('ip_lock_change_denied',req,{reason:'invalid_password'});
+        return res.status(403).json({error:'Current Admin password is incorrect.'});
+    }
+    // Always require a fresh second factor when MFA is enrolled, including on trusted browsers.
+    if (adminMfa.enabled) {
+        let verified=false;
+        try { verified=adminMfa.verify(mfaCode); }
+        catch(e) {console.error('IP-lock MFA verification failed:',e.message);
+            return res.status(500).json({error:'MFA verification unavailable.'}); }
+        if (!verified) return res.status(403).json({error:'A fresh MFA or recovery code is required.'});
+    }
+    try {
+        authSecurity.setLockoutEnabled(enabled);
+        addAdminAuditEntry('ip_lock_setting_changed',req,{enabled});
+        res.setHeader('Cache-Control','no-store');
+        return res.json({success:true,enabled});
+    } catch(e) {
+        console.error('IP lockout setting save failed:',e.message);
+        return res.status(500).json({error:'Could not persist IP lockout setting.'});
+    }
+});
+
+// ADMIN-PASSWORD-ROTATION-V1: MFA required even if browser is trusted.
+app.post('/api/admin/security/change-admin-password', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
+    if (!adminMfa.enabled) return res.status(409).json({error:'Enable Admin MFA before changing the Admin password.'});
+    const {currentPassword,newPassword,confirmPassword,mfaCode}=req.body || {};
+    if (!validNewPassword(newPassword)) {
+        return res.status(400).json({error:'Use 12–128 characters, without leading/trailing spaces or control characters.'});
+    }
+    if (newPassword !== confirmPassword) return res.status(400).json({error:'New passwords do not match.'});
+    if (isValidAdminPassword(newPassword)) return res.status(400).json({error:'Choose a different Admin password.'});
+    if (!isValidAdminPassword(currentPassword)) {
+        addAdminAuditEntry('admin_password_change_failed',req,{reason:'invalid_current_password'});
+        return authSecurity.fail(req,res);
+    }
+    let verified=false;
+    try { verified=adminMfa.verify(mfaCode); }
+    catch(err) { console.error('Admin password MFA check failed:',err.message);
+        return res.status(500).json({error:'MFA verification unavailable.'}); }
+    if (!verified) {
+        addAdminAuditEntry('admin_password_change_failed',req,{reason:'invalid_mfa'});
+        return authSecurity.fail(req,res);
+    }
+    try {
+        // Revoke trusted browser tokens before rotating the credential. If rotation
+        // later fails, trust is still revoked but the previous password remains valid.
+        adminMfa.revokeTrusted(res);
+        const credentialVersion=adminPassword.rotate(newPassword);
+        // Tokens include the credential revision; all previously issued tokens
+        // become invalid immediately, regardless of their timestamp or expiry.
+        authSecurity.success(req);
+        addAdminAuditEntry('admin_password_changed',req,{credentialVersion,trustedDevicesRevoked:true});
+        res.setHeader('Cache-Control','no-store');
+        return res.json({success:true,sessionsRevoked:true,trustedDevicesRevoked:true});
+    } catch(err) {
+        console.error('Admin password rotation error:',err.message);
+        return res.status(500).json({error:'Could not save new Admin credential. Please check server logs.'});
+    }
+});
+
+// Security: only a validated admin JWT may rotate goalie or payment passwords.
+app.post('/api/admin/security/change-role-password', (req, res) => {
+    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({ error: 'Admin authentication required' });
+    const role = req.body?.role;
+    const password = req.body?.newPassword;
+    if (role !== 'goalie' && role !== 'payment') return res.status(400).json({ error: 'Only goalie and payment passwords can be changed here.' });
+    if (typeof password !== 'string' || password.length < 6 || password.length > 128 || password !== password.trim()) {
+        return res.status(400).json({ error: 'Password must contain 6–128 characters and no leading or trailing spaces.' });
+    }
+    try {
+        authSecurity.setRolePassword(role, password);
+        addAdminAuditEntry('role_password_changed', req, { role });
+        return res.json({ success: true, message: `${role} password changed. Previous ${role} sessions are no longer valid.` });
+    } catch (error) {
+        console.error('Could not persist changed role password:', error.message);
+        return res.status(500).json({ error: 'Could not save the new password. Try again.' });
+    }
 });
 
 app.post('/api/admin/logout', (req, res) => {
@@ -8042,13 +8255,14 @@ app.post('/api/admin/restore-backup', async (req, res) => {
             historyRestoreResult = await replacePortalHistoryFromBackup(backupData.historyRows);
         }
 
-        // Persist using existing save helper if available
-        try {
-            if (typeof saveData === 'function') {
-                await saveData('restore-portal-backup');
-            }
-        } catch (saveErr) {
-            console.error('Restore completed in memory but saveData failed:', saveErr);
+        // Migration fix: a failed database save must not be reported as a successful restore.
+        const saveResult = await saveData('restore-portal-backup', { forcePersist: true });
+        if (!saveResult || !saveResult.ok) {
+            console.error('Restore database persistence failed:', saveResult?.error || 'unknown error');
+            return res.status(500).json({
+                error: 'Restore was not fully persisted; do not use this staging portal until repaired.',
+                code: 'RESTORE_PERSISTENCE_FAILED'
+            });
         }
 
         try {
@@ -9748,7 +9962,7 @@ process.on('unhandledRejection', (err) => {
 });
 
 // Initialize and start
-const PAYMENT_PASSWORD = String(process.env.PAYMENT_PASSWORD || process.env.COLLECTOR_PASSWORD || '').trim();
+const PAYMENT_PASSWORD = readSecretOrEnv('PAYMENT_PASSWORD', 'PAYMENT_PASSWORD_FILE') || String(process.env.COLLECTOR_PASSWORD || '').trim();
 function isPaymentExcludedPlayer(player = {}) {
     const first = String(player.firstName || '').trim().toLowerCase();
     const last = String(player.lastName || '').trim().toLowerCase();
@@ -9757,15 +9971,14 @@ function isPaymentExcludedPlayer(player = {}) {
 function getPaymentPlayers() {
     return (Array.isArray(players) ? players : []).filter(p => !isPaymentExcludedPlayer(p));
 }
-function createPaymentSessionToken(rememberMe = true) {
-    const expiresIn = rememberMe ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
-    return jwt.sign({ role: 'payment', jti: crypto.randomUUID(), remember: !!rememberMe }, ADMIN_TOKEN_SECRET, { expiresIn });
+function createPaymentSessionToken(rememberMe = false) {
+    return jwt.sign({ role: 'payment', jti: crypto.randomUUID(), pv: authSecurity.roleVersion('payment') }, ADMIN_TOKEN_SECRET, { expiresIn: '12h' });
 }
 function isValidPaymentSession(token) {
     if (isValidAdminSession(token)) return true;
     try {
         const decoded = jwt.verify(String(token || '').trim(), ADMIN_TOKEN_SECRET);
-        return !!decoded && decoded.role === 'payment';
+        return !!decoded && decoded.role === 'payment' && decoded.pv === authSecurity.roleVersion('payment') && !adminSessionState.revokedJtis?.[decoded.jti];
     } catch (err) {
         return false;
     }
@@ -9788,7 +10001,7 @@ function requirePaymentAuth(req, res) {
 
 
 // GOALIE CONTACT PAGE: private access for substitute goalie contacts
-const GOALIE_PASSWORD = String(process.env.GOALIE_PASSWORD || '').trim();
+const GOALIE_PASSWORD = readSecretOrEnv('GOALIE_PASSWORD', 'GOALIE_PASSWORD_FILE');
 const EXTRA_GOALIE_CONTACTS = [];
 
 let extraGoalieContacts = EXTRA_GOALIE_CONTACTS.map(goalie => ({ ...goalie }));
@@ -9842,16 +10055,15 @@ function buildGoalieInText(goalie = {}, req = null) {
     return `${greeting} you're in. Check the Hockey Portal for details.`;
 }
 
-function createGoalieSessionToken(rememberMe = true) {
-    const expiresIn = rememberMe ? `${ADMIN_REMEMBER_TOKEN_TTL_DAYS}d` : `${ADMIN_SESSION_TOKEN_TTL_HOURS}h`;
-    return jwt.sign({ role: 'goalie', jti: crypto.randomUUID(), remember: !!rememberMe }, ADMIN_TOKEN_SECRET, { expiresIn });
+function createGoalieSessionToken(rememberMe = false) {
+    return jwt.sign({ role: 'goalie', jti: crypto.randomUUID(), pv: authSecurity.roleVersion('goalie') }, ADMIN_TOKEN_SECRET, { expiresIn: '12h' });
 }
 
 function isValidGoalieSession(token) {
     if (isValidAdminSession(token)) return true;
     try {
         const decoded = jwt.verify(String(token || '').trim(), ADMIN_TOKEN_SECRET);
-        return !!decoded && decoded.role === 'goalie';
+        return !!decoded && decoded.role === 'goalie' && decoded.pv === authSecurity.roleVersion('goalie') && !adminSessionState.revokedJtis?.[decoded.jti];
     } catch (err) {
         return false;
     }
@@ -9968,11 +10180,23 @@ app.get('/goalies', (req, res) => {
     return sendPublic(res, 'goalies.html');
 });
 
-app.post('/api/goalies/login', adminLoginLimiter, (req, res) => {
+app.post('/api/goalies/login', (req, res, next) => authSecurity.check(req, res, next), (req, res) => {
     const { password, rememberMe } = req.body || {};
     if (!GOALIE_PASSWORD) return res.status(503).json({ error: 'GOALIE_PASSWORD is not configured.' });
-    if (String(password || '').trim() !== GOALIE_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
-    res.json({ success: true, sessionToken: createGoalieSessionToken(rememberMe !== false) });
+    if (!authSecurity.validRolePassword('goalie', password, GOALIE_PASSWORD)) return authSecurity.fail(req, res);
+    authSecurity.success(req);
+    res.json({ success: true, sessionToken: createGoalieSessionToken(false) });
+});
+
+app.post('/api/goalies/logout', (req, res) => {
+    const token = getGoalieAuthToken(req);
+    if (!isValidGoalieSession(token)) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded = jwt.decode(token);
+    if (decoded?.jti) {
+        adminSessionState.revokedJtis[decoded.jti] = Number(decoded.exp || 0);
+        saveAdminSessionState();
+    }
+    res.json({ success: true });
 });
 
 app.post('/api/goalies/list', (req, res) => {
@@ -10223,12 +10447,24 @@ app.get('/payment', (req, res) => {
     return sendPublic(res, 'collector.html');
 });
 
-app.post('/api/collector/login', adminLoginLimiter, (req, res) => {
+app.post('/api/collector/login', (req, res, next) => authSecurity.check(req, res, next), (req, res) => {
     if (!requirePaymentPageEnabled(req, res)) return;
     const { password, rememberMe } = req.body || {};
     if (!PAYMENT_PASSWORD) return res.status(503).json({ error: 'PAYMENT_PASSWORD or COLLECTOR_PASSWORD is not configured.' });
-    if (String(password || '').trim() !== PAYMENT_PASSWORD) return res.status(401).json({ error: 'Invalid password' });
-    res.json({ success: true, sessionToken: createPaymentSessionToken(rememberMe !== false) });
+    if (!authSecurity.validRolePassword('payment', password, PAYMENT_PASSWORD)) return authSecurity.fail(req, res);
+    authSecurity.success(req);
+    res.json({ success: true, sessionToken: createPaymentSessionToken(false) });
+});
+
+app.post('/api/collector/logout', (req, res) => {
+    const token = getPaymentAuthToken(req);
+    if (!isValidPaymentSession(token)) return res.status(401).json({ error: 'Unauthorized' });
+    const decoded = jwt.decode(token);
+    if (decoded?.jti) {
+        adminSessionState.revokedJtis[decoded.jti] = Number(decoded.exp || 0);
+        saveAdminSessionState();
+    }
+    res.json({ success: true });
 });
 
 app.post('/api/collector/players', (req, res) => {
@@ -10321,7 +10557,7 @@ app.get('/collect', (req, res) => res.redirect('/payment'));
 app.get('/collector', (req, res) => res.redirect('/payment'));
 
 app.listen(PORT, () => {
-        console.log(`Phan's Friday Hockey server running on port ${PORT}`);
+        console.log(`Phan's dynamic Hockey Portal running on port ${PORT}`);
         console.log(`Location: ${gameLocation}`);
         console.log(`Time: ${gameTime}`);
         console.log(`Date: ${gameDate}`);
@@ -10329,11 +10565,16 @@ app.listen(PORT, () => {
         console.log(`Auto-add goalies for ${getGameDayName()}: ${getWeeklyAutoAddPlayers().filter(p => p.isGoalie).map(p => `${p.firstName} ${p.lastName}`).join(', ')}`);
         console.log(`Current players registered: ${players.length}`);
         console.log(`Background scheduler: ${BACKGROUND_SCHEDULER_ENABLED ? 'enabled' : 'disabled (request-driven mode)'}`);
-        console.log(`Recommended external keepalive cron: * * * * * -> /api/cron/heartbeat (Eastern scheduler-safe)`);
-        console.log(`Recommended external keepalive cron: * * * * * -> /api/cron/heartbeat (Eastern scheduler-safe)`);
+        console.log('Internal scheduler runs locally; no external keepalive cron required.');
     });
 }).catch(err => {
-    console.error('Failed to initialize database, starting with file fallback:', err);
+    console.error('Failed to initialize database:', err);
+    if (HAS_DB) {
+        console.error('FATAL: PostgreSQL required for this instance; refusing file-mode fallback.');
+        process.exit(1);
+        return;
+    }
+    console.error('Starting standalone file mode because DATABASE_URL and DB_HOST are both unset.');
     loadDataFromFile();
     refreshPersistedStateFingerprint();
     

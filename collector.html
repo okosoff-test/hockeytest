@@ -49,7 +49,8 @@ table{width:100%;border-collapse:collapse;margin-top:8px}th,td{border-bottom:1px
 <script>
 const API_URL = window.location.origin;
 const TOKEN_KEY = 'phansCollectorSessionToken';
-let sessionToken = localStorage.getItem(TOKEN_KEY) || '';
+let sessionToken = sessionStorage.getItem(TOKEN_KEY) || '';
+localStorage.removeItem(TOKEN_KEY); // discard persistent legacy tokens
 
 function headers(){return {'Content-Type':'application/json','Authorization':'Bearer '+sessionToken,'X-Admin-Auth':sessionToken};}
 function fmtTime(v){try{return new Date(v).toLocaleString('en-US',{month:'numeric',day:'numeric',hour:'numeric',minute:'2-digit',hour12:true});}catch(e){return '';}}
@@ -62,14 +63,19 @@ async function login(){
     const res = await fetch(`${API_URL}/api/collector/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,rememberMe:true})});
     const data = await res.json().catch(()=>({}));
     if(!res.ok) throw new Error(data.error || 'Invalid password');
-    sessionToken = data.sessionToken; localStorage.setItem(TOKEN_KEY, sessionToken);
+    sessionToken = data.sessionToken; sessionStorage.setItem(TOKEN_KEY, sessionToken);
     document.getElementById('loginBox').classList.add('hidden');
     document.getElementById('collectorPanel').classList.remove('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
     await loadData();
   }catch(e){err.textContent=e.message || 'Login failed'; err.style.display='block';}
 }
-function logout(){localStorage.removeItem(TOKEN_KEY); sessionToken=''; location.reload();}
+async function logout(){
+  const oldToken = sessionToken;
+  sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); sessionToken='';
+  if(oldToken) try { await fetch(`${API_URL}/api/collector/logout`, {method:'POST',headers:{'Authorization':'Bearer '+oldToken},signal:AbortSignal.timeout(2500)}); } catch(_err){}
+  location.reload();
+}
 
 async function loadData(){
   if(!sessionToken) return;

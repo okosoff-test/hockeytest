@@ -106,7 +106,8 @@ input,select{width:100%;padding:12px;margin:8px 0;background:#3d3d3d;border:1px 
 <script>
 const API_URL = window.location.origin;
 const TOKEN_KEY = 'phansGoalieSessionToken';
-let sessionToken = localStorage.getItem(TOKEN_KEY) || '';
+let sessionToken = sessionStorage.getItem(TOKEN_KEY) || '';
+localStorage.removeItem(TOKEN_KEY); // discard persistent legacy tokens
 let currentData = {currentGoalies:[], regularGoalies:[], backupGoalies:[]};
 let selectedCancelGoalie = null;
 let selectedSubGoalie = null;
@@ -206,12 +207,17 @@ async function login(){
     const res = await fetch(`${API_URL}/api/goalies/login`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({password,rememberMe:true})});
     const data = await res.json().catch(()=>({}));
     if(!res.ok) throw new Error(data.error || 'Invalid password');
-    sessionToken = data.sessionToken; localStorage.setItem(TOKEN_KEY, sessionToken);
+    sessionToken = data.sessionToken; sessionStorage.setItem(TOKEN_KEY, sessionToken);
     showPanel(); await loadData();
   }catch(e){showError('loginError', e.message || 'Login failed');}
 }
 function showPanel(){document.getElementById('loginBox').classList.add('hidden');document.getElementById('goaliePanel').classList.remove('hidden');document.getElementById('logoutBtn').classList.remove('hidden');}
-function logout(){localStorage.removeItem(TOKEN_KEY); sessionToken=''; location.reload();}
+async function logout(){
+  const oldToken = sessionToken;
+  sessionStorage.removeItem(TOKEN_KEY); localStorage.removeItem(TOKEN_KEY); sessionToken='';
+  if(oldToken) try { await fetch(`${API_URL}/api/goalies/logout`, {method:'POST',headers:{'Authorization':'Bearer '+oldToken},signal:AbortSignal.timeout(2500)}); } catch(_err){}
+  location.reload();
+}
 function goalieName(g){return `${g.firstName||''} ${g.lastName||''}`.trim();}
 function renderCard(g, kind){
   const classes = `card ${kind||''}`;
