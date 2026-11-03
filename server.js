@@ -7178,6 +7178,7 @@ app.post('/api/admin/security/ip-lock', (req,res) => {
 // ADMIN-PASSWORD-ROTATION-V1: MFA required even if browser is trusted.
 app.post('/api/admin/security/change-admin-password', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
     if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
+    if (process.env.HOCKEY_ADMIN_ENV_PASSWORD_ONLY === 'true') return res.status(409).json({error:'Admin password is managed in Render Environment (ADMIN_PASSWORD).'});
     if (!adminMfa.enabled) return res.status(409).json({error:'Enable Admin MFA before changing the Admin password.'});
     const {currentPassword,newPassword,confirmPassword,mfaCode}=req.body || {};
     if (!validNewPassword(newPassword)) {

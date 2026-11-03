@@ -7,6 +7,8 @@ const crypto = require('crypto');
 
 const SCRYPT_OPTIONS = Object.freeze({N:16384, r:8, p:1, maxmem:64*1024*1024});
 const CREDENTIAL_FILE = process.env.HOCKEY_ADMIN_CREDENTIAL_FILE || '/state/hockey-admin-credential.json';
+// Standby Render deployments can explicitly use the Render environment password.
+const ENV_PASSWORD_ONLY = process.env.HOCKEY_ADMIN_ENV_PASSWORD_ONLY === 'true';
 
 function validNewPassword(password) {
   return typeof password === 'string' && password.length >= 12 &&
@@ -21,7 +23,7 @@ class HockeyAdminPassword {
     this.bootstrapPassword=String(bootstrapPassword||'');
     this.file=file;
     this.record=null;
-    if (fs.existsSync(file)) {
+    if (!ENV_PASSWORD_ONLY && fs.existsSync(file)) {
       const st=fs.lstatSync(file);
       if (!st.isFile() || st.isSymbolicLink()) throw new Error('Unsafe Admin credential state');
       const data=JSON.parse(fs.readFileSync(file,'utf8'));
@@ -37,7 +39,7 @@ class HockeyAdminPassword {
   isConfigured() { return !!this.record || !!this.bootstrapPassword; }
   verify(password) {
     if (typeof password !== 'string') return false;
-    if (this.record) {
+    if (!ENV_PASSWORD_ONLY && this.record) {
       const actual=derive(password,this.record.salt);
       return crypto.timingSafeEqual(actual,Buffer.from(this.record.digest,'hex'));
     }
@@ -48,6 +50,7 @@ class HockeyAdminPassword {
       crypto.timingSafeEqual(supplied,expected);
   }
   rotate(newPassword) {
+    if (ENV_PASSWORD_ONLY) throw new Error('Admin password is managed through Render ADMIN_PASSWORD');
     if (!validNewPassword(newPassword)) throw new Error('Invalid new Admin password');
     if (this.verify(newPassword)) throw new Error('New password must differ from current password');
     const nextRevision=this.version+1;
