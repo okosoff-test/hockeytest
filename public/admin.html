@@ -5997,13 +5997,12 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <h1>Admin Portal</h1>
 <p style="text-align:center; color:#888;">Phan's Hockey</p>
 <input id="adminPass" placeholder="Enter Admin password" type="password"/>
-<div id="hockeyMfaLoginField" style="display:none;margin:8px 0;"><label for="hockeyMfaLoginCode">Authenticator code or recovery code</label><input id="hockeyMfaLoginCode" type="text" inputmode="text" autocomplete="one-time-code" maxlength="32" placeholder="6-digit code" style="width:100%;"/></div>
 <div style="display:flex; align-items:center; gap:3px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
 <input id="showAdminPass" style="width:auto; margin:0;" type="checkbox"/>
 <label for="showAdminPass" style="cursor:pointer;">Show password</label>
 <span style="opacity:.45;">•</span>
 <input checked="" id="rememberDevice" style="width:auto; margin:0;" type="checkbox"/>
-<label for="rememberDevice" style="cursor:pointer;">Keep Admin session (up to 24 hours)</label><span style="opacity:.45;">•</span><input checked="" id="trustMfaDevice" style="width:auto;margin:0;" type="checkbox"/><label for="trustMfaDevice" style="cursor:pointer;">Trust MFA on this browser for 30 days</label>
+<label for="rememberDevice" style="cursor:pointer;">Keep Admin session (up to 24 hours)</label>
 </div>
 <button onclick="login()" style="width:100%;border-spacing:0;">Access Dashboard</button>
 <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
@@ -6726,74 +6725,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
     <button type="button" onclick="changePortalRolePassword('payment')">Change Payment Password</button></div>
   </div>
   <div id="rolePasswordSecurityStatus" role="status" style="margin-top:14px;color:#cdeccf;"></div>
-<!-- ADMIN-MFA-V1: setup controls within the existing, optionally collapsible Security section. -->
-<div id="hockeyAdminMfaBox" style="margin-top:18px;padding-top:16px;border-top:1px solid #555;">
-  <h3 style="color:#ff9b47;margin:0 0 8px;">Admin Multi-Factor Authentication (MFA)</h3>
-  <div id="hockeyMfaStatus">Checking MFA status...</div>
-  <label for="hockeyMfaCurrentPassword">Current Admin password</label>
-  <input id="hockeyMfaCurrentPassword" type="password" autocomplete="current-password" placeholder="Required to change MFA settings" style="width:100%;max-width:380px;margin:6px 0;"/>
-  <div id="hockeyMfaSetupActions">
-    <button type="button" onclick="adminMfaStart()">Set Up Authenticator</button>
-  </div>
-  <div id="hockeyMfaEnroll" style="display:none;padding:12px;border:1px solid #666;border-radius:8px;margin:10px 0;">
-    <p>On Samsung, open your authenticator app, choose <b>Enter a setup key</b>, then select <b>Time based</b>.</p>
-    <p><b>Setup key (do not share):</b> <code id="hockeyMfaSecret" style="overflow-wrap:anywhere;"></code></p>
-    <label for="hockeyMfaEnrollCode">Enter the new six-digit authenticator code</label>
-    <input id="hockeyMfaEnrollCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="123456" style="width:160px;"/>
-    <button type="button" onclick="adminMfaConfirm()">Verify and Enable MFA</button>
-    <p><small>The setup key expires in 10 minutes if not confirmed.</small></p>
-  </div>
-  <div id="hockeyMfaEnabledActions" style="display:none;margin-top:12px;">
-    <p>For sensitive changes, enter a fresh authenticator or unused recovery code:</p>
-    <label for="hockeyMfaActionCode">Authenticator / recovery code</label>
-    <input id="hockeyMfaActionCode" type="text" inputmode="text" autocomplete="one-time-code" style="max-width:230px;"/>
-    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px;">
-      <button type="button" onclick="adminMfaRevoke()">Revoke all trusted devices</button>
-      <button type="button" onclick="adminMfaDisable()">Disable MFA</button>
-    </div>
-  </div>
-  <div id="hockeyMfaRecovery" style="display:none;border:2px solid #ffbb33;padding:12px;margin-top:12px;">
-    <b>Save these recovery codes securely — they will not be shown again:</b>
-    <pre id="hockeyMfaRecoveryCodes" style="white-space:pre-wrap;user-select:text;"></pre>
-    <button type="button" onclick="adminMfaSavedCodes()">I've saved the recovery codes</button>
-  </div>
-  <p id="hockeyMfaFeedback" role="status" style="color:#b5e3bb;"></p>
-</div>
-<!-- ADMIN-PASSWORD-ROTATION-V1: independent of goalie/payment password rules. -->
-<div id="hockeyAdminPasswordRotation" style="margin-top:18px;padding-top:16px;border-top:1px solid #555;">
-  <h3 style="color:#ff9b47;margin:0 0 12px;">Change Admin Password</h3>
-  <p style="color:#ccc;margin:0 0 12px;">Requires your current Admin password and a fresh authenticator code, even on a trusted device. Changing the password signs out all Admin sessions and revokes trusted browsers.</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px;max-width:760px;">
-    <div><label for="hpAdminCurrentPassword">Current Admin password</label>
-      <input id="hpAdminCurrentPassword" type="password" autocomplete="current-password" maxlength="128" style="width:100%;margin-top:5px;" /></div>
-    <div><label for="hpAdminNextPassword">New Admin password</label>
-      <input id="hpAdminNextPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" placeholder="At least 12 characters" style="width:100%;margin-top:5px;" /></div>
-    <div><label for="hpAdminConfirmPassword">Confirm new Admin password</label>
-      <input id="hpAdminConfirmPassword" type="password" autocomplete="new-password" minlength="12" maxlength="128" style="width:100%;margin-top:5px;" /></div>
-    <div><label for="hpAdminChangeOtp">New authenticator or recovery code</label>
-      <input id="hpAdminChangeOtp" type="text" autocomplete="one-time-code" maxlength="32" spellcheck="false" style="width:100%;margin-top:5px;" /></div>
-  </div>
-  <button id="hpAdminChangePasswordBtn" type="button" onclick="hockeyChangeAdminPassword()" style="margin-top:12px;">Change Admin Password</button>
-  <div id="hpAdminPasswordChangeStatus" role="status" aria-live="polite" style="margin-top:10px;color:#bce5c2;"></div>
-</div>
-<!-- HOCKEY-IP-LOCK-TOGGLE-V1: Admin-only setting; separate from MFA and Admin password rotation. -->
-<div id="hpIpLockSection" style="margin-top:18px;padding-top:16px;border-top:1px solid #555;">
-  <h3 style="color:#ff9b47;margin:0 0 10px;">IP Login Lockout</h3>
-  <p id="hpIpLockState" role="status" aria-live="polite" style="margin:0 0 12px;color:#cdeccf;">Log in as Admin to view the setting.</p>
-  <label for="hpIpLockEnabled" style="display:flex;align-items:center;gap:10px;cursor:pointer;margin:0 0 12px;">
-    <input type="checkbox" role="switch" id="hpIpLockEnabled" style="width:20px;height:20px;flex:none;" disabled>
-    <strong>Enable 15-minute IP lockout after repeated failed logins</strong>
-  </label>
-  <p style="margin:0 0 12px;color:#ccc;font-size:0.9em;">OFF disables the IP lockout only. Admin passwords and MFA remain required. Turn ON when testing is finished.</p>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;max-width:680px;">
-    <div><label for="hpIpLockPassword">Current Admin password</label>
-      <input type="password" id="hpIpLockPassword" autocomplete="current-password" style="width:100%;margin-top:5px;" maxlength="128"></div>
-    <div><label for="hpIpLockMfaCode">Fresh MFA code (if MFA is enabled)</label>
-      <input type="text" id="hpIpLockMfaCode" autocomplete="one-time-code" style="width:100%;margin-top:5px;" maxlength="32" inputmode="text" spellcheck="false"></div>
-  </div>
-  <button id="hpIpLockSave" type="button" onclick="hockeySaveIpLock()" style="margin-top:12px;" disabled>Apply IP Lockout Setting</button>
-  <div id="hpIpLockFeedback" role="status" aria-live="polite" style="margin-top:10px;color:#cdeccf;"></div>
-</div>
+<p style="margin-top:16px;color:#bbb;">Backup administration uses the Render ADMIN_PASSWORD. Change the Admin password through Render environment settings.</p>
 </section>
 
 </div>
@@ -7565,7 +7497,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
         function showDashboard() {
             document.getElementById('loginBox').style.display = 'none';
             document.getElementById('adminPanel').style.display = 'block';
-            if (typeof refreshAdminMfaStatus === 'function') refreshAdminMfaStatus();
         }
 
         async function login() {
@@ -7578,13 +7509,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
                 const res = await fetch(`${API_URL}/api/admin/login`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ password: pass, rememberMe, mfaCode: document.getElementById('hockeyMfaLoginCode').value.trim(), trustMfaDevice: document.getElementById('trustMfaDevice').checked })
+                    body: JSON.stringify({ password: pass, rememberMe })
                 });
                 const data = await res.json().catch(() => ({}));
 
                 if (res.ok && data.success) {
-                    document.getElementById('hockeyMfaLoginCode').value='';
-                    document.getElementById('hockeyMfaLoginField').style.display='none';
                     sessionToken = data.sessionToken || "";
                     setStoredSessionToken(sessionToken, !!data.remember);
                     showDashboard();
@@ -7601,8 +7530,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
                     return;
                 }
 
-                if(data.mfaRequired){ document.getElementById('hockeyMfaLoginField').style.display='block'; document.getElementById('hockeyMfaLoginCode').focus(); }
-                errorMsg.textContent = data.error || 'Wrong Password or verification code';
+                errorMsg.textContent = data.error || 'Wrong password';
                 errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
@@ -13770,23 +13698,58 @@ white-space:pre-wrap !important;
 
 
 
-<script id="hp-backup-on-admin-open-v1">
+<script id="hp-backup-on-admin-open-v2">
 (() => {
   const panel = document.getElementById('adminPanel');
   if (!panel) return;
-  let asked = false, modal = null;
+  let asked = false, modal = null, currentVersion = null;
+  const storageKey = 'hp-backup-acknowledged-version-v2';
   const close = () => {
     if (modal) modal.remove();
     modal = null;
   };
-  window.markPortalBackupDownloaded = close;
+  const acknowledge = () => {
+    if (currentVersion) {
+      try { localStorage.setItem(storageKey, currentVersion); } catch (_) {}
+    }
+    close();
+  };
+  window.markPortalBackupDownloaded = acknowledge;
 
-  function check() {
+  async function check() {
+    if (panel.style.display !== 'block') {
+      asked = false;
+      close();
+      return;
+    }
     if (asked || document.hidden ||
         panel.style.display !== 'block' ||
         typeof sessionToken === 'undefined' || !sessionToken) return;
 
     asked = true;
+    try {
+      const response = await adminFetch(
+        `${API_URL}/api/admin/backup-change-status`, {
+          method: 'POST',
+          body: JSON.stringify({ sessionToken })
+        }
+      );
+      if (!response.ok) return;
+      const data = await response.json();
+      if (typeof data.version !== 'string' ||
+          !/^[a-f0-9]{64}$/i.test(data.version)) return;
+
+      currentVersion = data.version;
+      let acknowledged = null;
+      try { acknowledged = localStorage.getItem(storageKey); } catch (_) {}
+
+      if (acknowledged === currentVersion ||
+          document.hidden ||
+          panel.style.display !== 'block') return;
+    } catch (err) {
+      console.warn('Backup reminder status check failed:', err);
+      return;
+    }
     modal = document.createElement('div');
     modal.setAttribute('role', 'dialog');
     modal.setAttribute('aria-modal', 'true');
@@ -13813,7 +13776,7 @@ white-space:pre-wrap !important;
     skip.textContent = 'Not Now';
     skip.style.cssText = 'background:#596679;color:white;border:0;padding:12px;border-radius:8px;cursor:pointer';
 
-    skip.onclick = close;
+    skip.onclick = acknowledge;
     save.onclick = async () => {
       save.disabled = true;
       try { await downloadBackup(); }
@@ -13831,208 +13794,6 @@ white-space:pre-wrap !important;
   });
   document.addEventListener('visibilitychange', check);
   check();
-})();
-</script>
-<script id="hp-admin-mfa-ui-v1">
-// ADMIN-MFA-V1. Handles enrollment and trusted-device second-factor login.
-function adminMfaEl(id) {return document.getElementById(id);}
-function adminMfaFeedback(message) {const el=adminMfaEl('hockeyMfaFeedback'); if(el) el.textContent=message;}
-async function adminMfaRequest(endpoint,values) {
-  const response=await adminFetch(`${API_URL}/api/admin/mfa/${endpoint}`, {
-    method:'POST', body:JSON.stringify(values), credentials:'same-origin'
-  });
-  const data=await response.json().catch(()=>({}));
-  if(!response.ok) throw new Error(data.error||'MFA operation failed');
-  return data;
-}
-async function refreshAdminMfaStatus() {
-  if(!sessionToken) return;
-  try {
-    const response=await adminFetch(`${API_URL}/api/admin/mfa/status`);
-    if(!response.ok) return;
-    const data=await response.json();
-    const status=adminMfaEl('hockeyMfaStatus');
-    if(status) status.textContent=data.enabled
-      ? `Enabled — ${data.trustedDevices} trusted device(s); ${data.recoveryCodesRemaining} unused recovery code(s).`
-      : 'Not enabled. Your Admin password currently works without MFA.';
-    if(adminMfaEl('hockeyMfaSetupActions')) adminMfaEl('hockeyMfaSetupActions').style.display=data.enabled?'none':'block';
-    if(adminMfaEl('hockeyMfaEnabledActions')) adminMfaEl('hockeyMfaEnabledActions').style.display=data.enabled?'block':'none';
-  } catch(e) {adminMfaFeedback('Could not read MFA status.');}
-}
-async function adminMfaStart() {
-  adminMfaFeedback('');
-  const pass=adminMfaEl('hockeyMfaCurrentPassword').value;
-  if(!pass) {adminMfaFeedback('Enter the current Admin password first.');return;}
-  try {
-    const data=await adminMfaRequest('setup',{password:pass});
-    adminMfaEl('hockeyMfaSecret').textContent=data.secret;
-    adminMfaEl('hockeyMfaEnroll').style.display='block';
-    adminMfaFeedback('Add the time-based setup key to your authenticator, then verify the code.');
-  } catch(e) {adminMfaFeedback(e.message);}
-}
-async function adminMfaConfirm() {
-  const code=adminMfaEl('hockeyMfaEnrollCode').value.trim();
-  try {
-    const data=await adminMfaRequest('confirm',{code});
-    adminMfaEl('hockeyMfaSecret').textContent='';
-    adminMfaEl('hockeyMfaEnroll').style.display='none';
-    adminMfaEl('hockeyMfaRecoveryCodes').textContent=data.recoveryCodes.join('\n');
-    adminMfaEl('hockeyMfaRecovery').style.display='block';
-    adminMfaFeedback('MFA enabled. Save recovery codes before logging out. Previous Admin sessions are invalidated.');
-  } catch(e) {adminMfaFeedback(e.message);}
-}
-function adminMfaSavedCodes() {
-  adminMfaEl('hockeyMfaRecoveryCodes').textContent='';
-  adminMfaEl('hockeyMfaRecovery').style.display='none';
-  adminMfaEl('hockeyMfaCurrentPassword').value='';
-  adminMfaFeedback('Recovery codes hidden. Log out and sign back in using your password and authenticator.');
-}
-async function adminMfaRevoke() {
-  if(!confirm('Remove all trusted devices? Each device must use MFA again.')) return;
-  try {
-    await adminMfaRequest('revoke-devices',{
-      password:adminMfaEl('hockeyMfaCurrentPassword').value,
-      code:adminMfaEl('hockeyMfaActionCode').value.trim()
-    });
-    adminMfaFeedback('All trusted devices revoked.');
-    adminMfaEl('hockeyMfaActionCode').value='';
-    refreshAdminMfaStatus();
-  } catch(e) {adminMfaFeedback(e.message);}
-}
-async function adminMfaDisable() {
-  if(!confirm('Disable MFA for this Admin Panel? Password-only login will be allowed.')) return;
-  try {
-    await adminMfaRequest('disable',{
-      password:adminMfaEl('hockeyMfaCurrentPassword').value,
-      code:adminMfaEl('hockeyMfaActionCode').value.trim()
-    });
-    adminMfaFeedback('MFA disabled. Log in again.');
-    adminMfaEl('hockeyMfaActionCode').value='';
-    refreshAdminMfaStatus();
-  } catch(e) {adminMfaFeedback(e.message);}
-}
-</script>
-<script id="hp-admin-password-rotation-v1">
-async function hockeyChangeAdminPassword() {
-  const $ = id => document.getElementById(id);
-  const current = $('hpAdminCurrentPassword');
-  const next = $('hpAdminNextPassword');
-  const confirm = $('hpAdminConfirmPassword');
-  const code = $('hpAdminChangeOtp');
-  const result = $('hpAdminPasswordChangeStatus');
-  const button = $('hpAdminChangePasswordBtn');
-  result.textContent = '';
-  if(!sessionToken) { result.textContent='Please log in first.'; return; }
-  if(next.value.length < 12 || next.value.length > 128 || next.value.trim() !== next.value) {
-    result.textContent='Use 12–128 characters with no leading or trailing spaces.'; return;
-  }
-  if(next.value !== confirm.value) { result.textContent='New passwords do not match.'; return; }
-  if(!current.value || !code.value.trim()) {
-    result.textContent='Current Admin password and a fresh authenticator code are required.'; return;
-  }
-  if(!window.confirm('Change Admin password, sign out all Admin devices and revoke 30-day MFA trust?')) return;
-  button.disabled=true;
-  try {
-    const response=await adminFetch(`${API_URL}/api/admin/security/change-admin-password`,{
-      method:'POST',credentials:'same-origin',
-      body:JSON.stringify({
-        currentPassword:current.value,
-        newPassword:next.value,
-        confirmPassword:confirm.value,
-        mfaCode:code.value.trim()
-      })
-    });
-    const data=await response.json().catch(()=>({}));
-    if(!response.ok || !data.success) throw new Error(data.error||'Admin password change failed.');
-    current.value=''; next.value=''; confirm.value=''; code.value='';
-    if(typeof clearStoredSessionToken==='function') clearStoredSessionToken();
-    sessionToken='';
-    showLogin();
-    document.getElementById('adminPass').value='';
-    window.alert('Admin password changed. All Admin sessions and MFA-trusted browsers have been revoked. Log in again with your new password and a fresh authenticator code.');
-  } catch(error) {
-    result.textContent=error.message||'Admin password change failed.';
-  } finally {
-    button.disabled=false;
-  }
-}
-</script>
-<script id="hp-ip-lock-toggle-ui-v1">
-// No polling: refresh on authenticated dashboard display and after changes.
-let hockeyIpLockCurrentValue = null;
-let hockeyIpLockMfaEnabled = false;
-async function refreshHockeyIpLockStatus() {
-  const status = document.getElementById('hpIpLockState');
-  const toggle = document.getElementById('hpIpLockEnabled');
-  const save = document.getElementById('hpIpLockSave');
-  if (!status || !sessionToken) return;
-  try {
-    const response = await adminFetch(`${API_URL}/api/admin/security/ip-lock`);
-    if (!response.ok) throw new Error('Unable to load IP lockout setting.');
-    const data = await response.json();
-    hockeyIpLockCurrentValue = data.enabled === true;
-    hockeyIpLockMfaEnabled = data.mfaEnabled === true;
-    toggle.checked = hockeyIpLockCurrentValue;
-    toggle.disabled = false;
-    save.disabled = false;
-    status.textContent = hockeyIpLockCurrentValue ? 'ON — 2 failed attempts trigger a 15-minute lockout.' : 'OFF — IP lockout disabled for this portal.';
-  } catch (error) {
-    toggle.disabled = true;
-    save.disabled = true;
-    status.textContent = error.message || 'Unable to read lockout status.';
-  }
-}
-async function hockeySaveIpLock() {
-  const toggle = document.getElementById('hpIpLockEnabled');
-  const password = document.getElementById('hpIpLockPassword');
-  const mfa = document.getElementById('hpIpLockMfaCode');
-  const save = document.getElementById('hpIpLockSave');
-  const feedback = document.getElementById('hpIpLockFeedback');
-  feedback.textContent='';
-  if (!sessionToken) { feedback.textContent='Admin login required.'; return; }
-  if (!password.value || (hockeyIpLockMfaEnabled && !mfa.value.trim())) {
-    feedback.textContent='Enter your current Admin password' + (hockeyIpLockMfaEnabled ? ' and a fresh MFA code.' : '.');
-    return;
-  }
-  if (toggle.checked === hockeyIpLockCurrentValue) {
-    feedback.textContent='No change to save.'; return;
-  }
-  const enabling=toggle.checked;
-  if (!window.confirm(enabling ? 'Enable IP login lockout for this portal?' : 'Temporarily disable IP lockout on this portal? Password and MFA checks will remain active.')) return;
-  save.disabled=true;
-  toggle.disabled=true;
-  try {
-    const response = await adminFetch(`${API_URL}/api/admin/security/ip-lock`, {
-      method:'POST',credentials:'same-origin',body:JSON.stringify({
-        enabled: enabling,currentPassword: password.value,mfaCode:mfa.value.trim()
-      })
-    });
-    const data = await response.json().catch(()=>({}));
-    if (!response.ok || !data.success) throw new Error(data.error || 'Failed to change IP lockout setting.');
-    password.value=''; mfa.value='';
-    feedback.textContent = enabling ? 'IP lockout enabled.' : 'IP lockout disabled for this portal.';
-  } catch (error) {
-    feedback.textContent = error.message || 'Could not change IP lockout setting.';
-  } finally {
-    await refreshHockeyIpLockStatus();
-  }
-}
-(() => {
-  function init() {
-    const panel = document.getElementById('adminPanel');
-    if (!panel) return;
-    let lastVisible = false;
-    const check = () => {
-      const visible = panel.style.display === 'block' && !!sessionToken;
-      if (visible && !lastVisible) refreshHockeyIpLockStatus();
-      lastVisible=visible;
-    };
-    new MutationObserver(check).observe(panel, {attributes:true,attributeFilter:['style']});
-    document.addEventListener('visibilitychange', check);
-    check();
-  }
-  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded', init, {once:true});
-  else init();
 })();
 </script>
 </body>

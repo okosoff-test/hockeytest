@@ -23,14 +23,9 @@ const jwt = require('jsonwebtoken');
 const cron = require('node-cron');
 const { Pool } = require('pg');
 const { HockeyAuthSecurity } = require('./hockey-auth-security');
-const { HockeyAdminMfa } = require('./hockey-admin-mfa');
-const { HockeyAdminPassword, validNewPassword } = require('./hockey-admin-password');
 const app = express();
-// SECURITY-HARDENING-2026-10-31: persistent per-IP lockouts and role credential rotation.
+// Backup version: password-only admin login, no MFA or IP lockout.
 const authSecurity = new HockeyAuthSecurity();
-// Render-only contingency login: explicitly opt in; Pi defaults unchanged.
-const SIMPLE_STANDBY_LOGIN = process.env.HOCKEY_STANDBY_SIMPLE_LOGIN === 'true';
-if (SIMPLE_STANDBY_LOGIN) authSecurity.state.lockoutEnabled = false;
 const PORT = process.env.PORT || 3000;
 
 app.disable('x-powered-by');
@@ -49,6 +44,19 @@ function readSecretOrEnv(envName, fileName) {
 }
 
 const LOCAL_PG_HOST = String(process.env.DB_HOST || '').trim();
+// These exports are Render/Neon contingencies, not standalone Pi deployments.
+if (!String(process.env.DATABASE_URL || '').trim()) {
+    throw new Error('DATABASE_URL (separate Neon database) is required for backup deployment');
+}
+if (LOCAL_PG_HOST) {
+    throw new Error('Backup deployment must use Neon DATABASE_URL, not local DB_HOST');
+}
+if (!/^\d{4}$/.test(String(process.env.DEFAULT_SIGNUP_CODE || '').trim())) {
+    throw new Error('Set DEFAULT_SIGNUP_CODE to the live portal signup code in Render');
+}
+if (!String(process.env.DEFAULT_GAME_TIME || '').trim().toLowerCase().startsWith('friday')) {
+    throw new Error('Set DEFAULT_GAME_TIME in Render to the live Friday portal game time');
+}
 const HAS_DB = Boolean(LOCAL_PG_HOST || process.env.DATABASE_URL);
 if (LOCAL_PG_HOST && (!process.env.DB_USER || !process.env.DB_NAME || !process.env.DB_PASSWORD_FILE)) {
     throw new Error('Local PostgreSQL configuration incomplete: DB_HOST, DB_USER, DB_NAME and DB_PASSWORD_FILE are required');
@@ -173,12 +181,6 @@ const verifyCodeLimiter = rateLimit({
     max: Number(process.env.RL_VERIFY_CODE_MAX || 12)
 });
 
-const adminLoginLimiter = rateLimit({
-    ...apiLimiterConfig,
-    windowMs: 15 * 60 * 1000,
-    max: Number(process.env.RL_ADMIN_LOGIN_MAX || 8)
-});
-
 const cancelRegistrationLimiter = rateLimit({
     ...apiLimiterConfig,
     windowMs: 15 * 60 * 1000,
@@ -282,6 +284,22 @@ async function schedulerCatchupMiddleware(req, res, next) {
     next();
 }
 
+// Failover safety: while in standby, player/goalie/collector API writes are disabled.
+// Admin endpoints remain available to check login and restore current JSON data.
+// On failover set PORTAL_STANDBY_MODE=false AND enable the scheduler below.
+const PORTAL_STANDBY_MODE = String(process.env.PORTAL_STANDBY_MODE || 'true').toLowerCase() !== 'false';
+app.use((req, res, next) => {
+    if (!PORTAL_STANDBY_MODE || !['POST','PUT','PATCH','DELETE'].includes(req.method)) return next();
+    if (!String(req.path || '').startsWith('/api/')) return next();
+    if (String(req.path).startsWith('/api/admin/')) return next();
+    // Health and heartbeat endpoints are side-effect-free outside of the scheduler guard.
+    if (req.path === '/api/health' || req.path === '/api/cron/heartbeat') return next();
+    return res.status(503).json({
+        error: 'This hockey portal is in standby mode. Use the Raspberry Pi portal until failover is activated.',
+        code: 'PORTAL_STANDBY'
+    });
+});
+
 app.use(durableMutationGuardMiddleware);
 app.use(schedulerCatchupMiddleware);
 
@@ -292,7 +310,7 @@ app.use(schedulerCatchupMiddleware);
 // Normal runtime reads from saved settings, not hidden fallback literals.
 const PORTAL_BOOTSTRAP_DEFAULTS = {
     timezone: 'America/Toronto',
-    signupCode: '9855',
+    signupCode: '0000', // Placeholder only; set DEFAULT_SIGNUP_CODE in Render
     gameLocation: 'Capri Recreation Complex',
     gameTime: 'Friday 9:30 PM'
 };
@@ -361,8 +379,19 @@ if (!configuredAdminTokenSecret) {
 const ADMIN_REMEMBER_TOKEN_TTL_DAYS = 1; // hardening: max 24h for remember-me sessions
 const ADMIN_SESSION_TOKEN_TTL_HOURS = Number(process.env.ADMIN_SESSION_HOURS || 12);
 const ADMIN_SESSION_FILE = process.env.ADMIN_SESSION_FILE || './admin-sessions.json';
-const adminMfa = new HockeyAdminMfa();
-const adminPassword = new HockeyAdminPassword(ADMIN_PASSWORD);
+// Admin authentication always checks the password in the Render environment.
+// There is no local credential override, MFA, admin password rotation or IP lockout.
+if (!ADMIN_PASSWORD) throw new Error('ADMIN_PASSWORD must be set on Render');
+const adminPassword = Object.freeze({
+    version: 0,
+    isConfigured: () => Boolean(ADMIN_PASSWORD),
+    verify: (candidate) => {
+        if (typeof candidate !== 'string') return false;
+        const supplied = Buffer.from(candidate.trim(), 'utf8');
+        const expected = Buffer.from(ADMIN_PASSWORD, 'utf8');
+        return supplied.length === expected.length && crypto.timingSafeEqual(supplied, expected);
+    }
+});
 
 // Game details - FRIDAY HOCKEY
 let gameLocation = PORTAL_DEFAULTS.gameLocation;
@@ -2442,8 +2471,8 @@ async function checkWeeklyReset() {
     return true;
 }
 
-const BACKGROUND_SCHEDULER_ENABLED = String(process.env.BACKGROUND_SCHEDULER_ENABLED || 'true').toLowerCase() === 'true';
-const ENABLE_INTERNAL_SCHEDULER_CRON = String(process.env.ENABLE_INTERNAL_SCHEDULER_CRON || 'true').toLowerCase() === 'true';
+const BACKGROUND_SCHEDULER_ENABLED = String(process.env.BACKGROUND_SCHEDULER_ENABLED || 'false').toLowerCase() === 'true';
+const ENABLE_INTERNAL_SCHEDULER_CRON = String(process.env.ENABLE_INTERNAL_SCHEDULER_CRON || 'false').toLowerCase() === 'true';
 const WARM_TICK_ENABLED = String(process.env.WARM_TICK_ENABLED || 'false').toLowerCase() === 'true';
 const WARM_TICK_MS = Number(process.env.WARM_TICK_MS || 60000);
 let schedulerRunning = false;
@@ -2508,7 +2537,7 @@ let lastPersistedStateFingerprint = '';
 async function runSchedulerTick() {
     // A staging deployment must not release rosters or reset weeks on startup,
     // incoming health checks, or page requests before Neon data is imported.
-    if (String(process.env.PORTAL_SCHEDULER_ACTIVE || 'true').toLowerCase() === 'false') return;
+    if (String(process.env.PORTAL_SCHEDULER_ACTIVE || 'false').toLowerCase() === 'false') return;
     if (schedulerRunning) return;
 
     const startedAt = Date.now();
@@ -7056,167 +7085,30 @@ app.post('/api/admin/check-session', (req, res) => {
     });
 });
 
-app.post('/api/admin/login', (req, res, next) => SIMPLE_STANDBY_LOGIN ? next() : authSecurity.check(req, res, next), (req, res) => {
-    const { password, rememberMe, mfaCode, trustMfaDevice } = req.body || {};
+// BACKUP ADMIN LOGIN: only the Render ADMIN_PASSWORD is accepted.
+app.post('/api/admin/login', (req, res) => {
+    const { password, rememberMe } = req.body || {};
     if (!hasConfiguredAdminPassword()) {
-        return res.status(500).json({ success:false, error:'ADMIN_PASSWORD is not configured on the server' });
+        return res.status(500).json({ success: false, error: 'ADMIN_PASSWORD is not configured on Render' });
     }
     if (!isValidAdminPassword(password)) {
-        addAdminAuditEntry('login_failed',req,{reason:'invalid_password'});
-        return authSecurity.fail(req,res);
+        addAdminAuditEntry('login_failed', req, { reason: 'invalid_password' });
+        return res.status(401).json({ success: false, error: 'Invalid admin password.' });
     }
-    if (!SIMPLE_STANDBY_LOGIN && adminMfa.enabled) {
-        const trusted=adminMfa.isTrusted(req);
-        if (!trusted && !mfaCode) {
-            return res.status(401).json({ success:false, mfaRequired:true,
-                error:'Enter your six-digit authenticator or recovery code.' });
-        }
-        if (!trusted) {
-            let valid=false;
-            try { valid=adminMfa.verify(mfaCode); }
-            catch(err) {console.error('MFA login error:',err.message);return res.status(500).json({error:'MFA verification unavailable.'});}
-            if (!valid) {
-                addAdminAuditEntry('mfa_failed',req);
-                return authSecurity.fail(req,res);
-            }
-            if (trustMfaDevice === true) {
-                try { adminMfa.trust(req,res); }
-                catch(err) {console.error('Could not trust MFA device:',err.message); /* login still requires verified MFA */}
-            }
-        }
-    }
-    if (!SIMPLE_STANDBY_LOGIN) authSecurity.success(req);
     const sessionToken = createAdminSessionToken(rememberMe !== false);
     const decoded = decodeAdminSession(sessionToken);
-    addAdminAuditEntry('login_success',req,{ mfa:adminMfa.enabled, trustedDevice:adminMfa.isTrusted(req),
-        expiresAt: decoded?.exp ? new Date(decoded.exp*1000).toISOString() : null });
-    res.json({
-        success:true,sessionToken,remember:rememberMe!==false,
-        expiresInDays:rememberMe!==false?ADMIN_REMEMBER_TOKEN_TTL_DAYS:null,
-        expiresInHours:rememberMe===false?ADMIN_SESSION_TOKEN_TTL_HOURS:null,
-        expiresAt:decoded?.exp ? new Date(decoded.exp*1000).toISOString():null
+    addAdminAuditEntry('login_success', req, {
+        expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null
+    });
+    return res.json({
+        success: true, sessionToken, remember: rememberMe !== false,
+        expiresInDays: rememberMe !== false ? ADMIN_REMEMBER_TOKEN_TTL_DAYS : null,
+        expiresInHours: rememberMe === false ? ADMIN_SESSION_TOKEN_TTL_HOURS : null,
+        expiresAt: decoded?.exp ? new Date(decoded.exp * 1000).toISOString() : null
     });
 });
 
-// ADMIN-MFA-V1: optional TOTP enrollment; enabled only after administrator confirms a code.
-app.get('/api/admin/mfa/status', (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
-    return res.json(adminMfa.status());
-});
-app.post('/api/admin/mfa/setup', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
-    if (!isValidAdminPassword(req.body?.password)) return authSecurity.fail(req,res);
-    if (adminMfa.enabled) return res.status(409).json({error:'MFA is already enabled.'});
-    try {
-        const issuer = String(process.env.HOCKEY_MFA_ISSUER || process.env.LEAGUE_NAME || 'Phans Hockey Portal').slice(0,80);
-        const setup=adminMfa.beginSetup(issuer);
-        addAdminAuditEntry('mfa_setup_started',req);
-        return res.json({success:true, ...setup});
-    } catch(error) {console.error('MFA setup error:',error.message);return res.status(500).json({error:'Could not start MFA enrollment.'});}
-});
-app.post('/api/admin/mfa/confirm', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
-    try {
-        const codes=adminMfa.confirmSetup(req.body?.code);
-        if (!codes) return authSecurity.fail(req,res);
-        authSecurity.success(req);
-        // Invalidate old sessions after MFA enrollment. Next login must satisfy TOTP.
-        adminSessionState.logoutAllAfter=Math.floor(Date.now()/1000)+1;
-        adminSessionState.revokedJtis={};
-        saveAdminSessionState();
-        addAdminAuditEntry('mfa_enabled',req);
-        return res.json({success:true,recoveryCodes:codes,message:'Save the recovery codes now. They are displayed only once.'});
-    } catch(error) {console.error('MFA confirmation error:',error.message);return res.status(500).json({error:'Could not enable MFA.'});}
-});
-app.post('/api/admin/mfa/revoke-devices', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
-    if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
-    adminMfa.revokeTrusted(res); authSecurity.success(req);
-    addAdminAuditEntry('mfa_trusted_devices_revoked',req);
-    return res.json({success:true});
-});
-app.post('/api/admin/mfa/disable', (req,res,next) => SIMPLE_STANDBY_LOGIN ? res.status(409).json({error:'MFA disabled for standby'}) : next(), (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Unauthorized'});
-    if (!isValidAdminPassword(req.body?.password) || !adminMfa.enabled || !adminMfa.verify(req.body?.code)) return authSecurity.fail(req,res);
-    adminMfa.disable(res); authSecurity.success(req);
-    adminSessionState.logoutAllAfter=Math.floor(Date.now()/1000)+1;
-    adminSessionState.revokedJtis={};saveAdminSessionState();
-    addAdminAuditEntry('mfa_disabled',req);
-    return res.json({success:true});
-});
-
-// HOCKEY-IP-LOCK-TOGGLE-V1: per-portal, Admin-only; security setting stored in /state.
-app.get('/api/admin/security/ip-lock', (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
-    res.setHeader('Cache-Control','no-store');
-    return res.json({enabled:authSecurity.state.lockoutEnabled!==false,mfaEnabled:adminMfa.enabled});
-});
-app.post('/api/admin/security/ip-lock', (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
-    const {enabled,currentPassword,mfaCode} = req.body || {};
-    if (typeof enabled!=='boolean') return res.status(400).json({error:'Enabled must be true or false.'});
-    if (!isValidAdminPassword(currentPassword)) {
-        addAdminAuditEntry('ip_lock_change_denied',req,{reason:'invalid_password'});
-        return res.status(403).json({error:'Current Admin password is incorrect.'});
-    }
-    // Always require a fresh second factor when MFA is enrolled, including on trusted browsers.
-    if (adminMfa.enabled) {
-        let verified=false;
-        try { verified=adminMfa.verify(mfaCode); }
-        catch(e) {console.error('IP-lock MFA verification failed:',e.message);
-            return res.status(500).json({error:'MFA verification unavailable.'}); }
-        if (!verified) return res.status(403).json({error:'A fresh MFA or recovery code is required.'});
-    }
-    try {
-        authSecurity.setLockoutEnabled(enabled);
-        addAdminAuditEntry('ip_lock_setting_changed',req,{enabled});
-        res.setHeader('Cache-Control','no-store');
-        return res.json({success:true,enabled});
-    } catch(e) {
-        console.error('IP lockout setting save failed:',e.message);
-        return res.status(500).json({error:'Could not persist IP lockout setting.'});
-    }
-});
-
-// ADMIN-PASSWORD-ROTATION-V1: MFA required even if browser is trusted.
-app.post('/api/admin/security/change-admin-password', (req,res,next) => authSecurity.check(req,res,next), (req,res) => {
-    if (!isAuthorizedAdminRequest(req)) return res.status(401).json({error:'Admin session required.'});
-    if (process.env.HOCKEY_ADMIN_ENV_PASSWORD_ONLY === 'true') return res.status(409).json({error:'Admin password is managed in Render Environment (ADMIN_PASSWORD).'});
-    if (!adminMfa.enabled) return res.status(409).json({error:'Enable Admin MFA before changing the Admin password.'});
-    const {currentPassword,newPassword,confirmPassword,mfaCode}=req.body || {};
-    if (!validNewPassword(newPassword)) {
-        return res.status(400).json({error:'Use 12–128 characters, without leading/trailing spaces or control characters.'});
-    }
-    if (newPassword !== confirmPassword) return res.status(400).json({error:'New passwords do not match.'});
-    if (isValidAdminPassword(newPassword)) return res.status(400).json({error:'Choose a different Admin password.'});
-    if (!isValidAdminPassword(currentPassword)) {
-        addAdminAuditEntry('admin_password_change_failed',req,{reason:'invalid_current_password'});
-        return authSecurity.fail(req,res);
-    }
-    let verified=false;
-    try { verified=adminMfa.verify(mfaCode); }
-    catch(err) { console.error('Admin password MFA check failed:',err.message);
-        return res.status(500).json({error:'MFA verification unavailable.'}); }
-    if (!verified) {
-        addAdminAuditEntry('admin_password_change_failed',req,{reason:'invalid_mfa'});
-        return authSecurity.fail(req,res);
-    }
-    try {
-        // Revoke trusted browser tokens before rotating the credential. If rotation
-        // later fails, trust is still revoked but the previous password remains valid.
-        adminMfa.revokeTrusted(res);
-        const credentialVersion=adminPassword.rotate(newPassword);
-        // Tokens include the credential revision; all previously issued tokens
-        // become invalid immediately, regardless of their timestamp or expiry.
-        authSecurity.success(req);
-        addAdminAuditEntry('admin_password_changed',req,{credentialVersion,trustedDevicesRevoked:true});
-        res.setHeader('Cache-Control','no-store');
-        return res.json({success:true,sessionsRevoked:true,trustedDevicesRevoked:true});
-    } catch(err) {
-        console.error('Admin password rotation error:',err.message);
-        return res.status(500).json({error:'Could not save new Admin credential. Please check server logs.'});
-    }
-});
+// MFA, IP-login lockout, and admin-password rotation APIs intentionally excluded.
 
 // Security: only a validated admin JWT may rotate goalie or payment passwords.
 app.post('/api/admin/security/change-role-password', (req, res) => {
