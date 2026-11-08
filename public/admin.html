@@ -5996,18 +5996,19 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <div class="container" id="loginBox">
 <h1>Admin Portal</h1>
 <p style="text-align:center; color:#888;">Phan's Hockey</p>
-<input id="adminPass" placeholder="Enter Admin password" type="password"/>
+<input id="adminPass" placeholder="Enter Render ADMIN_PASSWORD" type="password"/>
 <div style="display:flex; align-items:center; gap:3px; margin-top:4px; margin-bottom:4px; color:#bbb; font-size:0.95rem; flex-wrap:wrap;">
 <input id="showAdminPass" style="width:auto; margin:0;" type="checkbox"/>
 <label for="showAdminPass" style="cursor:pointer;">Show password</label>
 <span style="opacity:.45;">•</span>
 <input checked="" id="rememberDevice" style="width:auto; margin:0;" type="checkbox"/>
-<label for="rememberDevice" style="cursor:pointer;">Keep Admin session (up to 24 hours)</label>
+<label for="rememberDevice" style="cursor:pointer;">Remember this device for 30 days</label>
 </div>
 <button onclick="login()" style="width:100%;border-spacing:0;">Access Dashboard</button>
 <p id="errorMsg" style="color:#ff4444; text-align:center; display:none;">Wrong Password</p>
 </div>
 <div class="container admin-panel" id="adminPanel">
+
 <div class="admin-account-menu">
     <div class="admin-account-wrap">
         <button aria-expanded="false" aria-label="Account menu" class="admin-account-btn" id="adminAccountMenuBtn" onclick="toggleAdminAccountMenu(event)" type="button">👤</button>
@@ -6713,21 +6714,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 <div class="delete-result" id="deleteResult"></div>
 </div>
 
-<!-- SECURITY-HARDENING-2026-10-31: only an authenticated admin can rotate role passwords. -->
-<section id="rolePasswordSecurityPanel" style="margin:20px 0;padding:18px;border:1px solid #555;border-radius:12px;background:#252525;color:#fff;">
-  <h3 style="margin:0 0 8px;color:#ff9b47;">Security — Goalie &amp; Payment Passwords</h3>
-  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:18px;">
-    <div><label for="newGoaliePassword">New Goalie Password</label><input id="newGoaliePassword" type="password" minlength="6" maxlength="128" autocomplete="new-password" placeholder="At least 6 characters" style="width:100%;margin:7px 0;" />
-    <label for="confirmGoaliePassword">Confirm Goalie Password</label><input id="confirmGoaliePassword" type="password" minlength="6" maxlength="128" autocomplete="new-password" style="width:100%;margin:7px 0;" />
-    <button type="button" onclick="changePortalRolePassword('goalie')">Change Goalie Password</button></div>
-    <div><label for="newPaymentPassword">New Payment Password</label><input id="newPaymentPassword" type="password" minlength="6" maxlength="128" autocomplete="new-password" placeholder="At least 6 characters" style="width:100%;margin:7px 0;" />
-    <label for="confirmPaymentPassword">Confirm Payment Password</label><input id="confirmPaymentPassword" type="password" minlength="6" maxlength="128" autocomplete="new-password" style="width:100%;margin:7px 0;" />
-    <button type="button" onclick="changePortalRolePassword('payment')">Change Payment Password</button></div>
-  </div>
-  <div id="rolePasswordSecurityStatus" role="status" style="margin-top:14px;color:#cdeccf;"></div>
-<p style="margin-top:16px;color:#bbb;">Backup administration uses the Render ADMIN_PASSWORD. Change the Admin password through Render environment settings.</p>
-</section>
-
 </div>
 <script>
         const API_URL = window.location.origin;
@@ -6810,46 +6796,6 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
             nextOptions.headers = getAdminHeaders(options.headers || {});
             return fetch(url, nextOptions);
         }
-        // SECURITY-HARDENING-2026-10-31
-        async function changePortalRolePassword(role) {
-            const title = role === 'goalie' ? 'Goalie' : 'Payment';
-            const newBox = document.getElementById(`new${title}Password`);
-            const confirmBox = document.getElementById(`confirm${title}Password`);
-            const result = document.getElementById('rolePasswordSecurityStatus');
-            result.textContent = '';
-            if (!sessionToken) { result.textContent = 'Please log in as an administrator.'; return; }
-            if (!newBox.value || newBox.value.length < 6 || newBox.value.length > 128) { result.textContent = 'Use 6 to 128 characters.'; return; }
-            if (newBox.value !== confirmBox.value) { result.textContent = 'Passwords do not match.'; return; }
-            if (!window.confirm(`Change the ${role} password and sign out all ${role} users?`)) return;
-            try {
-                const response = await adminFetch(`${API_URL}/api/admin/security/change-role-password`, {
-                    method:'POST', body:JSON.stringify({ role, newPassword:newBox.value })
-                });
-                const data = await response.json().catch(() => ({}));
-                if (!response.ok) throw new Error(data.error || 'Password change failed');
-                newBox.value = ''; confirmBox.value = '';
-                result.textContent = `${title} password changed. Existing ${role} logins have been revoked.`;
-            } catch (err) { result.textContent = err.message || 'Password change failed'; }
-        }
-
-        async function adminDownloadSecure(url, fallbackName) {
-            const response = await adminFetch(url);
-            if (!response.ok) {
-                const error = await response.json().catch(() => ({}));
-                alert(error.error || 'Download failed');
-                return;
-            }
-            const blob = await response.blob();
-            const disposition = response.headers.get('content-disposition') || '';
-            const match = disposition.match(/filename="?([^";]+)"?/i);
-            const filename = match ? match[1] : fallbackName;
-            const href = URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = href; link.download = filename;
-            document.body.appendChild(link); link.click(); link.remove();
-            setTimeout(() => URL.revokeObjectURL(href), 5000);
-        }
-
         function pad2(n){ return String(n).padStart(2,'0'); }
 
         function getETNowDate() {
@@ -7530,7 +7476,7 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
                     return;
                 }
 
-                errorMsg.textContent = data.error || 'Wrong password';
+                errorMsg.textContent = data.error || 'Wrong Password';
                 errorMsg.style.display = 'block';
             } catch (err) {
                 console.error("Login error:", err);
@@ -9069,7 +9015,7 @@ Cancellation cutoff: ${cancellationCutoffHours} hour${cancellationCutoffHours ==
             const cutoffText = Number.isInteger(cutoff) ? String(cutoff) : String(cutoff).replace(/\.0+$/, '');
             const hourWord = cutoff === 1 ? 'hr' : 'hrs';
             return {
-                gameDayRoster: `Gameday roster released. Emergency cancellation closes ${cutoffText}${hourWord} before game time. Roster updates in real time for last-minute changes. Check again at rink.\n${portalLink}`,
+                gameDayRoster: `You're on game day roster. Emergency cancellation closes ${cutoffText}${hourWord} before game time. Roster updates in real time for last-minute changes. Check again at rink.\n${portalLink}`,
                 gameReminder: `Hi all! If you need to cancel, please do so, and not last minute. Be considerate to those on waitlist. Thx!\n${portalLink}`,
                 checkRoster: `Hi all! Cancel window is now closed. Roster is locked in. Let's GO!\n${portalLink}`
             };
@@ -9276,7 +9222,8 @@ ${portalLink}
         }
 
         async function downloadRosterContactsCsv() {
-            await adminDownloadSecure(`${API_URL}/api/admin/roster-contacts.csv`, 'roster-contacts.csv');
+            const url = `${API_URL}/api/admin/roster-contacts.csv?sessionToken=${encodeURIComponent(sessionToken)}`;
+            window.open(url, '_blank');
         }
 
         function formatRebalancePlayerOption(player) {
@@ -10848,7 +10795,7 @@ function todayDateInputValue(){
         }
 
         function exportToExcel() {
-            adminDownloadSecure(`${API_URL}/api/admin/export-payments`, 'hockey-payments.csv');
+            window.open(`${API_URL}/api/admin/export-payments?sessionToken=${sessionToken}`, '_blank');
         }
 
         async function loadPaymentReportSnapshots() {
@@ -10858,7 +10805,7 @@ function todayDateInputValue(){
 
             try {
                 status.innerText = 'Loading saved reports...';
-                const res = await adminFetch(`${API_URL}/api/admin/payment-reports`);
+                const res = await fetch(`${API_URL}/api/admin/payment-reports?sessionToken=${sessionToken}`);
                 const data = await res.json();
 
                 if (!res.ok) {
@@ -10891,7 +10838,7 @@ function todayDateInputValue(){
         }
 
         function downloadLatestSavedPaymentReport() {
-            adminDownloadSecure(`${API_URL}/api/admin/payment-reports/latest`, 'latest-payment-report.csv');
+            window.open(`${API_URL}/api/admin/payment-reports/latest?sessionToken=${sessionToken}`, '_blank');
         }
 
         function selectAllPaymentReports() {
@@ -10922,7 +10869,7 @@ function todayDateInputValue(){
             }
 
             selectedValues.forEach(reportId => {
-                adminDownloadSecure(`${API_URL}/api/admin/payment-reports/${encodeURIComponent(reportId)}/download`, `payment-report-${reportId}.csv`);
+                window.open(`${API_URL}/api/admin/payment-reports/${reportId}/download?sessionToken=${sessionToken}`, '_blank');
             });
         }
 
@@ -12271,21 +12218,6 @@ document.addEventListener('keydown', function(e){
     }
 
     function initMobileCollapsibles() {
-        // Security section: use the existing Admin accordion.
-        makeCollapsible(document.getElementById('rolePasswordSecurityPanel'), {
-            collapsedByDefault: true,
-            summary: 'Security settings hidden. Tap to expand.',
-            storageKey: 'adminCollapse:security-role-passwords'
-        });
-
-        const securityTitle = document.querySelector(
-            '#rolePasswordSecurityPanel .mobile-collapse-title'
-        );
-        if (securityTitle) {
-            securityTitle.style.color = '#ff9b47';
-            securityTitle.style.fontWeight = '700';
-        }
-
         makeCollapsible(document.querySelector('.admin-header-box'), {
             collapsedByDefault: true,
             summary: 'Admin dashboard hidden. Tap to expand.',
@@ -13698,102 +13630,67 @@ white-space:pre-wrap !important;
 
 
 
-<script id="hp-backup-on-admin-open-v2">
-(() => {
-  const panel = document.getElementById('adminPanel');
-  if (!panel) return;
-  let asked = false, modal = null, currentVersion = null;
-  const storageKey = 'hp-backup-acknowledged-version-v2';
-  const close = () => {
-    if (modal) modal.remove();
-    modal = null;
-  };
-  const acknowledge = () => {
-    if (currentVersion) {
-      try { localStorage.setItem(storageKey, currentVersion); } catch (_) {}
+<script id="hp-optional-device-backup-v1">
+(function () {
+    'use strict';
+    const key = 'hp-device-backup-version-v1:' + location.origin;
+    let latestVersion = null;
+    let dismissedVersion = null;
+    let checking = false;
+    let dialog = null;
+    function removePrompt() { if (dialog) { dialog.remove(); dialog = null; } }
+    function showPrompt(version) {
+        if (dialog || document.hidden || !sessionToken || dismissedVersion === version) return;
+        dialog = document.createElement('div');
+        dialog.setAttribute('role', 'dialog');
+        dialog.setAttribute('aria-modal', 'true');
+        dialog.setAttribute('aria-label', 'Hockey Portal backup available');
+        dialog.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:2147483640;display:flex;align-items:center;justify-content:center;padding:18px';
+        const panel = document.createElement('div');
+        panel.style.cssText = 'background:#18283c;color:white;padding:24px;border-radius:14px;max-width:420px;width:100%;box-shadow:0 12px 40px #0008;font:16px Arial,sans-serif';
+        const heading = document.createElement('h2'); heading.textContent = 'Hockey Portal Backup'; heading.style.marginTop = '0';
+        const msg = document.createElement('p'); msg.textContent = 'Portal information has changed since your last device backup. Download an updated backup now?';
+        const actions = document.createElement('div'); actions.style.cssText = 'display:flex;gap:12px;flex-wrap:wrap';
+        const download = document.createElement('button'); download.type = 'button'; download.textContent = '⬇ Download Backup';
+        download.style.cssText = 'background:#258b47;color:white;border:0;border-radius:8px;padding:13px;cursor:pointer;flex:1';
+        const cancel = document.createElement('button'); cancel.type = 'button'; cancel.textContent = 'Cancel';
+        cancel.style.cssText = 'background:#596679;color:white;border:0;border-radius:8px;padding:13px;cursor:pointer';
+        cancel.onclick = function () { dismissedVersion = version; removePrompt(); };
+        download.onclick = async function () {
+            download.disabled = true;
+            try { await downloadBackup(); } finally { download.disabled = false; }
+        };
+        actions.append(download, cancel); panel.append(heading, msg, actions); dialog.append(panel); document.body.append(dialog);
     }
-    close();
-  };
-  window.markPortalBackupDownloaded = acknowledge;
-
-  async function check() {
-    if (panel.style.display !== 'block') {
-      asked = false;
-      close();
-      return;
-    }
-    if (asked || document.hidden ||
-        panel.style.display !== 'block' ||
-        typeof sessionToken === 'undefined' || !sessionToken) return;
-
-    asked = true;
-    try {
-      const response = await adminFetch(
-        `${API_URL}/api/admin/backup-change-status`, {
-          method: 'POST',
-          body: JSON.stringify({ sessionToken })
+    window.markPortalBackupDownloaded = function () {
+        if (latestVersion) {
+            try { localStorage.setItem(key, latestVersion); } catch (_) {}
+            dismissedVersion = latestVersion;
         }
-      );
-      if (!response.ok) return;
-      const data = await response.json();
-      if (typeof data.version !== 'string' ||
-          !/^[a-f0-9]{64}$/i.test(data.version)) return;
-
-      currentVersion = data.version;
-      let acknowledged = null;
-      try { acknowledged = localStorage.getItem(storageKey); } catch (_) {}
-
-      if (acknowledged === currentVersion ||
-          document.hidden ||
-          panel.style.display !== 'block') return;
-    } catch (err) {
-      console.warn('Backup reminder status check failed:', err);
-      return;
-    }
-    modal = document.createElement('div');
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
-    modal.style.cssText = 'position:fixed;inset:0;z-index:2147483640;background:#000b;display:flex;align-items:center;justify-content:center;padding:18px';
-
-    const box = document.createElement('div');
-    box.style.cssText = 'background:#18283c;color:white;padding:24px;border-radius:14px;max-width:420px;width:100%;font:16px Arial,sans-serif';
-
-    const heading = document.createElement('h2');
-    heading.textContent = 'Hockey Portal Backup';
-    const msg = document.createElement('p');
-    msg.textContent = 'Download a current backup to this PC or phone? Your scheduled Pi backups remain active.';
-
-    const buttons = document.createElement('div');
-    buttons.style.cssText = 'display:flex;gap:12px;margin-top:20px';
-
-    const save = document.createElement('button');
-    save.type = 'button';
-    save.textContent = 'Download Backup';
-    save.style.cssText = 'background:#258b47;color:white;border:0;padding:12px;border-radius:8px;flex:1;cursor:pointer';
-
-    const skip = document.createElement('button');
-    skip.type = 'button';
-    skip.textContent = 'Not Now';
-    skip.style.cssText = 'background:#596679;color:white;border:0;padding:12px;border-radius:8px;cursor:pointer';
-
-    skip.onclick = acknowledge;
-    save.onclick = async () => {
-      save.disabled = true;
-      try { await downloadBackup(); }
-      finally { save.disabled = false; }
+        removePrompt();
     };
-
-    buttons.append(save, skip);
-    box.append(heading, msg, buttons);
-    modal.append(box);
-    document.body.append(modal);
-  }
-
-  new MutationObserver(check).observe(panel, {
-    attributes: true, attributeFilter: ['style']
-  });
-  document.addEventListener('visibilitychange', check);
-  check();
+    async function check() {
+        if (checking || !sessionToken || document.hidden) return;
+        checking = true;
+        try {
+            const response = await fetch(`${API_URL}/api/admin/backup-change-status`, {
+                method: 'POST', headers: getAdminHeaders(),
+                body: JSON.stringify({ sessionToken }), cache: 'no-store'
+            });
+            if (!response.ok) return;
+            const data = await response.json();
+            if (!/^[a-f0-9]{64}$/.test(data.version || '')) return;
+            latestVersion = data.version;
+            let saved = null;
+            try { saved = localStorage.getItem(key); } catch (_) {}
+            if (saved !== latestVersion) showPrompt(latestVersion);
+        } catch (err) { console.warn('Backup reminder check failed:', err); }
+        finally { checking = false; }
+    }
+    document.addEventListener('visibilitychange', function () { if (!document.hidden) check(); });
+    window.addEventListener('focus', check);
+    setInterval(check, 60000);
+    setTimeout(check, 2500);
 })();
 </script>
 </body>
